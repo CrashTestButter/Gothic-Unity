@@ -252,16 +252,15 @@ namespace Gothic.Core.Models.Config
         public Color AmbientLightColor = new(0.1f, 0.1f, 0.1f, 1);
 
         [Separator("Day/night and world lights")]
-        [Tooltip("Night falls on the world, VOBs and NPCs too (Gothic's sky polyColor), not only on the hands. " +
-                 "Rooms/caves and fires/torches keep their light.")]
-        public bool EnableDayNightWorldLight = true;
-
-        [Tooltip("How much the time of day darkens/tints (0 = always day light, 1 = Gothic's sky colors).")]
+        [Tooltip("How much night falls on the world, VOBs and NPCs (Gothic's sky polyColor), not only on the " +
+                 "hands. 0 = off (always day light), 1 = Gothic's sky colors. Rooms/caves and fires/torches keep " +
+                 "their light.")]
         [Range(0, 1)]
         public float DayNightLightStrength = 1f;
 
         [Tooltip("Static lights in light mapped areas (caves, houses - torches, braziers) light the walls like " +
-                 "Gothic's lightmaps. Outdoors they're already baked into the world's vertex light.")]
+                 "Gothic's lightmaps. Outdoors they're already baked into the world's vertex light. Performance " +
+                 "escape hatch (e.g. mobile): off = fewer lights per renderer, but caves and houses stay dark.")]
         public bool EnableStaticLightsInLightMappedAreas = true;
 
         [Tooltip("Shader slots for the pooled lights that are lit at once (the rest stays dark). " +

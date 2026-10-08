@@ -69,7 +69,6 @@ MonoBehaviour:
   SunLightIntensity: 1
   SunUpdateInterval: 1
   AmbientLightColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
-  EnableDayNightWorldLight: 1
   DayNightLightStrength: 1
   EnableStaticLightsInLightMappedAreas: 1
   StaticLightPoolSize: 1023

@@ -32,6 +32,8 @@ namespace Gothic.Core.Services.World
         private float _masterTime;
         private bool _noSky = true;
         private List<SkyState> _stateList = new();
+        // Last interpolated sky polyColor, re-applied by SetShaderProperties() so it doesn't reset the night.
+        private Color _polyColor = Color.white;
 
         private static readonly int _sunDirectionShaderId = Shader.PropertyToID("_SunDirection");
         private static readonly int _sunColorShaderId = Shader.PropertyToID("_SunColor");
@@ -286,27 +288,18 @@ namespace Gothic.Core.Services.World
             _rainState.Layer[0].TEXAlpha = 255.0f;
         }
 
-        private Color _loggedDayLight = Color.white;
-        private Color _polyColor = Color.white;
-
         /// <summary>
-        /// DeveloperConfig.EnableDayNightWorldLight: Gothic's sky polyColor (bright by day, dark blue at night) scales
+        /// DeveloperConfig.DayNightLightStrength: Gothic's sky polyColor (bright by day, dark blue at night) scales
         /// the outdoor world's baked light and the sun/ambient of VOBs and NPCs - before, only the hands (URP ambient)
         /// followed it. Fires and torches (stationary lights) are added after it and stay bright.
         /// </summary>
         private void SetDayLight(Color polyColor)
         {
             _polyColor = polyColor;
-            var dayLight = _configService.Dev.EnableDayNightWorldLight
-                ? Color.Lerp(Color.white, polyColor, _configService.Dev.DayNightLightStrength)
-                : Color.white;
+            // Strength 0 = always day light (the feature is off), 1 = Gothic's sky colors.
+            var dayLight = Color.Lerp(Color.white, polyColor, _configService.Dev.DayNightLightStrength);
 
             Shader.SetGlobalColor(_dayLightColorShaderId, dayLight);
-            if (Mathf.Abs(dayLight.r - _loggedDayLight.r) + Mathf.Abs(dayLight.b - _loggedDayLight.b) > 0.1f)
-            {
-                _loggedDayLight = dayLight;
-                Logger.Log($"[Sky] Day light {dayLight}", LogCat.Vob);
-            }
             Shader.SetGlobalColor(_sunColorShaderId, _configService.Dev.SunLightColor * dayLight);
             Shader.SetGlobalColor(_ambientShaderId, _configService.Dev.AmbientLightColor * dayLight);
         }

@@ -99,7 +99,8 @@ Shader "Lit/World"
                 o.worldPos = TransformObjectToWorld(v.vertex.xyz);
                 o.vertex = TransformObjectToHClip(v.vertex.xyz);
                 o.uv = float4(v.uv.xy * REFERENCE_TEX_ARRAY_SIZE * _MainTex_TexelSize.xy, v.uv.zw);
-                o.diffuse = DiffuseLighting(TransformObjectToWorldNormal(v.normal.xyz), o.worldPos, v.color, v.normal.w);
+                o.diffuse = DiffuseLighting(TransformObjectToWorldNormal(v.normal.xyz), o.worldPos, v.color,
+                    v.normal.w);
                 return o;
             }
 

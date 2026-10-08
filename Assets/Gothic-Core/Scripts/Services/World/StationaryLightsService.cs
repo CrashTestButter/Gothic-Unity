@@ -40,7 +40,8 @@ namespace Gothic.Core.Services.World
         private HashSet<long> _lightMappedCells = new();
         private readonly Stack<int> _freeRuntimeSlots = new();
         private readonly HashSet<StationaryLight> _pooledLights = new();
-        private readonly List<StationaryLight> _pooledSorted = new();
+        // Pooled lights in reach with their reach (distance to the camera minus range), sorted closest first.
+        private readonly List<(float Reach, StationaryLight Light)> _pooledSorted = new();
         private readonly HashSet<StationaryLight> _wantedLights = new();
         private bool _isPoolDirty;
         private float _nextPoolRebalance;
@@ -299,16 +300,17 @@ namespace Gothic.Core.Services.World
                     continue;
                 if (light.Index >= 0)
                     capacity++;
-                if (Vector3.Distance(light.transform.position, camPos) - light.Range <= maxDistance)
-                    _pooledSorted.Add(light);
+                // Reach is computed once per refresh, not per comparison. It subtracts the range, so plain
+                // distances are needed (squared ones wouldn't sort the same).
+                var reach = Vector3.Distance(light.transform.position, camPos) - light.Range;
+                if (reach <= maxDistance)
+                    _pooledSorted.Add((reach, light));
             }
-            _pooledSorted.Sort((a, b) =>
-                (Vector3.Distance(a.transform.position, camPos) - a.Range).CompareTo(
-                    Vector3.Distance(b.transform.position, camPos) - b.Range));
+            _pooledSorted.Sort((a, b) => a.Reach.CompareTo(b.Reach));
 
             _wantedLights.Clear();
             for (var i = 0; i < _pooledSorted.Count && i < capacity; i++)
-                _wantedLights.Add(_pooledSorted[i]);
+                _wantedLights.Add(_pooledSorted[i].Light);
 
             // Free first (lights no longer among the closest), then hand the slots out.
             foreach (var light in _pooledLights)
@@ -333,8 +335,8 @@ namespace Gothic.Core.Services.World
             {
                 _poolPeak = _wantedLights.Count;
                 if (_poolPeak % 50 == 0 || _pooledSorted.Count > capacity)
-                    Logger.Log($"[StationaryLights] pool: {_wantedLights.Count} lit of {_pooledSorted.Count} in reach " +
-                               $"({_pooledLights.Count} loaded, {capacity} slots)", LogCat.Vob);
+                    Logger.Log($"[StationaryLights] pool: {_wantedLights.Count} lit of {_pooledSorted.Count} " +
+                               $"in reach ({_pooledLights.Count} loaded, {capacity} slots)", LogCat.Vob);
             }
         }
 

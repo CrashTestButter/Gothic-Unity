@@ -52,8 +52,8 @@ namespace Gothic.VR.Editor
             if (EditorUserBuildSettings.activeBuildTarget != buildTarget)
             {
                 EditorUserBuildSettings.SwitchActiveBuildTarget(buildTargetGroup, buildTarget);
-                Debug.LogWarning($"Switched the platform to {buildTarget}. Wait for the compilation to finish and start " +
-                                 "the build again.");
+                Debug.LogWarning($"Switched the platform to {buildTarget}. Wait for the compilation to finish " +
+                                 "and start the build again.");
                 return;
             }
 

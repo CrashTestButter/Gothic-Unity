@@ -204,9 +204,10 @@ namespace Gothic.Core.Domain.Npc
             var spawnPoint = GetSpawnPoint(npc, spawnPointName);
             if (spawnPoint == null)
             {
-                Logger.LogWarning($"Cannot spawn NPC as waypoint ${spawnPointName} does not exist.", LogCat.Npc);
+                Logger.LogWarning($"Cannot spawn NPC as waypoint {spawnPointName} does not exist.", LogCat.Npc);
 
-                // FIXME - Destroy GO and NPCInstance (Do not save the instance inside SaveGame as G1 is also removing it?)
+                // FIXME - Destroy GO and NPCInstance
+                //         (Do not save the instance inside SaveGame as G1 is also removing it?)
                 return;
             }
 

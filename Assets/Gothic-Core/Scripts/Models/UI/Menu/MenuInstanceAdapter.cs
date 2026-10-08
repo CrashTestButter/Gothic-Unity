@@ -1,4 +1,3 @@
-using System;
 using System.Linq;
 using Gothic.Core.Model.UI.MenuItem;
 using Gothic.Core.Services;
@@ -30,15 +29,7 @@ namespace Gothic.Core.Model.UI.Menu
             // first empty entry dropped every item after it (all status menu talent rows except the first).
             for (var i = 0; i < _maxMenuItems; i++)
             {
-                string itemName;
-                try
-                {
-                    itemName = _menuInstance.GetItem(i);
-                }
-                catch (Exception)
-                {
-                    break; // Past the array's end.
-                }
+                var itemName = _menuInstance.GetItem(i);
 
                 if (itemName.IsNullOrEmpty())
                     continue;

@@ -7,6 +7,7 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Const;
 using Gothic.Core.Creator;
 using Gothic.Core.Domain.Npc;
+using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Models.Container;
@@ -26,6 +27,7 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
+using Logger = Gothic.Core.Logging.Logger;
 using Object = UnityEngine.Object;
 
 namespace Gothic.Core.Services.Npc
@@ -150,6 +152,22 @@ namespace Gothic.Core.Services.Npc
             return _initializerDomain.GetFreeAreaAtSpawnPoint(positionToScan);
         }
 
+        /// <summary>
+        /// Spawns the NPC instance with the given Daedalus symbol name during gameplay.
+        /// </summary>
+        public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
+        {
+            var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
+            if (symbol == null)
+            {
+                Logger.LogWarning($"[NpcService] SpawnNpcByName: symbol '{symbolName}' not found", LogCat.Npc);
+                return false;
+            }
+
+            _initializerDomain.SpawnNpcRuntime(symbol.Index, position, rotation);
+            return true;
+        }
+
         public async Task CreateWorldNpcs(LoadingService loading)
         {
             MobRoutines.ClearAndReleaseMemory();
@@ -250,6 +268,22 @@ namespace Gothic.Core.Services.Npc
         public NpcContainer GetHeroContainer()
         {
             return ((NpcInstance)_gameStateService.GothicVm.GlobalHero).GetUserData();
+        }
+
+        /// <summary>
+        /// Copies the hero's Daedalus instance values (level, XP, LP, attributes) into its vob, where the game reads
+        /// them from. Needed after C# code or Daedalus scripts wrote the instance directly (e.g. hero.lp -= cost;
+        /// hero.attribute[x] += y), bypassing our Npc_ChangeAttribute external.
+        /// </summary>
+        public void SyncHeroInstanceToVob()
+        {
+            var hero = GetHeroContainer();
+            hero.Vob.Level = hero.Instance.Level;
+            hero.Vob.Xp = hero.Instance.Exp;
+            hero.Vob.XpNextLevel = hero.Instance.ExpNext;
+            hero.Vob.Lp = hero.Instance.Lp;
+            for (var i = 0; i < Enum.GetNames(typeof(NpcAttribute)).Length; i++)
+                hero.Vob.SetAttribute(i, hero.Instance.GetAttribute((NpcAttribute)i));
         }
 
         public GameObject GetHeroGameObject()

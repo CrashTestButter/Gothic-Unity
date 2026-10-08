@@ -112,7 +112,14 @@ namespace Gothic.Core.Services.Npc
         /// </summary>
         public bool ExtNpcCanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f)
         {
-            return _npcHelperService.CanSeeNpc(self, other, freeLOS, fov);
+            // A seated NPC's root faces its mob slot direction (into the bench) while the sit animation turned his
+            // body around - his field of view pointed away from the hero in front of him (B_AssessTalk: stand up for
+            // every talk). Look the way the body does.
+            var selfContainer = self?.GetUserData();
+            var isSeated = selfContainer?.PrefabProps?.CurrentInteractable != null &&
+                           selfContainer.Props.CurrentInteractableStateId >= 0;
+
+            return _npcHelperService.CanSeeNpc(self, other, freeLOS, fov, isSeated);
         }
 
         public void ExtNpcClearAiQueue(NpcInstance npc)
@@ -236,6 +243,18 @@ namespace Gothic.Core.Services.Npc
             var container = npc.GetUserData();
             // Reset immediately (not via queue) so Daedalus C_BodyStateContains checks in the same ZS_*_Loop tick see BsStand.
             container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
+
+            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand), only AI_StandUpQuick pops.
+            // E.g. ZS_Talk with a seated NPC that can't see the hero - he got yanked up inside the bench before.
+            // Not when the script already queued the back transition (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
+            var mob = container.PrefabProps?.CurrentInteractable;
+            if (mob != null && container.Props.CurrentInteractableStateId >= 0 &&
+                !container.Props.AnimationQueue.OfType<UseMob>().Any())
+            {
+                container.Props.AnimationQueue.Enqueue(new UseMob(
+                    new AnimationAction(mob.Props.GetVisualScheme(), -1), container));
+            }
+
             container.Props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
         }
 

@@ -317,11 +317,8 @@ namespace Gothic.Core.Domain.Vobs
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobSwitch, name: name, parent: parent);
                     break;
                 case VirtualObjectType.oCMobDoor:
-                    var visualName = vob.Visual?.Name;
                     // G2 beds are named BEDHIGH_NW_..., not only BED_... (they were built as doors - no focus, no use).
-                    var isBed = !visualName.IsNullOrEmpty()
-                                && visualName.StartsWithIgnoreCase("BED");
-                    go = isBed
+                    go = vob.IsBed()
                         ? _resourceCacheService.TryGetPrefabObject(PrefabType.VobBed, name: name, parent: parent)
                         : _resourceCacheService.TryGetPrefabObject(PrefabType.VobDoor, name: name, parent: parent);
                     break;
@@ -762,10 +759,7 @@ namespace Gothic.Core.Domain.Vobs
         /// </summary>
         private bool TryKeepAsDigSpotPlaceholder(IVirtualObject vob, GameObject go, GameObject parent)
         {
-            if (!_configService.Dev.EnableDigSpots || go == null)
-                return false;
-            if (vob is not IInteractiveObject mob || vob is IContainer || vob is IDoor ||
-                mob.Item.IsNullOrEmpty() || mob.OnStateChangeFunction.IsNullOrEmpty())
+            if (!_configService.Dev.EnableDigSpots || go == null || !_vmCacheService.IsDigSpot(vob))
                 return false;
 
             go.name = vob.GetVisualName();

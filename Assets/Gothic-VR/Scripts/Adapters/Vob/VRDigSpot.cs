@@ -6,7 +6,6 @@ using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
-using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
@@ -18,11 +17,11 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.Vob
 {
     /// <summary>
-    /// V1 (DeveloperConfig.EnableDigSpots): mobs you "use with" a melee tool and which have an onStateFunc - e.g. G2's
+    /// DeveloperConfig.EnableDigSpots: mobs you "use with" a melee tool and which have an onStateFunc - e.g. G2's
     /// treasure X marks (oCMobInter, TREASURE_ADDON_01.ASC, useWithItem ItMw_2H_Axe_L_01 = pickaxe, onStateFunc
-    /// B_SCGetTreasure). In Gothic the hero plays the dig animation and the engine calls "[onStateFunc]_S1" when state 1
-    /// is reached. In VR: hit the mob DigHitsNeeded times with a swung melee weapon, then we call the same function
-    /// (self = hero). The script does the rest (Wld_InsertItem, quest variables, XP, SVM).
+    /// B_SCGetTreasure), see VmCacheService.IsDigSpot. In Gothic the hero plays the dig animation and the engine calls
+    /// "[onStateFunc]_S1" when state 1 is reached. In VR: hit the mob _digHitsNeeded times with a swung melee weapon,
+    /// then we call the same function (self = hero). The script does the rest (Wld_InsertItem, quest variables, XP).
     ///
     /// Hit detection only compares bounds + weapon speed - no colliders, layers or combat code involved.
     /// Added at runtime by VRFocus.
@@ -44,22 +43,7 @@ namespace Gothic.VR.Adapters.Vob
         private Renderer[] _renderers;
         private HVRHandGrabber[] _hands;
         private int _hits;
-        private float _lastHitTime = -999f;
-
-
-        /// <summary>
-        /// Generic for G2 and mods: any interactive mob with an onStateFunc which is used with a melee weapon/tool.
-        /// </summary>
-        public static bool IsDigSpot(VobContainer container, VmCacheService vmCacheService)
-        {
-            if (container?.Vob is not IInteractiveObject mob || container.Vob is IDoor || container.Vob is IContainer)
-                return false;
-            if (string.IsNullOrEmpty(mob.OnStateChangeFunction) || string.IsNullOrEmpty(mob.Item))
-                return false;
-
-            var tool = vmCacheService.TryGetItemData(mob.Item);
-            return tool != null && ((VmGothicEnums.ItemFlags)tool.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) != 0;
-        }
+        private float _lastHitTime = float.NegativeInfinity;
 
         private void Awake()
         {
@@ -129,8 +113,15 @@ namespace Gothic.VR.Adapters.Vob
             {
                 if (r == null || !r.enabled || !r.gameObject.activeInHierarchy)
                     continue;
-                if (!hasBounds) { bounds = r.bounds; hasBounds = true; }
-                else bounds.Encapsulate(r.bounds);
+                if (!hasBounds)
+                {
+                    bounds = r.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(r.bounds);
+                }
             }
 
             if (hasBounds)

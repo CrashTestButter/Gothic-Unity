@@ -70,7 +70,7 @@ namespace Gothic.VR.Adapters
 
             // Mobs used with a melee tool (e.g. G2 treasure X marks + pickaxe) can be dug up by hitting them.
             if (_configService.Dev.EnableDigSpots &&
-                VRDigSpot.IsDigSpot(GetComponentInParent<VobLoader>()?.Container, _vmCacheService) &&
+                _vmCacheService.IsDigSpot(GetComponentInParent<VobLoader>()?.Container?.Vob) &&
                 GetComponent<VRDigSpot>() == null)
             {
                 gameObject.AddComponent<VRDigSpot>();
@@ -83,23 +83,18 @@ namespace Gothic.VR.Adapters
                 return;
 
             var vobLoader = GetComponentInParent<VobLoader>();
-            if (vobLoader == null || vobLoader.Container.Vob is not IInteractiveObject)
+            var vob = vobLoader?.Container?.Vob;
+            if (vob is not IInteractiveObject)
                 return;
 
-            // IDoor uses HVRPhysicsDoor for interaction - skip the mover-trigger path.
+            // Doors use HVRPhysicsDoor and chests their lid physics - not the mob/trigger path.
             // Beds are oCMobDoors too (BED*/BEDHIGH* visuals), but get used like other mobs (SLEEPABIT_S1).
-            if (vobLoader.Container.Vob is IDoor && !IsBed(vobLoader.Container.Vob))
+            if ((vob is IDoor && !vob.IsBed()) || vob is IContainer)
                 return;
 
             _mobActivated = true;
             Logger.Log($"[VRFocus.OnGrabbed] mob={vobLoader.gameObject.name}", LogCat.Ai);
             _vrPlayerService.HandleMobGrab(vobLoader);
-        }
-
-        private static bool IsBed(IVirtualObject vob)
-        {
-            var visualName = vob.Visual?.Name;
-            return !string.IsNullOrEmpty(visualName) && visualName.StartsWithIgnoreCase("BED");
         }
 
         private void OnReleased(HVRGrabberBase _, HVRGrabbable __)

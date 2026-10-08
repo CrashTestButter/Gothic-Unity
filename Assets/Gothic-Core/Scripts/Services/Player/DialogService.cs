@@ -294,6 +294,21 @@ namespace Gothic.Core.Manager
         }
 
         /// <summary>
+        /// Called after the mob's [onStateFunc]_S1: if it didn't open a dialog, the anchor goes again.
+        /// </summary>
+        public void ReleaseUnusedMobDialogAnchor()
+        {
+            var heroQueue = _npcService.GetHeroContainer()?.Props.AnimationQueue;
+            var isDialogPending = _gameStateService.Dialogs.IsInDialog || _isHeroQueueRunning ||
+                                  (heroQueue != null && heroQueue.Count > 0);
+            if (MobDialogAnchor == null || isDialogPending)
+                return;
+
+            Object.Destroy(MobDialogAnchor);
+            MobDialogAnchor = null;
+        }
+
+        /// <summary>
         /// Executes what scripts queued on the hero (e.g. PLAYER_MOB_MISSING_ITEM: B_Say_Overlay "$MISSINGITEM").
         /// </summary>
         public void RunHeroQueue()
@@ -330,22 +345,27 @@ namespace Gothic.Core.Manager
         private IEnumerator RunHeroQueue(NpcContainer hero)
         {
             _isHeroQueueRunning = true;
-            var queue = hero.Props.AnimationQueue;
-
-            while (queue.Count > 0)
+            try
             {
-                var action = queue.Dequeue();
-                var startTime = Time.time;
-                var isRunning = TryRunHeroAction(action, isStart: true);
-
-                while (isRunning && !action.IsFinished() && Time.time - startTime < _heroQueueActionTimeout)
+                var queue = hero.Props.AnimationQueue;
+                while (queue.Count > 0)
                 {
-                    yield return null;
-                    isRunning = TryRunHeroAction(action, isStart: false);
+                    var action = queue.Dequeue();
+                    var startTime = Time.time;
+                    var isRunning = TryRunHeroAction(action, isStart: true);
+
+                    while (isRunning && !action.IsFinished() && Time.time - startTime < _heroQueueActionTimeout)
+                    {
+                        yield return null;
+                        isRunning = TryRunHeroAction(action, isStart: false);
+                    }
                 }
             }
-
-            _isHeroQueueRunning = false;
+            finally
+            {
+                // Also when the coroutine is stopped (scene change) - otherwise the hero queue never runs again.
+                _isHeroQueueRunning = false;
+            }
         }
 
         private bool TryRunHeroAction(AbstractAnimationAction action, bool isStart)

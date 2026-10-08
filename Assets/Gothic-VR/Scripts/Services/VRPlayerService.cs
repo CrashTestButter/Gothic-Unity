@@ -6,7 +6,6 @@ using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vobs;
 using Gothic.VR.Adapters.HVROverrides;
-using Gothic.VR.Adapters.Vob;
 using Gothic.VR.Services.Context;
 using Gothic.Core;
 using Gothic.Core.Services;
@@ -149,9 +148,8 @@ namespace Gothic.VR.Services
         /// </summary>
         public void HandleMobGrab(VobLoader loader)
         {
-            var mob = loader.Container.VobAs<IInteractiveObject>();
             var vm = _gameStateService.GothicVm;
-            if (mob == null || vm == null)
+            if (loader.Container.Vob is not IInteractiveObject mob || vm == null)
                 return;
 
             var condFunc = mob.ConditionFunction ?? "";
@@ -166,7 +164,7 @@ namespace Gothic.VR.Services
                     Logger.LogWarning($"[VRPlayerService] ConditionFunction '{condFunc}' not found in VM", LogCat.Vob);
                     return;
                 }
-                if (vm.Call<int>(symbol.Index) == 0)
+                if (CallConditionAsHero(symbol.Index, condFunc) == 0)
                 {
                     Logger.Log($"[VRPlayerService] HandleMobGrab: '{condFunc}' denied (returned 0)", LogCat.Vob);
                     return;
@@ -181,8 +179,7 @@ namespace Gothic.VR.Services
             var target = mob.Target;
             if (string.IsNullOrEmpty(target))
             {
-                Logger.LogWarning($"[VRPlayerService] HandleMobGrab: no Target on {loader.gameObject.name}",
-                    LogCat.Vob);
+                Logger.Log($"[VRPlayerService] HandleMobGrab: no Target on {loader.gameObject.name}", LogCat.Vob);
                 return;
             }
 
@@ -203,7 +200,7 @@ namespace Gothic.VR.Services
                 return false;
 
             // X marks are dug up by hitting them (VRDigSpot) - grabbing must not dig.
-            if (VRDigSpot.IsDigSpot(loader.Container, _vmCacheService))
+            if (_vmCacheService.IsDigSpot(loader.Container.Vob))
                 return false;
 
             var vm = _gameStateService.GothicVm;
@@ -233,6 +230,9 @@ namespace Gothic.VR.Services
             CallAsHero(symbol.Index, functionName);
             Logger.Log($"[MobDialog] Called '{functionName}' for '{loader.name}'.", LogCat.Dialog);
 
+            // Not every _S1 opens a dialog (e.g. a script only prints a message) - then the anchor isn't needed.
+            _dialogService.ReleaseUnusedMobDialogAnchor();
+
             return true;
         }
 
@@ -249,6 +249,30 @@ namespace Gothic.VR.Services
             hero.Props.AnimationQueue.Clear();
             CallAsHero(symbol.Index, symbol.Name);
             _dialogService.RunHeroQueue();
+        }
+
+        /// <summary>
+        /// Like the engine (OpenGothic invokeCond): a mob's ConditionFunction runs with self = hero.
+        /// A script error denies the interaction.
+        /// </summary>
+        private int CallConditionAsHero(int symbolIndex, string functionName)
+        {
+            var vm = _gameStateService.GothicVm;
+            var oldSelf = vm.GlobalSelf;
+            vm.GlobalSelf = vm.GlobalHero;
+            try
+            {
+                return vm.Call<int>(symbolIndex);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"[VRPlayerService] ConditionFunction '{functionName}' failed: {e.Message}", LogCat.Vob);
+                return 0;
+            }
+            finally
+            {
+                vm.GlobalSelf = oldSelf;
+            }
         }
 
         private void CallAsHero(int symbolIndex, string functionName)
@@ -275,7 +299,7 @@ namespace Gothic.VR.Services
         /// </summary>
         private static GameObject CreateMobDialogAnchor(VobLoader loader)
         {
-            var cam = Camera.main!.transform;
+            var cam = Camera.main != null ? Camera.main.transform : loader.transform;
 
             var bounds = new Bounds(loader.transform.position, Vector3.one * 0.5f);
             var hasBounds = false;

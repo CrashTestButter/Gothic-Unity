@@ -238,6 +238,8 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, int, string, int>("Wld_SetMobRoutine", Wld_SetMobRoutine);
             vm.RegisterExternal<string, int>("Wld_AssignRoomToGuild", Wld_AssignRoomToGuild);
             vm.RegisterExternal<int, int, int>("Wld_GetGuildAttitude", Wld_GetGuildAttitude);
+            vm.RegisterExternal<string>("Wld_SendTrigger", Wld_SendTrigger);
+            vm.RegisterExternal<string>("Wld_SendUntrigger", Wld_SendUntrigger);
 
             // Misc
             vm.RegisterExternal<int, int>("Perc_SetRange", Perc_SetRange);
@@ -1237,6 +1239,16 @@ namespace Gothic.Core.Domain.Vm
 
             var ret = _gameStateService.GuildAttitudes[guild1 * _gameStateService.GuildCount + guild2];
             return LogInstantExternal(nameof(Wld_GetGuildAttitude), ret, guild1, guild2);
+        }
+
+        public void Wld_SendTrigger(string vobName)
+        {
+            _vobService.DispatchTrigger(vobName);
+        }
+
+        public void Wld_SendUntrigger(string vobName)
+        {
+            _vobService.DispatchUntrigger(vobName);
         }
 
         #endregion

@@ -135,7 +135,7 @@ namespace Gothic.VR.Services
 
         /// <summary>
         /// The hero grabbed a mob (wheel, lever, ...): like AI_UseMob, its ConditionFunction decides whether it may be
-        /// used, then its Target (e.g. a gate mover) is moved.
+        /// used, then its Target (e.g. a gate mover, a code master or a trigger list) is triggered.
         /// </summary>
         public void HandleMobGrab(VobLoader loader)
         {
@@ -166,26 +166,15 @@ namespace Gothic.VR.Services
             var target = mob.Target;
             if (string.IsNullOrEmpty(target))
             {
-                Logger.LogWarning($"[VRPlayerService] HandleMobGrab: no Target on {loader.gameObject.name}", LogCat.Vob);
+                Logger.LogWarning($"[VRPlayerService] HandleMobGrab: no Target on {loader.gameObject.name}",
+                    LogCat.Vob);
                 return;
             }
 
-            // Direct mover: Toggle (the player physically interacts - can open and close).
-            if (!_vobService.TryGetMovers(target, out var movers))
-            {
-                Logger.LogWarning($"[VRPlayerService] HandleMobGrab: mover '{target}' not found", LogCat.Vob);
-                return;
-            }
-
-            Logger.Log($"[VRPlayerService] HandleMobGrab: toggling mover '{target}' ({movers.Count} instance(s))",
-                LogCat.Vob);
-            foreach (var mover in movers)
-            {
-                if (mover?.Go == null || !mover.Go)
-                    continue;
-
-                mover.Go.GetComponentInChildren<MoverAdapter>()?.Toggle();
-            }
+            // A mover target toggles (the player physically interacts - can open and close), other targets
+            // (CodeMaster, TriggerList, TriggerScript, ...) run their chain. The mob's VOB name is the sender, so a
+            // CodeMaster can match it against its Slaves list.
+            _vobService.DispatchTrigger(target, loader.Container.Vob.Name);
         }
     }
 }

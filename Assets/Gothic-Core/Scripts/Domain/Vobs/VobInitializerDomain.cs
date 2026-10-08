@@ -174,30 +174,44 @@ namespace Gothic.Core.Domain.Vobs
                     // This value is always true when a new game/world is loaded. (Compared with G1 save game.)
                     ((TriggerList)vob).SendOnTrigger = true;
 
-                    // For SaveGame comparison, we load our fallback Prefab and set VobProperties.
-                    // Remove it from here once we properly implement and handle it.
-                    CreateEmptyDefaultVob(vob, parent);
+                    CreateTriggerVobGo<TriggerListHandler>($"TriggerList_{vob.Name}", parent).Init((ITriggerList)vob);
                     return;
                 case VirtualObjectType.oCTriggerScript:
                     go = CreateTriggerScript((ITriggerScript)vob, parent);
                     return;
-                case VirtualObjectType.zCVobScreenFX:
+                case VirtualObjectType.zCCodeMaster:
+                    CreateTriggerVobGo<CodeMasterHandler>($"CodeMaster_{vob.Name}", parent).Init((ICodeMaster)vob);
+                    return;
+                case VirtualObjectType.zCTrigger:
+                    CreateTriggerZoneGo<TriggerZoneHandler>($"TriggerZone_{vob.Name}", vob, parent).Init((ITrigger)vob);
+                    return;
+                case VirtualObjectType.zCTriggerUntouch:
+                    CreateTriggerZoneGo<TriggerUntouchHandler>($"TriggerUntouch_{vob.Name}", vob, parent)
+                        .Init((ITriggerUntouch)vob);
+                    return;
                 case VirtualObjectType.zCTriggerWorldStart:
+                    CreateTriggerVobGo<TriggerWorldStartHandler>($"TriggerWorldStart_{vob.Name}", parent)
+                        .Init((ITriggerWorldStart)vob);
+                    return;
+                case VirtualObjectType.zCMoverController:
+                    CreateTriggerVobGo<MoverControllerHandler>($"MoverController_{vob.Name}", parent)
+                        .Init((IMoverController)vob);
+                    return;
+                case VirtualObjectType.zCMessageFilter:
+                    CreateTriggerVobGo<MessageFilterHandler>($"MessageFilter_{vob.Name}", parent)
+                        .Init((IMessageFilter)vob);
+                    return;
+                case VirtualObjectType.zCVobScreenFX:
                 case VirtualObjectType.oCCSTrigger:
                 case VirtualObjectType.zCVobLensFlare:
-                case VirtualObjectType.zCMoverController:
                 case VirtualObjectType.zCZoneZFog:
                 case VirtualObjectType.zCZoneZFogDefault:
                 case VirtualObjectType.zCZoneVobFarPlane:
                 case VirtualObjectType.zCZoneVobFarPlaneDefault:
-                case VirtualObjectType.zCMessageFilter:
-                case VirtualObjectType.zCCodeMaster:
                 case VirtualObjectType.zCCSCamera:
                 case VirtualObjectType.zCCamTrj_KeyFrame:
                 case VirtualObjectType.oCTouchDamage:
-                case VirtualObjectType.zCTriggerUntouch:
                 case VirtualObjectType.zCEarthquake:
-                case VirtualObjectType.zCTrigger:
                 case VirtualObjectType.Ignored:
                 case VirtualObjectType.Unknown:
                     // For SaveGame comparison, we load our fallback Prefab and set VobProperties.
@@ -676,6 +690,32 @@ namespace Gothic.Core.Domain.Vobs
             triggerHandler.LevelName = vob.LevelName;
             triggerHandler.StartVob = vob.StartVob;
             return vobObj;
+        }
+
+        /// <summary>
+        /// Trigger VOBs without a visual: an empty GO below the VOB's loader that carries the handler.
+        /// </summary>
+        private static T CreateTriggerVobGo<T>(string name, GameObject parent) where T : Component
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent != null ? parent.transform : null);
+            return go.AddComponent<T>();
+        }
+
+        /// <summary>
+        /// Trigger VOBs that react to the player entering/leaving their bounding box (trigger collider).
+        /// </summary>
+        private static T CreateTriggerZoneGo<T>(string name, IVirtualObject vob, GameObject parent) where T : Component
+        {
+            var handler = CreateTriggerVobGo<T>(name, parent);
+
+            var min = vob.BoundingBox.Min.ToUnityVector();
+            var max = vob.BoundingBox.Max.ToUnityVector();
+            handler.transform.position = (min + max) / 2f;
+            handler.transform.localScale = Vector3.Max(max - min, Vector3.one * 0.01f);
+            handler.gameObject.AddComponent<BoxCollider>().isTrigger = true;
+
+            return handler;
         }
 
         private GameObject CreateTriggerScript(ITriggerScript vob, GameObject parent)

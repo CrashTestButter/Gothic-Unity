@@ -108,6 +108,8 @@ namespace Gothic.Core.Domain.Npc
         {
             var container = AllocZkInstance(npcIndex);
 
+            // Same placement as a world-load NPC (free area around the spot + culling entry). A mid-game
+            // Wld_InsertNpc spawn needs the same steps; once both exist, they should share one method.
             var go = InitLazyLoadNpc(container);
             go.transform.SetPositionAndRotation(GetFreeAreaAtSpawnPoint(position), rotation);
             _npcMeshCullingService.AddCullingEntry(go);

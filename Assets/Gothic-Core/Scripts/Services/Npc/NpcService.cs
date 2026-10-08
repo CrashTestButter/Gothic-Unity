@@ -158,9 +158,9 @@ namespace Gothic.Core.Services.Npc
         public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
         {
             var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
-            if (symbol == null)
+            if (symbol == null || symbol.Type != DaedalusDataType.Instance)
             {
-                Logger.LogWarning($"[NpcService] SpawnNpcByName: symbol '{symbolName}' not found", LogCat.Npc);
+                Logger.LogWarning($"[NpcService] SpawnNpcByName: '{symbolName}' is no Daedalus instance", LogCat.Npc);
                 return false;
             }
 
@@ -268,22 +268,6 @@ namespace Gothic.Core.Services.Npc
         public NpcContainer GetHeroContainer()
         {
             return ((NpcInstance)_gameStateService.GothicVm.GlobalHero).GetUserData();
-        }
-
-        /// <summary>
-        /// Copies the hero's Daedalus instance values (level, XP, LP, attributes) into its vob, where the game reads
-        /// them from. Needed after C# code or Daedalus scripts wrote the instance directly (e.g. hero.lp -= cost;
-        /// hero.attribute[x] += y), bypassing our Npc_ChangeAttribute external.
-        /// </summary>
-        public void SyncHeroInstanceToVob()
-        {
-            var hero = GetHeroContainer();
-            hero.Vob.Level = hero.Instance.Level;
-            hero.Vob.Xp = hero.Instance.Exp;
-            hero.Vob.XpNextLevel = hero.Instance.ExpNext;
-            hero.Vob.Lp = hero.Instance.Lp;
-            for (var i = 0; i < Enum.GetNames(typeof(NpcAttribute)).Length; i++)
-                hero.Vob.SetAttribute(i, hero.Instance.GetAttribute((NpcAttribute)i));
         }
 
         public GameObject GetHeroGameObject()

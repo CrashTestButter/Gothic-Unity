@@ -365,7 +365,8 @@ namespace Gothic.Core.Bink
             bits.Align32();
         }
 
-        private void DecodeBlock(BinkBitStream bits, BlockType type, bool isScaled, int bx, int by, BinkFrame.Plane last)
+        private void DecodeBlock(BinkBitStream bits, BlockType type, bool isScaled, int bx, int by,
+            BinkFrame.Plane last)
         {
             var dst = _block;
             switch (type)

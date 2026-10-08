@@ -20,6 +20,7 @@ namespace Gothic.Core.Adapters.Video
         private const int _framesAhead = 12;
         private const float _ringSeconds = 4f;
         private const int _decoderIdleMs = 2;
+        private const int _decoderJoinTimeoutMs = 500;
 
         private class DecodedFrame
         {
@@ -36,6 +37,8 @@ namespace Gothic.Core.Adapters.Video
         private AudioSource _audioSource;
 
         private readonly Texture2D[] _textures = new Texture2D[3];
+        private Material _material;
+        private AudioClip _clip;
         // Shared with the decoder thread - always under _frameLock.
         private readonly object _frameLock = new();
         private readonly Queue<DecodedFrame> _decoded = new();
@@ -102,8 +105,8 @@ namespace Gothic.Core.Adapters.Video
             SetupAudio();
 
             var audioInfo = _hasAudio ? $"{_sampleRate} Hz x{_channels}" : "none";
-            Logger.Log($"[BinkPlayer] {Path.GetFileName(path)}: {_video.Width}x{_video.Height} @ {_video.Fps:F2} fps, " +
-                       $"{_video.FrameCount} frames, audio={audioInfo}", LogCat.Loading);
+            Logger.Log($"[BinkPlayer] {Path.GetFileName(path)}: {_video.Width}x{_video.Height} " +
+                       $"@ {_video.Fps:F2} fps, {_video.FrameCount} frames, audio={audioInfo}", LogCat.Loading);
 
             _startTime = Time.unscaledTime;
             _isDecoderRunning = true;
@@ -129,15 +132,15 @@ namespace Gothic.Core.Adapters.Video
             _textures[1] = CreatePlaneTexture(chromaStride, chromaHeight);
             _textures[2] = CreatePlaneTexture(chromaStride, chromaHeight);
 
-            var material = new Material(Shader.Find("Gothic/Bink YUV"));
-            material.SetTexture("_TexY", _textures[0]);
-            material.SetTexture("_TexU", _textures[1]);
-            material.SetTexture("_TexV", _textures[2]);
-            material.SetVector("_ScaleY",
+            _material = new Material(Shader.Find("Gothic/Bink YUV"));
+            _material.SetTexture("_TexY", _textures[0]);
+            _material.SetTexture("_TexU", _textures[1]);
+            _material.SetTexture("_TexV", _textures[2]);
+            _material.SetVector("_ScaleY",
                 new Vector4((float)_video.Width / lumaStride, (float)_video.Height / lumaHeight));
-            material.SetVector("_ScaleUV",
+            _material.SetVector("_ScaleUV",
                 new Vector4((float)(_video.Width / 2) / chromaStride, (float)(_video.Height / 2) / chromaHeight));
-            screen.sharedMaterial = material;
+            screen.sharedMaterial = _material;
         }
 
         private static Texture2D CreatePlaneTexture(int width, int height)
@@ -161,8 +164,8 @@ namespace Gothic.Core.Adapters.Video
             _hasAudio = true;
 
             var lengthFrames = (int)Math.Ceiling(_video.FrameCount / _video.Fps * _sampleRate) + _sampleRate;
-            var clip = AudioClip.Create("Bink", lengthFrames, _channels, _sampleRate, true, OnAudioRead);
-            _audioSource.clip = clip;
+            _clip = AudioClip.Create("Bink", lengthFrames, _channels, _sampleRate, true, OnAudioRead);
+            _audioSource.clip = _clip;
             _audioSource.loop = false;
 
             AudioSettings.GetDSPBufferSize(out var bufferLength, out var bufferCount);
@@ -202,12 +205,14 @@ namespace Gothic.Core.Adapters.Video
 
         /// <summary>
         /// Decoder thread: keeps up to _framesAhead frames (and their audio) ready. Touches no Unity API.
+        /// Works on its own reference of the video: Close() may clear _video while a frame is still decoded.
         /// </summary>
         private void DecodeLoop()
         {
+            var video = _video;
             try
             {
-                while (_isDecoderRunning && _video.CurrentFrame < _video.FrameCount)
+                while (_isDecoderRunning && video.CurrentFrame < video.FrameCount)
                 {
                     DecodedFrame decoded = null;
                     lock (_frameLock)
@@ -227,8 +232,8 @@ namespace Gothic.Core.Adapters.Video
                         continue;
                     }
 
-                    decoded.Index = (int)_video.CurrentFrame;
-                    var frame = _video.NextFrame();
+                    decoded.Index = (int)video.CurrentFrame;
+                    var frame = video.NextFrame();
                     for (var plane = 0; plane < 3; plane++)
                     {
                         var source = frame.Planes[plane].Data;
@@ -252,11 +257,14 @@ namespace Gothic.Core.Adapters.Video
             catch (Exception e)
             {
                 if (_isDecoderRunning)
-                    _decodeError = $"frame {_video?.CurrentFrame}: {e.Message}";
+                    _decodeError = $"frame {video.CurrentFrame}: {e.Message}";
             }
             finally
             {
                 _isDecodingDone = true;
+                // Close() couldn't wait for this thread (join timed out) and left the stream to it.
+                if (!_isDecoderRunning)
+                    DisposeStream();
             }
         }
 
@@ -387,23 +395,48 @@ namespace Gothic.Core.Adapters.Video
             _onFinished?.Invoke();
         }
 
+        /// <summary>
+        /// Safe to call twice (Stop, then OnDestroy).
+        /// </summary>
         private void Close()
         {
             _isDecoderRunning = false;
+            var isDecoderStopped = true;
             if (_decoderThread != null && _decoderThread != Thread.CurrentThread)
-                _decoderThread.Join(500);
+                isDecoderStopped = _decoderThread.Join(_decoderJoinTimeoutMs);
             _decoderThread = null;
 
-            if (_audioSource != null)
-                _audioSource.Stop();
-            _stream?.Dispose();
-            _stream = null;
+            // A decoder still busy with a frame disposes the stream itself when it ends.
+            if (isDecoderStopped)
+                DisposeStream();
             _video = null;
-            foreach (var texture in _textures)
+
+            if (_audioSource != null)
             {
-                if (texture != null)
-                    Destroy(texture);
+                _audioSource.Stop();
+                if (_audioSource.clip == _clip)
+                    _audioSource.clip = null;
             }
+            if (_clip != null)
+                Destroy(_clip);
+            _clip = null;
+
+            if (_material != null)
+                Destroy(_material);
+            _material = null;
+
+            for (var plane = 0; plane < _textures.Length; plane++)
+            {
+                if (_textures[plane] != null)
+                    Destroy(_textures[plane]);
+                _textures[plane] = null;
+            }
+        }
+
+        private void DisposeStream()
+        {
+            // Called by the main thread or the decoder thread - whoever comes last finds null.
+            Interlocked.Exchange(ref _stream, null)?.Dispose();
         }
 
         private void OnDestroy()

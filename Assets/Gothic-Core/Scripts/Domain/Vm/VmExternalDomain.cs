@@ -690,7 +690,7 @@ namespace Gothic.Core.Domain.Vm
             if (string.IsNullOrWhiteSpace(fileName))
                 return 0;
 
-            Logger.Log($"[PlayVideo] {fileName}", LogCat.Dialog);
+            Logger.Log($"[PlayVideo] {fileName}", LogCat.Misc);
             GlobalEventDispatcher.ScriptPlayVideo.Invoke(fileName);
             return 1;
         }

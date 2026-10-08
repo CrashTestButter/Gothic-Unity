@@ -239,33 +239,62 @@ namespace Gothic.VR.Adapters.UI
 
         private void OnDestroy()
         {
-            // Destroyed without Close (scene change during a video) - never leave the game paused.
-            if (!_isRunning)
-                return;
-            Time.timeScale = _savedTimeScale;
-            AudioListener.pause = false;
+            // Destroyed without Close (scene change during a video): the VR camera lives in the persistent Player
+            // scene - never leave it dark or the game paused.
+            if (_isRunning)
+                RestoreWorld();
+            ReleaseResources();
         }
 
         private void Close()
         {
-            if (_camera != null)
-            {
-                _camera.cullingMask = _savedCullingMask;
-                _camera.clearFlags = _savedClearFlags;
-                _camera.backgroundColor = _savedBackground;
-            }
-            AudioListener.pause = false;
-            Time.timeScale = _savedTimeScale;
-            StopBink();
-
-            if (_screen != null)
-                Destroy(_screen);
-            if (_renderTexture != null)
-                _renderTexture.Release();
+            RestoreWorld();
+            ReleaseResources();
 
             _isRunning = false;
             Destroy(gameObject);
             Logger.Log("[VRCinema] Closed", LogCat.VR);
+        }
+
+        private void RestoreWorld()
+        {
+            RestoreCamera();
+            AudioListener.pause = false;
+            Time.timeScale = _savedTimeScale;
+        }
+
+        private void RestoreCamera()
+        {
+            if (_camera == null)
+                return;
+
+            _camera.cullingMask = _savedCullingMask;
+            _camera.clearFlags = _savedClearFlags;
+            _camera.backgroundColor = _savedBackground;
+            _camera = null;
+        }
+
+        /// <summary>
+        /// Safe to call twice (Close, then OnDestroy of the same cinema).
+        /// </summary>
+        private void ReleaseResources()
+        {
+            StopBink();
+
+            if (_screen != null)
+                Destroy(_screen);
+            _screen = null;
+
+            if (_videoPlayerMaterial != null)
+                Destroy(_videoPlayerMaterial);
+            _videoPlayerMaterial = null;
+
+            if (_renderTexture != null)
+            {
+                _renderTexture.Release();
+                Destroy(_renderTexture);
+            }
+            _renderTexture = null;
         }
     }
 }

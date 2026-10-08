@@ -59,6 +59,31 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Show Marvin Mode menu next to left hand in VR.")]
         public bool ActivateMarvinMode;
 
+        [Separator("Marvin cheats (dev only)")]
+        [Tooltip("Marvin panel button 'Level +5': +5 levels, +50 LP, +60 HP max and +100 mana max (both refilled).")]
+        public bool EnableLevel5Cheat;
+
+        [Tooltip("Marvin panel button 'Guild -> Novice': sets the hero's guild to GIL_NOV.")]
+        public bool EnableGuildCheat;
+
+        [Tooltip("Marvin panel button 'Guild -> Scavenger': hero guild GIL_SCAVENGER (NPC combat tests).")]
+        public bool EnableScavengerGuildCheat;
+
+        [Tooltip("Marvin panel button 'Skip Time +30min'. NPC routines follow with the next game minute.")]
+        public bool EnableTimeSkip;
+
+        [Tooltip("Waypoint for the Marvin 'TP' button, e.g. GRYD_072 or START. Leave empty to hide the button.")]
+        public string MarvinTeleportWaypoint = string.Empty;
+
+        [Tooltip("Daedalus NPC instance for the Marvin 'Spawn' button, e.g. SH or PC_THIEF. Spawned 2 m in front " +
+                 "of the hero. Leave empty to hide the button.")]
+        public string MarvinSpawnNpcSymbol = string.Empty;
+
+        [Tooltip("Items for the Marvin 'Give items' button, comma separated, optional amount: " +
+                 "ITRU_FIREBOLT, ITSC_ICEBOLT:3, ITPO_MANA_03:5. Leave empty to hide the button.")]
+        [TextArea(2, 6)]
+        public string MarvinGiveItems = string.Empty;
+
         
         /**
          * ##########

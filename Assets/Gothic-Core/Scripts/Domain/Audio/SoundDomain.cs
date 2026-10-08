@@ -68,6 +68,20 @@ namespace Gothic.Core.Domain.Audio
                 var chunkId = Encoding.ASCII.GetString(fileBytes, pos, 4);
                 var chunkSize = BitConverter.ToInt32(fileBytes, pos + 4);
                 var chunkDataStart = pos + 8;
+                var remainingBytes = fileBytes.Length - chunkDataStart;
+
+                // Streamed WAVs write 0xFFFFFFFF (-1) or a too big size into the "data" chunk as the length wasn't
+                // known when writing it. Such a chunk runs to the end of the file. Any other chunk that is corrupt
+                // like this ends the walk, as its size can't tell us where the next chunk starts.
+                if (chunkSize < 0 || chunkSize > remainingBytes)
+                {
+                    if (chunkId == "data")
+                    {
+                        dataStart = chunkDataStart;
+                        dataSize = remainingBytes;
+                    }
+                    break;
+                }
 
                 if (chunkId == "fmt ")
                 {
@@ -79,8 +93,7 @@ namespace Gothic.Core.Domain.Audio
                 else if (chunkId == "data")
                 {
                     dataStart = chunkDataStart;
-                    // Sometimes a file has more data than is specified after the RIFF header.
-                    dataSize = (int)Math.Min(chunkSize, fileBytes.Length - chunkDataStart);
+                    dataSize = chunkSize;
                 }
 
                 // Chunks are word-aligned: +1 pad byte if the declared size is odd.

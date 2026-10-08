@@ -29,6 +29,9 @@ namespace Gothic.Core.Adapters.Animations.Morph
         /// </summary>
         private readonly List<MorphAnimationData> _runningMorphs = new();
 
+        // Random face animations retry a missing animation every few seconds. Warn once per name, not every time.
+        private readonly HashSet<string> _missingAnimationNames = new();
+
         private Mesh _mesh;
 
         /// <summary>
@@ -68,7 +71,11 @@ namespace Gothic.Core.Adapters.Animations.Morph
                 : newMorph.MeshMetadata.Animations.FirstOrDefault(anim => anim.Name.EqualsIgnoreCase(animationName));
             if (newMorph.AnimationMetadata == null)
             {
-                Logger.LogWarning($"MorphAnimation '{animationName}' not found in '{morphMeshName}'", LogCat.Mesh);
+                if (_missingAnimationNames.Add($"{morphMeshName}/{animationName}"))
+                {
+                    Logger.LogWarning($"MorphAnimation '{animationName}' not found in '{morphMeshName}'",
+                        LogCat.Mesh);
+                }
                 return;
             }
             newMorph.AnimationFrameData =

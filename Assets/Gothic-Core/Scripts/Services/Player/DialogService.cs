@@ -337,7 +337,7 @@ namespace Gothic.Core.Manager
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Dialog function threw an exception - dialog may be incomplete: {ex.Message}",
+                Logger.LogError($"Dialog function threw an exception - dialog may be incomplete: {ex}",
                     LogCat.Dialog);
             }
 

@@ -337,7 +337,11 @@ namespace Gothic.Core.Domain.Meshes.Builder
                                     NormalX = ToSnorm16(feature.Normal.X),
                                     NormalY = ToSnorm16(feature.Normal.Y),
                                     NormalZ = ToSnorm16(feature.Normal.Z),
-                                    NormalW = 0,
+                                    // Outdoor flag: SNorm16 w = 1 (short.MaxValue) on vertex lit (outdoor)
+                                    // polygons, 0 on light mapped ones (rooms, caves). Lit-World.shader reads
+                                    // normal.w to scale only outdoor light with the time of day (_DayLightColor).
+                                    // G1's polygons have no outdoor flag set.
+                                    NormalW = polygon.LightMapIndex < 0 ? short.MaxValue : (short)0,
                                     // Gothic's baked vertex light, kept untouched: ARGB int -> RGBA byte order.
                                     Color = ((light >> 16) & 0xFF) | (((light >> 8) & 0xFF) << 8) |
                                             ((light & 0xFF) << 16) | (((light >> 24) & 0xFF) << 24),

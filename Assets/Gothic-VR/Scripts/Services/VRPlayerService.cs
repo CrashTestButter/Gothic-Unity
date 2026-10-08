@@ -6,6 +6,7 @@ using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vobs;
 using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Adapters.Vob;
 using Gothic.VR.Services.Context;
 using Gothic.Core;
 using Gothic.Core.Services;
@@ -199,6 +200,10 @@ namespace Gothic.VR.Services
         private bool TryUseMobStateFunction(VobLoader loader, IInteractiveObject mob)
         {
             if (string.IsNullOrEmpty(mob.OnStateChangeFunction))
+                return false;
+
+            // X marks are dug up by hitting them (VRDigSpot) - grabbing must not dig.
+            if (VRDigSpot.IsDigSpot(loader.Container, _vmCacheService))
                 return false;
 
             var vm = _gameStateService.GothicVm;

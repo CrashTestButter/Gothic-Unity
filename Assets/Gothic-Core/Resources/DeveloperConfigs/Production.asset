@@ -49,6 +49,8 @@ MonoBehaviour:
   ShowNamesOnHoveredVOBs: 1
   MoverSpeedMultiplier: 3.48
   EnableMobsiDialogs: 1
+  EnableDigSpots: 1
+  DigSpotsRequireTool: 0
   PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0

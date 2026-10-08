@@ -162,10 +162,34 @@ namespace Gothic.Core.Adapters.UI.Menus
                 }
 
                 // G1 save games start with ID 1
-                var folderSaveId = int.Parse(saveGameFolderName.Remove(0, "savegame".Length));
+                if (!int.TryParse(saveGameFolderName.Remove(0, "savegame".Length), out var folderSaveId))
+                    continue;
 
-                // Load metadata
-                var save = _saveGameService.GetSaveGame((SaveGameService.SlotId)folderSaveId);
+                // Our menu prefab shows 15 slots (G1 layout); G2 installations can hold savegame16-20.
+                // Skip out-of-range folders instead of crashing the whole menu init on the array access.
+                if (folderSaveId < 1 || folderSaveId >= SaveSlots.Length || SaveSlots[folderSaveId] == null)
+                {
+                    Logger.LogWarning($"[SaveMenu] Save folder '{saveGameFolderName}' has no UI slot. Skipping.",
+                        LogCat.Ui);
+                    continue;
+                }
+
+                // Load metadata. A save written by another engine/mod version can fail parsing - skip it instead of
+                // aborting the whole menu.
+                SaveGame save;
+                try
+                {
+                    save = _saveGameService.GetSaveGame((SaveGameService.SlotId)folderSaveId);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogWarning($"[SaveMenu] Save '{saveGameFolderName}' couldn't be parsed: {e.Message}",
+                        LogCat.Ui);
+                    continue;
+                }
+                if (save?.Metadata == null)
+                    continue;
+
                 _saves[folderSaveId] = save;
 
                 // Set metadata to slot

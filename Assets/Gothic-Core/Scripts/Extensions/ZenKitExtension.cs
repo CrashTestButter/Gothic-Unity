@@ -23,7 +23,8 @@ namespace Gothic.Core.Extensions
         public static bool IsBed([CanBeNull] this IVirtualObject vob)
         {
             var visualName = vob?.Visual?.Name;
-            return !string.IsNullOrEmpty(visualName) && visualName.StartsWith("BED", StringComparison.OrdinalIgnoreCase);
+            return !string.IsNullOrEmpty(visualName) &&
+                   visualName.StartsWith("BED", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

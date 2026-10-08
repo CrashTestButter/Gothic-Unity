@@ -225,8 +225,8 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                 return;
 
             Logger.Log($"[Lock] Key unlock: '{_keyInstance}' matched.", LogCat.VR);
-            _hapticsService.Vibrate(hand, VrHapticsService.VibrationType.Success);
-            PlaySound("PICKLOCK_UNLOCK", "DOOR_LOCK.WAV");
+            // LockPickComboFinished also gives the success vibration (VrHapticsService).
+            PlaySound(_vmService.PickLockSuccessSoundName, _vmService.DoorLockSoundName);
             GlobalEventDispatcher.LockPickComboFinished.Invoke(vobLoader.Container, _lockable, (int)hand);
             _hvrPhysicsDoor.Unlock();
             _hvrPhysicsDoor.GetComponent<Rigidbody>()

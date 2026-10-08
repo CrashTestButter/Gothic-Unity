@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Gothic.Core.Extensions;
@@ -37,6 +38,8 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly GameTimeService _gameTimeService;
         [Inject] private readonly StoryService _storyService;
         [Inject] private readonly VobService _vobService;
+
+        private readonly HashSet<string> _externalsCalledWithoutNpc = new();
         [Inject] private readonly GameStateService _gameStateService;
 
         // (optional) Some messages from Daedalus are quite spammy. Ignore them.
@@ -455,7 +458,8 @@ namespace Gothic.Core.Domain.Vm
         /// </summary>
         private NpcInstance GetHeroForMissingNpc(string externalName)
         {
-            Logger.LogWarning($"[{externalName}] called with no NPC - using the hero.", LogCat.Dialog);
+            if (_externalsCalledWithoutNpc.Add(externalName))
+                Logger.LogWarning($"[{externalName}] called with no NPC - using the hero.", LogCat.Dialog);
             return (NpcInstance)_gameStateService.GothicVm.GlobalHero;
         }
 

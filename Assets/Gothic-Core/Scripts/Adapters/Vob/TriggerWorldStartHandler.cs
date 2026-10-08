@@ -33,7 +33,7 @@ namespace Gothic.Core.Adapters.Vob
 
             Logger.Log($"[TriggerWorldStart] '{_vob.Name}' -> '{target}' (FireOnce={_vob.FireOnce})", LogCat.Vob);
             _vob.HasFired = true;
-            _vobService.DispatchTrigger(target);
+            _vobService.DispatchTrigger(target, _vob.Name);
         }
     }
 }

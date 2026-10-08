@@ -74,7 +74,6 @@ namespace Gothic.Core.Services
             WayPoints.Clear();
             FreePoints.Clear();
             VobsInteractable.Clear();
-            ClearTriggerVobs();
         }
 
         public void Dispose()

@@ -46,12 +46,12 @@ namespace Gothic.Core.Adapters.Vob
 
         private void OnTriggerExit(Collider other)
         {
-            if (!RespondsTo(other) || !_trigger.SendUntrigger)
+            if (!RespondsTo(other) || !_trigger.SendUntrigger || string.IsNullOrEmpty(_trigger.Target))
                 return;
 
             Logger.Log($"[TriggerZone] '{_trigger.Name}' OnTriggerExit -> DispatchUntrigger '{_trigger.Target}'",
                 LogCat.Vob);
-            _vobService.DispatchUntrigger(_trigger.Target);
+            _vobService.DispatchUntrigger(_trigger.Target, _trigger.Name);
         }
 
         private bool RespondsTo(Collider other)
@@ -61,7 +61,7 @@ namespace Gothic.Core.Adapters.Vob
 
         private void FireTarget()
         {
-            if (!_trigger.IsEnabled)
+            if (!_trigger.IsEnabled || string.IsNullOrEmpty(_trigger.Target))
                 return;
 
             // MaxActivationCount: -1 = unlimited, 0 = never, N = fire N times.
@@ -75,7 +75,7 @@ namespace Gothic.Core.Adapters.Vob
             var target = _trigger.Target;
             Logger.Log($"[TriggerZone] '{_trigger.Name}' -> '{target}' (activation {_activationCount}/{max})",
                 LogCat.Vob);
-            _vobService.DispatchTrigger(target);
+            _vobService.DispatchTrigger(target, _trigger.Name);
         }
     }
 }

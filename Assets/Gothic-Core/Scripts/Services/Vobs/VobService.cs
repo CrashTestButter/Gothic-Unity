@@ -105,7 +105,8 @@ namespace Gothic.Core.Services.Vobs
         }
 
         /// <summary>
-        /// Name lookups of the previous world must not survive a world change.
+        /// Name lookups of the previous world must not survive a world change: called on LoadGameStart (new game,
+        /// loading a save) and by BootstrapService for level changes (oCTriggerChangeLevel).
         /// </summary>
         public void PreWorldCreate()
         {
@@ -671,7 +672,8 @@ namespace Gothic.Core.Services.Vobs
         }
 
         /// <summary>
-        /// Fires an untrigger event to the named VOB: movers close, a CodeMaster can reset its sequence.
+        /// Fires an untrigger event to the named VOB: movers close, a CodeMaster can reset its sequence, a
+        /// MessageFilter runs its OnUntrigger action.
         /// senderName: VOB that sent the untrigger (for CodeMaster slave matching).
         /// </summary>
         public void DispatchUntrigger(string name, string senderName = "")
@@ -688,10 +690,19 @@ namespace Gothic.Core.Services.Vobs
                 return;
             }
 
-            if (TryGetTriggerVob(_gameStateService.VobsCodeMaster, name.ToUpper(), out var codeMaster))
+            var key = name.ToUpper();
+
+            if (TryGetTriggerVob(_gameStateService.VobsCodeMaster, key, out var codeMaster))
             {
                 Logger.Log($"[VobService] DispatchUntrigger '{name}' from '{senderName}' -> CodeMaster", LogCat.Vob);
                 codeMaster.Go.GetComponentInChildren<CodeMasterHandler>(true)?.ReceiveUntrigger(senderName);
+                return;
+            }
+
+            if (TryGetTriggerVob(_gameStateService.VobsMessageFilter, key, out var messageFilter))
+            {
+                Logger.Log($"[VobService] DispatchUntrigger '{name}' -> MessageFilter", LogCat.Vob);
+                messageFilter.Go.GetComponentInChildren<MessageFilterHandler>(true)?.Untrigger();
                 return;
             }
 

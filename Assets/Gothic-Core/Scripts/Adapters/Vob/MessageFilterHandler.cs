@@ -48,10 +48,10 @@ namespace Gothic.Core.Adapters.Vob
             switch (action)
             {
                 case MessageFilterAction.Trigger:
-                    _vobService.DispatchTrigger(_vob.Target);
+                    _vobService.DispatchTrigger(_vob.Target, _vob.Name);
                     break;
                 case MessageFilterAction.Untrigger:
-                    _vobService.DispatchUntrigger(_vob.Target);
+                    _vobService.DispatchUntrigger(_vob.Target, _vob.Name);
                     break;
                 case MessageFilterAction.Enable:
                 case MessageFilterAction.Disable:

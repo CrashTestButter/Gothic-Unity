@@ -11,7 +11,7 @@ namespace Gothic.Core.Adapters.Vob
 {
     public class TriggerScriptHandler : MonoBehaviour
     {
-        [Inject] private VmService _vmService;
+        [Inject] private readonly VmService _vmService;
 
         private ITriggerScript _triggerScript;
         private int _activationCount;

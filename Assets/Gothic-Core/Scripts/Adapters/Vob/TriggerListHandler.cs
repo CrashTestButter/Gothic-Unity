@@ -58,7 +58,7 @@ namespace Gothic.Core.Adapters.Vob
                         ScheduleDispatch(target.Name, (float)target.Delay.TotalSeconds);
                     break;
                 case TriggerBatchMode.Next:
-                    var index = _triggerList.ActTarget;
+                    var index = _triggerList.ActTarget % targets.Count;
                     ScheduleDispatch(targets[index].Name, (float)targets[index].Delay.TotalSeconds);
                     _triggerList.ActTarget = (byte)((index + 1) % targets.Count);
                     break;
@@ -72,7 +72,7 @@ namespace Gothic.Core.Adapters.Vob
         private void ScheduleDispatch(string name, float delay)
         {
             if (delay <= 0f)
-                _vobService.DispatchTrigger(name);
+                _vobService.DispatchTrigger(name, _triggerList.Name);
             else
                 StartCoroutine(DelayedDispatch(name, delay));
         }
@@ -80,7 +80,7 @@ namespace Gothic.Core.Adapters.Vob
         private IEnumerator DelayedDispatch(string name, float delay)
         {
             yield return new WaitForSeconds(delay);
-            _vobService.DispatchTrigger(name);
+            _vobService.DispatchTrigger(name, _triggerList.Name);
         }
     }
 }

@@ -266,7 +266,8 @@ namespace Gothic.VR.Services
             }
             catch (Exception e)
             {
-                Logger.LogError($"[VRPlayerService] ConditionFunction '{functionName}' failed: {e.Message}", LogCat.Vob);
+                Logger.LogError($"[VRPlayerService] ConditionFunction '{functionName}' failed: {e.Message}",
+                    LogCat.Vob);
                 return 0;
             }
             finally

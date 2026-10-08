@@ -242,6 +242,14 @@ namespace Gothic.Core.Domain.Vobs
             obj.transform.SetLocalPositionAndRotation(position.ToUnityVector(), rotation.ToUnityQuaternion());
         }
 
+        /// <summary>
+        /// G1 calls it ItKeLockpick, G2 ItKe_Lockpick. World items carry it as name or only as instance.
+        /// </summary>
+        private static bool IsLockPick(string itemName)
+        {
+            return itemName.EqualsIgnoreCase("ItKeLockpick") || itemName.EqualsIgnoreCase("ItKe_Lockpick");
+        }
+
         private GameObject GetPrefab(IVirtualObject vob, GameObject parent = null)
         {
             GameObject go;
@@ -257,7 +265,7 @@ namespace Gothic.Core.Domain.Vobs
                     
                     if (mainFlag is VmGothicEnums.ItemFlags.ItemKatNf or VmGothicEnums.ItemFlags.ItemKatFf)
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItemWeapon, name: name, parent: parent);
-                    else if (name.EqualsIgnoreCase("ItKeLockpick"))
+                    else if (IsLockPick(name) || IsLockPick(itemName))
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItemLockPick, name: name, parent: parent);
                     else
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItem, name: name, parent: parent);

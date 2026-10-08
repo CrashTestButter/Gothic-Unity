@@ -51,7 +51,8 @@ namespace Gothic.Core.Adapters.UI.Menus
 
         private void OnEnable()
         {
-            if (_npcService == null)
+            // No hero yet (menus/boot) - nothing to show.
+            if (_npcService?.GetHeroContainer() == null)
                 return;
             _npcService.SyncHeroInstanceToVob();
             UpdateData();

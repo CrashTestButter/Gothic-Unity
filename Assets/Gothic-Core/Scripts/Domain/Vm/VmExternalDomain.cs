@@ -53,7 +53,9 @@ namespace Gothic.Core.Domain.Vm
         private bool _zSpyInstantLogging;
         private bool _ignoreSpammyMessages;
 
-        // PrintScreen text -> Time.time of its last log line.
+        // PrintScreen text -> Time.time of its last log line. Capped: a script can print ever-changing texts.
+        private const float _printScreenLogInterval = 10f;
+        private const int _maxPrintScreenLogTimes = 256;
         private readonly Dictionary<string, float> _printScreenLogTimes = new();
 
         public VmExternalDomain()
@@ -704,9 +706,12 @@ namespace Gothic.Core.Domain.Vm
                 return;
 
             // Some scripts print every AI tick (G2 with PC_Rockefeller: "Stimme: 14", "KEIN HERO!", ...) - log a text
-            // only once per 10 s.
-            if (!_printScreenLogTimes.TryGetValue(message, out var lastLog) || Time.time - lastLog > 10f)
+            // only once per interval.
+            if (!_printScreenLogTimes.TryGetValue(message, out var lastLog) ||
+                Time.time - lastLog > _printScreenLogInterval)
             {
+                if (_printScreenLogTimes.Count >= _maxPrintScreenLogTimes)
+                    _printScreenLogTimes.Clear();
                 _printScreenLogTimes[message] = Time.time;
                 Logger.Log($"[PrintScreen] {message}", LogCat.Dialog);
             }

@@ -260,6 +260,9 @@ namespace Gothic.Core.Services.Npc
         public void SyncHeroInstanceToVob()
         {
             var hero = GetHeroContainer();
+            if (hero == null)
+                return;
+
             hero.Vob.Level = hero.Instance.Level;
             hero.Vob.Xp = hero.Instance.Exp;
             hero.Vob.XpNextLevel = hero.Instance.ExpNext;

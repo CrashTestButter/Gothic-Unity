@@ -157,9 +157,9 @@ namespace Gothic.Core.Models.Config
         public bool ShowNamesOnHoveredVOBs = true;
 
         [Separator("Dialogs & HUD")]
-        [Tooltip("The hero isn't frozen during dialogs. A dialog doesn't start farther than DialogMaxDistance from " +
-                 "the NPC (come closer). While somebody talks, the hero can't leave this range (skip the line first); " +
-                 "with the choices shown, walking away ends the dialog.")]
+        [Tooltip("The hero isn't frozen during dialogs. A dialog doesn't start farther than DialogMaxDistance " +
+                 "from the NPC (come closer). While somebody talks, the hero can't leave this range (skip the line " +
+                 "first); with the choices shown, walking away ends the dialog.")]
         public bool EnableDialogFreeMovement = true;
         [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
         public float DialogMaxDistance = 5f;

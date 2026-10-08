@@ -1,5 +1,6 @@
 #if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
+using Gothic.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using TMPro;
 using UnityEngine;
@@ -28,8 +29,17 @@ namespace Gothic.VR.Adapters.UI
         // Resolved on first use - Shader.Find isn't allowed in a MonoBehaviour's (static) field initializers.
         private static Shader _onTopShader;
         private static readonly Dictionary<TMP_SpriteAsset, TMP_SpriteAsset> _onTopSpriteAssets = new();
+        private static readonly HashSet<TMP_SpriteAsset> _onTopSpriteAssetCopies = new();
+        // Shared by all graphics with the same look - dialog options are cloned on every ShowDialog.
+        private static readonly Dictionary<(Texture texture, Color color, int queue), Material> _onTopMaterials = new();
         private static readonly List<(Material material, int queue)> _handMaterials = new();
         private static bool _areHandsOnTop;
+
+        static VRUiOnTop()
+        {
+            // A scene change in the middle of a dialog never calls EndDialog - put the hands back.
+            GlobalEventDispatcher.LoadingSceneLoaded.AddListener(() => SetHandsOnTop(false));
+        }
 
         private readonly HashSet<Graphic> _patchedGraphics = new();
         private readonly List<TMP_Text> _texts = new();
@@ -132,7 +142,7 @@ namespace Gothic.VR.Adapters.UI
         {
             // No own sprite asset (e.g. NPC subtitle lines): TMP falls back to the default one - wrap that.
             var source = text.spriteAsset != null ? text.spriteAsset : TMP_Settings.defaultSpriteAsset;
-            if (source == null || _onTopSpriteAssets.ContainsValue(source))
+            if (source == null || _onTopSpriteAssetCopies.Contains(source))
                 return;
 
             if (!_onTopSpriteAssets.TryGetValue(source, out var onTop) || onTop == null)
@@ -142,6 +152,7 @@ namespace Gothic.VR.Adapters.UI
                 onTop.material = CreateOnTopMaterial(source.material.mainTexture, Color.white, _textRenderQueue);
                 onTop.UpdateLookupTables();
                 _onTopSpriteAssets[source] = onTop;
+                _onTopSpriteAssetCopies.Add(onTop);
             }
 
             text.spriteAsset = onTop;
@@ -149,15 +160,21 @@ namespace Gothic.VR.Adapters.UI
 
         private static Material CreateOnTopMaterial(Texture texture, Color color, int renderQueue)
         {
+            var key = (texture, color, renderQueue);
+            if (_onTopMaterials.TryGetValue(key, out var material) && material != null)
+                return material;
+
             if (_onTopShader == null)
                 _onTopShader = Shader.Find("Gothic/UI OnTop");
 
-            return new Material(_onTopShader)
+            material = new Material(_onTopShader)
             {
                 mainTexture = texture,
                 color = color,
                 renderQueue = renderQueue
             };
+            _onTopMaterials[key] = material;
+            return material;
         }
     }
 }

@@ -83,8 +83,6 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             switch (_statusType)
             {
                 case StatusType.Health:
-                    if (_isPlayer)
-                        DisableBar();
                     break;
                 case StatusType.Mana:
                     break;
@@ -104,6 +102,18 @@ namespace Gothic.Core.Adapters.UI.StatusBars
         {
             if (_statusType != StatusType.Health)
                 return;
+
+            // Loading a save can replace the hero's container. A cached one would keep showing the old HP forever,
+            // so the player's bar always follows the current hero.
+            if (_isPlayer && _owner != null)
+            {
+                var currentHero = _npcService.GetHeroContainer();
+                if (currentHero != null && currentHero != _owner)
+                {
+                    _owner = currentHero;
+                    _lastHitPoints = int.MinValue;
+                }
+            }
 
             if (_owner == null)
             {

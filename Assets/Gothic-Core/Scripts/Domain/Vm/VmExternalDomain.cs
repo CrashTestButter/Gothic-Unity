@@ -222,6 +222,7 @@ namespace Gothic.Core.Domain.Vm
             {
                 RegisterPrintScreen(vm, "PrintScreen");
                 RegisterPrintScreen(vm, "AI_PrintScreen");
+                vm.RegisterExternal<string>("Print", Print);
             }
 
             // Sound
@@ -716,6 +717,14 @@ namespace Gothic.Core.Domain.Vm
                 Logger.Log($"[PrintScreen] {message}", LogCat.Dialog);
             }
             GlobalEventDispatcher.ScriptPrintScreen.Invoke(message, posY, seconds);
+        }
+
+        /// <summary>
+        /// Engine messages like PLAYER_MOB_MISSING_ITEM's "missing item" text. -1 = default position, 3 s.
+        /// </summary>
+        public void Print(string message)
+        {
+            PrintScreen(message, -1, 3);
         }
 
         public void Snd_Play(string soundName)

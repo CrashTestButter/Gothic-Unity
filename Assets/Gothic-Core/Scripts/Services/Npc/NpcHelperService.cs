@@ -221,7 +221,8 @@ namespace Gothic.Core.Services.Npc
         [CanBeNull]
         private GameObject GetNpc([CanBeNull] NpcInstance npc)
         {
-            return npc.GetUserData().Go;
+            // Scripts pass NPCs that aren't spawned (yet), e.g. Xardas' dialog asks for Lester's distance to a WP.
+            return npc?.GetUserData()?.Go;
         }
 
         private NpcContainer GetContainer(NpcInstance npc)

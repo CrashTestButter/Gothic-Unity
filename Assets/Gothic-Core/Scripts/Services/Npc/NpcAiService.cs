@@ -219,6 +219,8 @@ namespace Gothic.Core.Services.Npc
 
         public void ExtAiContinueRoutine(NpcInstance npc)
         {
+            if (npc == null || npc.GetUserData() == null)
+                return;
             npc.GetUserData().Props.AnimationQueue.Enqueue(new ContinueRoutine(new AnimationAction(), npc.GetUserData()));
         }
 
@@ -388,7 +390,10 @@ namespace Gothic.Core.Services.Npc
 
         public bool ExtNpcIsPlayer(NpcInstance npc)
         {
-            return npc.Index == _gameStateService.GothicVm.GlobalHero!.Index;
+            // NpcService.CacheHero() calls Vm.InitInstance(heroInstance) BEFORE assigning Vm.GlobalHero.
+            // A (mod) script calling Npc_IsPlayer during that window finds no hero yet - nobody is the player then.
+            var globalHero = _gameStateService.GothicVm.GlobalHero;
+            return globalHero != null && npc.Index == globalHero.Index;
         }
 
         public ItemInstance ExtGetEquippedArmor(NpcInstance npc)

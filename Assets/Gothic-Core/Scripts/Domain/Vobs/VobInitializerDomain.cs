@@ -428,8 +428,17 @@ namespace Gothic.Core.Domain.Vobs
             // TODO - We need to check if it's the case for a loaded game
             vob.MoverState = (int)VmGothicEnums.MoverState.Closed;
 
-            // TODO - We need to implement animations for this vob type
             var go = CreateDefaultMesh(vob, parent);
+
+            // Movers without a mesh (e.g. invisible anchors of a chain) still need a GO that carries the adapter.
+            if (go == null)
+            {
+                go = new GameObject($"Mover_{vob.Name}");
+                go.transform.SetParent(parent != null ? parent.transform : null);
+                go.transform.SetPositionAndRotation(vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion());
+            }
+
+            go.AddComponent<MoverAdapter>().Init(vob, vob.Target);
 
             return go;
         }

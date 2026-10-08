@@ -81,7 +81,8 @@ namespace Gothic.Core.Services.Vobs
         public void Init()
         {
             _unityMonoService.StartCoroutine(InitVobCoroutine());
-            
+            GlobalEventDispatcher.LoadGameStart.AddListener(PreWorldCreate);
+
             // Decoupling Culling logic from actual init logic.
             GlobalEventDispatcher.VobMeshCullingChanged.AddListener(InitVob);
             GlobalEventDispatcher.LockPickComboBroken.AddListener((lockPick, _, _) => lockPick.VobAs<IItem>().Amount--);
@@ -92,6 +93,15 @@ namespace Gothic.Core.Services.Vobs
                 else if (containerOrDoor.Vob is IDoor door)
                     door.IsLocked = false;
             });
+        }
+
+        /// <summary>
+        /// Name lookups of the previous world must not survive a world change.
+        /// </summary>
+        public void PreWorldCreate()
+        {
+            _gameStateService.VobsInteractable.Clear();
+            _gameStateService.VobsMover.Clear();
         }
 
         /// <summary>
@@ -348,6 +358,7 @@ namespace Gothic.Core.Services.Vobs
                 if (_vobTypesNonLazyLoading.Contains(vob.Type))
                 {
                     CreateVobNow(container);
+                    AddToMobInteractableList(container);
                 }
                 else
                 {
@@ -494,10 +505,10 @@ namespace Gothic.Core.Services.Vobs
             switch (container.Vob.Type)
             {
                 // case VirtualObjectType.oCMOB: // FIXME - Needed? e.g. IMovableObject
+                // oCMobDoor excluded: doors use HVRPhysicsDoor for VR interaction, not AI_UseMob.
                 case VirtualObjectType.oCMobFire:
                 case VirtualObjectType.oCMobInter:
                 case VirtualObjectType.oCMobBed:
-                case VirtualObjectType.oCMobDoor:
                 case VirtualObjectType.oCMobContainer:
                 case VirtualObjectType.oCMobSwitch:
                 case VirtualObjectType.oCMobWheel:
@@ -509,7 +520,33 @@ namespace Gothic.Core.Services.Vobs
                     _gameStateService.VobsInteractable.TryAdd(visualScheme, new());
                     _gameStateService.VobsInteractable[visualScheme!].Add(container);
                     break;
+
+                case VirtualObjectType.zCMover:
+                    var moverName = container.Vob.Name;
+                    if (!string.IsNullOrEmpty(moverName))
+                    {
+                        var moverKey = moverName.ToUpper();
+                        if (!_gameStateService.VobsMover.TryGetValue(moverKey, out var moverList))
+                            _gameStateService.VobsMover[moverKey] = moverList = new();
+                        moverList.Add(container);
+                    }
+                    break;
             }
+        }
+
+        /// <summary>
+        /// All movers with this name (copy-pasted movers share one, and a trigger moves all of them).
+        /// Mob and trigger targets can carry a "//" path prefix or miss the ".3DS" suffix of mesh movers.
+        /// </summary>
+        public bool TryGetMovers(string name, out List<VobContainer> containers)
+        {
+            var start = 0;
+            while (start < name.Length && !char.IsLetterOrDigit(name[start]))
+                start++;
+            var key = name.Substring(start).ToUpper();
+            if (_gameStateService.VobsMover.TryGetValue(key, out containers))
+                return true;
+            return _gameStateService.VobsMover.TryGetValue(key + ".3DS", out containers);
         }
         
         public List<ContentItem> UnpackItems(string contents)

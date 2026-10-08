@@ -6,13 +6,17 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Services;
+using Gothic.VR.Services;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
+using ZenKit.Vobs;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters
 {
@@ -29,7 +33,7 @@ namespace Gothic.VR.Adapters
     {
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly DynamicMaterialService _dynamicMaterialService;
-
+        [Inject] private readonly VRPlayerService _vrPlayerService;
 
         private static Camera _mainCamera;
 
@@ -40,6 +44,7 @@ namespace Gothic.VR.Adapters
 
         private bool _isHovered;
         private Renderer _cachedObjectRenderer;
+        private bool _mobActivated;
 
         private void Awake()
         {
@@ -56,6 +61,32 @@ namespace Gothic.VR.Adapters
         private void Start()
         {
             _nameCanvas.SetActive(false);
+            var grabbable = GetComponent<HVRGrabbable>();
+            grabbable?.Grabbed.AddListener(OnGrabbed);
+            grabbable?.Released.AddListener(OnReleased);
+        }
+
+        private void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        {
+            if (_mobActivated)
+                return;
+
+            var vobLoader = GetComponentInParent<VobLoader>();
+            if (vobLoader == null || vobLoader.Container.Vob is not IInteractiveObject)
+                return;
+
+            // IDoor uses HVRPhysicsDoor for interaction - skip the mover-trigger path.
+            if (vobLoader.Container.Vob is IDoor)
+                return;
+
+            _mobActivated = true;
+            Logger.Log($"[VRFocus.OnGrabbed] mob={vobLoader.gameObject.name}", LogCat.Ai);
+            _vrPlayerService.HandleMobGrab(vobLoader);
+        }
+
+        private void OnReleased(HVRGrabberBase _, HVRGrabbable __)
+        {
+            _mobActivated = false;
         }
 
         public void OnHoverEnter(HVRGrabberBase _, HVRGrabbable __)

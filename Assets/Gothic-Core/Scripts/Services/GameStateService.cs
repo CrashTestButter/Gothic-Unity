@@ -34,6 +34,9 @@ namespace Gothic.Core.Services
         // [IInteractiveObject] => VisualScheme (aka vob.Visual.Name.SubString("_");
         public readonly Dictionary<string, List<VobContainer>> VobsInteractable = new();
 
+        // [zCMover] keyed by VOB Name — multiple movers can share the same name (copy-pasted VOBs)
+        public readonly Dictionary<string, List<VobContainer>> VobsMover = new();
+
         public int GuildHumanCount;
         public int GuildCount;
         public int[] GuildAttitudes;
@@ -53,6 +56,7 @@ namespace Gothic.Core.Services
             WayPoints.Clear();
             FreePoints.Clear();
             VobsInteractable.Clear();
+            VobsMover.Clear();
         }
 
         public void Dispose()
@@ -63,6 +67,7 @@ namespace Gothic.Core.Services
             WayPoints.Clear();
             FreePoints.Clear();
             VobsInteractable.Clear();
+            VobsMover.Clear();
 
             Dialogs.Dispose();
         }

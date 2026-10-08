@@ -156,6 +156,21 @@ namespace Gothic.Core.Models.Config
         [OverrideLabel("Show Names On Hovered VOBs")]
         public bool ShowNamesOnHoveredVOBs = true;
 
+        [Separator("Dialogs & HUD")]
+        [Tooltip("The hero isn't frozen during dialogs. A dialog doesn't start farther than DialogMaxDistance from " +
+                 "the NPC (come closer). While somebody talks, the hero can't leave this range (skip the line first); " +
+                 "with the choices shown, walking away ends the dialog.")]
+        public bool EnableDialogFreeMovement = true;
+        [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
+        public float DialogMaxDistance = 5f;
+        [Tooltip("The dialog box and NPC subtitles are never cut by walls/benches/the NPC (ignore depth). VR hands " +
+                 "render after transparents during a dialog, so they stay visible above it for pointing.")]
+        public bool EnableDialogAlwaysOnTop = true;
+        [Tooltip("PrintScreen/AI_PrintScreen (\"New log entry\", \"1 item received\", ...) shown as a HUD in front " +
+                 "of the VR head + Snd_Play 2D sounds (\"LogEntry\"). Read at VM start - restart the game after " +
+                 "toggling.")]
+        public bool EnableScreenMessages = true;
+
         [Separator("Debug")]
         [Tooltip("Array like this: C_ITEM_NAME:AMOUNT;... e.g., ItMi_Stuff_OldCoin_01:10;ItFo_Potion_Mana_01:1")]
         public string PlayerInventoryAddition;

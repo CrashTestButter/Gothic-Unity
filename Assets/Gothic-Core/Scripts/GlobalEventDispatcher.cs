@@ -74,6 +74,19 @@ namespace Gothic.Core
         /// Vector3      - at which position
         /// </summary>
         public static readonly UnityEvent<NpcContainer, NpcContainer, Vector3> FightHit = new();
+
+        /// <summary>
+        /// Daedalus PrintScreen/AI_PrintScreen ("New log entry", "1 item received", ...).
+        /// string - text
+        /// int - posY in percent of the screen (-1 = centered)
+        /// int - seconds to show
+        /// </summary>
+        public static readonly UnityEvent<string, int, int> ScriptPrintScreen = new();
+
+        /// <summary>
+        /// Daedalus Snd_Play - a non-positional (2D) sound like "LogEntry".
+        /// </summary>
+        public static readonly UnityEvent<string> ScriptSoundPlay = new();
         
 
         // LockPicking events

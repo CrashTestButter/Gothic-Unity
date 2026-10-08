@@ -8,6 +8,7 @@ using Gothic.Core.Const;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Dialog;
 using Gothic.Core.Extensions;
+using Gothic.Core.Services.Config;
 using MyBox;
 using Reflex.Attributes;
 using TMPro;
@@ -21,6 +22,7 @@ namespace Gothic.VR.Adapters.UI
     public class VRDialog : MonoBehaviour
     {
         [Inject] private readonly DialogService _dialogService;
+        [Inject] private readonly ConfigService _configService;
 
         [SerializeField] private GameObject _dialogRoot;
         [SerializeField] private List<GameObject> _dialogItems;
@@ -54,6 +56,7 @@ namespace Gothic.VR.Adapters.UI
         public void EndDialog()
         {
             gameObject.SetActive(false); // Disable whole Dialog menu (Audio, UI, Billboard)
+            VRUiOnTop.SetHandsOnTop(false);
             _dialogRoot.SetParent(SceneManager.GetSceneByName(Constants.ScenePlayer).GetRootGameObjects()[0], worldPositionStays: true);
         }
 
@@ -70,7 +73,17 @@ namespace Gothic.VR.Adapters.UI
             hoverElements.AddRange(_dialogItems);
             hoverElements.AddRange(_dialogItems.Select(i => i.GetComponentInChildren<TMP_Text>().gameObject).ToList());
             _uiEventsHandler.SetElementsToHover(hoverElements, true);
-            
+
+            // Walls, benches or the NPC's own body cut through the dialog box - see VRUiOnTop.
+            // Runs on every ShowDialog: options are cloned later on.
+            if (_configService.Dev.EnableDialogAlwaysOnTop)
+            {
+                if (!_dialogRoot.TryGetComponent<VRUiOnTop>(out var onTop))
+                    onTop = _dialogRoot.AddComponent<VRUiOnTop>();
+                onTop.Apply();
+                VRUiOnTop.SetHandsOnTop(true);
+            }
+
             StartCoroutine(ShowDialogWithDelay());
         }
 

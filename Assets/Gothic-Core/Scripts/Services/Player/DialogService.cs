@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Adapters.Properties;
@@ -9,6 +10,7 @@ using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Dialog;
 using Gothic.Core.Services;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.World;
@@ -25,10 +27,16 @@ namespace Gothic.Core.Manager
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ContextDialogService _contextDialogService;
         [Inject] private readonly NpcService _npcService;
+        [Inject] private readonly ConfigService _configService;
         [Inject] private readonly SaveGameService _saveGameService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
-        
-        
+        [Inject] private readonly UnityMonoService _unityMonoService;
+
+        /// <summary>
+        /// The dialog box shows the choices (nobody talks) - only then the hero can leave the dialog bubble.
+        /// </summary>
+        private bool _isChoosing;
+
         /// <summary>
         /// TextToSpeech toggle. So that the hero isn't repeating what we said already.
         /// </summary>
@@ -59,6 +67,24 @@ namespace Gothic.Core.Manager
         /// </summary>
         public void StartDialog(NpcContainer npcContainer, bool initialDialogStarting)
         {
+            var isFreeMovement = _configService.Dev.EnableDialogFreeMovement;
+
+            // DeveloperConfig.EnableDialogFreeMovement: a dialog closed in between (the hero walked away) isn't
+            // reopened by the NPC's queued StartProcessInfos after its info function.
+            if (isFreeMovement && !initialDialogStarting && !_gameStateService.Dialogs.IsInDialog)
+                return;
+
+            // ...and it doesn't start at all when the hero is too far away to read the dialog box - come closer.
+            if (isFreeMovement && initialDialogStarting && !IsHeroInDialogRange(npcContainer))
+            {
+                Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero farther than " +
+                           $"{_configService.Dev.DialogMaxDistance} m - dialog not started", LogCat.Dialog);
+                // Not the cleanup of a dialog with someone else that is going on.
+                if (!_gameStateService.Dialogs.IsInDialog || _gameStateService.Dialogs.CurrentDialogNpc == npcContainer)
+                    StopDialog(npcContainer);
+                return;
+            }
+
             if (initialDialogStarting)
             {
                 // Optimization: We expect, that AmbientInfos are assigned before Ai_ProcessInfos() is called.
@@ -68,15 +94,25 @@ namespace Gothic.Core.Manager
             }
 
             _gameStateService.Dialogs.IsInDialog = true;
+            _gameStateService.Dialogs.CurrentDialogNpc = npcContainer;
 
-            // WIP: locking movement 
-            _contextInteractionService.LockPlayerInPlace();
+            if (isFreeMovement)
+            {
+                if (initialDialogStarting)
+                    _unityMonoService.StartCoroutine(StopDialogWhenHeroLeaves(npcContainer));
+            }
+            else
+            {
+                // WIP: locking movement
+                _contextInteractionService.LockPlayerInPlace();
+            }
 
             // We are already inside a sub-dialog
             if (_gameStateService.Dialogs.CurrentOptions.Any())
             {
                 _contextDialogService.FillDialog(npcContainer.Instance, _gameStateService.Dialogs.CurrentOptions);
                 _contextDialogService.ShowDialog(npcContainer.Go);
+                _isChoosing = true;
             }
             // There is at least one important entry, the NPC wants to talk to the hero about.
             else if (initialDialogStarting && TryGetImportant(npcContainer, out var infoInstance))
@@ -125,6 +161,7 @@ namespace Gothic.Core.Manager
 
                 _contextDialogService.FillDialog(npcContainer.Instance, selectableDialogs);
                 _contextDialogService.ShowDialog(npcContainer.Go);
+                _isChoosing = true;
             }
         }
 
@@ -133,7 +170,9 @@ namespace Gothic.Core.Manager
         /// </summary>
         private bool TryGetImportant(NpcContainer npcContainer, out InfoInstance item)
         {
-            foreach (var dialog in npcContainer.Props.Dialogs)
+            // The engine checks them by nr (lowest first). E.g. Baal Cadar: SleepSpell nr 1 before NoTalk nr 2 -
+            // otherwise he walked up for the sleep spell, then offered NoTalk, forever.
+            foreach (var dialog in npcContainer.Props.Dialogs.OrderBy(d => d.Nr))
             {
                 // Dialog is not important.
                 if (dialog.Important != 1)
@@ -293,15 +332,55 @@ namespace Gothic.Core.Manager
             _gameStateService.Dialogs.CurrentOptions.Clear();
             _gameStateService.Dialogs.IsInDialog = false;
             _gameStateService.Dialogs.WasPlayerInitiated = false;
+            _gameStateService.Dialogs.CurrentDialogNpc = null;
 
             // WIP: unlocking movement
             _contextInteractionService.UnlockPlayer();
 
+            _contextDialogService.HideDialog();
+            _isChoosing = false;
             _contextDialogService.EndDialog();
 
             // Hide subtitles from both dialog partners.
             _npcService.GetHeroContainer().PrefabProps.NpcSubtitles.HideSubtitles();
             npc.PrefabProps.NpcSubtitles.HideSubtitles();
+        }
+
+        private bool IsHeroInDialogRange(NpcContainer npcContainer)
+        {
+            var hero = _npcService.GetHeroContainer();
+            if (hero?.Go == null || npcContainer.Go == null)
+                return true;
+
+            var distance = Vector3.Distance(hero.Go.transform.position, npcContainer.Go.transform.position);
+            return distance <= _configService.Dev.DialogMaxDistance;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableDialogFreeMovement: the hero walks freely inside the dialog bubble. While somebody
+        /// talks, the bubble's edge holds the hero back (skip the line first) - the NPC finished its whole answer
+        /// after the hero had run away. With the choices shown, leaving the bubble ends the dialog.
+        /// </summary>
+        private IEnumerator StopDialogWhenHeroLeaves(NpcContainer npcContainer)
+        {
+            while (_gameStateService.Dialogs.IsInDialog && _gameStateService.Dialogs.CurrentDialogNpc == npcContainer)
+            {
+                if (!IsHeroInDialogRange(npcContainer))
+                {
+                    if (_isChoosing)
+                    {
+                        Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero walked away - " +
+                                   "dialog ended", LogCat.Dialog);
+                        StopDialog(npcContainer);
+                        yield break;
+                    }
+
+                    // A little inside the edge, so the hero isn't held right at the stop distance.
+                    _contextInteractionService.KeepPlayerWithin(npcContainer.Go.transform.position,
+                        _configService.Dev.DialogMaxDistance - 0.2f);
+                }
+                yield return null;
+            }
         }
 
         /// <summary>
@@ -324,6 +403,7 @@ namespace Gothic.Core.Manager
         private void CallInformation(NpcContainer npcContainer, int information)
         {
             _contextDialogService.HideDialog();
+            _isChoosing = false;
 
             // We always need to set "self" before executing any Daedalus function.
             _gameStateService.GothicVm.GlobalSelf = npcContainer.Instance;

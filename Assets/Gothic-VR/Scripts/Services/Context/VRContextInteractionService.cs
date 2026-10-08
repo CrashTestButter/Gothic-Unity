@@ -3,6 +3,7 @@ using System.Linq;
 using Gothic.Core;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
+using Gothic.Core.Manager;
 using Gothic.Core.Models.Caches;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Services.Caches;
@@ -11,6 +12,7 @@ using Gothic.Core.Services.Context;
 using Gothic.VR.Adapters.HVROverrides;
 using Gothic.VR.Adapters.Marvin;
 using Gothic.VR.Adapters.Player;
+using Gothic.VR.Adapters.UI;
 using HurricaneVR.Framework.Core.UI;
 using HurricaneVRExtensions.Simulator;
 using Reflex.Attributes;
@@ -26,17 +28,22 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
+        [Inject] private readonly AudioService _audioService;
 
         private const string _contextName = "VR";
 
         private VRPlayerController _playerController;
+        private VRScreenMessages _screenMessages;
 
         public VRContextInteractionService()
         {
             this.Inject();
 
             _vrWeaponService.Init();
-            
+
+            GlobalEventDispatcher.ScriptPrintScreen.AddListener((message, _, seconds) =>
+                GetScreenMessages().ShowMessage(message, seconds));
+            GlobalEventDispatcher.ScriptSoundPlay.AddListener(soundName => GetScreenMessages().PlaySound(soundName));
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>
             {
@@ -49,6 +56,16 @@ namespace Gothic.VR.Services.Context
         public string GetContextName()
         {
             return _contextName;
+        }
+
+        /// <summary>
+        /// The HUD lives in the current scene - after a scene change Unity destroyed it, then a new one is created.
+        /// </summary>
+        private VRScreenMessages GetScreenMessages()
+        {
+            if (_screenMessages == null)
+                _screenMessages = VRScreenMessages.Create(_audioService);
+            return _screenMessages;
         }
 
         private void OnLoadingSceneLoaded()
@@ -155,6 +172,23 @@ namespace Gothic.VR.Services.Context
             
             // Changing the rotation inside HVRTeleporter didn't work for y-axis. Therefore, setting it now.
             _playerController.transform.rotation = rotation;
+        }
+
+        public void KeepPlayerWithin(Vector3 center, float radius)
+        {
+            var controller = _playerController.CharacterController;
+            if (controller == null)
+                return;
+
+            var position = _playerController.transform.position;
+            var offset = position - center;
+            offset.y = 0f;
+            if (offset.magnitude <= radius)
+                return;
+
+            var delta = center + offset.normalized * radius - position;
+            delta.y = 0f;
+            controller.Move(delta);
         }
 
         public void InitUIInteraction()

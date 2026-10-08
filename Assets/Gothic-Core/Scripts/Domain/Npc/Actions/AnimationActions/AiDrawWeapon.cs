@@ -1,16 +1,22 @@
 using System.Linq;
 using Gothic.Core.Const;
+using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Extensions;
 using Gothic.Core.Services.Npc;
 using JetBrains.Annotations;
+using Reflex.Attributes;
 using ZenKit.Daedalus;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 {
     public class DrawWeapon : AbstractAnimationAction
     {
+        [Inject] private readonly DialogService _dialogService;
+
         private bool _isRangedRequested => Action.Int0 == 1;
 
         public DrawWeapon(AnimationAction action, NpcContainer npcContainer) : base(action, npcContainer)
@@ -19,6 +25,14 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         public override void Start()
         {
+            // An NPC that draws its weapon (e.g. the hero insulted it) doesn't keep the dialog box open.
+            if (GameStateService.Dialogs.IsInDialog && GameStateService.Dialogs.CurrentDialogNpc == NpcContainer)
+            {
+                Logger.Log($"[DrawWeapon] {NpcInstance.GetName(NpcNameSlot.Slot0)} drew a weapon during the dialog " +
+                           "- closing the dialog", LogCat.Dialog);
+                _dialogService.StopDialog(NpcContainer);
+            }
+
             var weapon = GetEquippedWeapon();
             var weaponState = GetWeaponState(weapon);
 

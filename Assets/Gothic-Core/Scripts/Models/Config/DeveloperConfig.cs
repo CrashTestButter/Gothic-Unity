@@ -157,8 +157,8 @@ namespace Gothic.Core.Models.Config
         public bool ShowNamesOnHoveredVOBs = true;
 
         [Separator("Movers, triggers and mobs")]
-        [Tooltip("Multiplies zCMover animation speed. 1 = original, 3 = three times faster. " +
-                 "Useful when a world mover has a very low speed value in Gothic data.")]
+        [Tooltip("Multiplies the speed of movers (gates, lifts, drawbridges). 1 = original Gothic speed, " +
+                 "2 = twice as fast.")]
         [Range(0.1f, 10f)]
         public float MoverSpeedMultiplier = 1f;
 

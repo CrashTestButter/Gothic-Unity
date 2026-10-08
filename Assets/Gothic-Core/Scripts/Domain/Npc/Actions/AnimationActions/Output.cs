@@ -30,6 +30,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private string _randomDialogAnimationName;
 
+        private static bool _hasLoggedMissingSubtitles;
+
 
         public Output(AnimationAction action, NpcContainer npcContainer) : base(action, npcContainer)
         { }
@@ -80,8 +82,18 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private void PrintDialog()
         {
+            // No OU.BIN/CSL found at boot (e.g. a mod without them, see BootstrapDomain.LoadSubtitles).
+            var cutsceneLibrary = _gameStateService.Dialogs.CutsceneLibrary;
+            if (cutsceneLibrary == null)
+            {
+                if (!_hasLoggedMissingSubtitles)
+                    Logger.LogWarning("No cutscene library loaded. Dialogs play without subtitles.", LogCat.Dialog);
+                _hasLoggedMissingSubtitles = true;
+                return;
+            }
+
             // FIXME - CutsceneLibrary.Blocks is uncached and will re-read all elements each time we call it! Cache and reuse!
-            var currentMessage = _gameStateService.Dialogs.CutsceneLibrary.Blocks.Find(x => x.Name == OutputName).Message;
+            var currentMessage = cutsceneLibrary.Blocks.Find(x => x.Name == OutputName).Message;
 
             if (_isHeroSpeaking)
                 _npcService.GetHeroContainer().PrefabProps.NpcSubtitles.ShowSubtitles(currentMessage.Text);

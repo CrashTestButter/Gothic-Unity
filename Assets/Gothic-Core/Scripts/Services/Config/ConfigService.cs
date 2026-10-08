@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using Gothic.Core.Domain.Config;
 using Gothic.Core.Models.Config;
 using MyBox;
@@ -96,12 +97,20 @@ namespace Gothic.Core.Services.Config
         /// Folder-safe suffix identifying the active mod, so StaticCacheService keeps a separate cache
         /// per (GameVersion, mod) instead of one shared per GameVersion — switching between vanilla and
         /// several mods (or between mods) would otherwise stomp on each other's cached VOB bounds/texture
-        /// arrays/world chunks, forcing a full recreate every time. Naming uses the resolved ini file,
-        /// e.g. "_mod_GothicGame" or "_mod_DM_E". Empty when running vanilla.
+        /// arrays/world chunks, forcing a full recreate every time. Naming uses the mod folder and the
+        /// resolved ini file (several mods use the default GothicGame.ini), e.g.
+        /// "_mod_MroczneTajemnice_GothicGame". Empty when running vanilla.
         /// </summary>
         public string ModCacheSuffix => IsModActive
-            ? $"_mod_{Path.GetFileNameWithoutExtension(EffectiveModIniFileName)}"
+            ? $"_mod_{ToFolderSafeName(Path.GetFileName(EffectiveModPath.TrimEnd('/', '\\')))}" +
+              $"_{ToFolderSafeName(Path.GetFileNameWithoutExtension(EffectiveModIniFileName))}"
             : string.Empty;
+
+        private static string ToFolderSafeName(string name)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return new string(name.Where(c => !char.IsWhiteSpace(c) && !invalidChars.Contains(c)).ToArray());
+        }
 
         /// <summary>
         /// Some mod music compositions embed a native dmusic segue we can't intercept (see

@@ -48,9 +48,11 @@ namespace Gothic.Core.Models.Config
         public GameVersion GameVersion = GameVersion.Gothic1;
 
         [Separator("Mod")]
-        [Tooltip("Override GameSettings.json ModPath/ModIni for quick in-editor testing.")]
+        [Tooltip("Editor only; builds use GameSettings.json ModPath/ModIni. Load the mod set below.")]
         public bool EnableMod;
         [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
+        [Tooltip("Mod folder used as the game root (contains Data/, _work/, system/), " +
+                 "e.g. C:/Gothic Mods/Mroczne Tajemnice")]
         public string ModPath = string.Empty;
         [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
         [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
@@ -79,7 +81,7 @@ namespace Gothic.Core.Models.Config
 
         [Foldout("Logging", true)]
         [Separator("ZSpy")]
-        [Tooltip("Enable Daedalus logs inside .d scripts.")]
+        [Tooltip("Enable Daedalus logs inside .d scripts. Editor only; builds use GameSettings.json EnableZSpyLogs.")]
         [OverrideLabel("Enable ZSpy Logs")]
         public bool EnableZSpyLogs;
         [ConditionalField(fieldToCheck: nameof(EnableZSpyLogs))]
@@ -247,17 +249,14 @@ namespace Gothic.Core.Models.Config
         [Foldout("Audio", true)]
         public bool EnableGameSounds = true;
 
-        [Tooltip("Some mod music compositions embed automatic dmusic segues (e.g. a boss-fight transition) to a " +
-                 "segment we never see or validate. If its referenced instruments are incomplete, dmusic " +
-                 "double-frees " +
-                 "natively - an unrecoverable AccessViolationException no C# try/catch can stop. Turn music off " +
-                 "entirely to sidestep it for mods that hit this.")]
+        [Tooltip("Editor only; builds use GameSettings.json EnableMusic. Escape hatch: some mod music embeds " +
+                 "dmusic segues to segments with incomplete instruments, which crash dmusic natively (no C# " +
+                 "try/catch can stop it). Turn music off for mods that hit this.")]
         public bool EnableMusic = true;
 
-        [Tooltip("Some mods (e.g. New Balance) ship dubbing as Ogg Vorbis with a '.wav' extension. We sniff real " +
-                 "content and decode via NVorbis when detected - vanilla Gothic never ships this, so this only ever " +
-                 "applies to mod audio. Escape hatch in case a specific file misbehaves: turn off to skip decoding " +
-                 "it gracefully (silence + text-length fallback) instead of failing loudly.")]
+        [Tooltip("Editor only; builds use GameSettings.json EnableOggAudio. Some mods (e.g. New Balance) ship " +
+                 "dubbing as Ogg Vorbis with a '.wav' extension, decoded via NVorbis. Vanilla never uses it. " +
+                 "Turn off to play such files silently (text-length fallback).")]
         public bool EnableOggAudio = true;
 
 

@@ -78,7 +78,7 @@ namespace Gothic.VR.Domain.Player
 
         // Vanilla-like timings (seconds), used when a mod's Humans.mds provides no usable attack events.
         private static readonly (float attackWindowTime, float comboWindowStart, float comboWindowTime)
-            FallbackWindowTimes = (0.4f, 0.5f, 0.4f);
+            _fallbackWindowTimes = (0.4f, 0.5f, 0.4f);
 
         /// <summary>
         /// TRUE, when:
@@ -95,13 +95,14 @@ namespace Gothic.VR.Domain.Player
             // First time grabbing this weapon.
             if (WeaponVobContainer == null)
             {
-                // Resolve everything first. Assign state only afterward, so a failure can't leave us half-initialized.
+                // A mod's Humans.mds can lack the attack animation or its events. Default timings are used then,
+                // so the handler is always fully set up (a null state machine made swinging do nothing).
                 _attackVelocityThreshold = weaponConfig.WeaponVelocityThreshold;
                 _velocityDropPercentage = weaponConfig.WeaponVelocityDropPercentage;
 
                 WeaponVobContainer = vobContainer;
                 var attackAnimation = GetAttackAnimation();
-                var windowTimes = FallbackWindowTimes;
+                var windowTimes = _fallbackWindowTimes;
 
                 if (attackAnimation == null)
                 {

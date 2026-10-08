@@ -387,6 +387,10 @@ namespace Gothic.Core.Services.Caches
         private GameObject TryGetPrefab(string prefabPath)
         {
             _prefab.TryLoad(prefabPath, out var item);
+
+            if (item == null)
+                Logger.LogError($"Prefab at >{prefabPath}< not found.", LogCat.Loading);
+
             return item;
         }
 

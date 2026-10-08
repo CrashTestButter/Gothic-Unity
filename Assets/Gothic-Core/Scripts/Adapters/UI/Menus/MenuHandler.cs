@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Gothic.Core.Logging;
 using Gothic.Core.Model.UI.Menu;
@@ -62,22 +63,20 @@ namespace Gothic.Core.Adapters.UI.Menus
             {
                 var go = _resourceCacheService.TryGetPrefabObject($"Prefabs/UI/Menus/{menuName}", parent: this.gameObject, worldPositionStays: false);
 
+                // ResourceCacheService already logged the missing prefab. G2 and mods define menus we have no
+                // prefab for - skip them, the menu just stays unavailable.
                 if (go == null)
-                {
-                    Logger.LogWarning($"[MenuHandler] No prefab for >{menuName}< — skipping (menu will be unavailable)",
-                        LogCat.Ui);
                     continue;
-                }
 
                 try
                 {
                     go.GetComponent<AbstractMenu>().InitializeMenu(MainMenuHierarchy.FindMenuRecursive(menuName));
                     _menuList.Add(menuName, go);
                 }
-                catch (System.Exception e)
+                catch (Exception e)
                 {
                     Logger.LogError($"[MenuHandler] Failed to initialize >{menuName}<: {e.Message}", LogCat.Ui);
-                    Object.Destroy(go);
+                    Destroy(go);
                 }
             }
 
@@ -131,7 +130,7 @@ namespace Gothic.Core.Adapters.UI.Menus
 
                 // Menu exists in MENU.DAT but couldn't be instantiated (no prefab / init failure).
                 // Stay on the currently open menu instead of closing everything into a dead screen.
-                Logger.LogWarning($"[MenuHandler] Menu '{menuName}' is unavailable — staying on '{_currentMenu}'",
+                Logger.LogWarning($"[MenuHandler] Menu '{menuName}' is unavailable. Staying on '{_currentMenu}'.",
                     LogCat.Ui);
                 return;
             }

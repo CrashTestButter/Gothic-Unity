@@ -219,15 +219,15 @@ namespace Gothic.Core.Services.Caches
             // exceed it — allocating past the limit throws and, since this runs inside WorldScene's single
             // top-level try/catch, silently aborts the ENTIRE rest of world loading (WayNet/VOBs/NPCs/
             // lights/player teleport all get skipped). Cap at the real hardware limit and drop whatever
-            // doesn't fit rather than let one oversized category take the whole world load down with it;
-            // meshes referencing a dropped texture's index already degrade via the "not found in cache"
-            // path below instead of crashing.
+            // doesn't fit rather than let one oversized category take the whole world load down with it.
+            // Meshes referencing a dropped texture keep an index past the array's end and sample a wrong
+            // texture - visibly off, but the world loads.
             var maxSlices = SystemInfo.maxTextureArraySlices;
             var sliceCount = Mathf.Min(textureInfos.Count, maxSlices);
             if (textureInfos.Count > maxSlices)
             {
                 Logger.LogError($"{texArrType} texture array wants {textureInfos.Count} slices but this hardware/API " +
-                                $"only supports {maxSlices} — dropping the last {textureInfos.Count - maxSlices} " +
+                                $"only supports {maxSlices}. Dropping the last {textureInfos.Count - maxSlices} " +
                                 "textures (those meshes will render without a matching texture).",
                     LogCat.PreCaching);
             }

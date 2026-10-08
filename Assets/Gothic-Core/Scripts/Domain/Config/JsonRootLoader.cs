@@ -1,9 +1,11 @@
 ﻿using System;
 using System.IO;
+using Gothic.Core.Logging;
 using Gothic.Core.Models.Config;
 using UnityEngine;
 using UnityEngine.Networking;
 using ZenKit;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Domain.Config
 {
@@ -49,9 +51,16 @@ namespace Gothic.Core.Domain.Config
 
             // Sanitize optional mod fields - placeholder strings from the template start with "---" and must be
             // ignored.
-            if (string.IsNullOrEmpty(loadedSettings.ModPath) || loadedSettings.ModPath.StartsWith("---") ||
-                !Directory.Exists(loadedSettings.ModPath))
+            if (string.IsNullOrEmpty(loadedSettings.ModPath) || loadedSettings.ModPath.StartsWith("---"))
+            {
                 loadedSettings.ModPath = null;
+            }
+            else if (!Directory.Exists(loadedSettings.ModPath))
+            {
+                Logger.LogWarning($"GameSettings.json ModPath >{loadedSettings.ModPath}< doesn't exist. " +
+                                  "Starting without mod.", LogCat.Loading);
+                loadedSettings.ModPath = null;
+            }
             if (string.IsNullOrEmpty(loadedSettings.ModIni) || loadedSettings.ModIni.StartsWith("---"))
                 loadedSettings.ModIni = null;
             if (string.IsNullOrEmpty(loadedSettings.GameVersion) || loadedSettings.GameVersion.StartsWith("---"))

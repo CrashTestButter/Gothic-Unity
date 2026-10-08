@@ -245,6 +245,9 @@ namespace Gothic.Core.Services.Npc
             var vob = npc.GetUserData().Vob;
 
             vob.Attributes[attributeId] = value;
+            // Keep the instance in sync: scripts read hero.attribute[] from it, and
+            // SyncHeroInstanceToVob() (status menu) copies it back to the vob.
+            npc.SetAttribute((NpcAttribute)attributeId, value);
         }
 
         public NpcContainer GetHeroContainer()
@@ -254,8 +257,12 @@ namespace Gothic.Core.Services.Npc
         }
 
         /// <summary>
-        /// Daedalus writes some hero values directly on the instance (e.g. hero.lp -= cost; hero.attribute[x] += y),
-        /// bypassing our externals. Copy them to the vob before showing them.
+        /// Daedalus writes some hero values directly on the instance (e.g. hero.lp -= cost; hero.attribute[x] += y in
+        /// B_RaiseAttribute at teachers / G2 permanent potions, level-up HP), bypassing our externals. Copy them to
+        /// the vob before showing them.
+        /// Safe only because every C# write of an attribute writes the instance too (ExtNpcChangeAttribute, fight
+        /// damage) - the engine has one store. A subset sync isn't enough: G1 elixirs change STR/HP_MAX via
+        /// Npc_ChangeAttribute, G2 permanent potions the same attributes directly.
         /// </summary>
         public void SyncHeroInstanceToVob()
         {

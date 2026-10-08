@@ -81,6 +81,9 @@ namespace Gothic.Core.Services.Npc
             Logger.Log($"[FightService.OnHitUpdateHealth] {target.Instance.GetName(NpcNameSlot.Slot0)} HP after: {hitPoints}/{maxHP}", LogCat.Npc);
 
             target.Vob.SetAttribute((int)NpcAttribute.HitPoints, hitPoints);
+            // The engine has one store (oCNpc). We have two: write the instance too, otherwise
+            // NpcService.SyncHeroInstanceToVob() (status menu) would restore the HP from before the hit.
+            target.Instance.SetAttribute(NpcAttribute.HitPoints, hitPoints);
 
             var statusBar = target.Go.GetComponentInChildren<StatusBarAdapter>(true);
             if (statusBar != null)

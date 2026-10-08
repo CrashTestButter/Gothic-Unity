@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Adapters.Properties;
@@ -17,6 +18,7 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using Logger = Gothic.Core.Logging.Logger;
+using Object = UnityEngine.Object;
 
 namespace Gothic.Core.Manager
 {
@@ -27,6 +29,16 @@ namespace Gothic.Core.Manager
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly SaveGameService _saveGameService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
+        [Inject] private readonly UnityMonoService _unityMonoService;
+
+        /// <summary>
+        /// Set while a mob dialog (MOBSI, e.g. G2 shrine: [onStateFunc]_S1 -> AI_ProcessInfos(hero)) is open.
+        /// The dialog box is shown at this anchor next to the mob instead of at an NPC.
+        /// </summary>
+        public GameObject MobDialogAnchor { get; private set; }
+
+        private const float _heroQueueActionTimeout = 30f;
+        private bool _isHeroQueueRunning;
         
         
         /// <summary>
@@ -76,7 +88,7 @@ namespace Gothic.Core.Manager
             if (_gameStateService.Dialogs.CurrentOptions.Any())
             {
                 _contextDialogService.FillDialog(npcContainer.Instance, _gameStateService.Dialogs.CurrentOptions);
-                _contextDialogService.ShowDialog(npcContainer.Go);
+                _contextDialogService.ShowDialog(GetDialogGo(npcContainer));
             }
             // There is at least one important entry, the NPC wants to talk to the hero about.
             else if (initialDialogStarting && TryGetImportant(npcContainer, out var infoInstance))
@@ -124,7 +136,7 @@ namespace Gothic.Core.Manager
                 }
 
                 _contextDialogService.FillDialog(npcContainer.Instance, selectableDialogs);
-                _contextDialogService.ShowDialog(npcContainer.Go);
+                _contextDialogService.ShowDialog(GetDialogGo(npcContainer));
             }
         }
 
@@ -256,6 +268,7 @@ namespace Gothic.Core.Manager
             var props = GetProperties(npc);
 
             props.AnimationQueue.Enqueue(new StartProcessInfos(new AnimationAction(bool0: true), npc.GetUserData()));
+            RunHeroQueueIfMobDialog(npc.GetUserData());
         }
 
         public void ExtAiStopProcessInfos(NpcInstance npc)
@@ -263,6 +276,94 @@ namespace Gothic.Core.Manager
             var props = GetProperties(npc);
 
             props.AnimationQueue.Enqueue(new StopProcessInfos(new AnimationAction(), npc.GetUserData()));
+            RunHeroQueueIfMobDialog(npc.GetUserData());
+        }
+
+        /// <summary>
+        /// Called right before the mob's [onStateFunc]_S1, which opens the dialog via AI_ProcessInfos(hero).
+        /// Choices are C_INFO instances with npc = PC_Hero.
+        /// The hero's leftover AI queue is cleared - in VR nothing processes it, it's only run during mob dialogs.
+        /// </summary>
+        public void PrepareMobDialog(GameObject anchor)
+        {
+            if (MobDialogAnchor != null)
+                Object.Destroy(MobDialogAnchor);
+
+            MobDialogAnchor = anchor;
+            _npcService.GetHeroContainer()?.Props.AnimationQueue.Clear();
+        }
+
+        /// <summary>
+        /// Executes what scripts queued on the hero (e.g. PLAYER_MOB_MISSING_ITEM: B_Say_Overlay "$MISSINGITEM").
+        /// </summary>
+        public void RunHeroQueue()
+        {
+            var hero = _npcService.GetHeroContainer();
+            if (hero == null || _isHeroQueueRunning)
+                return;
+
+            _unityMonoService.StartCoroutine(RunHeroQueue(hero));
+        }
+
+        private GameObject GetDialogGo(NpcContainer npcContainer)
+        {
+            return MobDialogAnchor != null && IsHero(npcContainer) ? MobDialogAnchor : npcContainer.Go;
+        }
+
+        private bool IsHero(NpcContainer npcContainer)
+        {
+            return npcContainer != null && npcContainer == _npcService.GetHeroContainer();
+        }
+
+        /// <summary>
+        /// The VR hero has no AiHandler. During a mob dialog, its AI queue (StartProcessInfos after a choice,
+        /// AI_Output lines, AI_StopProcessInfos) is executed here like AiHandler does for NPCs.
+        /// </summary>
+        private void RunHeroQueueIfMobDialog(NpcContainer npcContainer)
+        {
+            if (MobDialogAnchor == null || !IsHero(npcContainer))
+                return;
+
+            RunHeroQueue();
+        }
+
+        private IEnumerator RunHeroQueue(NpcContainer hero)
+        {
+            _isHeroQueueRunning = true;
+            var queue = hero.Props.AnimationQueue;
+
+            while (queue.Count > 0)
+            {
+                var action = queue.Dequeue();
+                var startTime = Time.time;
+                var isRunning = TryRunHeroAction(action, isStart: true);
+
+                while (isRunning && !action.IsFinished() && Time.time - startTime < _heroQueueActionTimeout)
+                {
+                    yield return null;
+                    isRunning = TryRunHeroAction(action, isStart: false);
+                }
+            }
+
+            _isHeroQueueRunning = false;
+        }
+
+        private bool TryRunHeroAction(AbstractAnimationAction action, bool isStart)
+        {
+            try
+            {
+                if (isStart)
+                    action.Start();
+                else
+                    action.Tick();
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning($"[MobDialog] Hero action {action.GetType().Name} failed: {e.Message}",
+                    LogCat.Dialog);
+                return false;
+            }
         }
 
         public void MainSelectionClicked(NpcContainer npcContainer, InfoInstance infoInstance)
@@ -298,6 +399,13 @@ namespace Gothic.Core.Manager
             _contextInteractionService.UnlockPlayer();
 
             _contextDialogService.EndDialog();
+
+            // EndDialog moved the dialog box away from the anchor - it can go now.
+            if (MobDialogAnchor != null && IsHero(npc))
+            {
+                Object.Destroy(MobDialogAnchor);
+                MobDialogAnchor = null;
+            }
 
             // Hide subtitles from both dialog partners.
             _npcService.GetHeroContainer().PrefabProps.NpcSubtitles.HideSubtitles();
@@ -345,6 +453,8 @@ namespace Gothic.Core.Manager
                 animationQueue.Enqueue(new StartProcessInfos(
                     new AnimationAction(int0: information), npcContainer));
             }
+
+            RunHeroQueueIfMobDialog(npcContainer);
         }
 
         public bool ExtNpcKnowsInfo(NpcInstance npc, int informationIndex)

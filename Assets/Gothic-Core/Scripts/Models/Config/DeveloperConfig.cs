@@ -156,11 +156,16 @@ namespace Gothic.Core.Models.Config
         [OverrideLabel("Show Names On Hovered VOBs")]
         public bool ShowNamesOnHoveredVOBs = true;
 
-        [Separator("Movers")]
+        [Separator("Movers, triggers and mobs")]
         [Tooltip("Multiplies zCMover animation speed. 1 = original, 3 = three times faster. " +
                  "Useful when a world mover has a very low speed value in Gothic data.")]
         [Range(0.1f, 10f)]
         public float MoverSpeedMultiplier = 1f;
+
+        [Tooltip("Grabbing a mob with an onStateFunc and no mover target (G2 shrines, alchemy/rune tables, " +
+                 "bookstands, ...) calls [onStateFunc]_S1 like the engine. MOBSI dialogs " +
+                 "(AI_ProcessInfos(hero)) open next to the mob.")]
+        public bool EnableMobsiDialogs = true;
 
         [Separator("Debug")]
         [Tooltip("Array like this: C_ITEM_NAME:AMOUNT;... e.g., ItMi_Stuff_OldCoin_01:10;ItFo_Potion_Mana_01:1")]

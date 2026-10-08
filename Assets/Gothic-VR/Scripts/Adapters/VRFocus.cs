@@ -76,12 +76,19 @@ namespace Gothic.VR.Adapters
                 return;
 
             // IDoor uses HVRPhysicsDoor for interaction - skip the mover-trigger path.
-            if (vobLoader.Container.Vob is IDoor)
+            // Beds are oCMobDoors too (BED*/BEDHIGH* visuals), but get used like other mobs (SLEEPABIT_S1).
+            if (vobLoader.Container.Vob is IDoor && !IsBed(vobLoader.Container.Vob))
                 return;
 
             _mobActivated = true;
             Logger.Log($"[VRFocus.OnGrabbed] mob={vobLoader.gameObject.name}", LogCat.Ai);
             _vrPlayerService.HandleMobGrab(vobLoader);
+        }
+
+        private static bool IsBed(IVirtualObject vob)
+        {
+            var visualName = vob.Visual?.Name;
+            return !string.IsNullOrEmpty(visualName) && visualName.StartsWithIgnoreCase("BED");
         }
 
         private void OnReleased(HVRGrabberBase _, HVRGrabbable __)

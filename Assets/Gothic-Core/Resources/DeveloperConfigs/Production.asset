@@ -48,6 +48,7 @@ MonoBehaviour:
   BrightenUpHoveredVOBs: 1
   ShowNamesOnHoveredVOBs: 1
   MoverSpeedMultiplier: 3.48
+  EnableMobsiDialogs: 1
   PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0

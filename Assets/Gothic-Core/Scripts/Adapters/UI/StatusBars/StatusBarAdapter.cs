@@ -1,10 +1,16 @@
 using System;
 using System.Collections;
+using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Logging;
+using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Meshes;
+using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.UI;
+using ZenKit.Daedalus;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Adapters.UI.StatusBars
 {
@@ -17,6 +23,15 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
         [Inject] private readonly TextureService _textureService;
         [Inject] private readonly PlayerService _playerService;
+        [Inject] private readonly NpcService _npcService;
+
+        // NPC bars are nested below the NPC's prefab. Wait this many frames for it before warning.
+        private const int _ownerWarningFrames = 300;
+
+        private NpcContainer _owner;
+        private int _lastHitPoints = int.MinValue;
+        private int _lastHitPointsMax = int.MinValue;
+        private int _ownerWaitFrames;
 
         private enum StatusType
         {
@@ -41,7 +56,12 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             }
             else
             {
-                DisableBar();
+                // Same exception as the player above: Health stays visible. Nothing re-enables a disabled NPC
+                // health bar later on.
+                if (_statusType != StatusType.Health)
+                {
+                    DisableBar();
+                }
                 StartInternal();
             }
         }
@@ -73,6 +93,40 @@ namespace Gothic.Core.Adapters.UI.StatusBars
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        /// <summary>
+        /// Health uses Update() instead of a coroutine (unlike HandleDiveValue) because NPCs get disabled/re-enabled
+        /// by culling - a coroutine's iterator dies on disable and never resumes on its own, freezing the bar forever.
+        /// </summary>
+        private void Update()
+        {
+            if (_statusType != StatusType.Health)
+                return;
+
+            if (_owner == null)
+            {
+                // The player's bar isn't below an NPC prefab (VR rig) - it asks for the hero directly.
+                // The hero doesn't exist yet in menus, so this polls until it does.
+                _owner = _isPlayer ? _npcService.GetHeroContainer() : GetComponentInParent<NpcLoader>()?.Container;
+                if (_owner == null)
+                {
+                    _ownerWaitFrames++;
+                    if (!_isPlayer && _ownerWaitFrames == _ownerWarningFrames)
+                        Logger.LogWarning($"[StatusBarAdapter] '{name}' has no NpcLoader owner after " +
+                                          $"{_ownerWaitFrames} frames. Is the bar placed below the NPC?", LogCat.Ui);
+                    return;
+                }
+            }
+
+            var hp = _owner.Vob.GetAttribute((int)NpcAttribute.HitPoints);
+            var hpMax = _owner.Vob.GetAttribute((int)NpcAttribute.HitPointsMax);
+            if (hp != _lastHitPoints || hpMax != _lastHitPointsMax)
+            {
+                _lastHitPoints = hp;
+                _lastHitPointsMax = hpMax;
+                SetFillAmount(hp, hpMax);
             }
         }
 

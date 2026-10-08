@@ -4,14 +4,12 @@ using Gothic.Core.Logging;
 using Gothic.Core.Model.UI.Menu;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vm;
 using MyBox;
 using Reflex.Attributes;
 using TMPro;
-using ZenKit;
 using ZenKit.Daedalus;
 using Logger = Gothic.Core.Logging.Logger;
 
@@ -37,13 +35,13 @@ namespace Gothic.Core.Adapters.UI.Menus
         private static readonly int[] _attrCurrentIndex = { 4, 5, 2, 0 };
         private static readonly int[] _attrMaxIndex     = {-1,-1, 3, 1 };
 
-        // Armor slot → protection index (G1 constants.d PROT_*): 1=weapons → PROT_EDGE(2), 2=projectiles → PROT_POINT(6),
-        // 3=fire → PROT_FIRE(3), 4=magic → PROT_MAGIC(5). (BLUNT=1, FLY=4 aren't shown.)
+        // Armor slot → protection index (G1 constants.d PROT_*):
+        // 1=weapons → PROT_EDGE(2), 2=projectiles → PROT_POINT(6), 3=fire → PROT_FIRE(3), 4=magic → PROT_MAGIC(5).
+        // (BLUNT=1, FLY=4 aren't shown.)
         private static readonly int[] _armorProtIndex = { 2, 6, 3, 5 };
 
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly NpcService _npcService;
-        [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
         private void Awake()
@@ -64,7 +62,9 @@ namespace Gothic.Core.Adapters.UI.Menus
             var hero = _npcService.GetHeroContainer();
             var vob = hero.Vob;
 
-            var guildId = hero.Instance.Guild;
+            var guildId = hero.Props.TrueGuild != VmGothicEnums.Guild.GIL_NONE
+                ? (int)hero.Props.TrueGuild
+                : vob.Guild;
 
             MenuItemCache[_itemNameGuild].go.GetComponentInChildren<TMP_Text>().text = _vmService.GetGuildName(guildId);
             MenuItemCache[_itemNameLevel].go.GetComponentInChildren<TMP_Text>().text = vob.Level.ToString();
@@ -93,8 +93,7 @@ namespace Gothic.Core.Adapters.UI.Menus
             var talentCount = Math.Min(talentTitles.Count, vob.TalentCount);
 
             // Talent 0 doesn't exist (TXT_TALENTS[0] = ""), NPC_TALENT_1H = 1 is shown in MENU_ITEM_TALENT_1_*.
-            // Menu row number == talent index. Previously row i+1 got talent i, which shifted everything by one.
-            var filledRows = 0;
+            // Menu row number == talent index.
             Enumerable.Range(1, Math.Max(0, talentCount - 1)).ForEach(i =>
             {
                 var keyTitle = string.Format(_itemTalentTitlePattern, i);
@@ -104,7 +103,6 @@ namespace Gothic.Core.Adapters.UI.Menus
                 if (!MenuItemCache.ContainsKey(keyTitle))
                     return;
 
-                filledRows++;
                 var talent = vob.GetTalent(i);
                 var skillText = talentSkills[i];
                 string skillFormatted;
@@ -125,13 +123,12 @@ namespace Gothic.Core.Adapters.UI.Menus
                 if (MenuItemCache.ContainsKey(keyDescription))
                     SetItemText(keyDescription, $"{GetTalentPercent(hero, i, talent.Value)}%");
             });
-
-            Logger.Log($"[StatusMenu] Talents: count={vob.TalentCount}, titles={talentTitles.Count}, rows filled={filledRows}", LogCat.Ui);
         }
 
         /// <summary>
-        /// G2 keeps the weapon percentages (1H, 2H, bow, crossbow = talents 1-4) in C_NPC.hitchance[] (B_AddFightSkill),
-        /// not in the talent value. G1 and G1 mods (e.g. Mroczne Tajemnice) use the talent value (Npc_SetTalentValue).
+        /// G2 keeps the weapon percentages (1H, 2H, bow, crossbow = talents 1-4) in C_NPC.hitchance[]
+        /// (B_AddFightSkill), not in the talent value. G1 and G1 mods (e.g. Mroczne Tajemnice) use the talent value
+        /// (Npc_SetTalentValue).
         /// </summary>
         private int GetTalentPercent(NpcContainer hero, int talentIndex, int talentValue)
         {

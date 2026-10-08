@@ -189,15 +189,16 @@ namespace Gothic.Core.Services.Npc
 
         public int ExtNpcGetTalentSkill(NpcInstance npc, int skillId)
         {
-            var props = GetProperties(npc);
-
-            // FIXME - this is related to overlays for the npc's
-            return 0;
+            // Was a stub returning 0 - every script asking for a talent level got "none". E.g. Mroczne Tajemnice's
+            // teachers (B_GiveprocentSkill) then reset a master's 1H rank to "Nowy". Same storage as
+            // Npc_SetTalentSkill.
+            // FIXME - skill levels should also drive the fight overlays (like OpenGothic does).
+            return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Skill ?? 0;
         }
 
         public int ExtNpcGetTalentValue(NpcInstance npc, int skillId)
         {
-            return GetContainer(npc).Vob.GetTalent(skillId).Value;
+            return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Value ?? 0;
         }
 
         public VmGothicEnums.Attitude GetPersonAttitude(NpcContainer self, NpcContainer other)
@@ -266,7 +267,8 @@ namespace Gothic.Core.Services.Npc
         /// fov = 50 - OpenGothic assumes 100 fov for NPCs
         /// fov = 30 - We reuse this for Focus angle during AI_Attack()
         /// </summary>
-        public bool CanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f)
+        public bool CanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f,
+            bool isFacingBackwards = false)
         {
             var selfContainer = self.GetUserData();
             var otherContainer = other.GetUserData();
@@ -300,7 +302,8 @@ namespace Gothic.Core.Services.Npc
                 0f,
                 otherGroundPosition.z - selfGroundPosition.z
             ).normalized;
-            var selfForwardHorizontal = new Vector3(selfRoot.forward.x, 0f, selfRoot.forward.z).normalized;
+            var selfForward = isFacingBackwards ? -selfRoot.forward : selfRoot.forward;
+            var selfForwardHorizontal = new Vector3(selfForward.x, 0f, selfForward.z).normalized;
             var angleToTarget = Vector3.Angle(selfForwardHorizontal, directionToTarget);
             var inFov = angleToTarget <= fov;
 

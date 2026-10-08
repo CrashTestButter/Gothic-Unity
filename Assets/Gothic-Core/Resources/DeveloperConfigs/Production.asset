@@ -77,5 +77,6 @@ MonoBehaviour:
   CompressStaticCacheFiles: 1
   AlwaysRecreateCache: 0
   OnlyCreateCacheForWorld: 
+  EnableScriptVideos: 1
   EnableDecalVisuals: 0
   EnableParticleEffects: 0

@@ -26,6 +26,7 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
+        [Inject] private readonly VRCinemaService _vrCinemaService;
 
         private const string _contextName = "VR";
 
@@ -36,6 +37,7 @@ namespace Gothic.VR.Services.Context
             this.Inject();
 
             _vrWeaponService.Init();
+            _vrCinemaService.Init();
             
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>

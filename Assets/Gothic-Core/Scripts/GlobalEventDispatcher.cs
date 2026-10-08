@@ -46,6 +46,11 @@ namespace Gothic.Core
 
         public static readonly UnityEvent<INpc> CreateNpc = new();
 
+        /// <summary>
+        /// PlayVideo/PlayVideoEx from Daedalus (chapter videos, G1 ending "Extro.bik"). string = video file name.
+        /// </summary>
+        public static readonly UnityEvent<string> ScriptPlayVideo = new();
+
         
         // Fight events
         public enum HandSide

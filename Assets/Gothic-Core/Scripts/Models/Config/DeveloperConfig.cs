@@ -47,9 +47,20 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(fieldToCheck: nameof(PreselectGameVersion), compareValues: true)]
         public GameVersion GameVersion = GameVersion.Gothic1;
 
-        [Tooltip("Select a specific installed mod ini. Default if empty: GothicGame.ini")]
+        [Separator("Mod")]
+        [Tooltip("Override GameSettings.json ModPath/ModIni for quick in-editor testing.")]
+        public bool EnableMod;
+        [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
+        public string ModPath = string.Empty;
+        [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
+        [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
         public string ModIni = string.Empty;
-        
+
+        [Tooltip("Language used when auto-detection fails (mods often rename MOBNAME_CRATE, the probe constant - " +
+                 "e.g. G2 Renovation uses 'Skrzynka'). One of: cs, pl, ru, de, en, es, fr, it. " +
+                 "Empty = fail the boot like before.")]
+        public string FallbackLanguage = string.Empty;
+
         public Controls GameControls = Controls.VR;
 
         [Separator("Debug")]
@@ -235,6 +246,19 @@ namespace Gothic.Core.Models.Config
 
         [Foldout("Audio", true)]
         public bool EnableGameSounds = true;
+
+        [Tooltip("Some mod music compositions embed automatic dmusic segues (e.g. a boss-fight transition) to a " +
+                 "segment we never see or validate. If its referenced instruments are incomplete, dmusic " +
+                 "double-frees " +
+                 "natively - an unrecoverable AccessViolationException no C# try/catch can stop. Turn music off " +
+                 "entirely to sidestep it for mods that hit this.")]
+        public bool EnableMusic = true;
+
+        [Tooltip("Some mods (e.g. New Balance) ship dubbing as Ogg Vorbis with a '.wav' extension. We sniff real " +
+                 "content and decode via NVorbis when detected - vanilla Gothic never ships this, so this only ever " +
+                 "applies to mod audio. Escape hatch in case a specific file misbehaves: turn off to skip decoding " +
+                 "it gracefully (silence + text-length fallback) instead of failing loudly.")]
+        public bool EnableOggAudio = true;
 
 
         /**

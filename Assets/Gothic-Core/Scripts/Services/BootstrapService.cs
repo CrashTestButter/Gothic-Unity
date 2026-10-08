@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.Globalization;
 using Gothic.Core.Adapters.Scenes;
@@ -119,9 +120,11 @@ namespace Gothic.Core.Services
 
             var gothicRootPath = _contextGameVersionService.RootPath;
 
-            // Otherwise, continue loading Gothic.
             Logger.Log($"Initializing Gothic installation at: {gothicRootPath}", LogCat.Loading);
-            _resourceCacheService.Init(gothicRootPath);
+            // Dev.EnableMod only means "use the Editor's ModPath/ModIni override" and is always false
+            // in a build's DeveloperConfig asset - mounting .mod archives (VfsOverwriteBehavior.All)
+            // must instead follow whether a mod is actually active via GameSettings.json in a build.
+            _resourceCacheService.Init(gothicRootPath, _configService.IsModActive, _configService.GothicMod.Vdfs);
 
             _audioService.InitMusic();
             _staticCacheService.Init();
@@ -188,7 +191,18 @@ namespace Gothic.Core.Services
                 _vobSoundCullingService.PreWorldCreate();
                 _npcService.ClearQueues();
             }
-            _saveGameService.ChangeWorld(worldName);
+            try
+            {
+                _saveGameService.ChangeWorld(worldName);
+            }
+            catch (Exception e)
+            {
+                // Mirrors PreCachingScene's per-world try/catch: a world can be unparsable (e.g. an
+                // unsupported VOB class in a mod's .zen) without crashing the whole session. Bail out
+                // before LoadScene so we don't proceed into a half-initialized Loading scene.
+                Logger.LogError($"Failed to load world '{worldName}': {e.Message}", LogCat.Loading);
+                return;
+            }
 
             LoadScene(Constants.SceneLoading, sceneToUnload);
         }

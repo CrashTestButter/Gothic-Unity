@@ -9,6 +9,7 @@ using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
@@ -38,6 +39,7 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly StoryService _storyService;
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
         // (optional) Some messages from Daedalus are quite spammy. Ignore them.
         private static readonly string[] _spammyMessages = new[]
@@ -59,7 +61,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void RegisterExternals()
         {
-            _enableZSpyLogs = _configService.Dev.EnableZSpyLogs;
+            _enableZSpyLogs = _configService.EffectiveEnableZSpyLogs;
             _zSpyInstantLogging = _enableZSpyLogs && _configService.Dev.EnableZSpyInstantLogs;
             _ignoreSpammyMessages = _configService.Dev.IgnoreSpammyZSpyLogs;
 
@@ -201,7 +203,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, NpcInstance>("Npc_RefuseTalk", Npc_RefuseTalk);
 
             // G2 externals only.
-            if (_configService.Dev.GameVersion == GameVersion.Gothic2)
+            if (_contextGameVersionService.IsGothic2())
             {
                 vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetHeightToNpc", Npc_GetHeightToNpc);
             }
@@ -654,7 +656,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void PrintDebug(string message)
         {
-            if (!_configService.Dev.EnableZSpyLogs)
+            if (!_configService.EffectiveEnableZSpyLogs)
                 return;
 
             Logger.Log($"[zspy]: {message}", LogCat.ZSpy);
@@ -670,7 +672,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void PrintDebugInst(string message)
         {
-            if (!_configService.Dev.EnableZSpyLogs)
+            if (!_configService.EffectiveEnableZSpyLogs)
                 return;
 
             Logger.Log($"[zspy]: {message}", LogCat.ZSpy);

@@ -14,7 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PreselectGameVersion: 1
   GameVersion: 0
+  EnableMod: 0
+  ModPath: 
   ModIni: 
+  FallbackLanguage: 
   GameControls: 0
   EnableVRDeviceSimulator: 0
   ActivateMarvinMode: 0
@@ -65,6 +68,8 @@ MonoBehaviour:
   ShowWayPoints: 0
   ShowWayEdges: 0
   EnableGameSounds: 1
+  EnableMusic: 1
+  EnableOggAudio: 1
   SunLightColor: {r: 0.69, g: 0.69, b: 0.69, a: 1}
   SunLightIntensity: 1
   SunUpdateInterval: 1

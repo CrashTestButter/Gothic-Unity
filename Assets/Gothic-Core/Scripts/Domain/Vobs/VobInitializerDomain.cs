@@ -230,6 +230,9 @@ namespace Gothic.Core.Domain.Vobs
             // Do not check children if the current VOB can't be created.
             if (!go)
                 return;
+
+            if (!isRootVob)
+                EnsureOwnVobLoader(vob, go);
             
             foreach (var childVob in vob.Children)
             {
@@ -781,11 +784,7 @@ namespace Gothic.Core.Domain.Vobs
             // Child vobs have no VobLoader/VobContainer of their own - GetComponentInParent<VobLoader>() found the
             // decal's loader, so VRFocus/VRDigSpot saw a zCVob instead of this mob. Give the X its own one.
             if (loader == null || loader.Container?.Vob != vob)
-            {
-                var ownLoader = go.AddComponent<VobLoader>();
-                ownLoader.Container = new VobContainer(vob) { Go = go };
-                ownLoader.IsLoaded = true;
-            }
+                AddOwnVobLoader(vob, go);
 
             // Two crossed red planks, roughly the size of the original X.
             CreateDigSpotPlank(go, 45f);
@@ -794,6 +793,33 @@ namespace Gothic.Core.Domain.Vobs
             Logger.Log($"[DigSpot] '{vob.Name}' has no textured mesh ({vob.GetVisualName()}) - using a placeholder X.",
                 LogCat.Vob);
             return true;
+        }
+
+        /// <summary>
+        /// Child vobs are created inside their parent's GO without a VobLoader of their own. Their adapters
+        /// (VRVobContainer, VRVobContainerPhysicsChest, door lock picking, VRFocus) call
+        /// GetComponentInParent&lt;VobLoader&gt;() and got the PARENT's vob (often an unnamed zCVob) -
+        /// InvalidCastExceptions, "No door or container found for ><", doors/chests that don't work (G2 Xardas' tower).
+        /// </summary>
+        private void EnsureOwnVobLoader(IVirtualObject vob, GameObject go)
+        {
+            if (vob is not (IInteractiveObject or IItem))
+                return;
+
+            var loader = go.GetComponentInParent<VobLoader>();
+            if (loader != null && loader.Container?.Vob == vob)
+                return;
+
+            AddOwnVobLoader(vob, go);
+            Logger.Log($"[ChildVob] '{vob.Name}' ({vob.Type}) under '{loader?.Container?.Vob?.Name}' got its own " +
+                       "VobLoader.", LogCat.Vob);
+        }
+
+        private static void AddOwnVobLoader(IVirtualObject vob, GameObject go)
+        {
+            var ownLoader = go.AddComponent<VobLoader>();
+            ownLoader.Container = new VobContainer(vob) { Go = go };
+            ownLoader.IsLoaded = true;
         }
 
         private static void CreateDigSpotPlank(GameObject parent, float yaw)

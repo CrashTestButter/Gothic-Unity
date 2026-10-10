@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Gothic.Core.Domain.Config;
+using Gothic.Core.Logging;
 using Gothic.Core.Models.Config;
 using MyBox;
 using ZenKit;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Services.Config
 {
@@ -20,10 +23,35 @@ namespace Gothic.Core.Services.Config
         public GothicIniConfig Gothic { get; private set; }
         public GothicModIniConfig GothicMod { get; private set; }
 
+        /// <summary>
+        /// Profile picked in the game profile menu (GameSettings.json "EnableGameProfiles"). When set, its ModPath/ModIni
+        /// replace the normal ones - also in the Editor - and no ModPath means vanilla. Null = normal config.
+        /// </summary>
+        public JsonGameProfile SelectedGameProfile { get; private set; }
+
+        public bool IsGameProfileSelectionEnabled => GetConfiguredGameProfiles().Length > 0;
+
+        /// <summary>
+        /// Editor: DeveloperConfig EnableGameProfiles/GameProfiles when switched on, otherwise GameSettings.json.
+        /// Builds: GameSettings.json only. Empty when the feature is off.
+        /// </summary>
+        private JsonGameProfile[] GetConfiguredGameProfiles()
+        {
+#if UNITY_EDITOR
+            if (Dev.EnableGameProfiles)
+                return JsonRootLoader.SanitizeGameProfiles(Dev.GameProfiles);
+#endif
+            return Root.EnableGameProfiles && Root.GameProfiles != null
+                ? Root.GameProfiles
+                : Array.Empty<JsonGameProfile>();
+        }
+
         public string EffectiveModPath
         {
             get
             {
+                if (SelectedGameProfile != null)
+                    return SelectedGameProfile.ModPath;
 #if UNITY_EDITOR
                 return Dev.EnableMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
 #else
@@ -45,6 +73,51 @@ namespace Gothic.Core.Services.Config
 #endif
             version = Dev.GameVersion;
             return Dev.PreselectGameVersion;
+        }
+
+        public bool TryGetGameProfileVersion(JsonGameProfile profile, out GameVersion version)
+        {
+            return TryParseGameVersion(profile?.GameVersion, out version);
+        }
+
+        /// <summary>
+        /// Profiles that can be started: known GameVersion, that game is installed, and the mod folder (if any) exists.
+        /// </summary>
+        public List<JsonGameProfile> GetAvailableGameProfiles()
+        {
+            var available = new List<JsonGameProfile>();
+            foreach (var profile in GetConfiguredGameProfiles())
+            {
+                if (!TryGetGameProfileVersion(profile, out var version))
+                {
+                    Logger.LogWarning($"Game profile >{profile.Name}< skipped: GameVersion >{profile.GameVersion}< " +
+                        "is not Gothic1/Gothic2.", LogCat.Loading);
+                    continue;
+                }
+                if (!CheckIfGothicInstallationExists(version))
+                {
+                    Logger.LogWarning($"Game profile >{profile.Name}< skipped: no {version} installation found.",
+                        LogCat.Loading);
+                    continue;
+                }
+                if (profile.ModPath != null && !Directory.Exists(profile.ModPath))
+                {
+                    Logger.LogWarning($"Game profile >{profile.Name}< skipped: ModPath >{profile.ModPath}< not found.",
+                        LogCat.Loading);
+                    continue;
+                }
+
+                available.Add(profile);
+            }
+
+            return available;
+        }
+
+        public void SelectGameProfile(JsonGameProfile profile)
+        {
+            SelectedGameProfile = profile;
+            Logger.Log($"Game profile selected: >{profile.Name}< ({profile.GameVersion}, " +
+                $"mod: {profile.ModPath ?? "none"}, ini: {profile.ModIni ?? "GothicGame.ini"})", LogCat.Loading);
         }
 
         private static bool TryParseGameVersion(string value, out GameVersion version)
@@ -71,6 +144,8 @@ namespace Gothic.Core.Services.Config
         {
             get
             {
+                if (SelectedGameProfile != null)
+                    return SelectedGameProfile.ModIni;
 #if UNITY_EDITOR
                 return Dev.EnableMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
 #else

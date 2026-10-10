@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Gothic.Core.Models.Context;
 using Gothic.Core.Services.World;
 using MyBox;
@@ -55,6 +56,14 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
         [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
         public string ModIni = string.Empty;
+
+        [Separator("Game Profiles")]
+        [Tooltip("Show a list at start to pick G1/G2/a mod (overrides PreselectGameVersion and EnableMod). " +
+            "Editor only - builds use GameSettings.json EnableGameProfiles/GameProfiles.")]
+        public bool EnableGameProfiles;
+        [Tooltip("GameVersion: Gothic1 or Gothic2. Empty ModPath = vanilla with GothicGame.ini. " +
+            "ModIni = INI filename inside ModPath/system/ (empty = GothicGame.ini).")]
+        public List<JsonGameProfile> GameProfiles = new();
 
         [Tooltip("Language used when auto-detection fails (mods often rename MOBNAME_CRATE, the probe constant — e.g. G2 Renovation uses 'Skrzynka'). One of: cs, pl, ru, de, en, es, fr, it. Empty = fail the boot like before.")]
         public string FallbackLanguage = string.Empty;

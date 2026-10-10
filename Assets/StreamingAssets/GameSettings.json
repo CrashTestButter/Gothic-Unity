@@ -9,5 +9,10 @@
     "EnableMusic": true,
     "EnableZSpyLogs": false,
     "EnableOggAudio": true,
-    "EnableVRDeviceSimulator": false
+    "EnableVRDeviceSimulator": false,
+    "EnableGameProfiles": false,
+    "GameProfiles": [
+        { "Name": "Gothic 1", "GameVersion": "Gothic1" },
+        { "Name": "Gothic 2", "GameVersion": "Gothic2" }
+    ]
 }

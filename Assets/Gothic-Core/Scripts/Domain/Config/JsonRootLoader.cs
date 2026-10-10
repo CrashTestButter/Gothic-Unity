@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using Gothic.Core.Models.Config;
 using UnityEngine;
@@ -55,7 +56,46 @@ namespace Gothic.Core.Domain.Config
             if (string.IsNullOrEmpty(loadedSettings.GameVersion) || loadedSettings.GameVersion.StartsWith("---"))
                 loadedSettings.GameVersion = null;
 
+            loadedSettings.GameProfiles = SanitizeGameProfiles(loadedSettings.GameProfiles);
+
             return loadedSettings;
+        }
+
+        /// <summary>
+        /// Returns cleaned copies (the DeveloperConfig asset must not be changed at runtime): drops empty entries and
+        /// turns empty values / "---" placeholders into null. Whether a profile's game/mod folder exists is checked
+        /// later (ConfigService.GetAvailableGameProfiles), so a missing folder is logged instead of silently lost.
+        /// </summary>
+        public static JsonGameProfile[] SanitizeGameProfiles(IEnumerable<JsonGameProfile> profiles)
+        {
+            if (profiles == null)
+                return Array.Empty<JsonGameProfile>();
+
+            var sanitized = new List<JsonGameProfile>();
+            foreach (var profile in profiles)
+            {
+                if (profile == null)
+                    continue;
+
+                var copy = new JsonGameProfile
+                {
+                    ModPath = SanitizeOptional(profile.ModPath),
+                    ModIni = SanitizeOptional(profile.ModIni),
+                    GameVersion = SanitizeOptional(profile.GameVersion)
+                };
+                copy.Name = SanitizeOptional(profile.Name)
+                    ?? (copy.ModPath == null
+                        ? copy.GameVersion
+                        : $"{copy.GameVersion} - {Path.GetFileName(copy.ModPath.TrimEnd('/', '\\'))}");
+                sanitized.Add(copy);
+            }
+
+            return sanitized.ToArray();
+        }
+
+        private static string SanitizeOptional(string value)
+        {
+            return string.IsNullOrWhiteSpace(value) || value.StartsWith("---") ? null : value.Trim();
         }
 
         /// <summary>

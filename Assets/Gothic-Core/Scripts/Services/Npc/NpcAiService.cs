@@ -1041,11 +1041,24 @@ namespace Gothic.Core.Services.Npc
                 var range = Mathf.Min(_npcHelperService.GetPerceptionRange(perception), candidate.Instance.SensesRange / 100f);
                 if ((candidate.Go.transform.position - senderPos).sqrMagnitude > range * range) continue;
 
-                ExecutePassivePerception(perception, perceptionFunction, candidate, victim, other);
+                // B_AssessWarn targets a non-human warner as a monster (ZS_AssessMonster -> ZS_Attack): the scripts expect
+                // only humans to warn, but orcs run the human AI - the comrades attacked the orc that called them.
+                // A friendly non-human warner: hand over the threat as the victim, B_AssessWarn takes its human path.
+                var receiverVictim = perception == VmGothicEnums.PerceptionType.AssessWarn &&
+                                     IsFriendlyNonHumanWarner(candidate, victim, other)
+                    ? other
+                    : victim;
+                ExecutePassivePerception(perception, perceptionFunction, candidate, receiverVictim, other);
                 notified++;
             }
 
             return notified;
+        }
+
+        private bool IsFriendlyNonHumanWarner(NpcContainer receiver, NpcInstance warner, NpcInstance threat)
+        {
+            return warner != null && threat != null && warner.Guild > (int)VmGothicEnums.Guild.GIL_SEPERATOR_HUM &&
+                   ExtGetAttitude(receiver.Instance, warner) == VmGothicEnums.Attitude.Friendly;
         }
 
         /// <summary>

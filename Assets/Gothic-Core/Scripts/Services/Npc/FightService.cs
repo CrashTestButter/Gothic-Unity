@@ -786,6 +786,14 @@ namespace Gothic.Core.Services.Npc
         /// Handles health changes.
         /// Returns true if Npc/Monster is dead.
         /// </summary>
+        private int? _minimalDamage;
+
+        private int GetMinimalDamage()
+        {
+            _minimalDamage ??= _gameStateService.GothicVm.GetSymbolByName("NPC_MINIMAL_DAMAGE")?.GetInt(0) ?? 0;
+            return _minimalDamage.Value;
+        }
+
         private bool OnHitUpdateHealth(NpcContainer attacker, NpcContainer target, int? damageOverride = null,
             int overrideProtectionIndex = (int)DamageType.Fire)
         {
@@ -794,12 +802,14 @@ namespace Gothic.Core.Services.Npc
             var maxHP = target.Vob.GetAttribute((int)NpcAttribute.HitPointsMax);
 
             int damage;
+            bool isImmune;
             if (damageOverride.HasValue)
             {
                 // Spell/ranged damage bypasses the melee weapon formula — protection still applies.
                 // FIXME: spells use their own damage type (overrideProtectionIndex stays Fire for them).
                 var protection = target.Vob.GetProtection(overrideProtectionIndex);
-                damage = protection < 0 ? 0 : Mathf.Max(0, damageOverride.Value - protection);
+                isImmune = protection < 0;
+                damage = isImmune ? 0 : Mathf.Max(0, damageOverride.Value - protection);
             }
             else
             {
@@ -815,8 +825,15 @@ namespace Gothic.Core.Services.Npc
                 var protection = target.Vob.GetProtection(protectionIndex);
 
                 // Like G1: protection -1 means immune to this damage type; otherwise no damage when fully absorbed.
-                damage = protection < 0 ? 0 : Mathf.Max(0, weaponDamage + strength - protection);
+                isImmune = protection < 0;
+                damage = isImmune ? 0 : Mathf.Max(0, weaponDamage + strength - protection);
             }
+
+            // DeveloperConfig.EnableMinimalDamage: like the engine, a hit never does less than NPC_MINIMAL_DAMAGE
+            // (Balancing.d, G1: 1) unless the target is immune (-1) - a meatbug (fire protection 100) took 0 from a
+            // 50 damage fire storm and burned without losing HP.
+            if (_configService.Dev.EnableMinimalDamage && !isImmune)
+                damage = Mathf.Max(damage, GetMinimalDamage());
 
             // Dev cheats: hero one-hit kill / knockout.
             if (attacker.PrefabProps != null && attacker.PrefabProps.IsHero())

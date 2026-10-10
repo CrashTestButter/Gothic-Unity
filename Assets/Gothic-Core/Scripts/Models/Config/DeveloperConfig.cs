@@ -623,6 +623,9 @@ namespace Gothic.Core.Models.Config
                  "only the NPC hit directly.")]
         public bool EnableSpellSpreadDamage = true;
 
+        [Tooltip("V1: Like the engine, a hit never does less than NPC_MINIMAL_DAMAGE (Balancing.d, G1: 1) unless the " +
+                 "target is immune to the damage type (protection -1). Read at the first hit.")]
+        public bool EnableMinimalDamage = true;
 
         [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]

@@ -510,6 +510,10 @@ namespace Gothic.Core.Models.Config
                  "transparents so they stay visible above it for pointing.")]
         public bool EnableDialogAlwaysOnTop = true;
 
+        [Tooltip("V1: The hero's HP/mana bars with their numbers, screen messages (\"New log entry\"), the chapter " +
+                 "popup and the menus are never cut by the world (ignore depth, drawn last); the VR hands stay above open menus.")]
+        public bool EnableHudAlwaysOnTop = true;
+
         [Tooltip("V1: Grabbing a mob with an onStateFunc and no mover target (G2 shrines, alchemy/rune tables, " +
                  "bookstands, ...) calls [onStateFunc]_S1 like the engine. MOBSI dialogs (AI_ProcessInfos(hero)) open " +
                  "next to the mob.")]

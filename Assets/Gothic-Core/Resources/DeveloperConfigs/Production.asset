@@ -128,6 +128,7 @@ MonoBehaviour:
   EnableDigSpots: 1
   DigSpotsRequireTool: 0
   EnableDialogAlwaysOnTop: 1
+  EnableHudAlwaysOnTop: 1
   EnableMobsiDialogs: 1
   EnableVrCrossbow: 1
   EnableChildVobLoaders: 1

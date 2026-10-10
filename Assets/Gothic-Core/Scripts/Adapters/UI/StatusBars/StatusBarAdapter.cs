@@ -50,6 +50,7 @@ namespace Gothic.Core.Adapters.UI.StatusBars
         }
 
         public StatusType Type => _statusType;
+        public bool IsPlayer => _isPlayer;
 
         private void OnDestroy()
         {

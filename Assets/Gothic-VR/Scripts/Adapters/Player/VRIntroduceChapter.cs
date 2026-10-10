@@ -23,6 +23,7 @@ namespace Gothic.VR.Adapters.Player
 
         [Inject] private readonly TextureService _textureService;
         [Inject] private readonly AudioService _audioService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
 
         // Data needed for smooth movement of Canvas
         private Transform _cameraTransform;
@@ -50,6 +51,10 @@ namespace Gothic.VR.Adapters.Player
             
             PlayAudio(wav);
             ShowChapterCanvas(chapter, text, texture);
+            // DeveloperConfig.EnableHudAlwaysOnTop: 4 m in front of the camera walls and NPCs cut through it. The
+            // cover's material is new each time - re-applied here.
+            if (_configService.Dev.EnableHudAlwaysOnTop)
+                Gothic.VR.Adapters.UI.VRUiOnTop.Ensure(gameObject, false);
             
             StartCoroutine(DisableDelayed(time));
         }

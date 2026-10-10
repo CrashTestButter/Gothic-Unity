@@ -77,6 +77,12 @@ namespace Gothic.VR.Adapters.UI
             _content.sizeDelta = new Vector2(700, _lineHeight * _maxLines);
             _content.pivot = new Vector2(0.5f, 1f);
 
+            // DeveloperConfig.EnableHudAlwaysOnTop: the material's unity_GUIZTestMode alone didn't help - the Canvas
+            // sets it per draw, the VR hands and close transparents still covered the lines. New lines: IsAutoApply.
+            var configService = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Config.ConfigService>();
+            if (configService.Dev.EnableHudAlwaysOnTop)
+                VRUiOnTop.Ensure(canvasGo, true);
+
             SnapInFrontOfCamera();
         }
 

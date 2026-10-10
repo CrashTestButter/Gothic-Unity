@@ -66,6 +66,7 @@ namespace Gothic.VR.Services.Context
                 new UnityEngine.GameObject("_VRStackSplitter").AddComponent<Gothic.VR.Adapters.Vob.VobItem.VRStackSplitter>();
                 // DeveloperConfig.EnableHeroPersonalSpace (checked at runtime): NPC bodies stay out of the camera.
                 new UnityEngine.GameObject("_HeroPersonalSpace").AddComponent<Gothic.Core.Adapters.Npc.HeroPersonalSpace>();
+                ApplyHudOnTop();
             });
             GlobalEventDispatcher.ScriptExitGame.AddListener(VRCinema.QuitAfterVideos);
             // DeveloperConfig.EnableVrTrade: the trade counter between the hero and the trader.
@@ -162,6 +163,46 @@ namespace Gothic.VR.Services.Context
         /// Our Immersion option "Marvin" (Gothic.ini, on by default) hides/shows the Marvin panel - only when
         /// DeveloperConfig.ActivateMarvinMode allows Marvin at all. The panel can't do it itself: it is inactive then.
         /// </summary>
+        /// <summary>
+        /// DeveloperConfig.EnableHudAlwaysOnTop: the hero's bars (on the wrists - the other hand and the world cut
+        /// through them) and the menus (texts, background meshes, frames) draw on top of everything, like the dialog
+        /// box; the VR hands above an open menu. Hit numbers and menu entries created later: VRUiOnTop.IsAutoApply.
+        /// </summary>
+        private void ApplyHudOnTop()
+        {
+            if (!_configService.Dev.EnableHudAlwaysOnTop)
+                return;
+
+            var roots = new System.Collections.Generic.HashSet<GameObject>();
+            foreach (var bar in Object.FindObjectsByType<Gothic.Core.Adapters.UI.StatusBars.StatusBarAdapter>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (bar.IsPlayer)
+                    roots.Add(GetRootCanvas(bar.transform) ?? bar.gameObject);
+            }
+            foreach (var root in roots)
+                VRUiOnTop.Ensure(root, true);
+
+            // Menus: the hands and the laser stay above them while open - pointing at the entries.
+            if (_playerController != null && _playerController.MenuHandler != null)
+            {
+                roots.Add(_playerController.MenuHandler.gameObject);
+                VRUiOnTop.Ensure(_playerController.MenuHandler.gameObject, true, true);
+            }
+            Logger.Log($"[VRUiOnTop] HUD/menus drawn on top: {string.Join(", ", roots.Select(r => r.name))}", LogCat.VR);
+        }
+
+        private static GameObject GetRootCanvas(Transform transform)
+        {
+            GameObject root = null;
+            for (var current = transform; current != null; current = current.parent)
+            {
+                if (current.TryGetComponent<Canvas>(out _))
+                    root = current.gameObject;
+            }
+            return root;
+        }
+
         private void ApplyMarvinVisibility()
         {
             if (_marvinGo == null || _configService.Gothic == null)

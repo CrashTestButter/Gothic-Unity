@@ -40,7 +40,12 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             var routine = Props.RoutineCurrent;
 
             // FIXME - Please align logic with StartState.cs handling. (i.e. no call of StartRoutine() directly. Instead handling via ClearState() above.
-            ai.StartRoutine(routine.Action, routine.Waypoint);
+            // No daily routine (monsters, guards with only start_aistate like the orcs at the orc bridge): back to the
+            // start state, like AiHandler.StartNextRoutine - AI_ContinueRoutine threw here.
+            if (routine != null)
+                ai.StartRoutine(routine.Action, routine.Waypoint);
+            else
+                ai.StartRoutine(NpcInstance.StartAiState);
 
             IsFinishedFlag = true;
         }

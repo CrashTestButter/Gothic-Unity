@@ -149,6 +149,7 @@ MonoBehaviour:
   EnableQuietSenses: 1
   EnablePursuitWarn: 1
   EnableNpcRunAttack: 1
+  EnableRangedGiveUp: 1
   EnableHeroPersonalSpace: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1

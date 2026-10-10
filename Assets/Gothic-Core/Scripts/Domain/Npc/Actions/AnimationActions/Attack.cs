@@ -2,6 +2,7 @@ using System;
 using Gothic.Core.Const;
 using UnityEngine;
 using Logger = Gothic.Core.Logging.Logger;
+using Gothic.Core.Adapters.Properties;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
@@ -53,6 +54,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return;
             }
 
+            if (TryGiveUpOutOfRangedReach())
+                return;
+
             var aiFunctionTemplate = FindAiFunctionTemplate();
             // Null when the FIGHT VM couldn't be loaded at all (e.g. a mod DAT ZenKit can't parse and
             // no loose fallback existed — see ResourceCacheService.TryGetDaedalusVm). Plain Attack
@@ -61,6 +65,40 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             _move = fightAi?.GetRandomMove() ?? FightAiMove.Attack;
             Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} move={_move} fightMode={(VmGothicEnums.WeaponState)Vob.FightMode} tactic={Vob.FightTactic}", LogCat.Ai);
             StartAttackAction();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableRangedGiveUp: an archer/crossbowman/mage whose target, the hero, got out of the reach
+        /// of its shots (RangedAttackReachMeters * RangedCombatRangeMultiplier) gives up - the attack state ends like
+        /// the script's own "...Gegner außerhalb Fernkampfreichweite" (HAI_DIST_ABORT_RANGED, 35 m - beyond our reach,
+        /// so it stood there shooting into nothing). ZS_Attack_End puts the weapon away (B_RemoveWeapon) and the NPC
+        /// goes back to its routine; the give-up cooldown (EnableChaseGiveUpCooldown) keeps it from coming back at once.
+        /// </summary>
+        private bool TryGiveUpOutOfRangedReach()
+        {
+            if (!_configService.Dev.EnableRangedGiveUp || Props.CurrentLoopState != NpcProperties.LoopState.Loop)
+                return false;
+
+            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
+            if (weaponState is not (VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow or
+                VmGothicEnums.WeaponState.Mage))
+                return false;
+
+            var hero = GameStateService.GothicVm.GlobalHero as NpcInstance;
+            if (hero == null || _enemy.Index != hero.Index)
+                return false;
+
+            var reach = FightConst.RangedAttackReachMeters * _configService.Dev.RangedCombatRangeMultiplier;
+            var distance = GetDistance();
+            if (distance <= reach)
+                return false;
+
+            Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)}: hero out of {weaponState} reach " +
+                       $"({distance:F1} m > {reach:F1} m) - giving up, weapon away, back to the routine", LogCat.Ai);
+            Props.AnimationQueue.Clear();
+            Props.CurrentLoopState = NpcProperties.LoopState.End;
+            IsFinishedFlag = true;
+            return true;
         }
 
         private string FindAiFunctionTemplate()

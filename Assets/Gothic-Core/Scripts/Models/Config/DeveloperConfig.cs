@@ -611,6 +611,10 @@ namespace Gothic.Core.Models.Config
                  "1h/fist humans, orcs, wolves, scavengers, ...) instead of stopping and striking from a stand.")]
         public bool EnableNpcRunAttack = true;
 
+        [Tooltip("V1: An archer/crossbowman/mage gives up when the hero gets out of the reach of its shots (24 m with " +
+                 "RangedCombatRangeMultiplier 0.8): weapon away, back to the routine (vanilla: only at 35 m).")]
+        public bool EnableRangedGiveUp = true;
+
         [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
         public bool EnableHeroPersonalSpace = true;

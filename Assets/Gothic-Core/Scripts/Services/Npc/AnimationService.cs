@@ -583,7 +583,7 @@ namespace Gothic.Core.Services.Npc
                 VmGothicEnums.AnimationType.Attack or VmGothicEnums.AnimationType.AttackL or VmGothicEnums.AnimationType.AttackR
                     when weaponStateString is "CBOW" => "s_CBowShoot",
                 VmGothicEnums.AnimationType.Attack or VmGothicEnums.AnimationType.AttackL or VmGothicEnums.AnimationType.AttackR
-                    when weaponStateString is "MAG" => "s_FBTShoot",
+                    when weaponStateString is "MAG" => "t_MagRun_2_FBTShoot", // wind-up, the spell leaves at its end
                 VmGothicEnums.AnimationType.Attack => $"s_{weaponStateString}Attack",
                 VmGothicEnums.AnimationType.MoveL => $"t_{weaponStateString}{walkModeString}StrafeL",
                 VmGothicEnums.AnimationType.MoveR => $"t_{weaponStateString}{walkModeString}StrafeR",

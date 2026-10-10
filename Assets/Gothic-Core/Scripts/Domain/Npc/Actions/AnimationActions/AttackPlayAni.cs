@@ -32,6 +32,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private bool _isRangedFollowUp;
         private const string _bowReloadAnimName = "t_BowReload";
         private const string _crossbowReloadAnimName = "t_CBowReload";
+        private const string _spellShootToStandAnimName = "t_FBTShoot_2_Stand";
         private const float _minRangedFollowUpSeconds = 0.5f;
 
         /// <summary>
@@ -395,8 +396,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         }
 
         /// <summary>
-        /// The shot itself is one frame (s_BowShoot/s_CBowShoot) - finishing there let the next attack start at once:
-        /// bursts of arrows. Like the engine, the reload (t_BowReload/t_CBowReload) belongs to the same attack.
+        /// The shot itself is one frame (s_BowShoot/s_CBowShoot/s_FBTShoot) - finishing there let the next attack
+        /// start at once: bursts of arrows/spells. Like the engine, the reload (t_BowReload/t_CBowReload) or the
+        /// hands coming down after a spell (t_FBTShoot_2_Stand) belong to the same attack.
         /// </summary>
         private bool TryStartRangedFollowUp()
         {
@@ -407,6 +409,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             {
                 VmGothicEnums.WeaponState.Bow => _bowReloadAnimName,
                 VmGothicEnums.WeaponState.CBow => _crossbowReloadAnimName,
+                VmGothicEnums.WeaponState.Mage => _spellShootToStandAnimName,
                 _ => null
             };
             if (followUp == null || !PrefabProps.AnimationSystem.PlayAnimation(followUp))

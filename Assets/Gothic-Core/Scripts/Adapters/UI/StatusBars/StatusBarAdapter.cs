@@ -1,12 +1,14 @@
 using System;
 using System.Collections;
 using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Const;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Reflex.Attributes;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Gothic.Core.Services.Config;
@@ -31,7 +33,13 @@ namespace Gothic.Core.Adapters.UI.StatusBars
         private NpcContainer _owner;
         private int _lastHitPoints = int.MinValue;
         private int _lastHitPointsMax = int.MinValue;
+        private int _lastMana = int.MinValue;
         private int _healthOwnerWaitFrames;
+        private const string _nameTextName = "NameText";
+        private TMP_Text _healthNumbers;
+        private bool _isHealthNumbersShown;
+        private RectTransform _healthNumbersNameRect;
+        private float _healthNumbersBaseFontSize;
 
         public enum StatusType
         {
@@ -42,8 +50,15 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
         public StatusType Type => _statusType;
 
+        private void OnDestroy()
+        {
+            GlobalEventDispatcher.PlayerPrefUpdated.RemoveListener(OnPlayerPrefUpdated);
+        }
+
         private void Awake()
         {
+            GlobalEventDispatcher.PlayerPrefUpdated.AddListener(OnPlayerPrefUpdated);
+
             // Player is spawned before ZenKit (with Gothic version) is bootstrapped.
             if (_isPlayer)
             {
@@ -118,6 +133,7 @@ namespace Gothic.Core.Adapters.UI.StatusBars
                     Logger.Log($"[StatusBarAdapter] '{name}' hero container changed (save loaded?) - rebinding.", LogCat.Ui);
                     _owner = currentHero;
                     _lastHitPoints = int.MinValue;
+                    _lastMana = int.MinValue;
                 }
             }
 
@@ -140,12 +156,154 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
             var hp = _owner.Vob.GetAttribute((int)NpcAttribute.HitPoints);
             var hpMax = _owner.Vob.GetAttribute((int)NpcAttribute.HitPointsMax);
+            if (_isPlayer && _lastHitPoints != int.MinValue && hp != _lastHitPoints)
+                ShowHeroHitNumber(hp - _lastHitPoints, "HP");
+
+            if (_isPlayer)
+            {
+                var mana = _owner.Vob.GetAttribute((int)NpcAttribute.Mana);
+                if (_lastMana != int.MinValue && mana != _lastMana)
+                    ShowHeroHitNumber(mana - _lastMana, FloatingHitNumber.ManaUnit);
+                _lastMana = mana;
+            }
+
             if (hp != _lastHitPoints || hpMax != _lastHitPointsMax)
             {
                 _lastHitPoints = hp;
                 _lastHitPointsMax = hpMax;
                 SetFillAmount(hp, hpMax);
+                UpdateHealthNumbers();
             }
+
+            // The text is a child of the bar - hide it whenever the bar itself is hidden (fade, HideHealthBar).
+            if (_healthNumbers != null)
+                _healthNumbers.enabled = _isHealthNumbersShown && _background.enabled;
+        }
+
+        /// <summary>
+        /// "HP/MAX" on the bar - option "healthNumbers" in our settings menu (Gothic.ini, off by default).
+        /// The text is created on first use: Gothic's font only exists after the game booted.
+        /// </summary>
+        private void UpdateHealthNumbers()
+        {
+            _isHealthNumbersShown = _configService.Gothic.GetInt(Constants.IniNames.HealthNumbers, 0) == 1;
+            if (!_isHealthNumbersShown)
+                return;
+
+            if (_healthNumbers == null)
+                _healthNumbers = CreateHealthNumbersText();
+
+            _healthNumbers.text = $"{_lastHitPoints}/{_lastHitPointsMax}";
+        }
+
+        /// <summary>
+        /// NPC bars sit in the focus NameCanvas next to the NPC's >NameText<: the numbers copy its layout and go right
+        /// above the name. (Not under the bar itself - its background is rotated 180°, the text came out mirrored.)
+        /// The player's bar has no name - there the numbers fill the bar.
+        /// </summary>
+        private TMP_Text CreateHealthNumbersText()
+        {
+            var textGo = new GameObject("HealthNumbers", typeof(RectTransform));
+            textGo.layer = gameObject.layer;
+            var rect = (RectTransform)textGo.transform;
+            var text = textGo.AddComponent<TextMeshProUGUI>();
+            GothicText.Apply(text);
+            text.alignment = TextAlignmentOptions.Center;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.raycastTarget = false;
+
+            var nameText = FindNameText();
+            if (nameText != null)
+            {
+                var nameRect = (RectTransform)nameText.transform;
+                rect.SetParent(nameRect.parent, false);
+                rect.anchorMin = nameRect.anchorMin;
+                rect.anchorMax = nameRect.anchorMax;
+                rect.pivot = nameRect.pivot;
+                rect.sizeDelta = nameRect.sizeDelta;
+                rect.localRotation = nameRect.localRotation;
+                rect.localScale = nameRect.localScale;
+                _healthNumbersNameRect = nameRect;
+                _healthNumbersBaseFontSize = nameText.fontSize;
+                PlaceHealthNumbers(text);
+                return text;
+            }
+
+            rect.SetParent(_background.transform, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 1f;
+            text.fontSizeMax = 200f;
+            return text;
+        }
+
+        /// <summary>
+        /// Same font size as the name, right above it.
+        /// </summary>
+        private void PlaceHealthNumbers(TMP_Text text)
+        {
+            if (text == null || _healthNumbersNameRect == null)
+                return;
+
+            text.fontSize = _healthNumbersBaseFontSize;
+            ((RectTransform)text.transform).anchoredPosition = _healthNumbersNameRect.anchoredPosition +
+                Vector2.up * _healthNumbersNameRect.rect.height;
+        }
+
+        /// <summary>
+        /// "-12 HP" next to the hero's bar (option "hitNumbers", like the numbers over NPCs). Starts at the bar's right
+        /// end - found via its corners in canvas space, the bar's background can be rotated.
+        /// </summary>
+        private void ShowHeroHitNumber(int amount, string unit)
+        {
+            if (_configService.Gothic.GetInt(Constants.IniNames.HitNumbers, 0) != 1 || !_background.enabled)
+                return;
+
+            var parentCanvas = GetComponentInParent<Canvas>();
+            var canvas = parentCanvas != null ? parentCanvas.rootCanvas : null;
+            if (canvas == null)
+            {
+                Logger.LogWarning("[StatusBarAdapter] Hero bar has no canvas - no hit numbers.", LogCat.Ui);
+                return;
+            }
+
+            var canvasRect = (RectTransform)canvas.transform;
+            var corners = new Vector3[4];
+            _background.rectTransform.GetWorldCorners(corners);
+            var right = float.MinValue;
+            var bottom = float.MaxValue;
+            var top = float.MinValue;
+            foreach (var corner in corners)
+            {
+                var local = canvasRect.InverseTransformPoint(corner);
+                right = Mathf.Max(right, local.x);
+                bottom = Mathf.Min(bottom, local.y);
+                top = Mathf.Max(top, local.y);
+            }
+
+            var barHeight = top - bottom;
+            var anchor = canvasRect.TransformPoint(new Vector3(right + barHeight * 0.5f, (top + bottom) / 2f, 0f));
+            FloatingUiHitNumber.Spawn(canvasRect, anchor, barHeight, amount, unit);
+        }
+
+        private TMP_Text FindNameText()
+        {
+            for (var parent = transform.parent; parent != null; parent = parent.parent)
+            {
+                var nameTransform = parent.Find(_nameTextName);
+                if (nameTransform != null)
+                    return nameTransform.GetComponent<TMP_Text>();
+            }
+            return null;
+        }
+
+        private void OnPlayerPrefUpdated(string key, object value)
+        {
+            if (key == Constants.IniNames.HealthNumbers && _statusType == StatusType.Health && _owner != null)
+                UpdateHealthNumbers();
         }
 
         private IEnumerator HandleDiveValue()

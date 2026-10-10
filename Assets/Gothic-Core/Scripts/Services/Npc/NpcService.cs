@@ -676,6 +676,10 @@ namespace Gothic.Core.Services.Npc
                 {
                     ReEnableNpc(npcContainer);
                 }
+
+                // "-12 HP" numbers over the head (our settings menu). Not for the hero - you don't see your own head.
+                if (!npcContainer.Vob.Player && npcLoader.GetComponent<NpcHitNumbers>() == null)
+                    npcLoader.gameObject.AddComponent<NpcHitNumbers>().Init(npcLoader, _configService);
             }
         }
         

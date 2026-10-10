@@ -42,6 +42,9 @@ namespace Gothic.VR.Adapters
 
         [SerializeField] private GameObject _nameCanvas;
 
+        private const string _nameTextName = "NameText";
+        private TMP_Text _nameText;
+
         // The amount the shown name was made with - a stack changing while hovered (split) updates the name.
         private int _shownAmount = -1;
 
@@ -204,6 +207,22 @@ namespace Gothic.VR.Adapters
             return GetComponentInParent<VobLoader>()?.Container?.Vob is ZenKit.Vobs.IItem item ? item.Amount : -1;
         }
 
+        /// <summary>
+        /// The canvas can hold more texts (e.g. HP numbers on the health bar) - the name goes into >NameText<.
+        /// </summary>
+        private TMP_Text GetNameText()
+        {
+            if (_nameText != null)
+                return _nameText;
+
+            var nameTextTransform = _nameCanvas.transform.FindChildRecursively(_nameTextName);
+            if (nameTextTransform != null)
+                _nameText = nameTextTransform.GetComponent<TMP_Text>();
+            if (_nameText == null)
+                _nameText = _nameCanvas.GetComponentInChildren<TMP_Text>();
+            return _nameText;
+        }
+
         private void SetFocusName()
         {
             _nameCanvas.SetActive(true);
@@ -211,7 +230,7 @@ namespace Gothic.VR.Adapters
             var vobContainer = GetComponentInParent<VobLoader>()?.Container;
             if (vobContainer != null)
             {
-                _nameCanvas.GetComponentInChildren<TMP_Text>().text = vobContainer.Props.GetFocusName();
+                GetNameText().text = vobContainer.Props.GetFocusName();
                 _shownAmount = GetShownItemAmount();
                 return;
             }
@@ -219,7 +238,7 @@ namespace Gothic.VR.Adapters
             var npcLoader = GetComponentInParent<NpcLoader>();
             if (npcLoader != null)
             {
-                _nameCanvas.GetComponentInChildren<TMP_Text>().text = npcLoader.Npc.GetUserData().PrefabProps.GetFocusName();
+                GetNameText().text = npcLoader.Npc.GetUserData().PrefabProps.GetFocusName();
                 return;
             }
         }

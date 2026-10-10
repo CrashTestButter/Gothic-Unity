@@ -74,6 +74,18 @@ namespace Gothic.Core.Const
         public const string SceneDefaultWorld = "DefaultWorld";
         public const string SceneLab = "Lab";
 
+        /// <summary>
+        /// Gothic.ini keys of our own menu options (written by the settings menu, 0 = off, 1 = on).
+        /// </summary>
+        public static class IniNames
+        {
+            public const string HitNumbers = "hitNumbers";
+            public const string HealthNumbers = "healthNumbers";
+            // Slider 0...1 for the "-X HP" numbers: 0 = smallest (default size), 1 = HitNumbersMaxScale times bigger.
+            public const string HitNumbersSize = "hitNumbersSize";
+            public const float HitNumbersMaxScale = 3f;
+        }
+
         // Water settings
         public static readonly int ShaderPropertyWaterEffectToggle = Shader.PropertyToID("_UnderwaterEffect");
         

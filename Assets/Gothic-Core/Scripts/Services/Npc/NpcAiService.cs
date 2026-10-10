@@ -474,6 +474,16 @@ namespace Gothic.Core.Services.Npc
 
             var props = npc.GetUserData().Props;
 
+            // VR: the hero moves (BS_RUN) all the time, also while fighting right next to the NPC. The attack loops
+            // (ZS_Attack/ZS_Orc_Attack/ZS_MM_Attack) give up after Npc_GetStateTime > 10 while the target runs - orcs
+            // chased, arrived and put their weapon away. Close by = caught, like vanilla resets the time when the
+            // target stops running.
+            if (IsHeroCloseInAttackLoop(npc, props))
+            {
+                props.StateTime = 0;
+                return 0;
+            }
+
             if (IsChasingRunningHero(props))
                 return (int)(props.StateTime * _chaseStateTimeScale);
 
@@ -502,6 +512,36 @@ namespace Gothic.Core.Services.Npc
             return props.TargetNpc != null && hero != null && props.TargetNpc.Index == hero.Index &&
                    hero.GetUserData()?.Props.BodyState == VmGothicEnums.BodyState.BsRun;
         }
+
+        private bool IsHeroCloseInAttackLoop(NpcInstance npc, NpcProperties props)
+        {
+            if (_attackLoopIndices == null)
+            {
+                var vm = _gameStateService.GothicVm;
+                _attackLoopIndices = new HashSet<int>();
+                foreach (var name in _attackLoopNames)
+                {
+                    var symbol = vm.GetSymbolByName(name);
+                    if (symbol != null)
+                        _attackLoopIndices.Add(symbol.Index);
+                }
+            }
+            if (!_attackLoopIndices.Contains(props.StateLoop))
+                return false;
+
+            var hero = _gameStateService.GothicVm.GlobalHero as NpcInstance;
+            if (hero == null || props.TargetNpc == null || props.TargetNpc.Index != hero.Index)
+                return false;
+
+            var npcGo = npc.GetUserData()?.Go;
+            var heroGo = hero.GetUserData()?.Go;
+            return npcGo != null && heroGo != null &&
+                   Vector3.Distance(npcGo.transform.position, heroGo.transform.position) < _caughtHeroDistance;
+        }
+
+        private static readonly string[] _attackLoopNames = { "ZS_ATTACK_LOOP", "ZS_ORC_ATTACK_LOOP", "ZS_MM_ATTACK_LOOP" };
+        private const float _caughtHeroDistance = 4f;
+        private HashSet<int> _attackLoopIndices;
 
         /// <summary>
         /// DeveloperConfig.EnableChaseGiveUpCooldown: an attack loop on the hero ended (he got away: too far, or ran too

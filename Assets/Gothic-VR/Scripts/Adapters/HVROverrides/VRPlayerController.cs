@@ -44,6 +44,10 @@ namespace Gothic.VR.Adapters.HVROverrides
         // Horizontal speed (m/s) for BS_WALK/BS_RUN. Moving in VR equals the hero's default run in Gothic.
         private const float _bodyStateWalkSpeed = 0.2f;
         private const float _bodyStateRunSpeed = 1f;
+        private const float _stickyRunSeconds = 1.5f;
+        private const float _teleportJumpDistance = 1.5f;
+        private float _lastRunTime = float.MinValue;
+        private Vector3 _lastBodyStatePosition;
 
         protected override void Start()
         {
@@ -128,12 +132,31 @@ namespace Gothic.VR.Adapters.HVROverrides
 
             var velocity = CharacterController.velocity;
             var speed = new Vector2(velocity.x, velocity.z).magnitude;
-            props.BodyState = speed switch
+            var bodyState = speed switch
             {
                 >= _bodyStateRunSpeed => VmGothicEnums.BodyState.BsRun,
                 >= _bodyStateWalkSpeed => VmGothicEnums.BodyState.BsWalk,
                 _ => VmGothicEnums.BodyState.BsStand
             };
+
+            // DeveloperConfig.EnableStickyHeroRun: running is a snapshot of the speed - in VR you slow down in every
+            // turn, and a teleport has no speed at all. ZS_Attack_Loop checks BS_RUN every ~2 s and resets its pursuit
+            // counter whenever the hero isn't running at that moment, so NPCs never gave up a chase. Running (or a
+            // teleport jump) keeps BS_RUN for a moment.
+            if (_configService.Dev.EnableStickyHeroRun)
+            {
+                var position = transform.position;
+                var horizontalJump = new Vector2(position.x - _lastBodyStatePosition.x,
+                    position.z - _lastBodyStatePosition.z).magnitude;
+                _lastBodyStatePosition = position;
+
+                if (bodyState == VmGothicEnums.BodyState.BsRun || horizontalJump >= _teleportJumpDistance)
+                    _lastRunTime = Time.time;
+                else if (Time.time - _lastRunTime < _stickyRunSeconds)
+                    bodyState = VmGothicEnums.BodyState.BsRun;
+            }
+
+            props.BodyState = bodyState;
         }
 
         private void OnDestroy()

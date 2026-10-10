@@ -60,6 +60,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         // NavMesh steering while running (DeveloperConfig.EnableNpcNavMesh), recalculated a few times per second.
         private const float _pathUpdateInterval = 0.2f;
         private const float _unreachableStopDistance = 0.6f;
+        private const float _runStepSeconds = 0.5f;
+        private float _runStepTime;
         private float _nextPathUpdateTime;
         private bool _hasSteerPoint;
         private Vector3 _steerPoint;
@@ -275,6 +277,17 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private void RunTick()
         {
+            // Like the engine's AI_Attack (one step per loop): hand control back to the state loop now and then while
+            // running, so ZS_*_Attack_Loop can check "the target ran > 10 s" during the chase (it gives up, says
+            // $RUNCOWARD, T_WARN in _End). Before, the loop only ran again on arrival - orcs chased all the way and
+            // then put their weapon away right next to the hero. The run animation keeps playing into the next step.
+            _runStepTime += Time.deltaTime;
+            if (_runStepTime >= _runStepSeconds && Props.AnimationQueue.Count == 0)
+            {
+                IsFinishedFlag = true;
+                return;
+            }
+
             var myPosition = NpcContainer.Go.transform.position;
             var targetPosition = _enemyTransform.position;
 

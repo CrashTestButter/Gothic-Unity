@@ -145,6 +145,7 @@ MonoBehaviour:
   EnableThrowableSpells: 1
   EnableBurning: 1
   EnableChaseGiveUpCooldown: 1
+  EnableStickyHeroRun: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1
   EnableNpcNavMesh: 1

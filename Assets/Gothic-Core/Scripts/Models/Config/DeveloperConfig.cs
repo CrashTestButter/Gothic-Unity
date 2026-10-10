@@ -594,6 +594,10 @@ namespace Gothic.Core.Models.Config
                  "hysteresis, the NPC gave up and came back endlessly inside its 20 m senses range.")]
         public bool EnableChaseGiveUpCooldown = true;
 
+        [Tooltip("V1: The VR hero's BS_RUN stays 1.5 s after running slows down, and a teleport counts as running - " +
+                 "ZS_Attack's pursuit counter reset in every turn, NPCs never gave up a chase.")]
+        public bool EnableStickyHeroRun = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

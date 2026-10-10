@@ -139,6 +139,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<NpcInstance, NpcInstance>("AI_TurnAway", AI_TurnAway);
             vm.RegisterExternal<NpcInstance, NpcInstance>("AI_FinishingMove", AI_FinishingMove);
             vm.RegisterExternal<NpcInstance>("AI_StopPointAt", AI_StopPointAt);
+            vm.RegisterExternal<NpcInstance, NpcInstance>("AI_PointAtNpc", AI_PointAtNpc);
             vm.RegisterExternal<NpcInstance, int>("AI_DropItem", AI_DropItem);
             vm.RegisterExternal<NpcInstance, ItemInstance>("AI_TakeItem", AI_TakeItem);
             vm.RegisterExternal<NpcInstance, NpcInstance>("AI_Quicklook", AI_Quicklook);
@@ -730,6 +731,14 @@ namespace Gothic.Core.Domain.Vm
         public void AI_StopPointAt(NpcInstance npc)
         {
             // Stub — NPC pointing-at behavior not yet implemented.
+        }
+
+        /// <summary>
+        /// No pointing arm yet - at least face the target (orcs giving up a chase: AI_PointAtNpc + "$RUNCOWARD").
+        /// </summary>
+        public void AI_PointAtNpc(NpcInstance npc, NpcInstance target)
+        {
+            AI_TurnToNPC(npc, target);
         }
 
         public void AI_DropItem(NpcInstance npc, int itemInstanceId)

@@ -70,6 +70,7 @@ namespace Gothic.VR.Services.Context
                 "HP/MAX on health bars", menuStartY + menuDY * 3));
             vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HEALTH_NUMBERS", Constants.IniNames.HealthNumbers,
                 menuStartY + menuDY * 3));
+            vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * 5));
             vrImmersionMenu.Items.Add(CreateImmersionBackButton(mainMenu));
         }
 
@@ -117,6 +118,23 @@ namespace Gothic.VR.Services.Context
             slider.OnChgSetOptionSection = VRConstants.IniSectionImmersion;
 
             return slider;
+        }
+
+        /// <summary>
+        /// Starts the game again (GameRestartDomain) - e.g. to pick another game profile.
+        /// </summary>
+        private MutableMenuItemInstance CreateRestartButton(AbstractMenuInstance mainMenu, int posY)
+        {
+            var someOptionsMenu = mainMenu.FindMenuRecursive("MENU_OPT_GRAPHICS");
+            var buttonReference = someOptionsMenu?.FindMenuItem("MENUITEM_GRA_BACK", out _);
+            var restartButton = new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_IMMERSION_RESTART", buttonReference);
+
+            restartButton.PosY = posY;
+            restartButton.SetText(0, "Restart game");
+            restartButton.SetOnSelAction(0, MenuItemSelectAction.ExecuteCommand);
+            restartButton.SetOnSelActionS(0, VRConstants.MenuCommandRestartGame);
+
+            return restartButton;
         }
 
         private MutableMenuInstance CreateAccessibilityMenu(AbstractMenuInstance mainMenu)

@@ -48,6 +48,7 @@ namespace Gothic.Core.Services.Npc
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly SaveGameService _saveGameService;
         [Inject] private readonly NpcRoutineService _npcRoutineService;
+        [Inject] private readonly Gothic.Core.Services.Culling.NpcMeshCullingService _npcMeshCullingService;
         [Inject] private readonly PlayerService _playerService;
         [Inject] private readonly WayNetService _wayNetService;
         [Inject] private readonly VobService _vobService;
@@ -288,6 +289,26 @@ namespace Gothic.Core.Services.Npc
             {
                 props.MdmName = data.Body;
             }
+        }
+
+        /// <summary>
+        /// Wld_RemoveNpc: every NPC of this instance leaves the world - out of the NPC cache (Hlp_GetNpc then finds
+        /// nothing, like in the engine), out of the culling, GameObject destroyed. G2's wisp amulet removes its wisp
+        /// on unequip and before spawning a new one - wisps piled up without it.
+        /// </summary>
+        public void ExtWldRemoveNpc(int instanceId)
+        {
+            var removed = _multiTypeCacheService.NpcCache.Where(i => i.Instance.Index == instanceId).ToList();
+            foreach (var npc in removed)
+            {
+                _npcMeshCullingService.RemoveCullingEntry(npc.Instance);
+                _multiTypeCacheService.NpcCache.Remove(npc);
+                _timeSkipResets.Remove(npc);
+                if (npc.Go != null)
+                    Object.Destroy(npc.Go);
+            }
+
+            Logger.Log($"[Wld_RemoveNpc] instance={instanceId} - removed {removed.Count} NPC(s)", LogCat.Npc);
         }
 
         public NpcInstance ExtHlpGetNpc(int instanceId)

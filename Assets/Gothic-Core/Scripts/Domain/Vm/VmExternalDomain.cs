@@ -288,6 +288,9 @@ namespace Gothic.Core.Domain.Vm
             RegisterIfDeclared(vm, "Npc_CanSeeSource", () => vm.RegisterExternal<int, NpcInstance>("Npc_CanSeeSource", Npc_CanSeeSource));
             RegisterIfDeclared(vm, "Snd_IsSourceNpc", () => vm.RegisterExternal<int, NpcInstance>("Snd_IsSourceNpc", Snd_IsSourceNpc));
             RegisterIfDeclared(vm, "Npc_GetDistToItem", () => vm.RegisterExternal<int, NpcInstance, ItemInstance>("Npc_GetDistToItem", Npc_GetDistToItem));
+            RegisterIfDeclared(vm, "Npc_GetHeightToItem", () => vm.RegisterExternal<int, NpcInstance, ItemInstance>("Npc_GetHeightToItem", Npc_GetHeightToItem));
+            RegisterIfDeclared(vm, "AI_GotoItem", () => vm.RegisterExternal<NpcInstance, ItemInstance>("AI_GotoItem", AI_GotoItem));
+            RegisterIfDeclared(vm, "Wld_RemoveNpc", () => vm.RegisterExternal<int>("Wld_RemoveNpc", Wld_RemoveNpc));
 
 
             // Print
@@ -2052,10 +2055,46 @@ namespace Gothic.Core.Domain.Vm
             if (item == null)
                 return int.MaxValue;
             var npcGo = npc?.GetUserData()?.Go;
-            var itemGo = item.UserData is VobContainer itemContainer ? itemContainer.Go : null;
+            // After Wld_DetectItem 'item' is only the instance data - the detected world item gives the position.
+            var itemGo = _npcHelperService.GetWorldItemContainer(npc, item)?.Go;
             if (npcGo == null || itemGo == null)
                 return 0;
             return (int)(UnityEngine.Vector3.Distance(npcGo.transform.position, itemGo.transform.position) * 100f);
+        }
+
+        /// <summary>
+        /// Height difference (cm) between the NPC and a world item - G2's wisp ignores items more than 5 m above/below.
+        /// </summary>
+        public int Npc_GetHeightToItem(NpcInstance npc, ItemInstance item)
+        {
+            var npcGo = npc?.GetUserData()?.Go;
+            var itemGo = _npcHelperService.GetWorldItemContainer(npc, item)?.Go;
+            var height = npcGo == null || itemGo == null
+                ? int.MaxValue
+                : (int)(UnityEngine.Mathf.Abs(npcGo.transform.position.y - itemGo.transform.position.y) * 100f);
+            return LogInstantExternal(nameof(Npc_GetHeightToItem), height, npc, item);
+        }
+
+        /// <summary>
+        /// Walks to a world item (G2's wisp shows the hero where items are).
+        /// </summary>
+        public void AI_GotoItem(NpcInstance npc, ItemInstance item)
+        {
+            var npcContainer = npc?.GetUserData();
+            var itemContainer = _npcHelperService.GetWorldItemContainer(npc, item);
+            if (npcContainer == null || itemContainer?.Go == null)
+            {
+                Logger.Log($"[AI_GotoItem] {npc?.GetName(NpcNameSlot.Slot0)}: no world item for '{item?.Name}' - skipped", LogCat.Ai);
+                return;
+            }
+
+            npcContainer.Props.AnimationQueue.Enqueue(
+                new Gothic.Core.Domain.Npc.Actions.AnimationActions.GoToItem(new AnimationAction(), npcContainer, itemContainer.Go));
+        }
+
+        public void Wld_RemoveNpc(int npcInstance)
+        {
+            _npcService.ExtWldRemoveNpc(npcInstance);
         }
 
         private bool IsHero(NpcInstance npc)

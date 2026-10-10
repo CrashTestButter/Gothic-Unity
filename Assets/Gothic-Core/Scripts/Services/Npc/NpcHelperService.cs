@@ -243,6 +243,27 @@ namespace Gothic.Core.Services.Npc
             return (int)(Vector3.Distance(npcGo.transform.position, waypoint.Position) * 100);
         }
 
+        // The world item Wld_DetectItem found, per NPC - scripts only get its instance data (no position) as 'item'.
+        private readonly Dictionary<int, VobContainer> _detectedItems = new();
+
+        /// <summary>
+        /// The world item behind 'item' (e.g. for AI_GotoItem/Npc_GetDistToItem after Wld_DetectItem): its own container,
+        /// or the one this NPC detected last if it is that item.
+        /// </summary>
+        public VobContainer GetWorldItemContainer(NpcInstance npc, ItemInstance item)
+        {
+            if (item == null)
+                return null;
+            if (item.UserData is VobContainer own && own.Go != null)
+                return own;
+            if (npc == null || !_detectedItems.TryGetValue(npc.Index, out var detected) || detected?.Go == null ||
+                detected.Vob is not IItem detectedItem)
+                return null;
+
+            var detectedName = !string.IsNullOrEmpty(detectedItem.Instance) ? detectedItem.Instance : detectedItem.Name;
+            return _vmCacheService.TryGetItemData(detectedName)?.Index == item.Index ? detected : null;
+        }
+
         public bool ExtWldDetectItem(NpcInstance npc, int flags)
         {
             var npcGo = npc.GetUserData()?.Go;
@@ -252,6 +273,7 @@ namespace Gothic.Core.Services.Npc
             const float searchRadius = 20f;
 
             ItemInstance nearestData = null;
+            VobContainer nearestContainer = null;
             var nearestDist = float.MaxValue;
 
             foreach (var container in _multiTypeCacheService.VobCache)
@@ -281,6 +303,7 @@ namespace Gothic.Core.Services.Npc
 
                 nearestDist = dist;
                 nearestData = itemData;
+                nearestContainer = container;
             }
 
             if (nearestData == null)
@@ -290,6 +313,7 @@ namespace Gothic.Core.Services.Npc
             }
 
             _gameStateService.GothicVm.GlobalItem = nearestData;
+            _detectedItems[npc.Index] = nearestContainer;
             Logger.Log($"[Wld_DetectItem] {npc.GetName(NpcNameSlot.Slot0)} found '{nearestData.Name}' flags={flags} dist={nearestDist:F1}m", LogCat.Npc);
             return true;
         }

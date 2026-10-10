@@ -70,6 +70,10 @@ namespace Gothic.VR.Services.Context
                 "HP/MAX on health bars", menuStartY + menuDY * 3));
             vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HEALTH_NUMBERS", Constants.IniNames.HealthNumbers,
                 menuStartY + menuDY * 3));
+            vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "MARVIN", "Marvin",
+                "Show the Marvin panel (needs Marvin mode)", menuStartY + menuDY * 4));
+            vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "MARVIN", VRConstants.IniNames.MarvinPanel,
+                menuStartY + menuDY * 4, 1));
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * 5));
             vrImmersionMenu.Items.Add(CreateImmersionBackButton(mainMenu));
         }
@@ -89,14 +93,14 @@ namespace Gothic.VR.Services.Context
         }
 
         private MutableMenuItemInstance CreateToggleChoice(AbstractMenuInstance gameMenu, string id, string iniName,
-            int posY)
+            int posY, int defaultValue = 0)
         {
             // Gothic's own subtitles choice gives the "no|yes" values in the game's language.
             var subtitlesChoice = gameMenu.FindMenuItem("MENUITEM_GAME_SUB_TITLES_CHOICE", out _);
             var item = new MutableMenuItemInstance($"MENUITEM_GOTHIC_OPT_VR_IMMERSION_{id}_CHOICE", subtitlesChoice);
 
             item.PosY = posY;
-            item.SetUserFloat(3, 0); // Off if no INI value exists.
+            item.SetUserFloat(3, defaultValue); // 0 = off, 1 = on if no INI value exists.
             item.SetText(0, subtitlesChoice?.GetText(0) ?? "Off|On");
             item.OnChgSetOption = iniName;
             item.OnChgSetOptionSection = VRConstants.IniSectionImmersion;

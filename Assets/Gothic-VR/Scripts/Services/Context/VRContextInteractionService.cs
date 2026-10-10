@@ -44,6 +44,7 @@ namespace Gothic.VR.Services.Context
         private const string _contextName = "VR";
 
         private VRPlayerController _playerController;
+        private GameObject _marvinGo;
 
         public VRContextInteractionService()
         {
@@ -74,6 +75,7 @@ namespace Gothic.VR.Services.Context
             {
                 SetRenderDistance(_configService.Gothic.IniVisualRange);
                 _playerController.SetNormalControls();
+                ApplyMarvinVisibility();
             });
             GlobalEventDispatcher.PlayerPrefUpdated.AddListener(PlayerPrefsUpdated);
         }
@@ -122,7 +124,8 @@ namespace Gothic.VR.Services.Context
 
             // Marvin Mode
             var marvinGO = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!;
-            marvinGO.gameObject.SetActive(developerConfig.ActivateMarvinMode);
+            _marvinGo = marvinGO.gameObject;
+            _marvinGo.SetActive(developerConfig.ActivateMarvinMode);
         }
         
         /// <summary>
@@ -147,6 +150,25 @@ namespace Gothic.VR.Services.Context
             {
                 SetRenderDistance(int.Parse((string)value));
             }
+            else if (key == VRConstants.IniNames.MarvinPanel)
+            {
+                ApplyMarvinVisibility();
+            }
+        }
+
+        /// <summary>
+        /// Our Immersion option "Marvin" (Gothic.ini, on by default) hides/shows the Marvin panel - only when
+        /// DeveloperConfig.ActivateMarvinMode allows Marvin at all. The panel can't do it itself: it is inactive then.
+        /// </summary>
+        private void ApplyMarvinVisibility()
+        {
+            if (_marvinGo == null || _configService.Gothic == null)
+                return;
+
+            var isShown = _configService.Dev.ActivateMarvinMode &&
+                          _configService.Gothic.GetInt(VRConstants.IniNames.MarvinPanel, 1) == 1;
+            _marvinGo.SetActive(isShown);
+            Logger.Log($"[VRContextInteractionService] Marvin panel {(isShown ? "shown" : "hidden")}", LogCat.VR);
         }
 
         private void SetRenderDistance(int value)

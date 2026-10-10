@@ -14,6 +14,8 @@ namespace Gothic.VR
             
             // Immersion
             public const string Microphone = "microphone";
+            // 0 = Marvin panel hidden, 1 = shown (default) - only with DeveloperConfig.ActivateMarvinMode.
+            public const string MarvinPanel = "marvinPanel";
         }
         
         public const string IniSectionAccessibility = "GOTHIC_VR_ACCESSIBILITY";

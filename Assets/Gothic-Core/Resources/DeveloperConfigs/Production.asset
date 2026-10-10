@@ -101,6 +101,8 @@ MonoBehaviour:
   EnableScavengerGuildCheat: 0
   EnableTimeSkip: 0
   MarvinTeleportWaypoint: 
+  EnableMarvinBlink: 1
+  EnableMarvinFallRescue: 1
   MarvinSpawnNpcSymbol: 
   MarvinGiveItems: 
   EnableNpcCombatCombos: 1

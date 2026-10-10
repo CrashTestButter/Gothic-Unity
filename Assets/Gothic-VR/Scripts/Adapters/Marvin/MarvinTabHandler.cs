@@ -55,6 +55,9 @@ namespace Gothic.VR.Adapters.Marvin
             if (_configService.Dev.EnableTimeSkip)
                 buttons.Add(("Skip Time +30min", SkipTime30Min));
 
+            if (_configService.Dev.EnableMarvinBlink)
+                buttons.Add(("TP +4 m", CheatBlinkForward));
+
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinTeleportWaypoint))
                 buttons.Add(($"TP → {_configService.Dev.MarvinTeleportWaypoint}", CheatTeleportToWaypoint));
 
@@ -123,6 +126,40 @@ namespace Gothic.VR.Adapters.Marvin
             }
             _contextInteractionService.TeleportPlayerTo(wp.Position, wp.Rotation);
             Logger.Log($"[MarvinMode] Teleported to '{wpName}'", LogCat.Ui);
+        }
+
+        private const float _blinkDistance = 4f;
+        private const float _blinkFloorSearchHeight = 3f;
+
+        /// <summary>
+        /// DeveloperConfig.EnableMarvinBlink - like Gothic's Marvin key K: 4 m forward where the hero looks, only
+        /// horizontally (through doors and walls). The floor below the target is searched from a bit above, otherwise
+        /// the height stays. Held items stay in the hands (no TeleportPlayerTo). Falling out: MarvinFallRescue.
+        /// </summary>
+        private void CheatBlinkForward()
+        {
+            var player = _contextInteractionService.GetCurrentPlayerController();
+            var cam = Camera.main;
+            if (player == null || cam == null)
+                return;
+
+            var forward = cam.transform.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f)
+                forward = player.transform.forward;
+            forward.y = 0f;
+            forward.Normalize();
+
+            var target = player.transform.position + forward * _blinkDistance;
+            if (Physics.Raycast(target + Vector3.up * _blinkFloorSearchHeight, Vector3.down, out var hit,
+                    _blinkFloorSearchHeight * 2f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                target.y = hit.point.y;
+
+            var controller = player.GetComponent<Gothic.VR.Adapters.HVROverrides.VRPlayerController>();
+            if (controller?.Teleporter == null)
+                return;
+            controller.Teleporter.Teleport(target);
+            Logger.Log($"[MarvinMode] Blink {_blinkDistance:F0} m forward to {target}", LogCat.Ui);
         }
 
         private void CheatSpawnNpc()

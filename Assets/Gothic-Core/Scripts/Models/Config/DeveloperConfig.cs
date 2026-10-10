@@ -400,6 +400,14 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Waypoint name for 'Teleport to WP' Marvin button. E.g. GRYD_072 or START. Leave empty to disable.")]
         public string MarvinTeleportWaypoint;
 
+        [Tooltip("Show 'TP +4 m' button in MarvinMode panel (Gothic's Marvin key K): 4 m forward where the hero looks, " +
+                 "horizontally only - through doors and walls.")]
+        public bool EnableMarvinBlink = true;
+
+        [Tooltip("MarvinMode only: no floor below the hero for 2 s (fell out of the world) - back to the world's START " +
+                 "point.")]
+        public bool EnableMarvinFallRescue = true;
+
         [Tooltip("Daedalus symbol name of NPC to spawn next to player via Marvin 'Spawn NPC' button. E.g. SH, PC_THIEF. Leave empty to disable.")]
         public string MarvinSpawnNpcSymbol = string.Empty;
 
@@ -630,6 +638,7 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: After the hero slept (PC_Sleep's Wld_SetTime, Marvin's time skip) every living NPC starts over " +
                  "like after culling: routine waypoint of the new time, no aggro, weapon away.")]
         public bool EnableTimeSkipResetsNpcs = true;
+
 
         [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]

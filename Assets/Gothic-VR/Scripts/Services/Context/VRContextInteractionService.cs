@@ -67,6 +67,8 @@ namespace Gothic.VR.Services.Context
                 // DeveloperConfig.EnableHeroPersonalSpace (checked at runtime): NPC bodies stay out of the camera.
                 new UnityEngine.GameObject("_HeroPersonalSpace").AddComponent<Gothic.Core.Adapters.Npc.HeroPersonalSpace>();
                 ApplyHudOnTop();
+                // DeveloperConfig.EnableMarvinFallRescue (checked at runtime, Marvin mode only): out of the world -> START.
+                new UnityEngine.GameObject("_MarvinFallRescue").AddComponent<Gothic.VR.Adapters.Marvin.MarvinFallRescue>();
             });
             GlobalEventDispatcher.ScriptExitGame.AddListener(VRCinema.QuitAfterVideos);
             // DeveloperConfig.EnableVrTrade: the trade counter between the hero and the trader.

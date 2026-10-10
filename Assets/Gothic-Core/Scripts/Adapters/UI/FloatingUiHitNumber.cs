@@ -13,6 +13,7 @@ namespace Gothic.Core.Adapters.UI
         // In bar heights.
         private const float _riseHeights = 2f;
         private const float _fontSizeInBarHeights = 1.2f;
+        private const float _inFrontOfBar = -0.5f;
 
         private TextMeshProUGUI _text;
         private RectTransform _rect;
@@ -42,7 +43,8 @@ namespace Gothic.Core.Adapters.UI
             _rect.localRotation = Quaternion.identity;
             _rect.localScale = Vector3.one;
             var local = canvas.InverseTransformPoint(anchorWorldPosition);
-            _rect.localPosition = new Vector3(local.x, local.y, 0f);
+            // In front of the bar (z-fighting otherwise).
+            _rect.localPosition = new Vector3(local.x, local.y, _inFrontOfBar);
             _startPosition = _rect.anchoredPosition;
             _riseDistance = barHeight * _riseHeights * sizeScale;
 

@@ -36,6 +36,7 @@ namespace Gothic.Core.Adapters.UI.StatusBars
         private int _lastMana = int.MinValue;
         private int _healthOwnerWaitFrames;
         private const string _nameTextName = "NameText";
+        private const float _textInFrontOfBar = -0.5f;
         private TMP_Text _healthNumbers;
         private bool _isHealthNumbersShown;
         private RectTransform _healthNumbersNameRect;
@@ -234,6 +235,8 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+            // In front of the bar - on it, the text z-fought with the bar's own image.
+            rect.anchoredPosition3D = new Vector3(0f, 0f, _textInFrontOfBar);
             text.enableAutoSizing = true;
             text.fontSizeMin = 1f;
             text.fontSizeMax = 200f;

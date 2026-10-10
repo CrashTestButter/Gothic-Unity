@@ -1119,6 +1119,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             projectile.OnWorldHit = (position, normal) =>
             {
                 SpawnCollideFx(meshService, vmCacheService, audioService, particleService, baseFx?.EmFxCollStatS, investLevel, position, normal);
+                // A fire storm on the ground: its burning area still damages the NPCs around (FightService).
+                if (mfxName != null && SpellConst.SpreadEffectNames.Contains(mfxName))
+                    GlobalEventDispatcher.SpellSpreadHit.Invoke(hero, position, damage);
                 Destroy(projectileGo);
             };
             projectile.OnExpired = () => Destroy(projectileGo);
@@ -1281,7 +1284,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             var mfxName = GetSpellMfxName(spellId);
             if (mfxName == null) return 0;
             var sym = _gameStateService.GothicVm.GetSymbolByName($"SPL_DAMAGE_{mfxName.ToUpper()}");
-            return sym?.GetInt(0) ?? 0;
+            // The engine's value: SPELL_<effect>.damage_per_level. G2's fire storm rune has the effect "Pyrokinesis"
+            // (SPL_Damage_Firestorm, no SPL_DAMAGE_PYROKINESIS) - it did 0 damage.
+            return sym?.GetInt(0) ?? _vmCacheService.TryGetSpellData(spellId)?.DamagePerLevel ?? 0;
         }
 
         private string GetSpellMfxName(int spellId)

@@ -739,7 +739,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             if (string.IsNullOrEmpty(mfxName))
                 return 0;
             var dmgSym = GameStateService.GothicVm.GetSymbolByName($"SPL_DAMAGE_{mfxName.ToUpper()}");
-            var baseDamage = dmgSym?.GetInt(0) ?? 0;
+            // Fallback: the engine's SPELL_<effect>.damage_per_level (G2 fire storm: effect "Pyrokinesis").
+            var baseDamage = dmgSym?.GetInt(0) ??
+                             VmCacheService.TryGetSpellData(NpcContainer.ActiveSpell)?.DamagePerLevel ?? 0;
             return baseDamage * NpcContainer.ActiveSpellLevel;
         }
 

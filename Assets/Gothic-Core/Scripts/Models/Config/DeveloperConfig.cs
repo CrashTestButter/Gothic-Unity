@@ -619,6 +619,11 @@ namespace Gothic.Core.Models.Config
                  "RangedCombatRangeMultiplier 0.8): weapon away, back to the routine (vanilla: only at 35 m).")]
         public bool EnableRangedGiveUp = true;
 
+        [Tooltip("V1: A fire storm's burning area damages everyone within 2 m of the impact (also on the ground), not " +
+                 "only the NPC hit directly.")]
+        public bool EnableSpellSpreadDamage = true;
+
+
         [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
         public bool EnableHeroPersonalSpace = true;

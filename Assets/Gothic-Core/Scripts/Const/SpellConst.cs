@@ -36,5 +36,21 @@ namespace Gothic.Core.Const
         /// instance in vanilla Gothic) — used only when no SPL_RANGE_<NAME> symbol is found at runtime.
         /// </summary>
         public const int DefaultAoeRangeCm = 1000;
+
+        /// <summary>
+        /// Spells whose impact leaves a burning area (spellFX_*_SPREAD, emFXCreate of the collide effect) - the engine
+        /// damages everyone it reaches, not only the NPC the projectile hit. Also when it lands on the ground.
+        /// </summary>
+        public static readonly HashSet<string> SpreadEffectNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Firestorm",
+            // G2: the effect name of a fire storm rune (spellFX_Pyrokinesis with MFX_Firestorm_* visuals).
+            "Pyrokinesis"
+        };
+
+        /// <summary>
+        /// Radius (m) of the spread area around the impact. Not in the scripts (engine/VFX side) - chosen by feel.
+        /// </summary>
+        public const float SpreadRangeMeters = 2f;
     }
 }

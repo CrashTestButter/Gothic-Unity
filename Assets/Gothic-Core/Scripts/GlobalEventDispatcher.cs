@@ -83,6 +83,15 @@ namespace Gothic.Core
         /// int          - total spell damage (SPL_DAMAGE_* * level, already calculated)
         /// </summary>
         public static readonly UnityEvent<NpcContainer, NpcContainer, Vector3, int> SpellHit = new();
+
+        /// <summary>
+        /// A spread spell (SpellConst.SpreadEffectNames, fire storm) landed on the ground/a wall - its burning area
+        /// damages the NPCs around.
+        /// NpcContainer - caster
+        /// Vector3      - impact position
+        /// int          - total spell damage
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer, Vector3, int> SpellSpreadHit = new();
         // NPC landed after a fall higher than FALLDOWN_HEIGHT (damage already minus PROT_FALL).
         public static readonly UnityEvent<NpcContainer, int> FallDamage = new();
 

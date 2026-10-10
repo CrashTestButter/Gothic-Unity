@@ -46,6 +46,7 @@ namespace Gothic.Core.Services.Npc
         {
             GlobalEventDispatcher.FightHit.AddListener(OnHit);
             GlobalEventDispatcher.SpellHit.AddListener(OnSpellHit);
+            GlobalEventDispatcher.SpellSpreadHit.AddListener((caster, pos, damage) => ApplySpreadHit(caster, pos, damage, null));
             GlobalEventDispatcher.FallDamage.AddListener(OnFallDamage);
             GlobalEventDispatcher.RangedHit.AddListener(OnRangedHit);
             GlobalEventDispatcher.FightFinishingMove.AddListener(OnFinishingMove);
@@ -100,6 +101,41 @@ namespace Gothic.Core.Services.Npc
             }
 
             ApplySpellHit(caster, target, pos, damage);
+
+            if (mfxName != null && SpellConst.SpreadEffectNames.Contains(mfxName))
+                ApplySpreadHit(caster, pos, damage, target);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableSpellSpreadDamage: the burning area of a fire storm (spellFX_Firestorm_SPREAD) damages
+        /// everyone within SpellConst.SpreadRangeMeters of the impact - only the NPC hit directly took damage, one
+        /// right next to the flames on the ground nothing.
+        /// </summary>
+        private void ApplySpreadHit(NpcContainer caster, Vector3 pos, int damage, NpcContainer directTarget)
+        {
+            if (!_fightConfigService.Dev.EnableSpellSpreadDamage || caster == null)
+                return;
+
+            var mfxName = GetSpellMfxName(caster.ActiveSpell);
+            var hitCount = 0;
+            foreach (var candidate in _multiTypeCacheService.NpcCache)
+            {
+                if (candidate == caster || candidate == directTarget || candidate.Go == null ||
+                    !candidate.Go.activeInHierarchy)
+                    continue;
+                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                    continue;
+                if (Vector3.Distance(pos, candidate.Go.transform.position) > SpellConst.SpreadRangeMeters)
+                    continue;
+
+                ApplySpellHit(caster, candidate, candidate.Go.transform.position, damage);
+                if (_fightConfigService.Dev.EnableSpellBodyFx && mfxName != null)
+                    _particleService.PlaySpellHitFx(mfxName, candidate);
+                hitCount++;
+            }
+
+            Logger.Log($"[FightService.SpellSpread] {caster.Instance.GetName(NpcNameSlot.Slot0)}'s '{mfxName}' area " +
+                       $"({SpellConst.SpreadRangeMeters:F0} m) hit {hitCount} more NPC(s), dmg={damage}", LogCat.Fight);
         }
 
         private void ApplySpellHit(NpcContainer caster, NpcContainer target, Vector3 pos, int damage)

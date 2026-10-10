@@ -151,6 +151,7 @@ MonoBehaviour:
   EnablePursuitWarn: 1
   EnableNpcRunAttack: 1
   EnableRangedGiveUp: 1
+  EnableSpellSpreadDamage: 1
   EnableHeroPersonalSpace: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1

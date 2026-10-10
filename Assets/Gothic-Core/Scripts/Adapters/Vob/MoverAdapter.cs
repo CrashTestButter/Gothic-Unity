@@ -2,6 +2,7 @@ using System.Collections;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
+using Gothic.Core.Models.Container;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
@@ -17,7 +18,7 @@ namespace Gothic.Core.Adapters.Vob
     /// Toggle behavior: Open() moves 0→1, Close() moves 1→0.
     /// Called by wheel/switch state-change propagation via VobService.ActivateMover().
     /// </summary>
-    public class MoverAdapter : MonoBehaviour
+    public class MoverAdapter : MonoBehaviour, IDamageable
     {
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VobService _vobService;
@@ -54,6 +55,18 @@ namespace Gothic.Core.Adapters.Vob
                 Logger.Log($"[MoverAdapter] {mover.Name} init — kf[0]={_keyframes[0].pos} kf[1]={_keyframes[1].pos} dist={Vector3.Distance(_keyframes[0].pos, _keyframes[1].pos):F2} speed={mover.Speed}", LogCat.Vob);
             else
                 Logger.Log($"[MoverAdapter] {mover.Name} init — {_keyframes.Length} keyframes, speed={mover.Speed}", LogCat.Vob);
+        }
+
+        /// <summary>
+        /// Hit by an arrow/bolt/spell: a mover with reactToOnDamage acts like it was triggered.
+        /// </summary>
+        public void OnDamage(NpcContainer attacker)
+        {
+            if (_mover == null || !_mover.ReactToOnDamage)
+                return;
+
+            Logger.Log($"[MoverAdapter] {_mover.Name} hit by a projectile", LogCat.Vob);
+            Toggle();
         }
 
         public void Toggle()

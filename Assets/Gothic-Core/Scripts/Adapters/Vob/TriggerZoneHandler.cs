@@ -1,6 +1,7 @@
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Vobs;
 using Reflex.Attributes;
 using UnityEngine;
@@ -13,7 +14,7 @@ namespace Gothic.Core.Adapters.Vob
     /// Handles zCTrigger: fires Target when the player enters the bounding-box zone.
     /// Also handles programmatic OnTrigger events from other VOBs via ReceiveTrigger().
     /// </summary>
-    public class TriggerZoneHandler : MonoBehaviour
+    public class TriggerZoneHandler : MonoBehaviour, IDamageable
     {
         [Inject] private VobService _vobService;
 
@@ -31,6 +32,28 @@ namespace Gothic.Core.Adapters.Vob
                 Logger.LogWarning($"[TriggerZone] '{_trigger.Name}': received trigger but ReactToOnTrigger=false", LogCat.Vob);
                 return;
             }
+            FireTarget();
+        }
+
+        /// <summary>
+        /// Hit by an arrow/bolt/spell. The projectile itself is an object (RespondToObject), the shooter PC or NPC.
+        /// DamageThreshold isn't checked - the projectile doesn't know its damage.
+        /// </summary>
+        public void OnDamage(NpcContainer attacker)
+        {
+            if (!_trigger.ReactToOnDamage)
+                return;
+
+            var isPlayer = attacker?.Vob != null && attacker.Vob.Player;
+            var isResponding = _trigger.RespondToObject || (isPlayer ? _trigger.RespondToPC : _trigger.RespondToNPC);
+            if (!isResponding)
+            {
+                Logger.Log($"[TriggerZone] '{_trigger.Name}' hit, but doesn't respond to this attacker", LogCat.Vob);
+                return;
+            }
+
+            Logger.Log($"[TriggerZone] '{_trigger.Name}' hit by a projectile (DamageThreshold={_trigger.DamageThreshold})",
+                LogCat.Vob);
             FireTarget();
         }
 

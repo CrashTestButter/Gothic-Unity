@@ -1,6 +1,8 @@
 #if GOTHIC_HVR_INSTALLED
 using System;
+using System.Collections.Generic;
 using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Const;
 using Gothic.Core.Models.Container;
 using UnityEngine;
@@ -31,6 +33,11 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private const float _homingTargetHeight = 0.4f;
         private static readonly RaycastHit[] _hits = new RaycastHit[16];
 
+        private static readonly (IDamageable damageable, float distance)[] _triggerHits =
+            new (IDamageable, float)[16];
+        private static int _triggerHitCount;
+
+        private readonly HashSet<IDamageable> _damaged = new();
         private float _travelled;
         private bool _isDone;
 
@@ -51,14 +58,23 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (distance <= 0f)
                 return;
 
-            if (TryGetHit(step / distance, distance, out var hit, out var npc))
+            var isHit = TryGetHit(step / distance, distance, out var hit, out var npc);
+            DamageTriggersOnTheWay(isHit ? hit.distance : distance);
+
+            if (isHit)
             {
                 _isDone = true;
                 transform.position = hit.distance > 0f ? hit.point : transform.position;
                 if (npc != null)
+                {
                     OnNpcHit?.Invoke(npc, transform.position, hit.normal);
+                }
                 else
+                {
+                    // A solid VOB can react too (zCMover with reactToOnDamage).
+                    DamageOnce(hit.collider.GetComponentInParent<IDamageable>());
                     OnWorldHit?.Invoke(transform.position, hit.normal);
+                }
                 return;
             }
 
@@ -71,6 +87,29 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _isDone = true;
                 OnExpired?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// Triggers crossed in this step before the projectile stopped.
+        /// </summary>
+        private void DamageTriggersOnTheWay(float maxDistance)
+        {
+            for (var i = 0; i < _triggerHitCount; i++)
+            {
+                if (_triggerHits[i].distance <= maxDistance)
+                    DamageOnce(_triggerHits[i].damageable);
+            }
+        }
+
+        /// <summary>
+        /// A trigger volume spans several steps - it reacts once per projectile.
+        /// </summary>
+        private void DamageOnce(IDamageable damageable)
+        {
+            if (damageable == null || !_damaged.Add(damageable))
+                return;
+
+            damageable.OnDamage(Owner);
         }
 
         private void ApplyHoming(float deltaTime)
@@ -95,8 +134,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         {
             nearest = default;
             npc = null;
+            _triggerHitCount = 0;
 
-            var mask = (1 << Constants.DefaultLayer) | (1 << Constants.VobHitbox);
+            // Ignore Raycast only for VOBs that react to damage (oCTriggerScript, mover meshes) - never stops the flight.
+            var mask = (1 << Constants.DefaultLayer) | (1 << Constants.VobHitbox) | (1 << Constants.IgnoreRaycastLayer);
             var count = Physics.SphereCastNonAlloc(transform.position, Radius, direction, _hits, distance, mask,
                 QueryTriggerInteraction.Collide);
 
@@ -112,8 +153,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     if (hitNpc == null || hitNpc == Owner)
                         continue;
                 }
-                else if (hit.collider.isTrigger)
+                else if (hit.collider.isTrigger || hit.collider.gameObject.layer == Constants.IgnoreRaycastLayer)
                 {
+                    // Flies through trigger volumes (and Ignore Raycast VOBs), but remembers them: zCTrigger & co.
+                    // with reactToOnDamage fire when an arrow passes (e.g. the switches in the Sleeper's temple).
+                    var damageable = hit.collider.GetComponentInParent<IDamageable>();
+                    if (damageable != null && _triggerHitCount < _triggerHits.Length)
+                        _triggerHits[_triggerHitCount++] = (damageable, hit.distance);
                     continue;
                 }
 

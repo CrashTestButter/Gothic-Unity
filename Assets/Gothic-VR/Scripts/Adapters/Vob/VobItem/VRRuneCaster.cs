@@ -901,6 +901,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             _spellTarget = null;
             _manaTickTimer = GetManaTickInterval(); // first mana right away
 
+            // Spamming the trigger: whatever the last charge left in the hand goes first - effects stacked up.
+            DestroySpellVfx();
+            DestroyBodyFx();
+
             StartInvestSound(_item.Spell);
             SpawnSpellVfx(handSide);
             SpawnInvestFx(false);
@@ -1015,6 +1019,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             var origin = handGo.transform.position + direction * 0.15f;
             SpawnSpellProjectile(origin, direction, _manaInvested);
             InvokeSpellCast();
+
+            // The charging effects (hand/body, looping) end with the throw - only a cancel removed them before, so
+            // every throw left its fire in the hand and the next charge added more.
+            DestroyBodyFx();
 
             _isCasting = false;
             _isThrowCharged = false;

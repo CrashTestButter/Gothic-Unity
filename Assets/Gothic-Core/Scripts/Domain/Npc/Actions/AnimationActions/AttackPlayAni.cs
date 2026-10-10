@@ -30,6 +30,13 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private bool _comboWindowLogged;
         private bool _hasHitFired;
         private bool _isRangedFollowUp;
+        private bool _isRunAttackPlanned;
+        private bool _isRunAttackActive;
+        private float _runAttackHitTime;
+        private const float _runAttackChance = 0.5f;
+        private const float _runAttackLeadDistance = 0.6f;
+        private const float _runAttackHitFraction = 0.5f;
+        private const float _minRunAttackSeconds = 0.4f;
         private const string _bowReloadAnimName = "t_BowReload";
         private const string _crossbowReloadAnimName = "t_CBowReload";
         private const string _spellShootToStandAnimName = "t_FBTShoot_2_Stand";
@@ -93,6 +100,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return;
             }
             base.Start();
+
+            // DeveloperConfig.EnableNpcRunAttack: this run either ends in a strike out of the run or, like before,
+            // stops in range and the next AI_Attack strikes from a stand.
+            _isRunAttackPlanned = _move == FightAiMove.Run && _configService.Dev.EnableNpcRunAttack &&
+                                  Random.value < _runAttackChance;
         }
 
         private bool IsSwimming()
@@ -198,7 +210,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             switch (_move)
             {
                 case FightAiMove.Run:
-                    RunTick();
+                    if (_isRunAttackActive)
+                        RunAttackTick();
+                    else
+                        RunTick();
                     break;
                 case FightAiMove.Strafe:
                     StrafeTick();
@@ -302,6 +317,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             const float npcVoluminaOffset = 0.3f;
             const float minStopDistance = 1.11f;
             var stopDistance = Mathf.Max(GetWeaponReach() + npcVoluminaOffset, minStopDistance);
+
+            // The strike out of the run starts a bit before the stop distance - the move attack lunges forward.
+            if (_isRunAttackPlanned && toTarget.magnitude <= stopDistance + _runAttackLeadDistance &&
+                TryStartRunAttack())
+                return;
 
             // Already close enough — stop immediately.
             if (toTarget.magnitude <= stopDistance)
@@ -436,11 +456,55 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         }
 
         /// <summary>
+        /// t_<weapon>AttackMove - the engine's strike while running (humans: fist/1h, orcs: 2h, wolves/scavengers/... fist).
+        /// Missing for this weapon/model (e.g. humans with 2h): false, the run stops as before.
+        /// </summary>
+        private bool TryStartRunAttack()
+        {
+            _isRunAttackPlanned = false;
+            var prefix = (VmGothicEnums.WeaponState)Vob.FightMode switch
+            {
+                VmGothicEnums.WeaponState.NoWeapon or VmGothicEnums.WeaponState.Fist => "Fist",
+                VmGothicEnums.WeaponState.W1H => "1h",
+                VmGothicEnums.WeaponState.W2H => "2h",
+                _ => null
+            };
+            if (prefix == null)
+                return false;
+
+            var animName = $"t_{prefix}AttackMove";
+            PrefabProps.AnimationSystem.StopAnimation(Action.String0);
+            if (!PrefabProps.AnimationSystem.PlayAnimation(animName))
+            {
+                PrefabProps.AnimationSystem.PlayAnimation(Action.String0);
+                return false;
+            }
+
+            var duration = Mathf.Max(PrefabProps.AnimationSystem.GetAnimationDuration(animName), _minRunAttackSeconds);
+            _isRunAttackActive = true;
+            ActionEndEventTime = ActionTime + duration;
+            _runAttackHitTime = ActionTime + duration * _runAttackHitFraction;
+            Logger.Log($"[AttackPlayAni] {NpcInstance.GetName(NpcNameSlot.Slot0)} strikes out of the run ({animName})",
+                LogCat.Fight);
+            return true;
+        }
+
+        private void RunAttackTick()
+        {
+            HandleCombatRotation();
+            if (_hasHitFired || ActionTime < _runAttackHitTime)
+                return;
+
+            _hasHitFired = true;
+            TryFireHit();
+        }
+
+        /// <summary>
         /// During the reload the one-frame shot animation is already blending out - that must not end the attack.
         /// </summary>
         protected override void AnimationEnd()
         {
-            if (_isRangedFollowUp && ActionTime < ActionEndEventTime)
+            if ((_isRangedFollowUp || _isRunAttackActive) && ActionTime < ActionEndEventTime)
                 return;
             base.AnimationEnd();
         }
@@ -536,7 +600,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         {
             if (!_configService.Dev.EnableNpcHitDetection)
                 return;
-            if (_move != FightAiMove.Attack && _move != FightAiMove.AttackSide)
+            if (_move != FightAiMove.Attack && _move != FightAiMove.AttackSide && !_isRunAttackActive)
                 return;
 
             var target = _enemy;

@@ -607,6 +607,10 @@ namespace Gothic.Core.Models.Config
                  "and an NPC giving up a chase without a $RUNCOWARD line (orc voice) says $GETOUTOFHERE.")]
         public bool EnablePursuitWarn = true;
 
+        [Tooltip("V1: NPCs and monsters running at the hero sometimes attack out of the run (t_<weapon>AttackMove: " +
+                 "1h/fist humans, orcs, wolves, scavengers, ...) instead of stopping and striking from a stand.")]
+        public bool EnableNpcRunAttack = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

@@ -148,6 +148,7 @@ MonoBehaviour:
   EnableStickyHeroRun: 1
   EnableQuietSenses: 1
   EnablePursuitWarn: 1
+  EnableNpcRunAttack: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1
   EnableNpcNavMesh: 1

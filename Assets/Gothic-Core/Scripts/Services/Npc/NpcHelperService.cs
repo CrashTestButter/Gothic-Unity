@@ -393,6 +393,12 @@ namespace Gothic.Core.Services.Npc
                 return true;
             }
 
+            // DeveloperConfig.EnableQuietSenses: hearing/smell sensed the hero all around within the full senses range
+            // (orcs: 20 m) - also standing still behind them. Sight keeps the full range (in front, or freeLOS);
+            // hearing needs noise (walking/running) within half the range; smell only works close by.
+            if (_configService.Dev.EnableQuietSenses)
+                return CanSenseNpcQuietly(self, other, senses, freeLOS, range, senseRangeMeters);
+
             if ((senses & (VmGothicEnums.NpcSenses.Hear | VmGothicEnums.NpcSenses.Smell)) != 0)
             {
                 // Hearing/smell don't require facing the source (ignore FOV), but sound and scent
@@ -402,6 +408,28 @@ namespace Gothic.Core.Services.Npc
 
             return CanSeeNpc(self, other, freeLOS);
         }
+
+        private bool CanSenseNpcQuietly(NpcInstance self, NpcInstance other, VmGothicEnums.NpcSenses senses,
+            bool freeLOS, float range, float senseRangeMeters)
+        {
+            if ((senses & VmGothicEnums.NpcSenses.See) != 0 && CanSeeNpc(self, other, freeLOS))
+                return true;
+
+            var isAround = (senses & VmGothicEnums.NpcSenses.Smell) != 0 && range <= _smellRangeMeters;
+            if (!isAround && (senses & VmGothicEnums.NpcSenses.Hear) != 0 &&
+                range <= senseRangeMeters * _hearRangeFactor)
+            {
+                var bodyState = other.GetUserData()?.Props.BodyState;
+                isAround = bodyState is VmGothicEnums.BodyState.BsWalk or VmGothicEnums.BodyState.BsRun
+                    or VmGothicEnums.BodyState.BsJump;
+            }
+
+            // Sound and scent don't go through walls either - the sight raycast without FOV.
+            return isAround && CanSeeNpc(self, other, true);
+        }
+
+        private const float _hearRangeFactor = 0.5f;
+        private const float _smellRangeMeters = 3f;
 
         /// <summary>
         /// freeLOS - Free Line Of Sight == ignoreFOV

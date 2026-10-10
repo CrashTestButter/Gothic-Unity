@@ -598,6 +598,11 @@ namespace Gothic.Core.Models.Config
                  "ZS_Attack's pursuit counter reset in every turn, NPCs never gave up a chase.")]
         public bool EnableStickyHeroRun = true;
 
+        [Tooltip("V1: NPC senses like in the engine instead of all around: sight in the full senses range but only in " +
+                 "front (FOV), hearing only while the hero walks/runs and within half the range, smell only 3 m around " +
+                 "- orcs sensed a hero standing still behind them 20 m away.")]
+        public bool EnableQuietSenses = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

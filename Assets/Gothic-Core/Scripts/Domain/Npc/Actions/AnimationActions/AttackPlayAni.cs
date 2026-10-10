@@ -29,6 +29,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private Transform _enemyTransform => _enemy.Go.transform;
         private bool _comboWindowLogged;
         private bool _hasHitFired;
+        private bool _isRangedFollowUp;
+        private const string _bowReloadAnimName = "t_BowReload";
+        private const string _crossbowReloadAnimName = "t_CBowReload";
+        private const float _minRangedFollowUpSeconds = 0.5f;
 
         /// <summary>
         /// A melee/magic swing that hasn't reached its hit frame yet.
@@ -136,6 +140,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                     _hasHitFired = true;
                     TryFireHit();
                 }
+
+                if (!_isRangedFollowUp && TryStartRangedFollowUp())
+                    return;
                 return;
             }
 
@@ -385,6 +392,41 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 Props.CurrentLoopState = NpcProperties.LoopState.End;
                 IsFinishedFlag = true;
             }
+        }
+
+        /// <summary>
+        /// The shot itself is one frame (s_BowShoot/s_CBowShoot) - finishing there let the next attack start at once:
+        /// bursts of arrows. Like the engine, the reload (t_BowReload/t_CBowReload) belongs to the same attack.
+        /// </summary>
+        private bool TryStartRangedFollowUp()
+        {
+            if (!_hasHitFired || _move is not (FightAiMove.Attack or FightAiMove.AttackSide))
+                return false;
+
+            var followUp = (VmGothicEnums.WeaponState)Vob.FightMode switch
+            {
+                VmGothicEnums.WeaponState.Bow => _bowReloadAnimName,
+                VmGothicEnums.WeaponState.CBow => _crossbowReloadAnimName,
+                _ => null
+            };
+            if (followUp == null || !PrefabProps.AnimationSystem.PlayAnimation(followUp))
+                return false;
+
+            _isRangedFollowUp = true;
+            IsFinishedFlag = false;
+            ActionEndEventTime = ActionTime + Mathf.Max(PrefabProps.AnimationSystem.GetAnimationDuration(followUp),
+                _minRangedFollowUpSeconds);
+            return true;
+        }
+
+        /// <summary>
+        /// During the reload the one-frame shot animation is already blending out - that must not end the attack.
+        /// </summary>
+        protected override void AnimationEnd()
+        {
+            if (_isRangedFollowUp && ActionTime < ActionEndEventTime)
+                return;
+            base.AnimationEnd();
         }
 
         private bool IsTargetAbove(Vector3 myPosition, Vector3 targetPosition)

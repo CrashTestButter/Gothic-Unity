@@ -122,6 +122,11 @@ namespace Gothic.Core.Adapters.UI.StatusBars
         /// </summary>
         private void Update()
         {
+            if (_statusType == StatusType.Mana && _isPlayer)
+            {
+                UpdateHeroManaNumbers();
+                return;
+            }
             if (_statusType != StatusType.Health) return;
 
             // Loading a save can replace the hero's container. A cached one would keep showing the old HP forever
@@ -177,6 +182,30 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             }
 
             // The text is a child of the bar - hide it whenever the bar itself is hidden (fade, HideHealthBar).
+            if (_healthNumbers != null)
+                _healthNumbers.enabled = _isHealthNumbersShown && _background.enabled;
+        }
+
+        /// <summary>
+        /// "MANA/MAX" on the hero's mana bar while it is shown (rune/scroll in the hand) - same option as HP/MAX. The
+        /// fill is set by whoever shows the bar, only the numbers are handled here.
+        /// </summary>
+        private void UpdateHeroManaNumbers()
+        {
+            _owner = _npcService.GetHeroContainer();
+            if (_owner == null)
+                return;
+
+            var mana = _owner.Vob.GetAttribute((int)NpcAttribute.Mana);
+            var manaMax = _owner.Vob.GetAttribute((int)NpcAttribute.ManaMax);
+            if (mana != _lastHitPoints || manaMax != _lastHitPointsMax)
+            {
+                // The HP fields hold this bar's value - one bar shows one attribute.
+                _lastHitPoints = mana;
+                _lastHitPointsMax = manaMax;
+                UpdateHealthNumbers();
+            }
+
             if (_healthNumbers != null)
                 _healthNumbers.enabled = _isHealthNumbersShown && _background.enabled;
         }
@@ -305,7 +334,8 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
         private void OnPlayerPrefUpdated(string key, object value)
         {
-            if (key == Constants.IniNames.HealthNumbers && _statusType == StatusType.Health && _owner != null)
+            if (key == Constants.IniNames.HealthNumbers && _statusType is StatusType.Health or StatusType.Mana &&
+                _owner != null)
                 UpdateHealthNumbers();
         }
 

@@ -611,6 +611,10 @@ namespace Gothic.Core.Models.Config
                  "1h/fist humans, orcs, wolves, scavengers, ...) instead of stopping and striking from a stand.")]
         public bool EnableNpcRunAttack = true;
 
+        [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
+                 "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
+        public bool EnableHeroPersonalSpace = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

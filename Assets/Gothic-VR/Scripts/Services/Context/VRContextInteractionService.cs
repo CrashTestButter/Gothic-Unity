@@ -64,6 +64,8 @@ namespace Gothic.VR.Services.Context
                     new UnityEngine.GameObject("_VRHeroBodyController").AddComponent<VRHeroBody>();
                 // DeveloperConfig.EnableStackSplit (checked at runtime): taking pieces off held stacks.
                 new UnityEngine.GameObject("_VRStackSplitter").AddComponent<Gothic.VR.Adapters.Vob.VobItem.VRStackSplitter>();
+                // DeveloperConfig.EnableHeroPersonalSpace (checked at runtime): NPC bodies stay out of the camera.
+                new UnityEngine.GameObject("_HeroPersonalSpace").AddComponent<Gothic.Core.Adapters.Npc.HeroPersonalSpace>();
             });
             GlobalEventDispatcher.ScriptExitGame.AddListener(VRCinema.QuitAfterVideos);
             // DeveloperConfig.EnableVrTrade: the trade counter between the hero and the trader.

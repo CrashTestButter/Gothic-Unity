@@ -73,6 +73,9 @@ namespace Gothic.VR.Adapters.Player
 
         public bool IsNpcBackpack => _owner != null && !_owner.IsHero;
 
+        // An NPC owner fires NpcInventoryChanged on every change; a container (mummy) has no NPC - refresh ourselves.
+        private bool IsRefreshedByNpcEvent => IsNpcBackpack && _owner.Npc != null;
+
         /// <summary>
         /// A trader's goods during a trade (VRTradeCounter): items taken out are VRTradeGoods until paid.
         /// </summary>
@@ -110,6 +113,14 @@ namespace Gothic.VR.Adapters.Player
         public void SetNpcOwner(NpcContainer npc)
         {
             SetOwner(new NpcInventoryOwner(npc));
+        }
+
+        /// <summary>
+        /// Turns this backpack into the loot of a container without a lid (e.g. a mummy - VRStaticContainerLoot).
+        /// </summary>
+        public void SetContainerOwner(IInventoryOwner containerItems)
+        {
+            SetOwner(containerItems);
         }
 
         /// <summary>
@@ -368,7 +379,7 @@ namespace Gothic.VR.Adapters.Player
             Owner.Add(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
 
             // An NPC owner fires NpcInventoryChanged, which refreshes us.
-            if (!IsNpcBackpack)
+            if (!IsRefreshedByNpcEvent)
                 UpdateInventoryView();
         }
 
@@ -404,7 +415,7 @@ namespace Gothic.VR.Adapters.Player
             // Taking the last one of an equipped item out takes it off (IInventoryOwner.Remove).
             Owner.Remove(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
 
-            if (!IsNpcBackpack)
+            if (!IsRefreshedByNpcEvent)
                 UpdateInventoryView();
         }
         

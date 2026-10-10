@@ -15,6 +15,7 @@ using Gothic.Core.Manager;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Adapters.Vob;
+using Gothic.VR.Adapters.Vob.Container;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Bags;
 using HurricaneVR.Framework.Core.Grabbers;
@@ -164,6 +165,16 @@ namespace Gothic.VR.Services
                     Logger.Log($"[VRPlayerService] HandleMobGrab: '{condFunc}' denied (returned 0)", LogCat.Ai);
                     return;
                 }
+            }
+
+            // A container without a lid (mummy) is a plain mob: the click shows/hides a loot backpack like a corpse.
+            // Chests with a lid (VRVobContainer) come here too when their lid is grabbed - they open physically.
+            if (mob is IContainer container && loader.GetComponentInChildren<VRVobContainer>(true) == null)
+            {
+                if (!loader.TryGetComponent<VRStaticContainerLoot>(out var loot))
+                    loot = loader.gameObject.AddComponent<VRStaticContainerLoot>();
+                loot.Toggle(container);
+                return;
             }
 
             // Mobs without a mover target but with an onStateFunc (G2 shrines, alchemy/rune tables, bookstands, ...).

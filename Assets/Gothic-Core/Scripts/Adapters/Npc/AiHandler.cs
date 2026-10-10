@@ -196,6 +196,7 @@ namespace Gothic.Core.Adapters.Npc
                         {
                             Properties.CurrentLoopState = NpcProperties.LoopState.End;
                             LogStateLoopEnded();
+                            _npcAiService.RememberHeroChaseGivenUp(NpcInstance, Properties, Vob.CurrentStateName);
                         }
                         
                         break;

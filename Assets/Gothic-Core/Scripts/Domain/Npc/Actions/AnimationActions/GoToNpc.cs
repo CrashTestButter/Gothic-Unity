@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gothic.Core.Adapters.Properties;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
@@ -6,6 +7,7 @@ using Gothic.Core.Models.Vob.WayNet;
 using Gothic.Core.Models.WayNet;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
+using Gothic.Core.Manager;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
@@ -17,6 +19,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
     {
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly NpcHelperService _npcHelperService;
+        [Inject] private readonly DialogService _dialogService;
 
         private Transform _destinationTransform;
         private Stack<DijkstraWaypoint> _route;
@@ -157,5 +160,49 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             base.OnDestinationReached();
             IsFinishedFlag = true;
         }
+
+        public override void Tick()
+        {
+            base.Tick();
+            if (IsFinishedFlag || !IsPursuitOver())
+                return;
+
+            // ZS_ProclaimAndPunish_Loop gives up after HAI_TIME_PURSUIT (AI_ContinueRoutine), but it only runs again
+            // once this AI_GotoNpc is done - which was on arrival: guards/orcs chased the hero all the way and put their
+            // weapon away right next to him. Stop here, the loop gives up mid-chase like in the engine.
+            Logger.Log($"[GoToNpc] {NpcInstance.GetName(NpcNameSlot.Slot0)}: pursuit over after {Props.StateTime:F0} s " +
+                       "- stopping so ZS_ProclaimAndPunish gives up", LogCat.Ai);
+            StopWalk();
+            IsFinishedFlag = true;
+
+            // A goodbye like a fighter giving up (ZS_Attack: "$RUNCOWARD") - plays before the loop's AI_ContinueRoutine,
+            // the loop only runs again once the queue is empty.
+            _dialogService.ExtAiOutputSvm(NpcInstance, (NpcInstance)GameStateService.GothicVm.GlobalHero, _giveUpSvm);
+
+            // DeveloperConfig.EnableChaseGiveUpCooldown: no PERC_ASSESSENEMY right away - it restarted the chase at once.
+            if (_configService.Dev.EnableChaseGiveUpCooldown)
+                Props.HeroChaseGivenUpTime = Time.time;
+        }
+
+        private bool IsPursuitOver()
+        {
+            if (Props.CurrentLoopState != NpcProperties.LoopState.Loop || !Props.IsStateTimeActive)
+                return false;
+
+            var vm = GameStateService.GothicVm;
+            _pursuitLoopIndex ??= vm.GetSymbolByName(_pursuitLoopName)?.Index ?? -1;
+            if (Props.StateLoop != _pursuitLoopIndex)
+                return false;
+
+            _pursuitSeconds ??= vm.GetSymbolByName(_pursuitTimeName)?.GetInt(0) ?? _defaultPursuitSeconds;
+            return Props.StateTime > _pursuitSeconds;
+        }
+
+        private const string _pursuitLoopName = "ZS_PROCLAIMANDPUNISH_LOOP";
+        private const string _giveUpSvm = "$RUNCOWARD";
+        private const string _pursuitTimeName = "HAI_TIME_PURSUIT";
+        private const int _defaultPursuitSeconds = 20;
+        private int? _pursuitLoopIndex;
+        private int? _pursuitSeconds;
     }
 }

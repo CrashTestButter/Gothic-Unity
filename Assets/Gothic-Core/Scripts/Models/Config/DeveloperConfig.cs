@@ -589,6 +589,11 @@ namespace Gothic.Core.Models.Config
                  "No burn damage.")]
         public bool EnableBurning = true;
 
+        [Tooltip("V1: An NPC that gave up a chase/fight with the hero (hero not down) ignores him for 5 s " +
+                 "(PERC_ASSESSENEMY / a comrade's ASSESSWARN); hitting it still starts a fight - vanilla has no " +
+                 "hysteresis, the NPC gave up and came back endlessly inside its 20 m senses range.")]
+        public bool EnableChaseGiveUpCooldown = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

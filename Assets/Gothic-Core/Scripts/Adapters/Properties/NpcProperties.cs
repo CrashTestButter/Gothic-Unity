@@ -82,6 +82,9 @@ namespace Gothic.Core.Adapters.Properties
         // e.g. used to handle random wait loops for idle eating animations (eat a cheese only every n-m seconds)
         public bool IsStateTimeActive;
         public float StateTime;
+
+        // Time.time when this NPC gave up chasing the hero from far away (DeveloperConfig.EnableChaseGiveUpCooldown).
+        public float HeroChaseGivenUpTime = float.MinValue;
         public LoopState CurrentLoopState = LoopState.None;
         public AbstractAnimationAction CurrentAction;
 

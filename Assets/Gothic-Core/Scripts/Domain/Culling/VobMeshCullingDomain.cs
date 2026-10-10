@@ -494,7 +494,9 @@ namespace Gothic.Core.Domain.Culling
                 return;
 
             // Meshes are always 1...n levels below initially created VobLoader GO. Therefore, we need to fetch its parent for track updates.
-            var rootGo = go.GetComponentInParent<VobLoader>().gameObject;
+            var rootGo = GetVobLoaderRoot(go);
+            if (rootGo == null)
+                return;
 
             CancelStopTrackVobPositionUpdates(rootGo);
 
@@ -506,6 +508,21 @@ namespace Gothic.Core.Domain.Culling
             }
 
             entry.Bucket.Paused[entry.Index] = true;
+        }
+
+        /// <summary>
+        /// Not every grabbable item has a VobLoader above it (seen with backpack/hotslot items after a world change and
+        /// a duplicated rune) - without this guard the NRE aborted VRVobItem.OnGrabbed before the grab was registered.
+        /// </summary>
+        private GameObject GetVobLoaderRoot(GameObject go)
+        {
+            var loader = go.GetComponentInParent<VobLoader>();
+            if (loader != null)
+                return loader.gameObject;
+
+            Logger.LogWarning($"[VobMeshCulling] '{go.name}' has no VobLoader above it - not tracked by culling.",
+                LogCat.Vob);
+            return null;
         }
 
         /// <summary>
@@ -532,7 +549,9 @@ namespace Gothic.Core.Domain.Culling
                 return;
 
             // Meshes are always 1...n levels below initially created VobLoader GO. Therefore, we need to fetch its parent for track updates.
-            var rootGo = go.GetComponentInParent<VobLoader>().gameObject;
+            var rootGo = GetVobLoaderRoot(go);
+            if (rootGo == null)
+                return;
 
             if (_pausedVobsToReenableCoroutine.ContainsKey(rootGo))
             {

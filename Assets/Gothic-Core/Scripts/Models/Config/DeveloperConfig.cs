@@ -603,6 +603,10 @@ namespace Gothic.Core.Models.Config
                  "- orcs sensed a hero standing still behind them 20 m away.")]
         public bool EnableQuietSenses = true;
 
+        [Tooltip("V1: Orcs threaten (turn, T_WARN, war cry) before they start chasing the hero in ZS_ProclaimAndPunish, " +
+                 "and an NPC giving up a chase without a $RUNCOWARD line (orc voice) says $GETOUTOFHERE.")]
+        public bool EnablePursuitWarn = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

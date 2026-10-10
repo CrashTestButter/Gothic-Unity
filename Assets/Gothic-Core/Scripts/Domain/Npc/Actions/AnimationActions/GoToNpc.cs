@@ -3,6 +3,7 @@ using Gothic.Core.Adapters.Properties;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Models.Vm;
 using Gothic.Core.Models.Vob.WayNet;
 using Gothic.Core.Models.WayNet;
 using Gothic.Core.Services.Config;
@@ -20,6 +21,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly NpcHelperService _npcHelperService;
         [Inject] private readonly DialogService _dialogService;
+        [Inject] private readonly NpcAiService _npcAiService;
 
         private Transform _destinationTransform;
         private Stack<DijkstraWaypoint> _route;
@@ -32,6 +34,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         public override void Start()
         {
             _destinationTransform = Action.Instance0.GetUserData().Go.transform;
+
+            if (TryWarnBeforePursuit())
+                return;
 
             // Refresh to the actually-nearest WP instead of trusting the cached one: for NPCs that loop
             // continuously without ever going through StartNextRoutine (e.g. ZS_MM_SummonedByPC_Loop
@@ -176,8 +181,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             IsFinishedFlag = true;
 
             // A goodbye like a fighter giving up (ZS_Attack: "$RUNCOWARD") - plays before the loop's AI_ContinueRoutine,
-            // the loop only runs again once the queue is empty.
-            _dialogService.ExtAiOutputSvm(NpcInstance, (NpcInstance)GameStateService.GothicVm.GlobalHero, _giveUpSvm);
+            // the loop only runs again once the queue is empty. Orc voices (17) have no $RUNCOWARD - "$GETOUTOFHERE".
+            var giveUpSvm = HasSvm(_giveUpSvm) ? _giveUpSvm : _giveUpFallbackSvm;
+            _dialogService.ExtAiOutputSvm(NpcInstance, (NpcInstance)GameStateService.GothicVm.GlobalHero, giveUpSvm);
 
             // DeveloperConfig.EnableChaseGiveUpCooldown: no PERC_ASSESSENEMY right away - it restarted the chase at once.
             if (_configService.Dev.EnableChaseGiveUpCooldown)
@@ -186,20 +192,57 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private bool IsPursuitOver()
         {
-            if (Props.CurrentLoopState != NpcProperties.LoopState.Loop || !Props.IsStateTimeActive)
+            if (!IsInPursuitLoop() || !Props.IsStateTimeActive)
                 return false;
 
-            var vm = GameStateService.GothicVm;
-            _pursuitLoopIndex ??= vm.GetSymbolByName(_pursuitLoopName)?.Index ?? -1;
-            if (Props.StateLoop != _pursuitLoopIndex)
-                return false;
-
-            _pursuitSeconds ??= vm.GetSymbolByName(_pursuitTimeName)?.GetInt(0) ?? _defaultPursuitSeconds;
+            _pursuitSeconds ??= GameStateService.GothicVm.GetSymbolByName(_pursuitTimeName)?.GetInt(0) ??
+                                _defaultPursuitSeconds;
             return Props.StateTime > _pursuitSeconds;
+        }
+
+        private bool IsInPursuitLoop()
+        {
+            if (Props.CurrentLoopState != NpcProperties.LoopState.Loop)
+                return false;
+
+            _pursuitLoopIndex ??= GameStateService.GothicVm.GetSymbolByName(_pursuitLoopName)?.Index ?? -1;
+            return Props.StateLoop == _pursuitLoopIndex;
+        }
+
+        /// <summary>
+        /// Orcs threaten before they run at the hero (T_WARN like in ZS_Orc_TA/ZS_MM_*, and their war cry
+        /// "$DIEMORTALENEMY") - vanilla ZS_ProclaimAndPunish only shouts on arrival, the orcs just started running.
+        /// Once per chase: this AI_GotoNpc turns into turn + warn, the loop's next AI_GotoNpc runs.
+        /// </summary>
+        private bool TryWarnBeforePursuit()
+        {
+            if (!_configService.Dev.EnablePursuitWarn || NpcInstance.Guild <= (int)VmGothicEnums.Guild.GIL_SEPERATOR_ORC ||
+                !IsInPursuitLoop() || Time.time - Props.LastPursuitWarnTime < _pursuitWarnRepeatSeconds)
+                return false;
+
+            Props.LastPursuitWarnTime = Time.time;
+            var hero = (NpcInstance)GameStateService.GothicVm.GlobalHero;
+            if (HasSvm(_warnSvm))
+                _dialogService.ExtAiOutputSvmOverlay(NpcInstance, hero, _warnSvm);
+            _npcAiService.ExtAiTurnToNpc(NpcInstance, hero);
+            Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(_warnAnimName), NpcContainer));
+
+            Logger.Log($"[GoToNpc] {NpcInstance.GetName(NpcNameSlot.Slot0)}: warns the hero before the chase", LogCat.Ai);
+            IsFinishedFlag = true;
+            return true;
+        }
+
+        private bool HasSvm(string svmName)
+        {
+            return !string.IsNullOrEmpty(VmCacheService.TryGetSvmData(NpcInstance.Voice)?.GetAudioName(svmName));
         }
 
         private const string _pursuitLoopName = "ZS_PROCLAIMANDPUNISH_LOOP";
         private const string _giveUpSvm = "$RUNCOWARD";
+        private const string _giveUpFallbackSvm = "$GETOUTOFHERE";
+        private const string _warnSvm = "$DIEMORTALENEMY";
+        private const string _warnAnimName = "T_WARN";
+        private const float _pursuitWarnRepeatSeconds = 15f;
         private const string _pursuitTimeName = "HAI_TIME_PURSUIT";
         private const int _defaultPursuitSeconds = 20;
         private int? _pursuitLoopIndex;

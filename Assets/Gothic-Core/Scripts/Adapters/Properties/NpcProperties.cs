@@ -85,6 +85,8 @@ namespace Gothic.Core.Adapters.Properties
 
         // Time.time when this NPC gave up chasing the hero from far away (DeveloperConfig.EnableChaseGiveUpCooldown).
         public float HeroChaseGivenUpTime = float.MinValue;
+        // Time.time of the last threat before a chase (DeveloperConfig.EnablePursuitWarn).
+        public float LastPursuitWarnTime = float.MinValue;
         public LoopState CurrentLoopState = LoopState.None;
         public AbstractAnimationAction CurrentAction;
 

@@ -36,6 +36,11 @@ namespace Gothic.Core.Services.Npc
         [Inject] private readonly Gothic.Core.Services.Meshes.ParticleService _particleService;
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly Gothic.Core.Services.Caches.VmCacheService _vmCacheService;
+        [Inject] private readonly Gothic.Core.Services.Meshes.MeshService _meshService;
+
+        // DAM_FIRE in Constants.d (bit after DAM_EDGE).
+        private const int _damFire = 8;
 
         public void Init()
         {
@@ -121,6 +126,17 @@ namespace Gothic.Core.Services.Npc
             // a fake 0-damage hit through OnHit would wrongly trigger pain animations/sounds.
             if (damage > 0)
                 OnHit(caster, target, pos, damageOverride: damage);
+
+            // DeveloperConfig.EnableBurning: fire spells set the victim on fire (VOB_BURN + the s_Fire_Victim dance).
+            // Not the hero - in VR there's no own body to burn.
+            if (damage > 0 && _fightConfigService.Dev.EnableBurning && !target.Vob.Player && IsFireSpell(caster.ActiveSpell))
+                Gothic.Core.Adapters.Npc.NpcBurnEffect.Ignite(target, _vmCacheService, _meshService, _audioService);
+        }
+
+        private bool IsFireSpell(int spellId)
+        {
+            var damageType = spellId < 0 ? 0 : _vmCacheService.TryGetSpellData(spellId)?.DamageType ?? 0;
+            return (damageType & _damFire) != 0;
         }
 
         /// <summary>

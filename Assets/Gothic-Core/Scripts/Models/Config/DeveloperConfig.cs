@@ -584,6 +584,11 @@ namespace Gothic.Core.Models.Config
                  "throw. Soft homing towards the NPC closest to the throw direction. Other spells stay as they are.")]
         public bool EnableThrowableSpells = true;
 
+        [Tooltip("V1: Fire spells (damageType DAM_FIRE: Firebolt, Fireball, fire rain, ...) set NPCs on fire for a few " +
+                 "seconds - VOB_BURN flames out of their whole body, light, sound and the s_Fire_Victim dance. " +
+                 "No burn damage.")]
+        public bool EnableBurning = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

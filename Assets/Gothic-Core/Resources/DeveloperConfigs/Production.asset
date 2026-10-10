@@ -153,6 +153,7 @@ MonoBehaviour:
   EnableRangedGiveUp: 1
   EnableSpellSpreadDamage: 1
   EnableMinimalDamage: 1
+  EnableTimeSkipResetsNpcs: 1
   EnableHeroPersonalSpace: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1

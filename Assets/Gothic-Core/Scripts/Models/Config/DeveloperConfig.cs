@@ -627,6 +627,10 @@ namespace Gothic.Core.Models.Config
                  "target is immune to the damage type (protection -1). Read at the first hit.")]
         public bool EnableMinimalDamage = true;
 
+        [Tooltip("V1: After the hero slept (PC_Sleep's Wld_SetTime, Marvin's time skip) every living NPC starts over " +
+                 "like after culling: routine waypoint of the new time, no aggro, weapon away.")]
+        public bool EnableTimeSkipResetsNpcs = true;
+
         [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
         public bool EnableHeroPersonalSpace = true;

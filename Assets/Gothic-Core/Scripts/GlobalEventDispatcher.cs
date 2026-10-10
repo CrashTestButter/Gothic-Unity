@@ -92,6 +92,11 @@ namespace Gothic.Core
         /// int          - total spell damage
         /// </summary>
         public static readonly UnityEvent<NpcContainer, Vector3, int> SpellSpreadHit = new();
+
+        /// <summary>
+        /// The game time jumped (hero slept - PC_Sleep's Wld_SetTime, Marvin's time skip).
+        /// </summary>
+        public static readonly UnityEvent GameTimeSkipped = new();
         // NPC landed after a fall higher than FALLDOWN_HEIGHT (damage already minus PROT_FALL).
         public static readonly UnityEvent<NpcContainer, int> FallDamage = new();
 

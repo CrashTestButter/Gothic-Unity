@@ -655,6 +655,34 @@ namespace Gothic.Core.Adapters.Npc
             }
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableTimeSkipResetsNpcs: after the hero slept the NPC starts over like after culling
+        /// (ReEnableNpc: routine waypoint, empty queue, routine) - and forgets its fight: no enemy/target, the cooldowns
+        /// of a given-up chase, weapon away. Monsters go back to their start state, not the one they were in (an attack).
+        /// </summary>
+        public void ResetAfterTimeSkip()
+        {
+            Properties.EnemyNpc = null;
+            Properties.TargetNpc = null;
+            Properties.StateOther = null;
+            Properties.StateVictim = null;
+            Properties.LookAtTarget = null;
+            Properties.HeroChaseGivenUpTime = float.MinValue;
+            Properties.LastPursuitWarnTime = float.MinValue;
+
+            var isWeaponDrawn = (VmGothicEnums.WeaponState)Vob.FightMode != VmGothicEnums.WeaponState.NoWeapon;
+            ReEnableNpc();
+
+            if (Properties.RoutineCurrent == null && NpcInstance.StartAiState != 0)
+                StartRoutine(NpcInstance.StartAiState);
+            if (isWeaponDrawn)
+                _npcAiService.ExtAiUndrawWeapon(NpcInstance);
+
+            var target = Properties.RoutineCurrent != null ? "routine " + Properties.RoutineCurrent.Waypoint : "start state";
+            Logger.Log($"[TimeSkipReset] {NpcInstance.GetName(NpcNameSlot.Slot0)} reset ({target}" +
+                       $"{(isWeaponDrawn ? ", weapon away" : "")})", LogCat.Ai);
+        }
+
         public void DisableNpc()
         {
             // Stop all animations and reset to T-Pose

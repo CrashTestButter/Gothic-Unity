@@ -1909,6 +1909,8 @@ namespace Gothic.Core.Domain.Vm
         public void Wld_SetTime(int hour, int minute)
         {
             _gameTimeService.SetTime(hour, minute);
+            // Only the hero's sleep calls it (PC_Sleep) - NPCs in beds just play the animation.
+            GlobalEventDispatcher.GameTimeSkipped.Invoke();
         }
 
         public int Wld_GetDay()

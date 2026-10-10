@@ -169,6 +169,7 @@ namespace Gothic.VR.Adapters.Marvin
             var t = _gameTimeService.GetCurrentTime();
             var next = t.Add(System.TimeSpan.FromMinutes(30));
             _gameTimeService.SetTime(next.Hours, next.Minutes);
+            Gothic.Core.GlobalEventDispatcher.GameTimeSkipped.Invoke();
             _npcRoutineService.RecalculateAllNpcRoutines();
             Logger.Log($"[MarvinMode] Time skip → {next.Hours:D2}:{next.Minutes:D2}", LogCat.Ui);
         }

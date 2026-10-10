@@ -1110,6 +1110,29 @@ namespace Gothic.Core.Adapters.Animations
             return false;
         }
 
+        /// <summary>
+        /// Horizontal root-motion speed (m/s) of the named animation while it plays, 0 if it doesn't or doesn't move.
+        /// </summary>
+        public float GetMovementSpeed(string animationName)
+        {
+            foreach (var trackInstance in _trackInstances)
+            {
+                if (trackInstance.Track.IsMoving && trackInstance.Track.MatchesName(animationName))
+                    return new Vector3(trackInstance.Track.MovementSpeed.x, 0f, trackInstance.Track.MovementSpeed.z).magnitude;
+            }
+
+            return 0f;
+        }
+
+        /// <summary>
+        /// Moves the NPC like root motion does (sliding along walls) - for actions that keep an NPC moving while
+        /// its animation itself has no root motion, e.g. a strike out of the run.
+        /// </summary>
+        public void MoveWithWallCollision(Vector3 worldMove)
+        {
+            Go.transform.localPosition += SlideAlongWalls(worldMove);
+        }
+
         public bool IsPlaying(string animationName)
         {
             foreach (var trackInstance in _trackInstances)

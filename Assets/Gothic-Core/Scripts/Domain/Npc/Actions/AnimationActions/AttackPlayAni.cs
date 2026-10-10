@@ -33,10 +33,15 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private bool _isRunAttackPlanned;
         private bool _isRunAttackActive;
         private float _runAttackHitTime;
+        private float _runAttackSpeed;
+        private bool _isRunKeptUnderStrike;
         private const float _runAttackChance = 0.5f;
         private const float _runAttackLeadDistance = 0.6f;
         private const float _runAttackHitFraction = 0.5f;
         private const float _minRunAttackSeconds = 0.4f;
+        // Run speed when the run animation reports none (m/s), and how close the lunge may carry the NPC.
+        private const float _fallbackRunAttackSpeed = 3f;
+        private const float _minRunAttackDistance = 0.8f;
         private const string _bowReloadAnimName = "t_BowReload";
         private const string _crossbowReloadAnimName = "t_CBowReload";
         private const string _spellShootToStandAnimName = "t_FBTShoot_2_Stand";
@@ -473,30 +478,66 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return false;
 
             var animName = $"t_{prefix}AttackMove";
-            PrefabProps.AnimationSystem.StopAnimation(Action.String0);
+            // The run's root motion moved the NPC - the strike has none, so it keeps the run speed (RunAttackTick).
+            // The run isn't stopped: a strike on a higher layer plays over it - the legs keep running and the run's
+            // root motion moves the NPC. A strike on the run's layer blends it out - then LungeForward() moves it.
+            var runSpeed = PrefabProps.AnimationSystem.GetMovementSpeed(Action.String0);
             if (!PrefabProps.AnimationSystem.PlayAnimation(animName))
-            {
-                PrefabProps.AnimationSystem.PlayAnimation(Action.String0);
                 return false;
-            }
+            _isRunKeptUnderStrike = PrefabProps.AnimationSystem.IsPlaying(Action.String0) &&
+                                    !PrefabProps.AnimationSystem.IsAnimationBlendingOut(Action.String0);
 
             var duration = Mathf.Max(PrefabProps.AnimationSystem.GetAnimationDuration(animName), _minRunAttackSeconds);
             _isRunAttackActive = true;
+            // An attack animation with its own root motion moves the NPC already.
+            _runAttackSpeed = _isRunKeptUnderStrike || PrefabProps.AnimationSystem.GetMovementSpeed(animName) > 0f ? 0f
+                : runSpeed > 0f ? runSpeed : _fallbackRunAttackSpeed;
             ActionEndEventTime = ActionTime + duration;
             _runAttackHitTime = ActionTime + duration * _runAttackHitFraction;
-            Logger.Log($"[AttackPlayAni] {NpcInstance.GetName(NpcNameSlot.Slot0)} strikes out of the run ({animName})",
+            Logger.Log($"[AttackPlayAni] {NpcInstance.GetName(NpcNameSlot.Slot0)} strikes out of the run ({animName}, " +
+                       $"run kept {_isRunKeptUnderStrike}, lunge {_runAttackSpeed:F1} m/s)",
                 LogCat.Fight);
             return true;
         }
 
+        /// <summary>
+        /// The strike out of the run keeps running forward until the animation ends (engine), only not into the target.
+        /// </summary>
         private void RunAttackTick()
         {
             HandleCombatRotation();
+            LungeForward();
             if (_hasHitFired || ActionTime < _runAttackHitTime)
                 return;
 
             _hasHitFired = true;
             TryFireHit();
+        }
+
+        private void LungeForward()
+        {
+            if (_enemyTransform == null)
+                return;
+
+            var toTarget = _enemyTransform.position - NpcGo.transform.position;
+            toTarget.y = 0f;
+            if (toTarget.magnitude <= _minRunAttackDistance)
+            {
+                // Arrived - the run under the strike stops, the strike finishes from a stand.
+                if (_isRunKeptUnderStrike)
+                {
+                    _isRunKeptUnderStrike = false;
+                    PrefabProps.AnimationSystem.StopAnimation(Action.String0);
+                }
+                return;
+            }
+            if (_runAttackSpeed <= 0f)
+                return;
+
+            var forward = NpcGo.transform.forward;
+            forward.y = 0f;
+            var step = Mathf.Min(_runAttackSpeed * Time.deltaTime, toTarget.magnitude - _minRunAttackDistance);
+            PrefabProps.AnimationSystem.MoveWithWallCollision(forward.normalized * step);
         }
 
         /// <summary>
@@ -506,6 +547,12 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         {
             if ((_isRangedFollowUp || _isRunAttackActive) && ActionTime < ActionEndEventTime)
                 return;
+            // The run under the strike would keep moving the NPC during the next action (e.g. a strike from a stand).
+            if (_isRunKeptUnderStrike)
+            {
+                _isRunKeptUnderStrike = false;
+                PrefabProps.AnimationSystem.StopAnimation(Action.String0);
+            }
             base.AnimationEnd();
         }
 

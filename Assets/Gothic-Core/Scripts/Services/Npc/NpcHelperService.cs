@@ -95,6 +95,27 @@ namespace Gothic.Core.Services.Npc
             return Math.Max(0, props.State);
         }
 
+        /// <summary>
+        /// The melee weapon the VR hero holds in a hand right now (set by VRWeaponService) - his "readied" weapon for
+        /// Npc_GetReadiedWeapon (e.g. orcs tolerate a hero holding the Ulu-Mulu, C_OtherIsToleratedEnemy).
+        /// </summary>
+        public ItemInstance HeroReadiedMeleeWeapon { get; set; }
+
+        /// <summary>
+        /// Melee weapons in the VR hero's holsters/quick slots - his "equipped" weapon for Npc_GetEquippedMeleeWeapon
+        /// (orcs also tolerate the Ulu-Mulu at the belt).
+        /// </summary>
+        public readonly List<ItemInstance> HeroHolsteredMeleeWeapons = new();
+
+        /// <summary>
+        /// The hero's equipped melee weapon for scripts that ask which one (Npc_GetEquippedMeleeWeapon): in a hand, else
+        /// at the belt. Npc_HasEquippedMeleeWeapon stays false for him (G2 guards would react to every belt weapon).
+        /// </summary>
+        public ItemInstance GetHeroEquippedMeleeWeapon()
+        {
+            return HeroReadiedMeleeWeapon ?? HeroHolsteredMeleeWeapons.FirstOrDefault();
+        }
+
         public ItemInstance ExtNpcGetEquippedMeleeWeapon(NpcInstance npc)
         {
             // VR hero never "draws" a melee weapon in the Gothic sense — physical VR hands handle combat.

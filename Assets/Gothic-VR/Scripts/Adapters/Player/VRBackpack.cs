@@ -66,6 +66,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
         [Inject] private readonly NpcInventoryService _npcInventoryService;
+        [Inject] private readonly NpcHelperService _npcHelperService;
 
         private const string _equippedLabelName = "EquippedLabel";
 
@@ -346,6 +347,22 @@ namespace Gothic.VR.Adapters.Player
             var vobContainer = vobLoader.Container;
 
             _playerService.AddItem(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
+            TrackHolsteredMeleeWeapon(vobContainer, true);
+        }
+
+        /// <summary>
+        /// A melee weapon at the belt counts as the hero's equipped weapon for the scripts (Ulu-Mulu: orcs tolerate him).
+        /// </summary>
+        private void TrackHolsteredMeleeWeapon(VobContainer vobContainer, bool isHolstered)
+        {
+            var item = vobContainer?.GetItemInstance();
+            if (item == null || item.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
+                return;
+
+            if (isHolstered)
+                _npcHelperService.HeroHolsteredMeleeWeapons.Add(item);
+            else
+                _npcHelperService.HeroHolsteredMeleeWeapons.Remove(item);
         }
 
 
@@ -389,13 +406,14 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         public void OnItemPutOutOfHolster(HVRGrabberBase grabber, HVRGrabbable grabbable)
         {
-            if (_tempIgnoreSocketing)
-                return;
-
             var vobLoader = grabbable.GetComponentInParent<VobLoader>();
             if (vobLoader == null)
                 return;
             var vobContainer = vobLoader.Container;
+            TrackHolsteredMeleeWeapon(vobContainer, false);
+
+            if (_tempIgnoreSocketing)
+                return;
 
             _playerService.RemoveItem(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
         }

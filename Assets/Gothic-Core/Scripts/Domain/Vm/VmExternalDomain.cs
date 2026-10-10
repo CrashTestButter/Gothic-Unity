@@ -1465,7 +1465,9 @@ namespace Gothic.Core.Domain.Vm
 
         public ItemInstance Npc_GetEquippedMeleeWeapon(NpcInstance npc)
         {
-            var item = _npcHelperService.ExtNpcGetEquippedMeleeWeapon(npc);
+            var item = npc.Index == _gameStateService.GothicVm.GlobalHero?.Index
+                ? _npcHelperService.GetHeroEquippedMeleeWeapon()
+                : _npcHelperService.ExtNpcGetEquippedMeleeWeapon(npc);
             return LogInstantExternal(nameof(Npc_GetEquippedMeleeWeapon), item, npc);
         }
 
@@ -1504,8 +1506,12 @@ namespace Gothic.Core.Domain.Vm
         public ItemInstance Npc_GetReadiedWeapon(NpcInstance npc)
         {
             var fightMode = (VmGothicEnums.WeaponState)npc.GetUserData().Vob.FightMode;
+            var isHero = npc.Index == _gameStateService.GothicVm.GlobalHero?.Index;
             ItemInstance item = fightMode switch
             {
+                // The VR hero's readied weapon is the one in his hand (Ulu-Mulu: orcs tolerate him).
+                VmGothicEnums.WeaponState.W1H or VmGothicEnums.WeaponState.W2H when isHero
+                    => _npcHelperService.HeroReadiedMeleeWeapon,
                 VmGothicEnums.WeaponState.W1H or VmGothicEnums.WeaponState.W2H
                     => _npcHelperService.ExtNpcGetEquippedMeleeWeapon(npc),
                 VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow

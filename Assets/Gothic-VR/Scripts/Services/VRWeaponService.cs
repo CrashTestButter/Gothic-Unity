@@ -42,6 +42,7 @@ namespace Gothic.VR.Services
         [Inject] private AudioService _audioService;
         [Inject] private PlayerService _playerService;
         [Inject] private NpcAiService _npcAiService;
+        [Inject] private NpcHelperService _npcHelperService;
         [Inject] private ConfigService _configService;
         [Inject] private GameStateService _gameStateService;
         [Inject] private NpcInventoryService _npcInventoryService;
@@ -238,6 +239,10 @@ namespace Gothic.VR.Services
                 state = _readiedRangedState.Value;
             if (state == VmGothicEnums.WeaponState.NoWeapon && _isRuneReadied)
                 state = VmGothicEnums.WeaponState.Mage;
+
+            // Which melee weapon is readied - Npc_GetReadiedWeapon (orcs tolerate the Ulu-Mulu in the hero's hand).
+            var meleeWeapon = _firstAttackDomain.WeaponVobContainer ?? _secondAttackDomain.WeaponVobContainer;
+            _npcHelperService.HeroReadiedMeleeWeapon = meleeWeapon?.GetItemInstance();
 
             _npcAiService.ExtSetHeroWeaponState(state);
         }

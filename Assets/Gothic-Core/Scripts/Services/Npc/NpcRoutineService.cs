@@ -54,7 +54,8 @@ namespace Gothic.Core.Services.Npc
         {
             if (npcInstance == null)
             {
-                Logger.LogWarning($"Npc_ExchangeRoutine called with null npcInstance for routine '{routineName}'.", LogCat.Npc);
+                Logger.LogWarning($"Npc_ExchangeRoutine called with null npcInstance for routine '{routineName}'.",
+                    LogCat.Npc);
                 return;
             }
 
@@ -96,7 +97,9 @@ namespace Gothic.Core.Services.Npc
             var npcContainer = npc.GetUserData();
             if (npcContainer == null)
             {
-                Logger.LogWarning($"Npc_ExchangeRoutine: NPC {npc.Id} has no Unity data (not spawned?) — skipping routine exchange.", LogCat.Npc);
+                Logger.LogWarning(
+                    $"Npc_ExchangeRoutine: NPC {npc.Id} has no Unity data (not spawned?) - skipping routine exchange.",
+                    LogCat.Npc);
                 return;
             }
 

@@ -549,7 +549,9 @@ namespace Gothic.Core.Services.Npc
         /// </summary>
         private string GetPreparedKey(string key)
         {
-            if (key == null) return string.Empty;
+            if (key == null)
+                return string.Empty;
+
             var lowerKey = key.ToLower();
             var extension = Path.GetExtension(lowerKey);
 

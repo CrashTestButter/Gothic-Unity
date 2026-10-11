@@ -177,8 +177,8 @@ namespace Gothic.Core.Services.Npc
             var sensesRangeMeters = npcInstance.SensesRange / 100f;
             var sensesRangeSqr = sensesRangeMeters * sensesRangeMeters;
 
-            // NpcService.CacheHero() calls Vm.InitInstance(heroInstance) BEFORE assigning Vm.GlobalHero —
-            // if a mod's script calls this externally during that window, GlobalHero is still null.
+            // NpcService.CacheHero() calls Vm.InitInstance(heroInstance) BEFORE assigning Vm.GlobalHero.
+            // A (mod) script calling this during that window finds no hero yet.
             var globalHeroIndex = _gameStateService.GothicVm.GlobalHero?.Index;
 
             var foundNpc = _multiTypeCacheService.NpcCache
@@ -402,6 +402,7 @@ namespace Gothic.Core.Services.Npc
         [CanBeNull]
         private GameObject GetNpc([CanBeNull] NpcInstance npc)
         {
+            // Scripts pass NPCs that aren't spawned (yet), e.g. Xardas' dialog asks for Lester's distance to a WP.
             return npc?.GetUserData()?.Go;
         }
 

@@ -29,6 +29,9 @@ namespace Gothic.Core.Adapters.Animations.Morph
         /// </summary>
         private readonly List<MorphAnimationData> _runningMorphs = new();
 
+        // Random face animations retry a missing animation every few seconds. Warn once per name, not every time.
+        private readonly HashSet<string> _missingAnimationNames = new();
+
         private Mesh _mesh;
 
         /// <summary>
@@ -68,7 +71,11 @@ namespace Gothic.Core.Adapters.Animations.Morph
                 : newMorph.MeshMetadata.Animations.FirstOrDefault(anim => anim.Name.EqualsIgnoreCase(animationName));
             if (newMorph.AnimationMetadata == null)
             {
-                Logger.LogWarning($"MorphAnimation '{animationName}' not found in '{morphMeshName}'", LogCat.Mesh);
+                if (_missingAnimationNames.Add($"{morphMeshName}/{animationName}"))
+                {
+                    Logger.LogWarning($"MorphAnimation '{animationName}' not found in '{morphMeshName}'",
+                        LogCat.Mesh);
+                }
                 return;
             }
             newMorph.AnimationFrameData =
@@ -117,12 +124,18 @@ namespace Gothic.Core.Adapters.Animations.Morph
             // CreateMorphMeshEnd in AbstractMeshBuilder) got interrupted partway - AddVertexMapping marks the
             // name as "already cached" before SetUnityVerticesForVertexMapping ever runs, so every later NPC
             // sharing that head permanently finds no baseline vertices to reset to (seen on a New Balance head
-            // mesh, hammering this every frame at ~70/sec while nearby — a real perf hit, not just log spam).
+            // mesh, hammering this every frame at ~70/sec while nearby - a real perf hit, not just log spam).
             var originalVertices = _morphMeshCacheService.GetOriginalUnityVertices(morphToStop.MeshName);
             if (originalVertices == null)
-                Logger.LogWarning($"No original vertices cached for morph mesh '{morphToStop.MeshName}' — skipping reset.", LogCat.Mesh);
+            {
+                Logger.LogWarning(
+                    $"No original vertices cached for morph mesh '{morphToStop.MeshName}' - skipping reset.",
+                    LogCat.Mesh);
+            }
             else
+            {
                 _mesh.vertices = originalVertices;
+            }
 
             _runningMorphs.Remove(morphToStop);
         }

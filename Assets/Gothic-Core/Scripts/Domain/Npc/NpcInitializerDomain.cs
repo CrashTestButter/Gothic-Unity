@@ -56,13 +56,11 @@ namespace Gothic.Core.Domain.Npc
         private int _nextInstanceId;
         private bool _suppressWldInsertNpc;
 
-        // Wld_InsertNpc queues into _tmpWldInsertNpcData, which only ever gets drained once, during
-        // this world's initial batch spawn (NewAddLazyLoading/InitNpcsSaveGame/InitNpcsFromMergedSnapshots).
-        // Vanilla STARTUP.D only ever calls Wld_InsertNpc during that window, but some mod quest/dialogue
-        // scripts call it later mid-game to introduce a new NPC (e.g. New Balance's Xardas dialogue
-        // introducing "Dagoth") - a call after this flag flips true would otherwise be queued into a
-        // list nothing processes again, silently never spawning anything.
-        private bool _initialNpcLoadComplete;
+        // Wld_InsertNpc queues into _tmpWldInsertNpcData, which is drained only once: during the world's initial NPC
+        // spawn. Vanilla STARTUP scripts only call Wld_InsertNpc in that window, but some mod quest/dialog scripts
+        // call it mid-game to introduce a new NPC (e.g. New Balance's Xardas dialog introducing "Dagoth"). Once this
+        // is true, such calls spawn right away instead of being queued into a list nothing processes again.
+        private bool _isInitialNpcLoadComplete;
 
         private DaedalusVm Vm => _gameStateService.GothicVm;
 
@@ -71,17 +69,17 @@ namespace Gothic.Core.Domain.Npc
             _nextInstanceId = 0;
             _monsterIndex = 0;
             _monsterWaypointCount.Clear();
-            _initialNpcLoadComplete = false;
+            _isInitialNpcLoadComplete = false;
             NewRunDaedalus();
             await NewAddLazyLoading(loading);
             if (_configService.Dev.EnableSaveLoadSystem)
                 _saveGameService.SaveNpcInitSnapshot(_multiTypeCacheService.NpcCache);
-            _initialNpcLoadComplete = true;
+            _isInitialNpcLoadComplete = true;
         }
 
         public async Task InitNpcsSaveGame(LoadingService loading)
         {
-            _initialNpcLoadComplete = false;
+            _isInitialNpcLoadComplete = false;
             var saveGameNpcs = _saveGameService.CurrentWorldData.Npcs;
 
             foreach (var vobNpc in saveGameNpcs)
@@ -94,7 +92,7 @@ namespace Gothic.Core.Domain.Npc
                 if (npcContainer == null) continue;
                 SaveGameAddLazyLoadingAnywhere(npcContainer, vobNpc.ScriptWaypoint);
             }
-            _initialNpcLoadComplete = true;
+            _isInitialNpcLoadComplete = true;
         }
 
         /// <summary>
@@ -106,7 +104,7 @@ namespace Gothic.Core.Domain.Npc
         {
             _monsterIndex = 0;
             _monsterWaypointCount.Clear();
-            _initialNpcLoadComplete = false;
+            _isInitialNpcLoadComplete = false;
             loading.SetPhase(nameof(WorldLoadingBarHandler.ProgressType.Npc), initList.Count);
 
             foreach (var initEntry in initList)
@@ -185,7 +183,7 @@ namespace Gothic.Core.Domain.Npc
 
             RebindNpcAliases();
             loading.FinalizePhase();
-            _initialNpcLoadComplete = true;
+            _isInitialNpcLoadComplete = true;
         }
 
         public void InitNpcVobSaveGame(INpc vobNpc)
@@ -243,13 +241,13 @@ namespace Gothic.Core.Domain.Npc
             Vm.InitInstance(userDataObject.Instance);
             userDataObject.IsZkInstanceInitialized = true;
 
-            if (_initialNpcLoadComplete)
+            if (_isInitialNpcLoadComplete)
             {
                 // Called mid-game (e.g. a mod dialogue/quest script introducing a new NPC) after the
                 // initial batch spawn already drained _tmpWldInsertNpcData for good - queueing here
                 // would never get processed. Spawn immediately instead, same as SpawnNpcRuntime.
                 Logger.Log($"[NpcInitializerDomain] Wld_InsertNpc called after initial load — spawning '{spawnPoint}' immediately.", LogCat.Npc);
-                SpawnQueuedNpc(userDataObject, spawnPoint);
+                SpawnInsertedNpc(userDataObject, spawnPoint);
                 return;
             }
 
@@ -374,7 +372,7 @@ namespace Gothic.Core.Domain.Npc
                 loading.Tick();
                 await _frameSkipperService.TrySkipToNextFrame();
 
-                SpawnQueuedNpc(element.npc, element.spawnPoint);
+                SpawnInsertedNpc(element.npc, element.spawnPoint);
             }
 
             _tmpWldInsertNpcData.ClearAndReleaseMemory();
@@ -389,7 +387,7 @@ namespace Gothic.Core.Domain.Npc
         /// between the initial batch drain (NewAddLazyLoading) and ExtWldInsertNpc's immediate-spawn
         /// path for calls that arrive after that batch already ran.
         /// </summary>
-        private void SpawnQueuedNpc(NpcContainer npc, string spawnPointName)
+        private void SpawnInsertedNpc(NpcContainer npc, string spawnPointName)
         {
             npc.SpawnWaypoint = spawnPointName;
             var go = InitLazyLoadNpc(npc);

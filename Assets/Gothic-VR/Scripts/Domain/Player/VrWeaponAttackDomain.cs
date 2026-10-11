@@ -150,7 +150,8 @@ namespace Gothic.VR.Domain.Player
             // The handled weapon got destroyed while in hand (no release event reached us). Free this handler again.
             if (WeaponVobContainer.Go == null)
             {
-                Logger.LogWarning("Handled weapon was destroyed while held. Resetting weapon attack handler.", LogCat.VR);
+                Logger.LogWarning("Handled weapon was destroyed while held. Resetting weapon attack handler.",
+                    LogCat.VR);
                 FullStopHandling();
                 return true;
             }

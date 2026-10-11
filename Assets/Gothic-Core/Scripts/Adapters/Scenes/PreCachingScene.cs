@@ -72,6 +72,7 @@ namespace Gothic.Core.Adapters.Scenes
 
                 foreach (var worldNameToCheck in allWorldNames)
                 {
+                    // Mods can ship (or reference) worlds ZenKit can't parse. Skip them instead of aborting.
                     Logger.Log($"PreCaching: attempting to load world '{worldNameToCheck}'", LogCat.PreCaching);
                     ZenKit.World world;
                     try
@@ -80,7 +81,9 @@ namespace Gothic.Core.Adapters.Scenes
                     }
                     catch (Exception e)
                     {
-                        Logger.LogWarning($"PreCaching: skipping '{worldNameToCheck}' — ZenKit failed to parse: {e.Message}", LogCat.PreCaching);
+                        Logger.LogWarning(
+                            $"PreCaching: skipping '{worldNameToCheck}' - ZenKit failed to parse: {e.Message}",
+                            LogCat.PreCaching);
                         continue;
                     }
 

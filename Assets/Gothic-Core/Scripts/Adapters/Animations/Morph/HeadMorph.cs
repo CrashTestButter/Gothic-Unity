@@ -85,6 +85,8 @@ namespace Gothic.Core.Adapters.Animations.Morph
                 return HeadMorphType.Viseme;
 
             Logger.LogError($"{name} as morphMeshType not yet mapped.", LogCat.Animation);
+            
+            // If nothing found, we return the hurt face. Meme potential? ;-)
             return HeadMorphType.Hurt;
         }
     }

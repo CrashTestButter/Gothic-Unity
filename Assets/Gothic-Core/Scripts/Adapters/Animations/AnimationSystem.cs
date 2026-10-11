@@ -868,7 +868,7 @@ namespace Gothic.Core.Adapters.Animations
                         AttackAnimation = trackInstance.AnimationName;
                         break;
                     case EventType.OptimalFrame:
-                        // ZenKit stores numeric frame params in .Frames, not .Slots (which holds string params like bone names).
+                        // ZenKit stores numeric frame params in .Frames. .Slots holds string params like bone names.
                         AttackOptFrame = eventTag.Frames;
                         break;
                     case EventType.HitEnd:

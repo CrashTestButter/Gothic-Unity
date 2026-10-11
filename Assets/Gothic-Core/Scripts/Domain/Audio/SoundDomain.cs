@@ -80,7 +80,7 @@ namespace Gothic.Core.Domain.Audio
 
             // RIFF container: "RIFF"(4) + fileSize(4) + "WAVE"(4), then a sequence of chunks
             // ("fmt ", "data", and others like LIST/INFO/fact/PAD/JUNK/bext/cue we don't care about).
-            // Walk chunks by their own declared size instead of assuming fixed byte offsets — some
+            // Walk chunks by their own declared size instead of assuming fixed byte offsets - some
             // mod-shipped WAVs (e.g. New Balance's dubbing) insert extra chunks or an extended fmt
             // chunk before "data", which made the old fixed-offset reads land on garbage bytes for
             // bitsPerSample (observed as nonsensical values like "115 bit depth").
@@ -99,6 +99,20 @@ namespace Gothic.Core.Domain.Audio
                 var chunkId = Encoding.ASCII.GetString(fileBytes, pos, 4);
                 var chunkSize = BitConverter.ToInt32(fileBytes, pos + 4);
                 var chunkDataStart = pos + 8;
+                var remainingBytes = fileBytes.Length - chunkDataStart;
+
+                // Streamed WAVs write 0xFFFFFFFF (-1) or a too big size into the "data" chunk as the length wasn't
+                // known when writing it. Such a chunk runs to the end of the file. Any other chunk that is corrupt
+                // like this ends the walk, as its size can't tell us where the next chunk starts.
+                if (chunkSize < 0 || chunkSize > remainingBytes)
+                {
+                    if (chunkId == "data")
+                    {
+                        dataStart = chunkDataStart;
+                        dataSize = remainingBytes;
+                    }
+                    break;
+                }
 
                 if (chunkId == "fmt ")
                 {
@@ -110,8 +124,7 @@ namespace Gothic.Core.Domain.Audio
                 else if (chunkId == "data")
                 {
                     dataStart = chunkDataStart;
-                    // Sometimes a file has more data than is specified after the RIFF header.
-                    dataSize = (int)Math.Min(chunkSize, fileBytes.Length - chunkDataStart);
+                    dataSize = chunkSize;
                 }
 
                 // Chunks are word-aligned: +1 pad byte if the declared size is odd.

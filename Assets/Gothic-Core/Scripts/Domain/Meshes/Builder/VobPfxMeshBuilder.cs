@@ -157,7 +157,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
             var pfx = VmCacheService.TryGetPfxData(_visualName);
             if (pfx == null)
             {
-                Logger.LogWarning($"PFX '{_visualName}' not found in VM — skipping particle build.", LogCat.Mesh);
+                Logger.LogWarning($"PFX '{_visualName}' not found in VM - skipping particle build.", LogCat.Mesh);
                 UnityEngine.Object.Destroy(pfxGo);
                 return null;
             }

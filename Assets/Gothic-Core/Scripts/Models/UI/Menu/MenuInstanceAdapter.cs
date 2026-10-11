@@ -26,8 +26,8 @@ namespace Gothic.Core.Model.UI.Menu
             // We immediately initialize all menu entries as we will later change Index of them (e.g. add a new menu in between).
             Items = new();
             // Like the engine: walk the whole C_MENU_DEF.items[MAX_ITEMS] array and skip empty entries.
-            // Scripts can have gaps (e.g. Mroczne Tajemnice's MENU_STATUS comments out items[33]) - stopping at the first
-            // empty entry dropped every item after it (all status menu talent rows except the first).
+            // Scripts can have gaps (e.g. Mroczne Tajemnice's MENU_STATUS comments out items[33]). Stopping at the
+            // first empty entry dropped every item after it (all status menu talent rows except the first).
             for (var i = 0; i < _maxMenuItems; i++)
             {
                 string itemName;

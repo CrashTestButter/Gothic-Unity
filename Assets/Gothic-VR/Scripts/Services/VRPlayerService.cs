@@ -159,7 +159,19 @@ namespace Gothic.VR.Services
                     Logger.LogWarning($"[VRPlayerService] ConditionFunction '{condFunc}' not found in VM", LogCat.Ai);
                     return;
                 }
-                var allowed = vm.Call<int>(symbol.Index);
+                // Like the engine: self = the player. The "missing something/item" reactions of a denied mob
+                // (G2's last door on Irdorath: Player_Mob_Missing_*) talk through self - without it nothing was said.
+                var oldSelf = vm.GlobalSelf;
+                vm.GlobalSelf = vm.GlobalHero;
+                int allowed;
+                try
+                {
+                    allowed = vm.Call<int>(symbol.Index);
+                }
+                finally
+                {
+                    vm.GlobalSelf = oldSelf;
+                }
                 if (allowed == 0)
                 {
                     Logger.Log($"[VRPlayerService] HandleMobGrab: '{condFunc}' denied (returned 0)", LogCat.Ai);

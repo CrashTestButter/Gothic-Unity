@@ -54,7 +54,10 @@ namespace Gothic.Core.Domain.Audio
 
         private AudioSource _audioSourceComp;
         private AudioReverbFilter _reverbFilterComp;
-        private Performance _dxPerformance;
+        // Swapped on world load (ResetPerformance) while the audio thread renders - volatile for PCMReaderCallback.
+        private volatile Performance _dxPerformance;
+        // The replaced performance stays referenced until the next reset - the audio thread may still be rendering it.
+        private Performance _retiredPerformance;
 
         private Dictionary<string, MusicThemeInstance> _themes = new();
         private MusicThemeInstance _currentTheme;
@@ -466,9 +469,27 @@ namespace Gothic.Core.Domain.Audio
             }
         }
 
+        /// <summary>
+        /// A world's music starts on a fresh DirectMusic performance. dmusic crashes natively (DmPerformance_renderPcm on
+        /// the audio thread, editor/game gone) once a world theme plays after gamestart.sgt (menu/loading music) on the
+        /// same performance - reproduced outside Unity: gamestart -> ADW_DAY_STD crashes with every transition type,
+        /// ADW <-> PIR for 15 rounds without gamestart don't. G2: leaving the pirate camp crashed the editor.
+        /// </summary>
+        private void ResetPerformance()
+        {
+            if (_dxPerformance == null)
+                return;
+
+            _retiredPerformance = _dxPerformance;
+            _dxPerformance = Performance.Create(_frequencyRate);
+            _currentTheme = null;
+            Logger.Log("[Music] Fresh DirectMusic performance for the world's music", LogCat.Audio);
+        }
+
         public void OnWorldLoaded()
         {
             _musicZones.Clear();
+            ResetPerformance();
 
             if (_configService.Dev.EnableMusicZonesByPosition)
             {

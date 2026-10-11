@@ -3,9 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using DirectMusic;
+using Gothic.Core.Adapters.Audio;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Const;
+using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Models.Container;
+using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Reflex.Attributes;
@@ -61,6 +65,19 @@ namespace Gothic.Core.Domain.Audio
         /// </summary>
         private readonly List<GameObject> _musicZones = new();
 
+        // DeveloperConfig.EnableMusicZonesByPosition: zones by their bounding box, in world order (OpenGothic WorldSound).
+        private readonly List<(string Name, Bounds Bounds)> _zoneBoxes = new();
+        private string _defaultZoneName;
+        private string _currentZoneName;
+        private string _currentThemeName;
+        private MusicZoneTicker _zoneTicker;
+
+        // The hero is somebody's target (Npc_SetTarget) - fight/threat music until it ends.
+        private NpcContainer _heroEnemy;
+        private float _lastHeroTargetedTime = float.MinValue;
+        private const float _fightMusicHoldSeconds = 10f;
+        private const float _fightMusicMaxDistance = 25f;
+
 
         public void SetBackgroundMusic(AudioSource audioSource, AudioReverbFilter reverbFilter)
         {
@@ -81,6 +98,11 @@ namespace Gothic.Core.Domain.Audio
         /// </summary>
         public void Play()
         {
+            if (_configService.Dev.EnableMusicZonesByPosition)
+            {
+                TickZones(force: true);
+                return;
+            }
             PlayInternal();
         }
 
@@ -245,8 +267,141 @@ namespace Gothic.Core.Domain.Audio
             };
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableMusicZonesByPosition: like the engine (OpenGothic WorldSound::tickSoundZone) - the zone
+        /// is picked from the player's position: the current zone stays while we're inside it, otherwise the last zone
+        /// containing us (world order), else the default zone. A missing theme falls back NGT->DAY, THR->FGT->STD, then
+        /// the default zone. Before, zone triggers with priorities picked a big zone around G2's pirate camp, night and
+        /// fight tags never changed back and a missing theme stayed silent.
+        /// </summary>
+        public void TickZones(bool force = false)
+        {
+            if (!_configService.Dev.EnableMusicZonesByPosition || _themes.Count == 0 || _zoneBoxes.Count == 0 &&
+                _defaultZoneName == null)
+                return;
+
+            var player = Camera.main != null ? Camera.main.transform : GameObject.FindWithTag(Constants.PlayerTag)?.transform;
+            if (player == null)
+                return;
+            var position = player.position;
+
+            string zoneName = null;
+            if (_currentZoneName != null && _currentZoneName != _defaultZoneName && IsInZone(_currentZoneName, position))
+                zoneName = _currentZoneName;
+            else
+            {
+                foreach (var (name, bounds) in _zoneBoxes)
+                    if (bounds.Contains(position))
+                        zoneName = name;
+            }
+            zoneName ??= _defaultZoneName;
+
+            UpdateTags();
+            var themeName = FindTheme(zoneName);
+            if (themeName == null || !force && themeName == _currentThemeName)
+                return;
+
+            if (zoneName != _currentZoneName)
+                Logger.Log($"[Music] Zone '{_currentZoneName ?? "-"}' -> '{zoneName}'", LogCat.Audio);
+            _currentZoneName = zoneName;
+            _currentThemeName = themeName;
+            Logger.Log($"[Music] Theme {themeName} (zone '{zoneName}', {TimeTag}, {ModeTag})", LogCat.Audio);
+            PlayInternal(themeName);
+        }
+
+        private bool IsInZone(string zoneName, Vector3 position)
+        {
+            foreach (var (name, bounds) in _zoneBoxes)
+                if (name == zoneName && bounds.Contains(position))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Day 4:00-21:00 like the engine; fight/threat while somebody targets the hero (Npc_SetTarget) and is up,
+        /// close and active.
+        /// </summary>
+        private void UpdateTags()
+        {
+            var gameTime = ReflexProjectInstaller.DIContainer.Resolve<Services.World.GameTimeService>();
+            var hour = gameTime.GetCurrentDateTime().Hour;
+            TimeTag = hour >= 4 && hour < 21 ? MusicTagsTime.Day : MusicTagsTime.Night;
+
+            // The game's VM - _vm is the music VM (MUSIC.DAT): asking it for the hero crashed natively.
+            var enemy = _heroEnemy;
+            var hero = (NpcInstance)ReflexProjectInstaller.DIContainer.Resolve<Services.GameStateService>().GothicVm?.GlobalHero;
+            var heroGo = hero?.GetUserData()?.Go;
+            var isFight = enemy?.Go != null && heroGo != null &&
+                          Time.time - _lastHeroTargetedTime < _fightMusicHoldSeconds &&
+                          enemy.Props.BodyState is not (VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious) &&
+                          Vector3.Distance(enemy.Go.transform.position, heroGo.transform.position) < _fightMusicMaxDistance;
+            if (!isFight)
+            {
+                ModeTag = MusicTagsMode.Standard;
+                return;
+            }
+            ModeTag = hero.GetUserData().Vob.FightMode == (int)VmGothicEnums.WeaponState.NoWeapon
+                ? MusicTagsMode.Thrill
+                : MusicTagsMode.Fight;
+        }
+
+        /// <summary>
+        /// The zone's theme with OpenGothic's fallbacks: zone then default zone; current then day time; mode, then
+        /// THR->FGT / STD.
+        /// </summary>
+        private string FindTheme(string zoneName)
+        {
+            var times = TimeTag == MusicTagsTime.Night ? new[] { "NGT", "DAY" } : new[] { "DAY" };
+            var mode = ModeTag switch
+            {
+                MusicTagsMode.Thrill => "THR",
+                MusicTagsMode.Fight => "FGT",
+                _ => "STD"
+            };
+            var modes = mode == "THR" ? new[] { "THR", "FGT", "STD" } : mode == "FGT" ? new[] { "FGT", "STD" } : new[] { "STD" };
+
+            foreach (var zone in new[] { zoneName, _defaultZoneName })
+            {
+                if (string.IsNullOrEmpty(zone))
+                    continue;
+                // e.g. Towerdungeon_TD => TD
+                var separator = zone.IndexOf('_');
+                var tag = separator >= 0 ? zone.Substring(separator + 1) : zone;
+                foreach (var time in times)
+                    foreach (var m in modes)
+                    {
+                        var name = $"{tag}_{time}_{m}".ToUpperInvariant();
+                        if (_themes.ContainsKey(name))
+                            return name;
+                    }
+            }
+
+            Logger.LogWarning($"[Music] No theme for zone '{zoneName}' ({TimeTag}, {ModeTag}) nor the default zone", LogCat.Audio);
+            return null;
+        }
+
+        /// <summary>
+        /// Menu/loading screen: the last world's zones must not take the music back from SYS_MENU/SYS_LOADING.
+        /// </summary>
+        public void ClearZones()
+        {
+            _zoneBoxes.Clear();
+            _defaultZoneName = null;
+            _currentZoneName = null;
+            _currentThemeName = null;
+            _heroEnemy = null;
+        }
+
+        public void OnHeroTargeted(NpcContainer enemy)
+        {
+            _heroEnemy = enemy;
+            _lastHeroTargetedTime = Time.time;
+        }
+
         public void MusicZoneExited(GameObject go)
         {
+            if (_configService.Dev.EnableMusicZonesByPosition)
+                return;
             RemoveMusicZone(go);
             Play();
 
@@ -254,6 +409,9 @@ namespace Gothic.Core.Domain.Audio
 
         public void MusicZoneEntered(GameObject go)
         {
+            // DeveloperConfig.EnableMusicZonesByPosition: TickZones decides from the position instead.
+            if (_configService.Dev.EnableMusicZonesByPosition)
+                return;
             AddMusicZone(go);
             Play();
         }
@@ -312,6 +470,18 @@ namespace Gothic.Core.Domain.Audio
         {
             _musicZones.Clear();
 
+            if (_configService.Dev.EnableMusicZonesByPosition)
+            {
+                CollectZoneBoxes();
+                if (_zoneTicker == null && _audioSourceComp != null)
+                {
+                    _zoneTicker = _audioSourceComp.gameObject.AddComponent<MusicZoneTicker>();
+                    _zoneTicker.OnTick = () => TickZones();
+                }
+                TickZones(force: true);
+                return;
+            }
+
             var zones = _multiTypeCacheService.VobCache.Where(i => i.Vob is IZoneMusic); // IZoneMusic | IZoneMusicDefault
             var playerPosition = GameObject.FindWithTag(Constants.PlayerTag).transform.position;
 
@@ -332,6 +502,29 @@ namespace Gothic.Core.Domain.Audio
             }
 
             Play();
+        }
+
+        private void CollectZoneBoxes()
+        {
+            _zoneBoxes.Clear();
+            _defaultZoneName = null;
+            _currentZoneName = null;
+            _currentThemeName = null;
+            foreach (var container in _multiTypeCacheService.VobCache)
+            {
+                if (container?.Vob is not IZoneMusic zone || string.IsNullOrEmpty(zone.Name))
+                    continue;
+                if (zone is ZoneMusicDefault)
+                {
+                    _defaultZoneName = zone.Name;
+                    continue;
+                }
+
+                var bounds = new Bounds(zone.BoundingBox.Min.ToUnityVector(), Vector3.zero);
+                bounds.Encapsulate(zone.BoundingBox.Max.ToUnityVector());
+                _zoneBoxes.Add((zone.Name, bounds));
+            }
+            Logger.Log($"[Music] {_zoneBoxes.Count} music zone(s), default '{_defaultZoneName ?? "-"}'", LogCat.Audio);
         }
     }
 }

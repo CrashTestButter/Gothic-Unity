@@ -887,6 +887,11 @@ namespace Gothic.Core.Models.Config
                  "spells go off at their level, the rest (fire rain, summons, ...) is stopped. Before every spell went off.")]
         public bool EnableSpellReleaseCheck = true;
 
+        [Tooltip("V1: Music zones like the engine - picked from the player's position every 2 s (current zone stays, else " +
+                 "the last zone containing us), theme fallbacks NGT->DAY, THR->FGT->STD, default zone; night from the " +
+                 "game time, fight music ends with the fight. G2's pirate camp kept the bandit music before.")]
+        public bool EnableMusicZonesByPosition = true;
+
         [Tooltip("V1: Loot backpacks of dead NPCs and of containers without a lid (mummies) get a green X above the right " +
                  "page arrow - it moves everything into the hero's inventory.")]
         public bool EnableLootTakeAll = true;

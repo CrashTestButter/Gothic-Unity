@@ -58,6 +58,14 @@ namespace Gothic.Core.Manager
             
             GlobalEventDispatcher.SetHeroAsTarget.AddListener((enemy, hero) =>
             {
+                // DeveloperConfig.EnableMusicZonesByPosition: the zone check derives fight/threat from this.
+                if (_configService.Dev.EnableMusicZonesByPosition)
+                {
+                    _musicDomain.OnHeroTargeted(enemy);
+                    _musicDomain.Play();
+                    return;
+                }
+
                 _musicDomain.ModeTag = hero.Vob.FightMode == (int)VmGothicEnums.WeaponState.NoWeapon ? MusicDomain.MusicTagsMode.Thrill : MusicDomain.MusicTagsMode.Fight;
                 _musicDomain.Play();
             });
@@ -70,11 +78,13 @@ namespace Gothic.Core.Manager
 
         private void OnMainMenuLoaded()
         {
+            _musicDomain.ClearZones();
             PlayMusic("SYS_MENU");
         }
 
         private void OnLoadingSceneLoaded()
         {
+            _musicDomain.ClearZones();
             PlayMusic("SYS_LOADING");
         }
 

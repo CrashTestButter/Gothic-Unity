@@ -746,6 +746,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
         public float DialogMaxDistance = 5f;
 
+        [Tooltip("V1: A dying NPC runs ZS_Dead_Loop once after ZS_Dead, like the engine - G2 counts killed dragons " +
+                 "there (undead dragon: EXTRO video, teleport, UndeadDragonIsDead).")]
+        public bool EnableDeadStateLoop = true;
+
         [Tooltip("V1: Npc_SetTarget is the NPC's enemy (AI_Attack attacks it) and Npc_GetTarget without a target sets " +
                  "other to NULL like the engine. Berzerk victims attacked the caster instead of the NPC they picked.")]
         public bool EnableNpcTargetIsEnemy = true;

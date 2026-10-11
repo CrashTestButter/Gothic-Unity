@@ -915,8 +915,22 @@ namespace Gothic.Core.Services.Npc
             if (zsDeadSym != null)
             {
                 vm.Call(zsDeadSym.Index);
+
+                // DeveloperConfig.EnableDeadStateLoop: the engine runs ZS_Dead_Loop too - G2 counts killed dragons
+                // there (B_DragonKillCounter): the undead dragon's EXTRO video, the teleport to UNDEAD_ENDTELEPORT and
+                // UndeadDragonIsDead never happened. The scripts guard it themselves (AIV_TAPOSITION), once is enough.
+                var zsDeadLoopSym = _configService.Dev.EnableDeadStateLoop ? vm.GetSymbolByName("ZS_Dead_Loop") : null;
+                if (zsDeadLoopSym != null)
+                {
+                    if (zsDeadLoopSym.HasReturn)
+                        vm.Call<int>(zsDeadLoopSym.Index);
+                    else
+                        vm.Call(zsDeadLoopSym.Index);
+                }
+
                 _npcService.SyncHeroInstanceToVob();
-                Logger.Log($"[FightService.OnNpcDied] ZS_Dead complete: {dead.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
+                Logger.Log($"[FightService.OnNpcDied] ZS_Dead complete: {dead.GetName(NpcNameSlot.Slot0)}" +
+                           $"{(zsDeadLoopSym != null ? " (+ ZS_Dead_Loop)" : "")}", LogCat.Npc);
             }
             else
                 Logger.LogWarning("[FightService.OnNpcDied] ZS_Dead symbol not found", LogCat.Npc);

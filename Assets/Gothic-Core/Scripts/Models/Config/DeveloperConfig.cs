@@ -887,6 +887,10 @@ namespace Gothic.Core.Models.Config
                  "spells go off at their level, the rest (fire rain, summons, ...) is stopped. Before every spell went off.")]
         public bool EnableSpellReleaseCheck = true;
 
+        [Tooltip("V1: Loot backpacks of dead NPCs and of containers without a lid (mummies) get a green X above the right " +
+                 "page arrow - it moves everything into the hero's inventory.")]
+        public bool EnableLootTakeAll = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

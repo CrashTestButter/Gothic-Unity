@@ -205,6 +205,7 @@ MonoBehaviour:
   EnableSpellTimePerMana: 1
   MinSpellCastSeconds: 2
   EnableSpellReleaseCheck: 1
+  EnableLootTakeAll: 1
   EnableModelScale: 1
   EnableMapPlayerMarker: 1
   G1WorldMapBounds: {x: -84056, y: 67222, z: 84451, w: -61217}

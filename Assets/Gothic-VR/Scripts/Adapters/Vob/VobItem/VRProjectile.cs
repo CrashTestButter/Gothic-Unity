@@ -5,7 +5,9 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Const;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Logging;
 using UnityEngine;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters.Vob.VobItem
 {
@@ -25,6 +27,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Tooltip("Steers towards this NPC's upper body with HomingDegreesPerSecond (0 = straight flight).")]
         public NpcContainer HomingTarget;
         public float HomingDegreesPerSecond;
+
+        // DeveloperConfig.EnableDamageTargetAutoAim: a VOB that reacts to hits (often invisible) in the flight direction.
+        private Transform _homingVobTarget;
+        private bool _isAutoAimChecked;
+        private const float _autoAimConeDegrees = 12f;
+        private const float _autoAimDegreesPerSecond = 120f;
 
         public Action<NpcContainer, Vector3, Vector3> OnNpcHit;
         public Action<Vector3, Vector3> OnWorldHit;
@@ -112,8 +120,42 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             damageable.OnDamage(Owner);
         }
 
+        /// <summary>
+        /// Once, at the start of the flight: without an NPC to home on, the closest hit-reactive VOB within a small cone
+        /// (G2 Irdorath's bridge targets: invisible, the engine focuses them with a bow drawn).
+        /// </summary>
+        private void TryAutoAimAtDamageTarget()
+        {
+            _isAutoAimChecked = true;
+            if (HomingTarget != null || Velocity.sqrMagnitude < 0.01f)
+                return;
+
+            var config = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Config.ConfigService>();
+            if (!config.Dev.EnableDamageTargetAutoAim)
+                return;
+
+            _homingVobTarget = DamageTargets.FindInCone(transform.position, Velocity, _autoAimConeDegrees, MaxDistance);
+            if (_homingVobTarget == null)
+                return;
+
+            HomingDegreesPerSecond = Mathf.Max(HomingDegreesPerSecond, _autoAimDegreesPerSecond);
+            Logger.Log($"[VRProjectile] Auto-aim at '{_homingVobTarget.name}' (reacts to hits)", LogCat.VR);
+        }
+
         private void ApplyHoming(float deltaTime)
         {
+            if (!_isAutoAimChecked)
+                TryAutoAimAtDamageTarget();
+
+            if (_homingVobTarget != null && HomingDegreesPerSecond > 0f)
+            {
+                var toVob = _homingVobTarget.position - transform.position;
+                if (toVob.sqrMagnitude >= 0.01f)
+                    Velocity = Vector3.RotateTowards(Velocity, toVob.normalized * Velocity.magnitude,
+                        HomingDegreesPerSecond * Mathf.Deg2Rad * deltaTime, 0f);
+                return;
+            }
+
             if (HomingTarget?.Go == null || HomingDegreesPerSecond <= 0f)
                 return;
 

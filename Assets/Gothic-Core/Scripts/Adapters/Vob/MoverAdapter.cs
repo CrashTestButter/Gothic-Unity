@@ -33,9 +33,13 @@ namespace Gothic.Core.Adapters.Vob
 
         private void Awake() => this.Inject();
 
+        private void OnDestroy() => DamageTargets.Unregister(transform);
+
         public void Init(IMover mover, string chainTarget = "")
         {
             _mover = mover;
+            if (_mover.ReactToOnDamage)
+                DamageTargets.Register(transform);
             _chainTarget = chainTarget;
 
             var raw = mover.Keyframes;

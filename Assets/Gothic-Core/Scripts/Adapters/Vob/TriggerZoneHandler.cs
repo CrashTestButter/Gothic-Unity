@@ -23,7 +23,14 @@ namespace Gothic.Core.Adapters.Vob
 
         private void Awake() => this.Inject();
 
-        public void Init(ITrigger trigger) => _trigger = trigger;
+        public void Init(ITrigger trigger)
+        {
+            _trigger = trigger;
+            if (_trigger.ReactToOnDamage)
+                DamageTargets.Register(transform);
+        }
+
+        private void OnDestroy() => DamageTargets.Unregister(transform);
 
         public void ReceiveTrigger()
         {

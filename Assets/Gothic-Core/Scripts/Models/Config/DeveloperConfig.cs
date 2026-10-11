@@ -640,6 +640,10 @@ namespace Gothic.Core.Models.Config
         public bool EnableTimeSkipResetsNpcs = true;
 
 
+        [Tooltip("V1: Arrows, bolts and spell projectiles home on a VOB that reacts to hits (trigger/mover with " +
+                 "reactToOnDamage) within 12 degrees of the flight direction - they are often invisible.")]
+        public bool EnableDamageTargetAutoAim = true;
+
         [Tooltip("V1: Triggers, trigger lists, code masters, movers, ... below another VOB are registered for trigger " +
                  "dispatch and get their own children created - before only root ones were found (G2 Irdorath's last door).")]
         public bool EnableChildLogicVobs = true;

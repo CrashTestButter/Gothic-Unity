@@ -17,9 +17,13 @@ namespace Gothic.Core.Adapters.Vob
         private ITriggerScript _triggerScript;
         private int _activationCount;
 
+        private void OnDestroy() => DamageTargets.Unregister(transform);
+
         public void Init(ITriggerScript triggerScript)
         {
             _triggerScript = triggerScript;
+            if (_triggerScript.ReactToOnDamage)
+                DamageTargets.Register(transform);
         }
 
         /// <summary>

@@ -77,6 +77,7 @@ namespace Gothic.VR.Adapters
             var grabbable = GetComponent<HVRGrabbable>();
             grabbable?.Grabbed.AddListener(OnGrabbed);
             grabbable?.Released.AddListener(OnReleased);
+            RefreshGrabColliders(grabbable);
 
             // V1: mobs used with a melee tool (e.g. G2 treasure X marks + pickaxe) can be dug up by hitting them.
             if (_configService.Dev.EnableDigSpots &&
@@ -157,6 +158,43 @@ namespace Gothic.VR.Adapters
 
             _nameCanvas.SetActive(false);
             _isHovered = false;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMobColliderRefresh: HVRGrabbable collects its colliders in Awake - when the prefab is
+        /// instantiated, before the mesh is built. Mobs whose mesh sits on a child bone (G2 Irdorath's touchplates:
+        /// BIP01 TOUCHPLATE -> BIP01 PLATE) only had the prefab's empty MeshCollider, nothing to hover or grab.
+        /// The hand's trigger bag only maps a collider to its grabbable on the same GameObject or via HVRGrabbableChild
+        /// (HVRSettings.ComponentInParentFallback is off) - child colliders get one, and the grabbable's layer.
+        /// </summary>
+        private void RefreshGrabColliders(HVRGrabbable grabbable)
+        {
+            if (grabbable == null || _isNpc || GetComponent<VRVobItem>() != null ||
+                !_configService.Dev.EnableMobColliderRefresh)
+                return;
+
+            var before = grabbable.Colliders.Count;
+            grabbable.SetupColliders();
+            if (grabbable.Colliders.Count == before)
+                return;
+
+            var linked = 0;
+            foreach (var childCollider in grabbable.Colliders)
+            {
+                var childGo = childCollider.gameObject;
+                if (childGo == grabbable.gameObject || childGo.GetComponent<HVRGrabbable>() != null)
+                    continue;
+                if (!childGo.TryGetComponent<HVRGrabbableChild>(out var child))
+                {
+                    child = childGo.AddComponent<HVRGrabbableChild>();
+                    linked++;
+                }
+                child.ParentGrabbable = grabbable;
+                childGo.layer = grabbable.gameObject.layer;
+            }
+
+            Logger.Log($"[VRFocus] '{name}' grab colliders {before} -> {grabbable.Colliders.Count}, {linked} child " +
+                       "collider(s) linked (mesh built after HVR's Awake)", LogCat.VR);
         }
 
         private void OnEnable()

@@ -165,6 +165,7 @@ MonoBehaviour:
   EnableDamageTargetMarkers: 1
   EnableDamageTargetAutoAim: 1
   EnableChildLogicVobs: 1
+  EnableMobColliderRefresh: 1
   EnableHeroPersonalSpace: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1

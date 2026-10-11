@@ -161,5 +161,8 @@ UI: Default `TMP_Text` font size is **12** to preserve layout integrity for Goth
 ## Workflow Notes
 
 - Branch from `main`, submit PRs with detailed descriptions of what changed and how to test manually.
+- Commits end with `Co-Authored-By: Claude <MODEL VERSION> <noreply@anthropic.com>` (e.g. Opus 5.5, Sonnet 5.5);
+  PR descriptions end with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+- Staging, commit style and PR template: see the `commit-pr` skill.
 - The project tracks issues and feature status on [GitHub Projects](https://github.com/Gothic-Unity-Project/Gothic-Unity/projects?query=is%3Aopen).
 - Team coordination happens on Discord; align with in-progress work before starting large features.

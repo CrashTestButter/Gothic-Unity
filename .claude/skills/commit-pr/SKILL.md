@@ -16,7 +16,10 @@ description: How to stage, commit and open PRs in Gothic-Unity - separate add/co
 4. Include `.meta` files for any new asset/script.
 5. Message style (see `git log`): `feat: ...`, `fix: ...`, `docs: ...`; describe the player-visible effect, not
    just the code.
-6. Never push, force-push or amend without being asked. Work on a branch, not `main`.
+6. End every commit message with `Co-Authored-By: Claude <MODEL VERSION> <noreply@anthropic.com>`, using the model
+   actually running (e.g. `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` or
+   `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`).
+7. Never push, force-push or amend without being asked. Work on a branch, not `main`.
 
 ## After coding, always print
 
@@ -33,5 +36,11 @@ Branch from `main`. Description sections:
   see), and which DeveloperConfig flags must be on
 - **Save/load** - what happens to the new state on save + load
 - **Known gaps / follow-ups**
+
+End every PR description with this line:
+
+```
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+```
 
 Add the `pipeline-test-build` label when the PR needs a CI build (Windows64 / Quest / Pico).

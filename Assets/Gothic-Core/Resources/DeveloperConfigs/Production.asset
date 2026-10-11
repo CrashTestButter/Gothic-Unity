@@ -59,6 +59,7 @@ MonoBehaviour:
   EnableDialogHeroByInstance: 1
   EnableDialogKeepsOutputs: 1
   EnableDeadStateLoop: 1
+  EnableEngineCodeMaster: 1
   PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0

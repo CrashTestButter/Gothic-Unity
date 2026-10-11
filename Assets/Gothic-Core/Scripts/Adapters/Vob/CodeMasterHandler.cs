@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
 using Reflex.Attributes;
 using UnityEngine;
@@ -12,10 +13,15 @@ namespace Gothic.Core.Adapters.Vob
     public class CodeMasterHandler : MonoBehaviour
     {
         [Inject] private VobService _vobService;
+        [Inject] private ConfigService _configService;
 
         private ICodeMaster _codeMaster;
         private readonly HashSet<string> _triggeredSlaves = new();
         private int _nextExpectedIndex;
+
+        // DeveloperConfig.EnableEngineCodeMaster: OpenGothic CodeMaster - a key per slave and a press counter.
+        private bool[] _keys;
+        private int _count;
 
         private void Awake() => this.Inject();
 
@@ -32,6 +38,12 @@ namespace Gothic.Core.Adapters.Vob
             if (slaveIndex < 0)
             {
                 Logger.LogWarning($"[CodeMaster] '{_codeMaster.Name}': trigger from unknown slave '{senderName}'", LogCat.Vob);
+                return;
+            }
+
+            if (_configService.Dev.EnableEngineCodeMaster)
+            {
+                ReceiveTriggerLikeEngine(slaveIndex, senderName);
                 return;
             }
 
@@ -59,6 +71,62 @@ namespace Gothic.Core.Adapters.Vob
             }
         }
 
+        /// <summary>
+        /// The engine counts every press. Ordered: a slave only counts as set when it comes at its place; after as many
+        /// presses as slaves the code is judged - all set: target, else failureTarget (G2 Irdorath's touchplate rooms:
+        /// a wrong order spawns monsters and starts over). firstFalseIsFailure fails at the first wrong press.
+        /// Before, a wrong press reset at once and the failure target never fired.
+        /// </summary>
+        private void ReceiveTriggerLikeEngine(int slaveIndex, string senderName)
+        {
+            var slaveCount = _codeMaster.Slaves.Count;
+            if (_keys == null || _keys.Length != slaveCount)
+                _keys = new bool[slaveCount];
+
+            if (!_codeMaster.Ordered || _count == slaveIndex)
+            {
+                _keys[slaveIndex] = true;
+            }
+            else if (_codeMaster.FirstFalseIsFailure)
+            {
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': '{senderName}' at press {_count + 1}, slave " +
+                           $"[{slaveIndex}] - first false is failure", LogCat.Vob);
+                ResetEngineState();
+                FireFailure();
+                return;
+            }
+
+            _count++;
+            var setCount = 0;
+            foreach (var key in _keys)
+                if (key) setCount++;
+            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': '{senderName}' (slave [{slaveIndex}]) press {_count}/" +
+                       $"{slaveCount}, {setCount} set", LogCat.Vob);
+            if (_count < slaveCount)
+                return;
+
+            if (setCount == slaveCount)
+            {
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered → '{_codeMaster.Target}'", LogCat.Vob);
+                ResetEngineState();
+                if (!string.IsNullOrEmpty(_codeMaster.Target))
+                    _vobService.DispatchTrigger(_codeMaster.Target, _codeMaster.Name);
+            }
+            else if (_codeMaster.Ordered)
+            {
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': wrong order - failure", LogCat.Vob);
+                ResetEngineState();
+                FireFailure();
+            }
+        }
+
+        private void ResetEngineState()
+        {
+            if (_keys != null)
+                System.Array.Clear(_keys, 0, _keys.Length);
+            _count = 0;
+        }
+
         public void ReceiveUntrigger(string senderName)
         {
             if (!_codeMaster.UntriggeredCancels)
@@ -66,6 +134,7 @@ namespace Gothic.Core.Adapters.Vob
 
             Logger.Log($"[CodeMaster] '{_codeMaster.Name}': untrigger from '{senderName}' — resetting sequence", LogCat.Vob);
             Reset();
+            ResetEngineState();
         }
 
         private void FireFailure()

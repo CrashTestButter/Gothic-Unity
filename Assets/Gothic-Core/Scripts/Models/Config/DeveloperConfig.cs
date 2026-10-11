@@ -210,6 +210,10 @@ namespace Gothic.Core.Models.Config
                  "as rotations/s) - G2 Irdorath's gate wheels (full turn) didn't move. MoverSpeedMultiplier is ignored.")]
         public bool EnableEngineMoverTiming = true;
 
+        [Tooltip("V1: zCCodeMaster like the engine: every press counts, an ordered code is judged after as many presses " +
+                 "as slaves and a wrong one fires the failure target (G2 Irdorath's touchplate rooms).")]
+        public bool EnableEngineCodeMaster = true;
+
         [Separator("Debug")]
         [Tooltip("Array like this: C_ITEM_NAME:AMOUNT;... e.g., ItMi_Stuff_OldCoin_01:10;ItFo_Potion_Mana_01:1")]
         public string PlayerInventoryAddition;

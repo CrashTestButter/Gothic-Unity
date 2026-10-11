@@ -333,31 +333,44 @@ namespace Gothic.Core.Domain.Vobs
                 case VirtualObjectType.zCMover:
                     if (!_gameStateService.VobsMover.TryGetValue(key, out var movers))
                         _gameStateService.VobsMover[key] = movers = new();
+                    movers.RemoveAll(m => m?.Go == null || !m.Go);
                     movers.Add(container);
                     break;
                 case VirtualObjectType.oCTriggerScript:
-                    _gameStateService.VobsTriggerScript.TryAdd(key, container);
+                    AddLogicVob(_gameStateService.VobsTriggerScript, key, container);
                     break;
                 case VirtualObjectType.zCTriggerList:
-                    _gameStateService.VobsTriggerList.TryAdd(key, container);
+                    AddLogicVob(_gameStateService.VobsTriggerList, key, container);
                     break;
                 case VirtualObjectType.zCCodeMaster:
-                    _gameStateService.VobsCodeMaster.TryAdd(key, container);
+                    AddLogicVob(_gameStateService.VobsCodeMaster, key, container);
                     break;
                 case VirtualObjectType.zCTrigger:
-                    _gameStateService.VobsTrigger.TryAdd(key, container);
+                    AddLogicVob(_gameStateService.VobsTrigger, key, container);
                     break;
                 case VirtualObjectType.zCMoverController:
-                    _gameStateService.VobsMoverController.TryAdd(key, container);
+                    AddLogicVob(_gameStateService.VobsMoverController, key, container);
                     break;
                 case VirtualObjectType.zCMessageFilter:
-                    _gameStateService.VobsMessageFilter.TryAdd(key, container);
+                    AddLogicVob(_gameStateService.VobsMessageFilter, key, container);
                     break;
                 default:
                     return;
             }
 
             Logger.Log($"[ChildVob] Registered child {vob.Type} '{key}'", LogCat.Vob);
+        }
+
+        /// <summary>
+        /// The first one of a name wins, but an entry whose GameObject is gone (the world was loaded before - loading a
+        /// save in game) is replaced. With TryAdd the stale entry stayed: G2 Irdorath's gate levers sent their
+        /// '..._MSG' after a reload and it was "not found", the wheels and gates didn't move until a restart.
+        /// </summary>
+        private static void AddLogicVob(Dictionary<string, VobContainer> vobs, string key, VobContainer container)
+        {
+            if (vobs.TryGetValue(key, out var existing) && existing?.Go != null && existing.Go)
+                return;
+            vobs[key] = container;
         }
         private bool IsVisualDisabled(IVirtualObject vob)
         {

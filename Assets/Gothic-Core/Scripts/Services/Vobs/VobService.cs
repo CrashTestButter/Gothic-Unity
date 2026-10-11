@@ -400,6 +400,15 @@ namespace Gothic.Core.Services.Vobs
                     await CreateWorldVobs(config, loading, vob.Children);
                     continue;
                 }
+                // Decal/particle VOBs are skipped while those visuals are off (EnableDecalVisuals/EnableParticleEffects,
+                // both off in Production) - and their children went with them: G2's treasure X marks (children of the
+                // RAKEPLACE decal) never appeared in builds, only in the Editor with a config that has decals on. The
+                // children become loaders of their own, the decal/particle itself stays skipped.
+                if (config.EnableEmptyVobContainerChildren && vob.Children.Count > 0 && IsVisualDisabled(config, vob))
+                {
+                    await CreateWorldVobs(config, loading, vob.Children);
+                    continue;
+                }
 
                 // If our VOB type is ignored by Dev config, skip it and its children.
                 if (!config.SpawnVOBTypes.Value.IsEmpty() && !config.SpawnVOBTypes.Value.Contains(vob.Type))
@@ -423,6 +432,16 @@ namespace Gothic.Core.Services.Vobs
                 }
             }
         }
+        private static bool IsVisualDisabled(DeveloperConfig config, IVirtualObject vob)
+        {
+            return vob.Visual?.Type switch
+            {
+                VisualType.Decal => !config.EnableDecalVisuals,
+                VisualType.ParticleEffect => !config.EnableParticleEffects,
+                _ => false
+            };
+        }
+
 
         private static bool IsEmptyVobContainer(IVirtualObject vob)
         {

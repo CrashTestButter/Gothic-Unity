@@ -257,6 +257,15 @@ namespace Gothic.Core.Domain.Vobs
                     Logger.LogError($"VobType={vob.Type} not yet handled. And we didn't know we need to do so. ;-)", LogCat.Vob);
                     return;
             }
+            // A decal/particle VOB skipped because those visuals are off (EnableDecalVisuals/EnableParticleEffects, off in
+            // Production) still carries its children: an empty GO holds them. In builds G2's Irdorath trap/bridge
+            // triggers (children of particle VOBs) were never created - "chained target ... not found", nothing to shoot.
+            if (!go && vob.Children.Count > 0 && IsVisualDisabled(vob))
+            {
+                go = new GameObject($"{vob.Name} (visual off)");
+                go.transform.SetParent(parent != null ? parent.transform : null, false);
+                go.transform.SetPositionAndRotation(placementPosition, vob.Rotation.ToUnityQuaternion());
+            }
 
             // Do not check children if the current VOB can't be created.
             if (!go)
@@ -342,6 +351,16 @@ namespace Gothic.Core.Domain.Vobs
 
             Logger.Log($"[ChildVob] Registered child {vob.Type} '{key}'", LogCat.Vob);
         }
+        private bool IsVisualDisabled(IVirtualObject vob)
+        {
+            return vob.Type == VirtualObjectType.zCVob && vob.Visual?.Type switch
+            {
+                VisualType.Decal => !_configService.Dev.EnableDecalVisuals,
+                VisualType.ParticleEffect => !_configService.Dev.EnableParticleEffects,
+                _ => false
+            };
+        }
+
 
         /// <summary>
         /// DeveloperConfig.EnableChildVobLoaders: child vobs are created inside their parent's GO without a VobLoader of

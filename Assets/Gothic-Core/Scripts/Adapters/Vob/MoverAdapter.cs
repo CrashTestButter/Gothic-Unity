@@ -68,7 +68,7 @@ namespace Gothic.Core.Adapters.Vob
                 Logger.Log($"[MoverAdapter] {mover.Name} starts disabled (startEnabled=false)", LogCat.Vob);
 
             if (_keyframes.Length > 0)
-                (transform.position, transform.rotation) = _keyframes[0];
+                SetPose(_keyframes[0]);
 
             if (_keyframes.Length >= 2)
                 Logger.Log($"[MoverAdapter] {mover.Name} init — kf[0]={_keyframes[0].pos} kf[1]={_keyframes[1].pos} dist={Vector3.Distance(_keyframes[0].pos, _keyframes[1].pos):F2} speed={mover.Speed}", LogCat.Vob);
@@ -107,6 +107,38 @@ namespace Gothic.Core.Adapters.Vob
 
             Logger.Log($"[MoverAdapter] {mover.Name} keyframes relative to the VOB - offset {posOffset} " +
                        $"({posOffset.magnitude:F2} m), {rotAngle:F1} deg", LogCat.Vob);
+        }
+
+        private void SetPose((Vector3 pos, Quaternion rot) pose) => SetPose(pose.pos, pose.rot);
+
+        /// <summary>
+        /// DeveloperConfig.EnableNestedMovers: like the engine (OpenGothic MoveTrigger moves the local transform), a mover
+        /// below another mover moves along with it - its keyframes count from where the parent mover started. G2's
+        /// Jharkendar portal: the petals (Z movers) are children of XY movers; set in world space they ignored their
+        /// parent and after loading a save only one was moved out.
+        /// </summary>
+        private void SetPose(Vector3 position, Quaternion rotation)
+        {
+            var parentMover = _configService.Dev.EnableNestedMovers && transform.parent != null
+                ? transform.parent.GetComponentInParent<MoverAdapter>()
+                : null;
+            if (parentMover != null)
+                parentMover.MapFromStartPose(ref position, ref rotation);
+            transform.SetPositionAndRotation(position, rotation);
+        }
+
+        /// <summary>
+        /// A pose given relative to this mover's start (keyframe 0) moved along with this mover's current pose.
+        /// </summary>
+        private void MapFromStartPose(ref Vector3 position, ref Quaternion rotation)
+        {
+            if (_keyframes == null || _keyframes.Length == 0)
+                return;
+
+            var (startPos, startRot) = _keyframes[0];
+            var delta = transform.rotation * Quaternion.Inverse(startRot);
+            position = transform.position + delta * (position - startPos);
+            rotation = delta * rotation;
         }
 
         /// <summary>
@@ -225,8 +257,7 @@ namespace Gothic.Core.Adapters.Vob
 
             if (direct)
             {
-                transform.position = _keyframes[key].pos;
-                transform.rotation = _keyframes[key].rot;
+                SetPose(_keyframes[key].pos, _keyframes[key].rot);
                 _currentKeyIndex = key;
                 _isOpen = key != 0;
                 TriggerChainedMover(opening: _isOpen);
@@ -289,13 +320,11 @@ namespace Gothic.Core.Adapters.Vob
                 var t = Mathf.Clamp01(elapsed / duration);
                 t = ApplySpeedCurve(t, _mover.SpeedType);
 
-                transform.position = Vector3.Lerp(startPos, endPos, t);
-                transform.rotation = Quaternion.Slerp(startRot, endRot, t);
+                SetPose(Vector3.Lerp(startPos, endPos, t), Quaternion.Slerp(startRot, endRot, t));
                 yield return null;
             }
 
-            transform.position = endPos;
-            transform.rotation = endRot;
+            SetPose(endPos, endRot);
 
             PlaySfx(sfxEnd);
             _isMoving = false;
@@ -335,13 +364,11 @@ namespace Gothic.Core.Adapters.Vob
                     var t = Mathf.Clamp01(elapsed / seconds);
                     t = GetSegmentCurve(t, current == fromIdx, next == toIdx);
 
-                    transform.position = Vector3.Lerp(startPos, endPos, t);
-                    transform.rotation = Quaternion.Slerp(startRot, endRot, t);
+                    SetPose(Vector3.Lerp(startPos, endPos, t), Quaternion.Slerp(startRot, endRot, t));
                     yield return null;
                 }
 
-                transform.position = endPos;
-                transform.rotation = endRot;
+                SetPose(endPos, endRot);
                 current = next;
             }
 

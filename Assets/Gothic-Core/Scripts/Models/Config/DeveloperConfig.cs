@@ -225,6 +225,10 @@ namespace Gothic.Core.Models.Config
                  "as slaves and a wrong one fires the failure target (G2 Irdorath's touchplate rooms).")]
         public bool EnableEngineCodeMaster = true;
 
+        [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
+                 "(children of moving parents) stayed in the middle after loading a save.")]
+        public bool EnableNestedMovers = true;
+
         [Tooltip("V1: A mob with a trigger target and useWithItem only works when the player has the item, like in the " +
                  "engine - G2's Jharkendar portal opened without the ornament ring.")]
         public bool EnableMobRequiredItem = true;

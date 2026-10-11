@@ -418,6 +418,13 @@ namespace Gothic.Core.Services.Vobs
 
                 var container = CreateContainerWithLoader(vob);
 
+                // DeveloperConfig.EnableChildLogicVobs: cutscene cameras, cutscene triggers, fog zones, ... aren't built
+                // (no visual - never lazy loaded, and InitVob skips their children). Their children are: G2 Irdorath's
+                // camera VOBs carry the trigger lists that move the pillars/gates ("EVT_LEFT_UP_CAMERA_01_TRIGGERLIST"
+                // ... not found). The children become loaders of their own (VOB positions are world positions).
+                if (config.EnableChildLogicVobs && vob.Children.Count > 0 && IsUnbuiltVobType(vob.Type))
+                    await CreateWorldVobs(config, loading, vob.Children);
+
                 if (_vobTypesNonLazyLoading.Contains(vob.Type))
                 {
                     CreateVobNow(container);
@@ -432,6 +439,18 @@ namespace Gothic.Core.Services.Vobs
                 }
             }
         }
+        /// <summary>
+        /// VOB types InitVob only creates an empty placeholder for - without their children.
+        /// </summary>
+        public static bool IsUnbuiltVobType(VirtualObjectType type)
+        {
+            return type is VirtualObjectType.zCVobScreenFX or VirtualObjectType.oCCSTrigger or
+                VirtualObjectType.zCVobLensFlare or VirtualObjectType.zCZoneZFog or VirtualObjectType.zCZoneZFogDefault or
+                VirtualObjectType.zCZoneVobFarPlane or VirtualObjectType.zCZoneVobFarPlaneDefault or
+                VirtualObjectType.zCCSCamera or VirtualObjectType.zCCamTrj_KeyFrame or VirtualObjectType.oCTouchDamage or
+                VirtualObjectType.zCEarthquake;
+        }
+
         private static bool IsVisualDisabled(DeveloperConfig config, IVirtualObject vob)
         {
             return vob.Visual?.Type switch

@@ -249,6 +249,14 @@ namespace Gothic.Core.Domain.Vobs
                     // For SaveGame comparison, we load our fallback Prefab and set VobProperties.
                     // Remove it from here once we properly implement and handle it.
                     CreateEmptyDefaultVob(vob, parent);
+                    // DeveloperConfig.EnableChildLogicVobs: their children (a cutscene camera's trigger lists moving
+                    // gates/pillars) are created anyway. Root ones: VobService made the children roots already.
+                    if (_configService.Dev.EnableChildLogicVobs && !isRootVob)
+                    {
+                        foreach (var childVob in vob.Children)
+                            InitVob(childVob, parent, worldPosition, false, isInRelativeTree);
+                    }
+
                     return;
                 case VirtualObjectType.zCVobLevelCompo:
                     // Nothing to do.

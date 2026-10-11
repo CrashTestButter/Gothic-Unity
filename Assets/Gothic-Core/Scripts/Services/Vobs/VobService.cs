@@ -896,6 +896,30 @@ namespace Gothic.Core.Services.Vobs
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableTriggerEnableState: zCMessageFilter Enable/Disable/Toggle on the named VOB. Only movers
+        /// for now (G2 Irdorath's large gates are disabled once they opened, the next lever round moves the small ones).
+        /// False if not handled.
+        /// </summary>
+        public bool DispatchEnable(string name, MessageFilterAction action)
+        {
+            if (!_configService.Dev.EnableTriggerEnableState || !TryGetMovers(name, out var movers))
+                return false;
+
+            var handled = false;
+            foreach (var c in movers)
+            {
+                if (c?.Go == null || !c.Go)
+                    continue;
+                var mover = c.Go.GetComponentInChildren<MoverAdapter>();
+                if (mover == null)
+                    continue;
+                mover.SetEnabled(action);
+                handled = true;
+            }
+            return handled;
+        }
+
+        /// <summary>
         /// Fires an untrigger event to the named VOB. Currently handled by CodeMaster (UntriggeredCancels).
         /// senderName: VOB that sent the untrigger (for CodeMaster slave matching).
         /// </summary>
@@ -907,7 +931,9 @@ namespace Gothic.Core.Services.Vobs
                 foreach (var c in movers)
                 {
                     if (c?.Go == null || !c.Go) continue;
-                    c.Go.GetComponentInChildren<MoverAdapter>()?.Close();
+                    var mover = c.Go.GetComponentInChildren<MoverAdapter>();
+                    if (mover != null && !mover.IsDisabled)
+                        mover.Close();
                 }
                 return;
             }

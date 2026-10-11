@@ -59,6 +59,8 @@ MonoBehaviour:
   EnableDialogHeroByInstance: 1
   EnableDialogKeepsOutputs: 1
   EnableDeadStateLoop: 1
+  EnableMoverRelativeKeyframes: 1
+  EnableTriggerEnableState: 1
   EnableTriggerListSummedDelays: 1
   EnableEngineCodeMaster: 1
   PlayerInventoryAddition: 

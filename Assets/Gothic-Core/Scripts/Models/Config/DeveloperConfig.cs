@@ -210,6 +210,14 @@ namespace Gothic.Core.Models.Config
                  "as rotations/s) - G2 Irdorath's gate wheels (full turn) didn't move. MoverSpeedMultiplier is ignored.")]
         public bool EnableEngineMoverTiming = true;
 
+        [Tooltip("V1: Mover keyframes are relative to where the VOB stands, like in the engine - only matters for movers " +
+                 "whose VOB doesn't stand at the first keyframe.")]
+        public bool EnableMoverRelativeKeyframes = true;
+
+        [Tooltip("V1: zCMessageFilter Enable/Disable/Toggle and startEnabled=false work on movers - a disabled mover " +
+                 "ignores triggers (G2 Irdorath's large gates).")]
+        public bool EnableTriggerEnableState = true;
+
         [Tooltip("V1: zCTriggerList ALL: each target's delay counts from the previous target, like in the engine.")]
         public bool EnableTriggerListSummedDelays = true;
 

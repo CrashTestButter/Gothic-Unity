@@ -31,12 +31,20 @@ namespace Gothic.Core.Adapters.Vob
         private bool _isMoving;
         private int _currentKeyIndex;
 
+        // DeveloperConfig.EnableTriggerEnableState: a disabled mover ignores triggers (zCMessageFilter Disable).
+        private bool _isDisabled;
+        public bool IsDisabled => _isDisabled;
+
         private void Awake() => this.Inject();
 
         private void OnDestroy() => DamageTargets.Unregister(transform);
 
         public void Init(IMover mover, string chainTarget = "")
         {
+            // Awake (and its injection) doesn't run while the GameObject is inactive - lazy loaded VOBs are.
+            if (_configService == null)
+                this.Inject();
+
             _mover = mover;
             if (_mover.ReactToOnDamage)
                 DamageTargets.Register(transform);
@@ -52,6 +60,13 @@ namespace Gothic.Core.Adapters.Vob
                 _keyframes[i] = (pos, rot);
             }
 
+            if (_configService.Dev.EnableMoverRelativeKeyframes)
+                MakeKeyframesRelativeToVob(mover);
+
+            _isDisabled = _configService.Dev.EnableTriggerEnableState && !mover.StartEnabled;
+            if (_isDisabled)
+                Logger.Log($"[MoverAdapter] {mover.Name} starts disabled (startEnabled=false)", LogCat.Vob);
+
             if (_keyframes.Length > 0)
                 (transform.position, transform.rotation) = _keyframes[0];
 
@@ -62,11 +77,59 @@ namespace Gothic.Core.Adapters.Vob
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableMoverRelativeKeyframes: the engine moves a mover by its keyframes relative to where the
+        /// VOB stands (OpenGothic MoveTrigger: pos0 = vob * inverse(keyframe[0]), shown at pos0 * keyframe[i]). We put it
+        /// on the keyframes themselves - the same as long as the VOB stands at its first keyframe (G2 Irdorath's gates do).
+        /// </summary>
+        private void MakeKeyframesRelativeToVob(IMover mover)
+        {
+            if (_keyframes.Length == 0)
+                return;
+
+            var vobPos = mover.Position.ToUnityVector();
+            var vobRot = mover.Rotation.ToUnityQuaternion();
+            var (kfPos, kfRot) = _keyframes[0];
+            var rotOffset = vobRot * Quaternion.Inverse(kfRot);
+            var rotAngle = Quaternion.Angle(rotOffset, Quaternion.identity);
+            var posOffset = vobPos - kfPos;
+            if (posOffset.sqrMagnitude < 0.0001f && rotAngle < 1f)
+                return;
+
+            // Rotation conversions of keyframes and VOB may differ slightly - only a real difference turns them.
+            if (rotAngle < 1f)
+                rotOffset = Quaternion.identity;
+
+            for (var i = 0; i < _keyframes.Length; i++)
+            {
+                var (pos, rot) = _keyframes[i];
+                _keyframes[i] = (vobPos + rotOffset * (pos - kfPos), rotOffset * rot);
+            }
+
+            Logger.Log($"[MoverAdapter] {mover.Name} keyframes relative to the VOB - offset {posOffset} " +
+                       $"({posOffset.magnitude:F2} m), {rotAngle:F1} deg", LogCat.Vob);
+        }
+
+        /// <summary>
+        /// zCMessageFilter Enable/Disable/Toggle (OpenGothic AbstractTrigger T_Enable/T_Disable/T_ToggleEnable).
+        /// </summary>
+        public void SetEnabled(MessageFilterAction action)
+        {
+            _isDisabled = action switch
+            {
+                MessageFilterAction.Enable => false,
+                MessageFilterAction.Disable => true,
+                MessageFilterAction.Toggle => !_isDisabled,
+                _ => _isDisabled
+            };
+            Logger.Log($"[MoverAdapter] {_mover?.Name} {action} -> {(_isDisabled ? "disabled" : "enabled")}", LogCat.Vob);
+        }
+
+        /// <summary>
         /// Hit by an arrow/bolt/spell: a mover with reactToOnDamage acts like it was triggered.
         /// </summary>
         public void OnDamage(NpcContainer attacker)
         {
-            if (_mover == null || !_mover.ReactToOnDamage)
+            if (_mover == null || !_mover.ReactToOnDamage || _isDisabled)
                 return;
 
             Logger.Log($"[MoverAdapter] {_mover.Name} hit by a projectile", LogCat.Vob);
@@ -76,6 +139,11 @@ namespace Gothic.Core.Adapters.Vob
         public void Toggle()
         {
             Logger.Log($"[MoverAdapter] {_mover?.Name ?? "NULL"} Toggle() on GO='{gameObject.name}' active={gameObject.activeInHierarchy} isMoving={_isMoving} isOpen={_isOpen}", LogCat.Vob);
+            if (_isDisabled)
+            {
+                Logger.Log($"[MoverAdapter] {_mover?.Name} is disabled - trigger ignored", LogCat.Vob);
+                return;
+            }
             if (_isMoving) return;
             if (_isOpen) Close(); else Open();
         }

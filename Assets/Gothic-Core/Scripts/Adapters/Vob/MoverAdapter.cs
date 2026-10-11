@@ -196,6 +196,12 @@ namespace Gothic.Core.Adapters.Vob
 
         private IEnumerator MoveTo(int fromIdx, int toIdx, string sfxStart, string sfxEnd, System.Action onDone)
         {
+            if (_configService.Dev.EnableEngineMoverTiming)
+            {
+                yield return MoveThroughKeyframes(fromIdx, toIdx, sfxStart, sfxEnd, onDone);
+                yield break;
+            }
+
             _isMoving = true;
             PlaySfx(sfxStart);
 
@@ -226,6 +232,111 @@ namespace Gothic.Core.Adapters.Vob
             PlaySfx(sfxEnd);
             _isMoving = false;
             onDone?.Invoke();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableEngineMoverTiming: like the engine (OpenGothic MoveTrigger), through every keyframe on
+        /// the way, each segment with its own time - translation: cm / speed (cm per ms), rotation only: the angle with
+        /// the speed as rotations per second (very low speeds scaled up). Before, only the first and the last keyframe
+        /// were used: G2 Irdorath's gate wheels make a full turn (first == last) and never moved, and a translation
+        /// took meters / speed seconds (10x too slow - MoverSpeedMultiplier compensated a part, it's ignored here).
+        /// </summary>
+        private IEnumerator MoveThroughKeyframes(int fromIdx, int toIdx, string sfxStart, string sfxEnd,
+            System.Action onDone)
+        {
+            _isMoving = true;
+            PlaySfx(sfxStart);
+
+            var count = _keyframes.Length;
+            // Neighbours (GoToKeyNext/Prev, also wrapping last <-> 0) move one segment, otherwise step towards toIdx.
+            var step = toIdx == (fromIdx + 1) % count ? 1 : toIdx == (fromIdx - 1 + count) % count ? -1 :
+                toIdx > fromIdx ? 1 : -1;
+            var current = fromIdx;
+            while (current != toIdx)
+            {
+                var next = (current + step + count) % count;
+                var segment = step > 0 ? current : next;
+                var seconds = GetSegmentSeconds(segment);
+                var (startPos, startRot) = _keyframes[current];
+                var (endPos, endRot) = _keyframes[next];
+
+                var elapsed = 0f;
+                while (elapsed < seconds)
+                {
+                    elapsed += Time.deltaTime;
+                    var t = Mathf.Clamp01(elapsed / seconds);
+                    t = GetSegmentCurve(t, current == fromIdx, next == toIdx);
+
+                    transform.position = Vector3.Lerp(startPos, endPos, t);
+                    transform.rotation = Quaternion.Slerp(startRot, endRot, t);
+                    yield return null;
+                }
+
+                transform.position = endPos;
+                transform.rotation = endRot;
+                current = next;
+            }
+
+            PlaySfx(sfxEnd);
+            _isMoving = false;
+            onDone?.Invoke();
+        }
+
+        /// <summary>
+        /// Like the engine: Slow* ease the start/end of the whole way (first/last segment), Segment* every segment.
+        /// </summary>
+        private float GetSegmentCurve(float t, bool isFirst, bool isLast)
+        {
+            var easeStart = _mover.SpeedType is MoverSpeedType.SegmentSlowStart or MoverSpeedType.SegmentSlowStartEnd ||
+                            (isFirst && _mover.SpeedType is MoverSpeedType.SlowStart or MoverSpeedType.SlowStartEnd);
+            var easeEnd = _mover.SpeedType is MoverSpeedType.SegmentSlowEnd or MoverSpeedType.SegmentSlowStartEnd ||
+                          (isLast && _mover.SpeedType is MoverSpeedType.SlowEnd or MoverSpeedType.SlowStartEnd);
+            if (easeStart && easeEnd)
+                return ApplySpeedCurve(t, MoverSpeedType.SlowStartEnd);
+            if (easeStart)
+                return ApplySpeedCurve(t, MoverSpeedType.SlowStart);
+            return easeEnd ? ApplySpeedCurve(t, MoverSpeedType.SlowEnd) : t;
+        }
+
+        /// <summary>
+        /// Seconds from keyframe i to i+1 (OpenGothic MoveTrigger: ticks in ms).
+        /// </summary>
+        private float GetSegmentSeconds(int index)
+        {
+            var speed = _mover.Speed;
+            if (speed <= 0f)
+                return 0.5f;
+
+            var (pos0, rot0) = _keyframes[index];
+            var (pos1, rot1) = _keyframes[(index + 1) % _keyframes.Length];
+            const float rotationThreshold = 0.01f;
+            var lengthCm = Vector3.Distance(pos0, pos1) * 100f;
+
+            float milliseconds;
+            if (lengthCm > rotationThreshold)
+            {
+                milliseconds = lengthCm / speed;
+            }
+            else
+            {
+                var dot = Quaternion.Dot(rot0, rot1);
+                var theta = 2f * dot * dot - 1f;
+                var angle = Mathf.Acos(Mathf.Clamp(theta, -1f, 1f)) * Mathf.Rad2Deg;
+                milliseconds = angle / 360f * 1000f / ScaleRotationSpeed(speed);
+            }
+
+            return Mathf.Max(1f, milliseconds) / 1000f;
+        }
+
+        /// <summary>
+        /// OpenGothic's measurement: rotation speed is rotations per second, very low values are scaled up
+        /// (EVT_RIGHT_WHEEL_01: speed 0.00068, one turn in 5 s).
+        /// </summary>
+        private static float ScaleRotationSpeed(float speed)
+        {
+            const float scaleFactor = 300f;
+            const float lowSpeed = 0.006f;
+            return speed < lowSpeed ? scaleFactor * speed : speed;
         }
 
         private static float ApplySpeedCurve(float t, MoverSpeedType type) => type switch

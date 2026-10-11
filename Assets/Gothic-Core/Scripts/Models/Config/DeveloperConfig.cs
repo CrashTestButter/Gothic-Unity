@@ -206,6 +206,10 @@ namespace Gothic.Core.Models.Config
         [Range(0.1f, 10f)]
         public float MoverSpeedMultiplier = 1f;
 
+        [Tooltip("V1: Movers go through every keyframe with the engine's timing per segment (translation cm/ms, rotation " +
+                 "as rotations/s) - G2 Irdorath's gate wheels (full turn) didn't move. MoverSpeedMultiplier is ignored.")]
+        public bool EnableEngineMoverTiming = true;
+
         [Separator("Debug")]
         [Tooltip("Array like this: C_ITEM_NAME:AMOUNT;... e.g., ItMi_Stuff_OldCoin_01:10;ItFo_Potion_Mana_01:1")]
         public string PlayerInventoryAddition;

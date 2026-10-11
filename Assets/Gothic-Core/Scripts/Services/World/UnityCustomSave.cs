@@ -46,6 +46,8 @@ namespace Gothic.Core.Services.World
         public bool IsOpen;             // mover
         public bool IsDisabled;         // mover: zCMessageFilter Disable
         public int ActivationCount;     // trigger, trigger list, trigger script: times fired (maxActivationCount)
+        public bool[] CodeMasterKeys;   // code master: slaves already counted (engine CodeMaster keys)
+        public int CodeMasterCount;     // code master: presses so far
     }
 
     public class HeroInventoryEntry

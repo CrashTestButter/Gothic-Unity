@@ -18,6 +18,12 @@ namespace Gothic.Core.Adapters.Vob
 
         private ITriggerList _triggerList;
         private int _activationCount;
+        public int ActivationCount => _activationCount;
+
+        /// <summary>
+        /// Can fire again - a code master without saved state frees its used-up slaves (CodeMasterHandler.Start).
+        /// </summary>
+        public void ResetActivationCount() => _activationCount = 0;
 
         /// <summary>
         /// DeveloperConfig.EnableLogicVobSaveState: fired since the world was loaded - maxActivationCount holds after

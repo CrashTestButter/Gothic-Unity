@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
+using Gothic.Core.Services.World;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -14,6 +16,7 @@ namespace Gothic.Core.Adapters.Vob
     {
         [Inject] private VobService _vobService;
         [Inject] private ConfigService _configService;
+        [Inject] private GameStateService _gameStateService;
 
         private ICodeMaster _codeMaster;
         private readonly HashSet<string> _triggeredSlaves = new();
@@ -23,11 +26,108 @@ namespace Gothic.Core.Adapters.Vob
         private bool[] _keys;
         private int _count;
 
+        // DeveloperConfig.EnableLogicVobSaveState: the state came from the save - no guessing from the slaves.
+        private bool _isRestoredFromSave;
+
         private void Awake() => this.Inject();
 
         public void Init(ICodeMaster codeMaster)
         {
             _codeMaster = codeMaster;
+
+            if (_configService == null)
+                this.Inject();
+            if (_configService.Dev.EnableLogicVobSaveState && LogicVobSaveState.TryTake(codeMaster, out var saved) &&
+                saved.CodeMasterKeys != null)
+            {
+                _keys = saved.CodeMasterKeys;
+                _count = saved.CodeMasterCount;
+                _isRestoredFromSave = true;
+                Logger.Log($"[LogicVobSave] '{codeMaster.Name}' restored from save - {_count} press(es)", LogCat.Vob);
+            }
+        }
+
+        /// <summary>
+        /// Saves from before code masters were saved: a slave whose trigger is used up (restored activation count) was
+        /// already counted - G2 Irdorath's big bridge needs both targets, one was shot before the save and can't fire
+        /// again, the bridge never moved. Partial progress is filled in. All slaves used up is
+        /// unclear: solved, or saved halfway with the code master forgotten (the bridge: both targets shot, never moved).
+        /// Then the slaves can fire again - a solved code isn't touched again by the player anyway.
+        /// </summary>
+        private void Start()
+        {
+            if (_isRestoredFromSave || _codeMaster == null || !_configService.Dev.EnableLogicVobSaveState ||
+                !_configService.Dev.EnableEngineCodeMaster)
+                return;
+
+            var slaves = _codeMaster.Slaves;
+            var usedUp = new bool[slaves.Count];
+            var usedUpCount = 0;
+            for (var i = 0; i < slaves.Count; i++)
+            {
+                if (GetSlaveActivationCount(slaves[i]) <= 0)
+                    continue;
+                usedUp[i] = true;
+                usedUpCount++;
+            }
+
+            if (usedUpCount == 0)
+                return;
+
+            if (usedUpCount == slaves.Count)
+            {
+                for (var i = 0; i < slaves.Count; i++)
+                    ResetSlaveActivationCount(slaves[i]);
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all {slaves.Count} slave(s) used up in a save without code " +
+                           "master state - they can fire again", LogCat.Vob);
+                return;
+            }
+
+            _keys = usedUp;
+            _count = usedUpCount;
+            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': {usedUpCount}/{slaves.Count} slave(s) already fired before " +
+                       "the save - counted (save without code master state)", LogCat.Vob);
+        }
+
+        private void ResetSlaveActivationCount(string slaveName)
+        {
+            var key = slaveName.ToUpper();
+            if (_gameStateService.VobsTrigger.TryGetValue(key, out var zone) && zone?.Go != null && zone.Go)
+                zone.Go.GetComponentInChildren<TriggerZoneHandler>(true)?.ResetActivationCount();
+            if (_gameStateService.VobsTriggerScript.TryGetValue(key, out var script) && script?.Go != null && script.Go)
+                script.Go.GetComponentInChildren<TriggerScriptHandler>(true)?.ResetActivationCount();
+            if (_gameStateService.VobsTriggerList.TryGetValue(key, out var list) && list?.Go != null && list.Go)
+                list.Go.GetComponentInChildren<TriggerListHandler>(true)?.ResetActivationCount();
+        }
+
+        private int GetSlaveActivationCount(string slaveName)
+        {
+            var key = slaveName.ToUpper();
+            if (_gameStateService.VobsTrigger.TryGetValue(key, out var zone) && zone?.Go != null && zone.Go)
+                return zone.Go.GetComponentInChildren<TriggerZoneHandler>(true)?.ActivationCount ?? 0;
+            if (_gameStateService.VobsTriggerScript.TryGetValue(key, out var script) && script?.Go != null && script.Go)
+                return script.Go.GetComponentInChildren<TriggerScriptHandler>(true)?.ActivationCount ?? 0;
+            if (_gameStateService.VobsTriggerList.TryGetValue(key, out var list) && list?.Go != null && list.Go)
+                return list.Go.GetComponentInChildren<TriggerListHandler>(true)?.ActivationCount ?? 0;
+            return 0;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableLogicVobSaveState: partial progress of a code (engine mode) goes into the save.
+        /// </summary>
+        public bool TryCaptureState(out LogicVobSaveEntry entry)
+        {
+            entry = null;
+            if (_codeMaster == null || _keys == null || _count == 0)
+                return false;
+
+            entry = new LogicVobSaveEntry
+            {
+                Key = LogicVobSaveState.MakeKey(_codeMaster),
+                CodeMasterKeys = (bool[])_keys.Clone(),
+                CodeMasterCount = _count
+            };
+            return true;
         }
 
         public void ReceiveTrigger(string senderName)

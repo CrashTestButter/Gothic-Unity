@@ -600,6 +600,9 @@ namespace Gothic.Core.Services.World
             foreach (var zone in FindAll<TriggerZoneHandler>())
                 if (zone.TryCaptureState(out var entry))
                     entries.Add(entry);
+            foreach (var codeMaster in FindAll<CodeMasterHandler>())
+                if (codeMaster.TryCaptureState(out var entry))
+                    entries.Add(entry);
 
             LogicVobSaveState.StoreWorld(CurrentWorldName, entries);
             Logger.Log($"[SaveGame] {entries.Count} changed mover/trigger state(s) stored for '{CurrentWorldName}'", LogCat.Loading);

@@ -90,7 +90,9 @@ namespace Gothic.Core.Adapters.Vob
             _activationCount++;
             var target = _trigger.Target;
             Logger.Log($"[TriggerZone] '{_trigger.Name}' → '{target}' (act {_activationCount}/{(max < 0 ? "∞" : max.ToString())})", LogCat.Vob);
-            _vobService.DispatchTrigger(target);
+            // The trigger itself is the sender - a CodeMaster only counts its slaves by name (G2 Irdorath's big
+            // bridge: both targets hit, "trigger from unknown slave ''", the bridge stayed).
+            _vobService.DispatchTrigger(target, _trigger.Name);
         }
     }
 }

@@ -55,7 +55,7 @@ namespace Gothic.Core.Adapters.Vob
             {
                 Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered → '{_codeMaster.Target}'", LogCat.Vob);
                 Reset();
-                _vobService.DispatchTrigger(_codeMaster.Target);
+                _vobService.DispatchTrigger(_codeMaster.Target, _codeMaster.Name);
             }
         }
 
@@ -74,7 +74,7 @@ namespace Gothic.Core.Adapters.Vob
             if (!string.IsNullOrEmpty(ft))
             {
                 Logger.Log($"[CodeMaster] '{_codeMaster.Name}': firing FailureTarget '{ft}'", LogCat.Vob);
-                _vobService.DispatchTrigger(ft);
+                _vobService.DispatchTrigger(ft, _codeMaster.Name);
             }
         }
 

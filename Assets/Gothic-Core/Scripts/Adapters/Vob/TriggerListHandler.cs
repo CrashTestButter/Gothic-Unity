@@ -66,7 +66,7 @@ namespace Gothic.Core.Adapters.Vob
         private void ScheduleDispatch(string name, float delay)
         {
             if (delay <= 0f)
-                _vobService.DispatchTrigger(name);
+                _vobService.DispatchTrigger(name, _triggerList.Name);
             else
                 StartCoroutine(DelayedDispatch(name, delay));
         }
@@ -74,7 +74,7 @@ namespace Gothic.Core.Adapters.Vob
         private IEnumerator DelayedDispatch(string name, float delay)
         {
             yield return new WaitForSeconds(delay);
-            _vobService.DispatchTrigger(name);
+            _vobService.DispatchTrigger(name, _triggerList.Name);
         }
     }
 }

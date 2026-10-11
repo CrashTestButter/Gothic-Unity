@@ -67,6 +67,9 @@ namespace Gothic.VR.Adapters.Marvin
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinSpawnNpcSymbol))
                 buttons.Add(($"Spawn {_configService.Dev.MarvinSpawnNpcSymbol}", CheatSpawnNpc));
 
+            if (!string.IsNullOrEmpty(_configService.Dev.MarvinFriendsNpcSymbols))
+                buttons.Add(("Friends", CheatSpawnFriends));
+
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinGiveItems))
                 buttons.Add(("Give items", CheatGiveItems));
 
@@ -191,6 +194,45 @@ namespace Gothic.VR.Adapters.Marvin
             var ok = _npcService.SpawnNpcByName(symbol, pos, rot);
             if (ok)
                 Logger.Log($"[MarvinMode] Spawned '{symbol}' near player", LogCat.Ui);
+        }
+
+        private const float _friendsDistance = 2.5f;
+        private const float _friendsArcDegrees = 120f;
+
+        /// <summary>
+        /// DeveloperConfig.MarvinFriendsNpcSymbols: all of them at once, on an arc in front of the hero.
+        /// </summary>
+        private void CheatSpawnFriends()
+        {
+            var hero = _npcService.GetHeroContainer();
+            if (hero?.Go == null)
+            {
+                Logger.LogWarning("[MarvinMode] Friends: hero GO not found", LogCat.Ui);
+                return;
+            }
+
+            var symbols = _configService.Dev.MarvinFriendsNpcSymbols.Split(',', ';', '\n');
+            var names = new System.Collections.Generic.List<string>();
+            foreach (var entry in symbols)
+            {
+                var name = entry.Trim();
+                if (name.Length > 0)
+                    names.Add(name);
+            }
+
+            var forward = hero.Go.transform.forward;
+            forward.y = 0f;
+            forward = forward.sqrMagnitude > 0.0001f ? forward.normalized : Vector3.forward;
+            for (var i = 0; i < names.Count; i++)
+            {
+                var angle = names.Count > 1 ? -_friendsArcDegrees / 2f + _friendsArcDegrees * i / (names.Count - 1) : 0f;
+                var direction = Quaternion.Euler(0f, angle, 0f) * forward;
+                var position = hero.Go.transform.position + direction * _friendsDistance;
+                // Facing the hero.
+                var rotation = Quaternion.LookRotation(-direction);
+                if (_npcService.SpawnNpcByName(names[i], position, rotation))
+                    Logger.Log($"[MarvinMode] Friends: spawned '{names[i]}'", LogCat.Ui);
+            }
         }
 
         /// <summary>

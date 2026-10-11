@@ -380,7 +380,12 @@ namespace Gothic.Core.Manager
                 return true;
 
             var distance = Vector3.Distance(hero.Go.transform.position, dialogGo.transform.position);
-            return distance <= _configService.Dev.DialogMaxDistance;
+            // DeveloperConfig.EnableDialogRangeByBodySize: the distance counts from the body's edge - G2's undead dragon
+            // is meters wide, the hero couldn't come close enough (and his head was far away).
+            var bodyRadius = _configService.Dev.EnableDialogRangeByBodySize && dialogGo == npcContainer.Go
+                ? Gothic.Core.Domain.Npc.NpcBodySize.GetRadius(npcContainer)
+                : 0f;
+            return distance <= _configService.Dev.DialogMaxDistance + bodyRadius;
         }
 
         /// <summary>

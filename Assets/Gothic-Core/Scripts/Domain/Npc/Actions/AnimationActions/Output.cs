@@ -23,6 +23,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
 
         protected virtual string OutputName => Action.String0;
 
@@ -55,6 +56,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             if (audioClip == null)
                 Logger.LogWarning($"AudioClip >{OutputName}< not found. Using text-length fallback.", LogCat.Dialog);
             _audioPlaySeconds = audioClip != null ? audioClip.length : Mathf.Max(2f, (block?.Message.Text.Length ?? 30) / 15f);
+            Logger.Log($"[Dialog] {(_isHeroSpeaking ? "hero" : NpcInstance.GetName(ZenKit.Daedalus.NpcNameSlot.Slot0))} says '{OutputName}' " +
+                       $"({(audioClip != null ? "audio" : "no audio")}, {_audioPlaySeconds:F1} s)", LogCat.Dialog);
 
             // Hero
             if (_isHeroSpeaking)
@@ -78,10 +81,48 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 }
 
                 if (audioClip != null)
-                    PrefabProps.NpcSound.PlayOneShot(audioClip);
+                    GetVoiceSource().PlayOneShot(audioClip);
 
                 PrintDialog(block);
             }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableDialogRangeByBodySize: dialog lines get their own AudioSource next to NpcSound. NpcSound's
+        /// maxDistance follows the last animation sound (AnimationSystem: a dragon's breath) - his lines were inaudible
+        /// meters away, where his big head is. Full volume within the body, audible as far as the dialog reaches.
+        /// </summary>
+        private AudioSource GetVoiceSource()
+        {
+            var npcSound = PrefabProps.NpcSound;
+            if (!_configService.Dev.EnableDialogRangeByBodySize || npcSound == null)
+                return npcSound;
+
+            const string voiceName = "_DialogVoice";
+            var voiceTransform = npcSound.transform.Find(voiceName);
+            AudioSource voice;
+            if (voiceTransform == null)
+            {
+                var voiceGo = new GameObject(voiceName);
+                voiceGo.transform.SetParent(npcSound.transform, false);
+                voice = voiceGo.AddComponent<AudioSource>();
+                voice.outputAudioMixerGroup = npcSound.outputAudioMixerGroup;
+                voice.spatialBlend = npcSound.spatialBlend;
+                voice.volume = npcSound.volume;
+                voice.priority = npcSound.priority;
+                voice.dopplerLevel = 0f;
+                voice.rolloffMode = AudioRolloffMode.Linear;
+                voice.playOnAwake = false;
+            }
+            else
+            {
+                voice = voiceTransform.GetComponent<AudioSource>();
+            }
+
+            var bodyRadius = Gothic.Core.Domain.Npc.NpcBodySize.GetRadius(NpcContainer);
+            voice.minDistance = bodyRadius;
+            voice.maxDistance = bodyRadius + _configService.Dev.DialogMaxDistance * 3f;
+            return voice;
         }
 
         private void PrintDialog(ICutsceneBlock block)
@@ -142,6 +183,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             else
             {
                 PrefabProps.NpcSound.Stop();
+                // The line itself plays on the voice source (EnableDialogRangeByBodySize).
+                PrefabProps.NpcSound.transform.Find("_DialogVoice")?.GetComponent<AudioSource>()?.Stop();
                 // Killed/knocked out while talking - the line stopped, so does its subtitle.
                 PrefabProps.NpcSubtitles?.HideSubtitles();
                 if (_randomDialogAnimationName != null)

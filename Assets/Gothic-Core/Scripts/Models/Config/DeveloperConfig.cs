@@ -746,6 +746,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
         public float DialogMaxDistance = 5f;
 
+        [Tooltip("V1: Dialog distance and voice range grow with the NPC's body (measured from its edge) - G2's undead " +
+                 "dragon's lines were inaudible, his head is meters away. Dialog lines play on their own AudioSource.")]
+        public bool EnableDialogRangeByBodySize = true;
+
         [Tooltip("V1: Dialog lines tell the hero apart by instance, not by id 0 - monsters have id 0 too, the undead " +
                  "dragon's lines went to the hero's queue and were never said.")]
         public bool EnableDialogHeroByInstance = true;

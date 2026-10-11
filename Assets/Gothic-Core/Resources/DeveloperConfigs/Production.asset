@@ -182,6 +182,7 @@ MonoBehaviour:
   EnableImportantInfoOrder: 1
   EnableDialogFreeMovement: 1
   DialogMaxDistance: 5
+  EnableDialogRangeByBodySize: 1
   EnableNpcTargetIsEnemy: 1
   EnableAiAttackDrawsWeapon: 1
   EnableRoutineHolstersWeapon: 1

@@ -34,6 +34,7 @@ namespace Gothic.Core.Services.Npc
         [Inject] private readonly NpcInventoryService _npcInventoryService;
         [Inject] private readonly Gothic.Core.Services.Config.ConfigService _fightConfigService;
         [Inject] private readonly Gothic.Core.Services.Meshes.ParticleService _particleService;
+        [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
         [Inject] private readonly Gothic.Core.Services.Caches.VmCacheService _vmCacheService;
@@ -57,7 +58,7 @@ namespace Gothic.Core.Services.Npc
         /// </summary>
         private void OnFallDamage(NpcContainer npc, int damage)
         {
-            if (npc?.Vob == null || npc.Props.BodyState == VmGothicEnums.BodyState.BsDead)
+            if (npc?.Vob == null || npc.Props.BodyState == VmGothicEnums.BodyState.BsDead || IsHeroInGodMode(npc))
                 return;
 
             var hitPoints = npc.Vob.GetAttribute((int)NpcAttribute.HitPoints) - damage;
@@ -71,6 +72,11 @@ namespace Gothic.Core.Services.Npc
             npc.Props.BodyState = VmGothicEnums.BodyState.BsDead;
             OnDyingChangeAnimation(npc);
             OnNpcDied(npc, npc);
+        }
+
+        private bool IsHeroInGodMode(NpcContainer npc)
+        {
+            return _playerService.IsGodMode && npc?.PrefabProps != null && npc.PrefabProps.IsHero();
         }
 
         private void OnSpellHit(NpcContainer caster, NpcContainer target, Vector3 pos, int damage)
@@ -855,7 +861,8 @@ namespace Gothic.Core.Services.Npc
                 damage = Mathf.Min(damage, Mathf.Max(1, hitPoints - 1));
 
             // NPC_FLAG_IMMORTAL (bit 1 = 2): take no damage, but combat still plays out normally.
-            if (((int)target.Instance.Flags & 2) != 0)
+            // Marvin's god mode for the hero likewise (the script flag is left alone - AI reads it).
+            if (((int)target.Instance.Flags & 2) != 0 || IsHeroInGodMode(target))
             {
                 Logger.Log($"[FightService] {target.Instance.GetName(NpcNameSlot.Slot0)} is immortal — 0 damage", LogCat.Npc);
                 damage = 0;

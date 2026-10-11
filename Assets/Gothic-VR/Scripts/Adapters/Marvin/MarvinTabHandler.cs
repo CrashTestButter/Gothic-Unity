@@ -58,6 +58,9 @@ namespace Gothic.VR.Adapters.Marvin
             if (_configService.Dev.EnableMarvinBlink)
                 buttons.Add(("TP +4 m", CheatBlinkForward));
 
+            if (_configService.Dev.EnableMarvinGodMode)
+                buttons.Add(("God mode", CheatToggleGodMode));
+
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinTeleportWaypoint))
                 buttons.Add(($"TP → {_configService.Dev.MarvinTeleportWaypoint}", CheatTeleportToWaypoint));
 
@@ -126,6 +129,18 @@ namespace Gothic.VR.Adapters.Marvin
             }
             _contextInteractionService.TeleportPlayerTo(wp.Position, wp.Rotation);
             Logger.Log($"[MarvinMode] Teleported to '{wpName}'", LogCat.Ui);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMarvinGodMode: hits (melee, arrows, spells) and falls don't hurt the hero. Toggles; the
+        /// state shows as a screen message.
+        /// </summary>
+        private void CheatToggleGodMode()
+        {
+            _playerService.IsGodMode = !_playerService.IsGodMode;
+            var state = _playerService.IsGodMode ? "ON" : "OFF";
+            Gothic.Core.GlobalEventDispatcher.ScriptPrintScreen.Invoke($"God mode {state}", 0, 2);
+            Logger.Log($"[MarvinMode] God mode {state}", LogCat.Ui);
         }
 
         private const float _blinkDistance = 4f;

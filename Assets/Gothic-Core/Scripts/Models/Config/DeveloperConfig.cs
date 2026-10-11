@@ -408,6 +408,9 @@ namespace Gothic.Core.Models.Config
                  "point.")]
         public bool EnableMarvinFallRescue = true;
 
+        [Tooltip("Show 'God mode' toggle in MarvinMode panel: hits and falls don't hurt the hero.")]
+        public bool EnableMarvinGodMode = true;
+
         [Tooltip("Daedalus symbol name of NPC to spawn next to player via Marvin 'Spawn NPC' button. E.g. SH, PC_THIEF. Leave empty to disable.")]
         public string MarvinSpawnNpcSymbol = string.Empty;
 

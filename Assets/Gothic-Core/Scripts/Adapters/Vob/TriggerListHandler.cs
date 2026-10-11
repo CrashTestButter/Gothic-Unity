@@ -1,6 +1,7 @@
 using System.Collections;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Services.World;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
 using Reflex.Attributes;
@@ -18,11 +19,32 @@ namespace Gothic.Core.Adapters.Vob
         private ITriggerList _triggerList;
         private int _activationCount;
 
+        /// <summary>
+        /// DeveloperConfig.EnableLogicVobSaveState: fired since the world was loaded - maxActivationCount holds after
+        /// loading a save.
+        /// </summary>
+        public bool TryCaptureState(out LogicVobSaveEntry entry)
+        {
+            entry = _activationCount > 0 && _triggerList != null
+                ? new LogicVobSaveEntry
+                {
+                    Key = LogicVobSaveState.MakeKey(_triggerList), ActivationCount = _activationCount
+                }
+                : null;
+            return entry != null;
+        }
+
         private void Awake() => this.Inject();
 
         public void Init(ITriggerList triggerList)
         {
             _triggerList = triggerList;
+            if (ReflexProjectInstaller.DIContainer.Resolve<ConfigService>().Dev.EnableLogicVobSaveState &&
+                LogicVobSaveState.TryTake(_triggerList, out var saved))
+            {
+                _activationCount = saved.ActivationCount;
+                Logger.Log($"[LogicVobSave] '{_triggerList.Name}' restored from save - fired {_activationCount} time(s)", LogCat.Vob);
+            }
         }
 
         public void Trigger()

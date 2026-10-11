@@ -36,6 +36,18 @@ namespace Gothic.Core.Services.World
         public List<string> EquippedItems;
     }
 
+    /// <summary>
+    /// A mover's or trigger's runtime state (LogicVobSaveState). Only changed ones are saved.
+    /// </summary>
+    public class LogicVobSaveEntry
+    {
+        public string Key;              // LogicVobSaveState.MakeKey: type|name|position from the world file
+        public int KeyIndex;            // mover: keyframe it stands at
+        public bool IsOpen;             // mover
+        public bool IsDisabled;         // mover: zCMessageFilter Disable
+        public int ActivationCount;     // trigger, trigger list, trigger script: times fired (maxActivationCount)
+    }
+
     public class HeroInventoryEntry
     {
         public string Name;             // Daedalus symbol name, e.g. "ITFO_APPLE"
@@ -74,5 +86,8 @@ namespace Gothic.Core.Services.World
 
         // NPC dirty delta — additive (update/add only, never delete)
         public List<NpcSaveEntry> Npcs = new();
+
+        // Movers and triggers per world (upper case world file name). Null in older saves.
+        public Dictionary<string, List<LogicVobSaveEntry>> LogicVobsByWorld;
     }
 }

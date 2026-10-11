@@ -193,6 +193,8 @@ namespace Gothic.Core.Services
                 // Only clear _pendingNpcInit (world-specific) — keep _pendingNpcRestore alive so dirty
                 // NPCs modified in other worlds are restored when we revisit those worlds this session.
                 _saveGameService.ClearPendingNpcInit();
+                _saveGameService.StoreLogicVobStates();
+                LogicVobSaveState.BeginWorld(worldName);
                 _vobService.PreWorldCreate();
                 _vobMeshCullingService.PreWorldCreate();
                 _npcMeshCullingService.PreWorldCreate();

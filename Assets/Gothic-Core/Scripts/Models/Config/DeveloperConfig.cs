@@ -225,6 +225,10 @@ namespace Gothic.Core.Models.Config
                  "as slaves and a wrong one fires the failure target (G2 Irdorath's touchplate rooms).")]
         public bool EnableEngineCodeMaster = true;
 
+        [Tooltip("V1: Movers (keyframe, open, disabled) and trigger activation counts are saved per world and restored " +
+                 "on load and when coming back to a world - before every mover was closed again after loading.")]
+        public bool EnableLogicVobSaveState = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

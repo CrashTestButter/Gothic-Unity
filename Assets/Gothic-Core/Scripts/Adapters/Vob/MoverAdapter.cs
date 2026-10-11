@@ -3,9 +3,11 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
+using Gothic.Core.Services.World;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -35,7 +37,24 @@ namespace Gothic.Core.Adapters.Vob
         private bool _isDisabled;
         public bool IsDisabled => _isDisabled;
 
+        // DeveloperConfig.EnableLogicVobSaveState: the saved pose is set again once the VOB is fully created.
+        private bool _isSavedPosePending;
+
         private void Awake() => this.Inject();
+
+        /// <summary>
+        /// After InitVob: a child mover is put back to its world file position after Init (EnableWorldSpaceChildVobs) -
+        /// G2's Adanos temple door was restored open but stood closed.
+        /// </summary>
+        private void Start()
+        {
+            if (!_isSavedPosePending)
+                return;
+
+            _isSavedPosePending = false;
+            if (_keyframes != null && _keyframes.Length > 0)
+                SetPose(_keyframes[_currentKeyIndex]);
+        }
 
         private void OnDestroy() => DamageTargets.Unregister(transform);
 
@@ -69,6 +88,9 @@ namespace Gothic.Core.Adapters.Vob
 
             if (_keyframes.Length > 0)
                 SetPose(_keyframes[0]);
+
+            if (_configService.Dev.EnableLogicVobSaveState && LogicVobSaveState.TryTake(mover, out var saved))
+                RestoreState(saved);
 
             if (_keyframes.Length >= 2)
                 Logger.Log($"[MoverAdapter] {mover.Name} init — kf[0]={_keyframes[0].pos} kf[1]={_keyframes[1].pos} dist={Vector3.Distance(_keyframes[0].pos, _keyframes[1].pos):F2} speed={mover.Speed}", LogCat.Vob);
@@ -139,6 +161,44 @@ namespace Gothic.Core.Adapters.Vob
             var delta = transform.rotation * Quaternion.Inverse(startRot);
             position = transform.position + delta * (position - startPos);
             rotation = delta * rotation;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableLogicVobSaveState: a mover moved or disabled since the world was loaded. A moving one
+        /// is saved where it came from - it is triggered again after loading.
+        /// </summary>
+        public bool TryCaptureState(out LogicVobSaveEntry entry)
+        {
+            entry = null;
+            if (_mover == null || (_currentKeyIndex == 0 && !_isOpen && _isDisabled == !_mover.StartEnabled))
+                return false;
+
+            entry = new LogicVobSaveEntry
+            {
+                Key = LogicVobSaveState.MakeKey(_mover),
+                KeyIndex = _currentKeyIndex,
+                IsOpen = _isOpen,
+                IsDisabled = _isDisabled
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// Saved state back without moving or triggering its chain - the chain's targets have their own saved state.
+        /// </summary>
+        private void RestoreState(LogicVobSaveEntry saved)
+        {
+            if (_keyframes.Length > 0)
+            {
+                _currentKeyIndex = Mathf.Clamp(saved.KeyIndex, 0, _keyframes.Length - 1);
+                SetPose(_keyframes[_currentKeyIndex]);
+                _isSavedPosePending = true;
+            }
+            _isOpen = saved.IsOpen;
+            _isDisabled = saved.IsDisabled;
+            _mover.MoverState = (int)(_isOpen ? VmGothicEnums.MoverState.Open : VmGothicEnums.MoverState.Closed);
+            Logger.Log($"[MoverAdapter] {_mover.Name} restored from save - key {_currentKeyIndex}, open={_isOpen}, " +
+                       $"disabled={_isDisabled}", LogCat.Vob);
         }
 
         /// <summary>

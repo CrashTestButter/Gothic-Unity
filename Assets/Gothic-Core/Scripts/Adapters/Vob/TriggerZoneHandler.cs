@@ -1,6 +1,8 @@
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Services.Config;
+using Gothic.Core.Services.World;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Vobs;
 using Reflex.Attributes;
@@ -21,11 +23,32 @@ namespace Gothic.Core.Adapters.Vob
         private ITrigger _trigger;
         private int _activationCount;
 
+        /// <summary>
+        /// DeveloperConfig.EnableLogicVobSaveState: fired since the world was loaded - maxActivationCount holds after
+        /// loading a save.
+        /// </summary>
+        public bool TryCaptureState(out LogicVobSaveEntry entry)
+        {
+            entry = _activationCount > 0 && _trigger != null
+                ? new LogicVobSaveEntry
+                {
+                    Key = LogicVobSaveState.MakeKey(_trigger), ActivationCount = _activationCount
+                }
+                : null;
+            return entry != null;
+        }
+
         private void Awake() => this.Inject();
 
         public void Init(ITrigger trigger)
         {
             _trigger = trigger;
+            if (ReflexProjectInstaller.DIContainer.Resolve<ConfigService>().Dev.EnableLogicVobSaveState &&
+                LogicVobSaveState.TryTake(_trigger, out var saved))
+            {
+                _activationCount = saved.ActivationCount;
+                Logger.Log($"[LogicVobSave] '{_trigger.Name}' restored from save - fired {_activationCount} time(s)", LogCat.Vob);
+            }
             if (_trigger.ReactToOnDamage)
                 DamageTargets.Register(transform);
         }

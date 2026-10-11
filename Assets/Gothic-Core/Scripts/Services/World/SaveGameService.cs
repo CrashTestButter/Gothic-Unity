@@ -10,6 +10,7 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Services.Culling;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
@@ -199,6 +200,7 @@ namespace Gothic.Core.Services.World
 
             SaveGameId = 0;
             Save = new SaveGame(_contextGameVersionService.Version);
+            LogicVobSaveState.Clear();
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
             _npcSnapshots.Clear();
@@ -517,9 +519,12 @@ namespace Gothic.Core.Services.World
                 .Select(i => new HeroInventoryEntry { Name = i.Name, Amount = i.Amount })
                 .ToList();
 
+            StoreLogicVobStates();
+
             var data = new UnityCustomSave
             {
                 WorldName = CurrentWorldName,
+                LogicVobsByWorld = _configService.Dev.EnableLogicVobSaveState ? LogicVobSaveState.Export() : null,
                 HeroPosition = new[] { heroPos.x, heroPos.y, heroPos.z },
                 HeroRotation = new[] { heroRot.x, heroRot.y, heroRot.z, heroRot.w },
                 HeroAttributes = heroAttrs,
@@ -573,17 +578,59 @@ namespace Gothic.Core.Services.World
             Logger.Log($"SaveUnityCustomData: level={data.HeroLevel} hp={data.HeroAttributes[0]}/{data.HeroAttributes[1]} inv={data.HeroInventory?.Count ?? 0} npcs={data.Npcs.Count} attitudes={data.GuildAttitudes?.Length ?? 0}", LogCat.Loading);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableLogicVobSaveState: the current world's movers and triggers into LogicVobSaveState - on
+        /// save and before another world is loaded (level change), so coming back finds them as left.
+        /// </summary>
+        public void StoreLogicVobStates()
+        {
+            if (!_configService.Dev.EnableLogicVobSaveState || string.IsNullOrEmpty(CurrentWorldName))
+                return;
+
+            var entries = new List<LogicVobSaveEntry>();
+            foreach (var mover in FindAll<MoverAdapter>())
+                if (mover.TryCaptureState(out var entry))
+                    entries.Add(entry);
+            foreach (var list in FindAll<TriggerListHandler>())
+                if (list.TryCaptureState(out var entry))
+                    entries.Add(entry);
+            foreach (var script in FindAll<TriggerScriptHandler>())
+                if (script.TryCaptureState(out var entry))
+                    entries.Add(entry);
+            foreach (var zone in FindAll<TriggerZoneHandler>())
+                if (zone.TryCaptureState(out var entry))
+                    entries.Add(entry);
+
+            LogicVobSaveState.StoreWorld(CurrentWorldName, entries);
+            Logger.Log($"[SaveGame] {entries.Count} changed mover/trigger state(s) stored for '{CurrentWorldName}'", LogCat.Loading);
+        }
+
+        private static T[] FindAll<T>() where T : UnityEngine.Object
+        {
+            return UnityEngine.Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        }
+
         private void LoadUnityCustomData(SlotId saveGameId)
         {
             var path = GetUnityCustomSavePath(saveGameId);
             if (!File.Exists(path))
             {
+                LogicVobSaveState.Clear();
                 Logger.LogWarning($"LoadUnityCustomData: no UNITYSAVE.json at {path}", LogCat.Loading);
                 return;
             }
 
             var unitySave = JsonConvert.DeserializeObject<UnityCustomSave>(File.ReadAllText(path));
             _pendingHeroRestore = unitySave;
+
+            // DeveloperConfig.EnableLogicVobSaveState: movers/triggers of every world; the saved world's become pending.
+            LogicVobSaveState.Import(_configService.Dev.EnableLogicVobSaveState ? unitySave?.LogicVobsByWorld : null);
+            if (unitySave != null)
+            {
+                var pendingLogicVobs = LogicVobSaveState.BeginWorld(unitySave.WorldName);
+                Logger.Log($"LoadUnityCustomData: {pendingLogicVobs} mover/trigger state(s) for '{unitySave.WorldName}'",
+                    LogCat.Loading);
+            }
 
             if (_pendingHeroRestore == null) return;
 

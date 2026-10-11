@@ -883,6 +883,10 @@ namespace Gothic.Core.Models.Config
                  "goes off - to enjoy the effects. 0 = at once like the engine. Throwable spells aren't affected.")]
         public float MinSpellCastSeconds = 2f;
 
+        [Tooltip("V1: Fire (trigger) before a spell was cast: like the engine Spell_ProcessMana_Release decides - charge " +
+                 "spells go off at their level, the rest (fire rain, summons, ...) is stopped. Before every spell went off.")]
+        public bool EnableSpellReleaseCheck = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

@@ -246,6 +246,14 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             }
             else if (triggered && _isCasting && _manaInvested > 0)
             {
+                // DeveloperConfig.EnableSpellReleaseCheck: released before the cast like the engine - only the spells
+                // Spell_ProcessMana_Release allows go off early (Fireball, Windfist, ...), the rest is stopped.
+                if (!IsEarlyReleaseCastAllowed())
+                {
+                    CancelCast("released early - Spell_ProcessMana_Release: SPL_SENDSTOP");
+                    return;
+                }
+
                 // Trigger 3+: fire now at whatever level has been charged so far. Chargeable spells
                 // (Fireball, Firestorm, Windfist, Stormfist, Thunderball, Firerain) only auto-fire via
                 // Daedalus once mana hits the max threshold — without this, we'd always charge to max
@@ -325,6 +333,51 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
 
         private const float _maxHeldDistance = 1.5f;
+
+        /// <summary>
+        /// DeveloperConfig.EnableSpellReleaseCheck: the engine calls Spell_ProcessMana_Release when the cast key is let
+        /// go before the spell was cast or stopped - SPL_SENDCAST fires it at the level reached (Fireball, Windfist,
+        /// ChargeZap), anything else stops it: Firerain, summons, transformations, ... We fired every spell at the third
+        /// trigger - Firerain and summon armies could be spammed. The invested mana isn't given back (G1 took it per
+        /// tick, the engine keeps it; G2 pays on the cast only).
+        /// </summary>
+        private bool IsEarlyReleaseCastAllowed()
+        {
+            var vm = _gameStateService.GothicVm;
+            if (!_configService.Dev.EnableSpellReleaseCheck || vm.GetSymbolByName("Spell_ProcessMana_Release") == null)
+                return true;
+
+            var oldSelf = vm.GlobalSelf;
+            var oldOther = vm.GlobalOther;
+            vm.GlobalSelf = vm.GlobalHero;
+            vm.GlobalOther = _spellTarget?.Instance ?? vm.GlobalHero;
+            int result;
+            try
+            {
+                result = vm.Call<int, int>("Spell_ProcessMana_Release", _manaInvested);
+            }
+            finally
+            {
+                vm.GlobalSelf = oldSelf;
+                vm.GlobalOther = oldOther;
+            }
+            Logger.Log($"[VRRuneCaster] Spell_ProcessMana_Release({_manaInvested}) = {result}", LogCat.VR);
+            return result == _splSendcast;
+        }
+
+        /// <summary>
+        /// The spell stops without effect - casting again is possible right away.
+        /// </summary>
+        private void CancelCast(string reason)
+        {
+            Logger.Log($"[VRRuneCaster] Spell {_item.Spell} cancelled ({reason}) after {_manaInvested} mana", LogCat.VR);
+            StopInvestSound();
+            DestroySpellVfx();
+            DestroyBodyFx();
+            _isCasting = false;
+            _isSendcastPending = false;
+            _manaInvested = 0;
+        }
 
         /// <summary>
         /// Throttle to one mana tick per interval — mirrors Gothic's C++ magic tick rate.
@@ -991,6 +1044,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_manaInvested == 0)
             {
                 CancelThrow("released before the first mana");
+                return;
+            }
+
+            // Not fully charged: only spells the script lets go early are thrown (EnableSpellReleaseCheck).
+            if (!_isThrowCharged && !IsEarlyReleaseCastAllowed())
+            {
+                CancelThrow("released early - Spell_ProcessMana_Release: SPL_SENDSTOP");
                 return;
             }
 

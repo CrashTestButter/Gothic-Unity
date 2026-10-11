@@ -56,6 +56,9 @@ namespace Gothic.VR.Adapters.UI
         private int _savedCullingMask;
         private CameraClearFlags _savedClearFlags;
         private Color _savedBackground;
+        // The spectator camera (the monitor/stream view) - it kept showing the world, without the screen.
+        private readonly List<(Camera camera, int cullingMask, CameraClearFlags clearFlags, Color background)>
+            _savedSpectatorCameras = new();
         private float _savedTimeScale = 1f;
         private Vector3 _screenForward = Vector3.forward;
         private Vector3 _lastCameraPosition;
@@ -189,6 +192,7 @@ namespace Gothic.VR.Adapters.UI
             _camera.cullingMask = 1 << Constants.UILayer;
             _camera.clearFlags = CameraClearFlags.SolidColor;
             _camera.backgroundColor = Color.black;
+            DarkenSpectatorCameras();
             AudioListener.pause = true;
             _savedTimeScale = Time.timeScale;
             Time.timeScale = 0f;
@@ -359,9 +363,43 @@ namespace Gothic.VR.Adapters.UI
             // Destroyed without Close (scene change during a video) - never leave the game paused.
             if (!_isRunning)
                 return;
+            RestoreSpectatorCameras();
             Time.timeScale = _savedTimeScale;
             AudioListener.pause = false;
             _instance = null;
+        }
+
+        /// <summary>
+        /// The monitor shows VRSpectatorCamera, not the VR camera - the same dark room there, or OBS/the monitor showed
+        /// the world without the video.
+        /// </summary>
+        private void DarkenSpectatorCameras()
+        {
+            _savedSpectatorCameras.Clear();
+            foreach (var spectator in FindObjectsByType<Gothic.VR.Adapters.Player.VRSpectatorCamera>(FindObjectsSortMode.None))
+            {
+                if (!spectator.TryGetComponent<Camera>(out var spectatorCamera) || spectatorCamera == _camera)
+                    continue;
+
+                _savedSpectatorCameras.Add((spectatorCamera, spectatorCamera.cullingMask, spectatorCamera.clearFlags,
+                    spectatorCamera.backgroundColor));
+                spectatorCamera.cullingMask = 1 << Constants.UILayer;
+                spectatorCamera.clearFlags = CameraClearFlags.SolidColor;
+                spectatorCamera.backgroundColor = Color.black;
+            }
+        }
+
+        private void RestoreSpectatorCameras()
+        {
+            foreach (var (spectatorCamera, cullingMask, clearFlags, background) in _savedSpectatorCameras)
+            {
+                if (spectatorCamera == null)
+                    continue;
+                spectatorCamera.cullingMask = cullingMask;
+                spectatorCamera.clearFlags = clearFlags;
+                spectatorCamera.backgroundColor = background;
+            }
+            _savedSpectatorCameras.Clear();
         }
 
         private void Close()
@@ -372,6 +410,7 @@ namespace Gothic.VR.Adapters.UI
                 _camera.clearFlags = _savedClearFlags;
                 _camera.backgroundColor = _savedBackground;
             }
+            RestoreSpectatorCameras();
             AudioListener.pause = false;
             Time.timeScale = _savedTimeScale;
             StopBink();

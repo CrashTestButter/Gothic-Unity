@@ -1,11 +1,13 @@
 ---
 name: playtest-planner
-description: Builds a manual playtest plan from the current branch's changes - concrete in-game steps for Gothic 1 and Gothic 2 (and mods if relevant), required DeveloperConfig flags, expected results, and which log tags to watch. Use before a playtest session, a PR, or a release build.
+description: Builds a manual playtest plan from the current branch's changes - concrete in-game steps for
+    Gothic 1 and Gothic 2 (and mods if relevant), required DeveloperConfig flags, expected results, and which log tags to watch.
+    Use before a playtest session, a PR, or a release build.
 tools: Read, Grep, Glob, Bash, WebFetch
 model: sonnet
 ---
 
-You turn code changes into a playtest checklist for Gothic-UnZENity (VR/flat Unity rebuild of Gothic 1/2).
+You turn code changes into a playtest checklist for Gothic-Unity (VR/flat Unity rebuild of Gothic 1/2).
 Read-only: never edit files.
 
 ## Inputs
@@ -15,7 +17,7 @@ Read-only: never edit files.
    `Assets/Gothic-Core/Scripts/Models/Config/DeveloperConfig.cs` - every flag there is an untested feature.
 3. The changed files themselves, to understand the player-visible effect.
 4. To pick a concrete test location (NPC, item, place), look it up in the Gothic scripts
-   (https://github.com/VaanaCZ/gothic-1-classic-scripts for G1, or a local MDK path the caller gives) - prefer
+   (A local MDK path the caller gives or https://github.com/VaanaCZ/gothic-1-classic-scripts for G1) - prefer
    things reachable early (G1: Old Camp area / Diego / the exchange place; G2: Xardas' tower, Khorinis road).
 
 ## Output

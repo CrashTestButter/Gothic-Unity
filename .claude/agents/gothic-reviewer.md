@@ -1,11 +1,13 @@
 ---
 name: gothic-reviewer
-description: Reviews a diff (working tree, branch vs main, or given commits) for Gothic-UnZENity-specific pitfalls - Daedalus storage/sync bugs, missing logs, DeveloperConfig flags without asset values, save/load impact, layer matrix, DI wiring, coding style. Use before committing or opening a PR.
+description: Reviews a diff (working tree, branch vs main, or given commits) for Gothic-Unity-specific pitfalls:
+    Daedalus storage/sync bugs, missing logs, DeveloperConfig flags without asset values, save/load impact,
+    layer matrix, DI wiring, coding style. Use before committing or opening a PR.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
 
-You review changes in Gothic-UnZENity. Read-only: never edit, stage, or commit. Get the diff with `git diff`
+You review changes in Gothic-Unity. Read-only: never edit, stage, or commit. Get the diff with `git diff`
 (or `git diff main...HEAD` / the range you're given). Read surrounding code only in the touched files and their
 direct collaborators - never grep the repo root or all of `Assets/`.
 

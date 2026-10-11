@@ -1,6 +1,8 @@
 ---
 name: mod-triage
-description: Checklist for getting a Gothic 1/2 mod (Ikarus, LeGo, Union based) to boot and play in Gothic-UnZENity, plus how to decide a mod is blocked by native/engine gaps. Use when someone asks to run/test a mod, a mod crashes at boot/menu/world load, or a mod's menu/dialog/text is broken.
+description: Checklist for getting a Gothic 1/2 mod (Ikarus, LeGo, not! Union) to boot and play in Gothic-Unity,
+    plus how to decide a mod is blocked by native/engine gaps. Use when someone asks to run/test a mod,
+    a mod crashes at boot/menu/world load, or a mod's menu/dialog/text is broken.
 ---
 
 # Mod triage
@@ -15,12 +17,10 @@ builds. Work through the boot in order - each fix usually reveals the next failu
      them mixes languages.
    - `.mod` files mount alphabetically, last wins - check which archive actually provides a file.
    - The loose file on disk is not necessarily the effective one; always check what the mounted VFS resolves.
-   - Compressed VDFs and Union's own archives can't be mounted by our ZenKit build - logged and skipped, content
+   - Compressed VDFs can't be mounted by our ZenKit build - logged and skipped, content
      inside is missing.
    - World paths in the ini can have a subfolder prefix (`NewWorld\NEWWORLD.ZEN`) - the VFS is flat.
 2. **Daedalus VM load**
-   - Union mods can extend Daedalus classes (bigger arrays) - native ZenKit is fixed-size, VM load fails. There is a
-     fallback to the loose compiled DAT.
    - Ikarus/LeGo: always override functions through the `SafeOverride` helpers (symbol may not exist in this mod).
    - Language detection probes a known string (e.g. `MOBNAME_CRATE`); mods rename it - add the new value to the list.
 3. **Menu**
@@ -48,8 +48,8 @@ Declare the mod blocked (and write down why) when the remaining failures are one
 - compressed archives our ZenKit build doesn't support
 - LeGo hook engine / Ikarus raw engine-memory access (`HookEngine*`, raw class pointers) - there is no native
   engine to patch, so menu/dialog/UI patches silently don't install
-- Union C++ plugin externals (they don't exist in our engine)
 - uncatchable native crashes (dmusic, Burst animation jobs on a mismatched skeleton)
+- Union mods are not playable by design. Mark as unplayable by Gothic-Unity.
 
 These need upstream ZenKit work or a design decision, not a C# one-liner. Report them with a repro.
 

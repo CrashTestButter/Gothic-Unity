@@ -1,6 +1,8 @@
 ---
 name: commit-pr
-description: How to stage, commit and open PRs in Gothic-UnZENity - separate add/commit steps for review, commit message style, PR description with manual test steps, CI build label. Use when asked to commit, push, write a changelog, or create/describe a pull request.
+description: How to stage, commit and open PRs in Gothic-Unity - separate add/commit steps for review,
+    commit message style, PR description with manual test steps, CI build label. Use when asked to commit, push,
+    write a changelog, or create/describe a pull request.
 ---
 
 # Commit & PR

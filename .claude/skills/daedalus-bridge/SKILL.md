@@ -1,6 +1,9 @@
 ---
 name: daedalus-bridge
-description: How C# talks to Gothic's Daedalus VM in Gothic-UnZENity - externals, NpcInstance vs vob storage, inventory, calling B_* helpers via vm.Call. Use whenever implementing or fixing a Daedalus external (VmExternalDomain, NpcAiService, NpcInventoryService, FightService), AI states / perceptions, XP/attributes, items, or any "the script does X but our game does Y" bug.
+description: How C# talks to Gothic's Daedalus VM in Gothic-Unity - externals, NpcInstance vs VOB storage, inventory,
+    calling B_* helpers via vm.Call. Use whenever implementing or fixing a Daedalus external (VmExternalDomain, NpcAiService,
+    NpcInventoryService, FightService), AI states / perceptions, XP/attributes, items,
+    or any "the script does X but our game does Y" bug.
 ---
 
 # Daedalus ↔ C# bridge
@@ -13,13 +16,13 @@ between what the script expects from an external and what our implementation doe
 
 1. **Read the script before writing C#.** Find every call site of the external / state in the Gothic scripts and
    understand the expected return value and side effects. Sources (public):
-   - Gothic 1 scripts: https://github.com/VaanaCZ/gothic-1-classic-scripts
    - Gothic 1 / Gothic 2 Mod Development Kit (MDK) - `_work/data/Scripts/` (ask the developer for their local copy)
+   - Gothic 1 scripts (optional, if you don't get a local copy from the developer): https://github.com/VaanaCZ/gothic-1-classic-scripts
    - Reference engine behaviour: OpenGothic https://github.com/Try/OpenGothic (`game/game/gamescript.cpp` lists
-     externals, `game/world/objects/npc.cpp` NPC logic)
+   externals, `game/world/objects/npc.cpp` NPC logic)
    - ZenKit / ZenKitCS: https://github.com/GothicKit/ZenKit, https://github.com/GothicKit/ZenKitCS (symlinked at `./ZenKitCS/`)
-2. **Check for a `B_*` / `C_*` helper before hardcoding logic in C#.** XP, spells, weapon selection, attitude, item
-   transfer usually already exist in Daedalus. Call them instead of reimplementing:
+2. **Check for a `B_*` / `C_*` helper before hardcoding logic in C#.** XP, spells, weapon selection, attitude,
+   item transfer usually already exist in Daedalus. Call them instead of reimplementing:
    ```csharp
    var vm = _gameStateService.GothicVm;
    var oldSelf = vm.GlobalSelf; var oldOther = vm.GlobalOther;
@@ -48,7 +51,7 @@ between what the script expects from an external and what our implementation doe
    unbalances the VM stack; after enough of them you get `stack overflow` / `pop_instance` errors and a native crash.
    Guard externals and log instead of throwing.
 
-## Two storages: NpcInstance vs vob
+## Two storages: NpcInstance vs VOB
 
 `NpcInstance` (Daedalus) and the ZenKit `INpc` vob are **separate** and only copied once at spawn.
 

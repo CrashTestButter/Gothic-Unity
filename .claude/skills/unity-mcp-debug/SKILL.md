@@ -1,6 +1,8 @@
 ---
 name: unity-mcp-debug
-description: Runtime debugging workflow for Gothic-UnZENity with the Unity MCP server - read console/exceptions before editing code, filter huge logs, never recompile during play mode, fall back to Editor.log. Use for any bug report from a play session ("X doesn't work in game", exceptions, NPC behaves wrong, game paused on error).
+description: Runtime debugging workflow for Gothic-Unity with the Unity MCP server - read console/exceptions before editing code,
+    filter huge logs, never recompile during play mode, fall back to Editor.log. Use for any bug report from
+    a play session ("X doesn't work in game", exceptions, NPC behaves wrong, game paused on error).
 ---
 
 # Debugging a running Unity session

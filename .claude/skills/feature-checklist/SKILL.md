@@ -1,18 +1,20 @@
 ---
 name: feature-checklist
-description: Implementation checklist for new features and fixes in Gothic-UnZENity - DeveloperConfig flags (C# field AND asset value), Logger/LogCat, GlobalEventDispatcher, Reflex registration, physics layers, save/load impact, search scope. Use when implementing any feature or non-trivial fix, adding a config flag, or touching layers/colliders.
+description: Implementation checklist for new features and fixes in Gothic-Unity - DeveloperConfig flags (C# field AND asset value),
+    Logger/LogCat, GlobalEventDispatcher, Reflex registration, physics layers, save/load impact, search scope.
+    Use when implementing any feature or non-trivial fix, adding a config flag, or touching layers/colliders.
 ---
 
 # Feature checklist
 
 ## Before coding
 
-- [ ] Read the system you're changing end to end (adapter → service → domain → model). Follow the layer rules in
-      CLAUDE.md: logic in services/domain, adapters stay thin.
-- [ ] If it's Gothic behaviour, read the Daedalus scripts first and prefer calling an existing `B_*` helper (see
-      the `daedalus-bridge` skill).
-- [ ] **Search narrowly.** The repo is huge - never grep the project root or all of `Assets/`. Scope to e.g.
-      `Assets/Gothic-Core/Scripts/Services/`.
+- Read the system you're changing end to end (adapter → service → domain → model). Follow the layer rules in 
+  CLAUDE.md: logic in services/domain, adapters stay thin.
+- If it's Gothic behaviour, read the Daedalus scripts first and prefer calling an existing `B_*` helper (see
+  the `daedalus-bridge` skill).
+- **Search narrowly.** The repo is huge - never grep the project root or all of `Assets/`. Scope to e.g.
+  `Assets/Gothic-Core/Scripts/Services/`.
 
 ## DeveloperConfig flags
 
@@ -51,12 +53,12 @@ matrix is symmetric - update **both** rows.
 ## Save/load impact (state it in your summary)
 
 For every new piece of runtime state:
-1. Where is it stored - ZenKit save (vob / instance / Daedalus symbols), `UNITYSAVE.json`, or nowhere?
-2. On load: restored once, lost, or applied twice (INIT scripts re-run, restore-from-vob, EquipItem during init)?
+1. Where is it stored - ZenKit save (VOB / instance / Daedalus symbols), `UNITYSAVE.json`, or nowhere?
+2. On load: restored once, lost, or applied twice (INIT scripts re-run, restore-from-VOB, EquipItem during init)?
 3. Is it affected by `EnableSaveLoadSystem` (off by default)?
 
 ## Done
 
-- [ ] Compiles (don't trigger a compile while the developer is in play mode)
-- [ ] Short summary: one line per changed file
-- [ ] Manual test steps (what to do in game, G1 / G2)
+- Compiles (don't trigger a compile while the developer is in play mode)
+- Short summary: one line per changed file
+- Manual test steps (what to do in game, G1 / G2)

@@ -1,4 +1,4 @@
-# Claude Code setup for Gothic-UnZENity
+# Claude Code setup for Gothic-Unity
 
 Shared skills, agents and settings so Claude Code knows the project's pitfalls. `CLAUDE.md` in the repo root covers
 architecture; these files cover workflow and hard-won gotchas.

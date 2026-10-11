@@ -73,15 +73,64 @@ namespace Gothic.VR.Adapters.Marvin
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinGiveItems))
                 buttons.Add(("Give items", CheatGiveItems));
 
-            const float buttonHeight = 50f;
-            const float gap = 10f;
-            var totalHeight = buttons.Count * buttonHeight + (buttons.Count - 1) * gap;
-            var startY = totalHeight / 2f - buttonHeight / 2f;
-
-            for (var i = 0; i < buttons.Count; i++)
+            // More options than fit the panel: a window of them with Up/Down buttons above and below.
+            if (buttons.Count <= _maxVisibleButtons)
             {
-                var (label, onClick) = buttons[i];
-                CreateButton(label, onClick, startY - i * (buttonHeight + gap));
+                var startY = GetButtonsHeight(buttons.Count) / 2f - _buttonHeight / 2f;
+                for (var i = 0; i < buttons.Count; i++)
+                {
+                    var (label, onClick) = buttons[i];
+                    CreateButton(label, onClick, startY - i * (_buttonHeight + _buttonGap));
+                }
+                return;
+            }
+
+            foreach (var (label, onClick) in buttons)
+            {
+                var go = CreateButton(label, onClick, 0f);
+                if (go != null)
+                    _scrollButtons.Add(go);
+            }
+
+            var windowTop = GetButtonsHeight(_maxVisibleButtons + 2) / 2f - _buttonHeight / 2f;
+            CreateButton("Up", () => ScrollButtons(-1), windowTop);
+            CreateButton("Down", () => ScrollButtons(1), windowTop - (_maxVisibleButtons + 1) * (_buttonHeight + _buttonGap));
+            _firstVisibleButton = 0;
+            LayoutScrollButtons(windowTop - (_buttonHeight + _buttonGap));
+        }
+
+        private const float _buttonHeight = 50f;
+        private const float _buttonGap = 10f;
+        private const int _maxVisibleButtons = 6;
+        private readonly System.Collections.Generic.List<GameObject> _scrollButtons = new();
+        private int _firstVisibleButton;
+        private float _scrollWindowTop;
+
+        private static float GetButtonsHeight(int count)
+        {
+            return count * _buttonHeight + (count - 1) * _buttonGap;
+        }
+
+        /// <summary>
+        /// Moves the window of visible options by one.
+        /// </summary>
+        private void ScrollButtons(int delta)
+        {
+            var maxFirst = Mathf.Max(0, _scrollButtons.Count - _maxVisibleButtons);
+            _firstVisibleButton = Mathf.Clamp(_firstVisibleButton + delta, 0, maxFirst);
+            LayoutScrollButtons(_scrollWindowTop);
+        }
+
+        private void LayoutScrollButtons(float windowTop)
+        {
+            _scrollWindowTop = windowTop;
+            for (var i = 0; i < _scrollButtons.Count; i++)
+            {
+                var slot = i - _firstVisibleButton;
+                var isVisible = slot >= 0 && slot < _maxVisibleButtons;
+                _scrollButtons[i].SetActive(isVisible);
+                if (isVisible && _scrollButtons[i].TryGetComponent<RectTransform>(out var rt))
+                    rt.anchoredPosition = new Vector2(0f, windowTop - slot * (_buttonHeight + _buttonGap));
             }
         }
 
@@ -268,13 +317,13 @@ namespace Gothic.VR.Adapters.Marvin
             Logger.Log($"[MarvinMode] Time skip → {next.Hours:D2}:{next.Minutes:D2}", LogCat.Ui);
         }
 
-        private void CreateButton(string label, System.Action onClick, float anchoredY)
+        private GameObject CreateButton(string label, System.Action onClick, float anchoredY)
         {
             var go = _resourceCacheService.TryGetPrefabObject(PrefabType.UiDebugButton, parent: gameObject);
             if (go == null)
             {
                 Logger.LogWarning($"[MarvinMode] UiDebugButton prefab not found for: {label}", LogCat.Ui);
-                return;
+                return null;
             }
 
             var rt = go.GetComponent<RectTransform>();
@@ -288,6 +337,7 @@ namespace Gothic.VR.Adapters.Marvin
             var button = go.GetComponentInChildren<Button>();
             if (button != null)
                 button.onClick.AddListener(() => onClick());
+            return go;
         }
     }
 }

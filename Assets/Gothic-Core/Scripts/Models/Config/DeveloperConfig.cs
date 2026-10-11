@@ -225,6 +225,10 @@ namespace Gothic.Core.Models.Config
                  "as slaves and a wrong one fires the failure target (G2 Irdorath's touchplate rooms).")]
         public bool EnableEngineCodeMaster = true;
 
+        [Tooltip("V1: A mob with a trigger target and useWithItem only works when the player has the item, like in the " +
+                 "engine - G2's Jharkendar portal opened without the ornament ring.")]
+        public bool EnableMobRequiredItem = true;
+
         [Separator("Debug")]
         [Tooltip("Array like this: C_ITEM_NAME:AMOUNT;... e.g., ItMi_Stuff_OldCoin_01:10;ItFo_Potion_Mana_01:1")]
         public string PlayerInventoryAddition;

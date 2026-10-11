@@ -63,6 +63,7 @@ MonoBehaviour:
   EnableTriggerEnableState: 1
   EnableTriggerListSummedDelays: 1
   EnableEngineCodeMaster: 1
+  EnableMobRequiredItem: 1
   PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0

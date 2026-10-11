@@ -22,6 +22,8 @@ using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
+using ZenKit;
+using ZenKit.Daedalus;
 using ZenKit.Vobs;
 using Logger = Gothic.Core.Logging.Logger;
 
@@ -139,6 +141,40 @@ namespace Gothic.VR.Services
             _playerService.RemoveItem(instanceName, vobItem.Amount);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableMobRequiredItem: like the engine (OpenGothic Interactive::checkUseConditions), a mob with
+        /// useWithItem only works when the player has that item, else Player_Mob_Missing_Item is said. G2's Jharkendar
+        /// portal (ItMi_PortalRing_Addon) opened without the ornament ring. Only for mobs with a trigger target - the
+        /// crafting mobs (anvil, stove, ...) are left as they are. The item isn't taken, as in OpenGothic.
+        /// </summary>
+        private bool IsMissingRequiredItem(IInteractiveObject mob, DaedalusVm vm)
+        {
+            if (!_configService.Dev.EnableMobRequiredItem || string.IsNullOrEmpty(mob.Item))
+                return false;
+
+            var itemSymbol = vm.GetSymbolByName(mob.Item);
+            var hero = (NpcInstance)vm.GlobalHero;
+            if (itemSymbol == null || hero == null || _npcInventoryService.ExtNpcHasItems(hero, itemSymbol.Index) > 0)
+                return false;
+
+            Logger.Log($"[VRPlayerService] HandleMobGrab: '{mob.Name}' needs '{mob.Item}' - the hero has none", LogCat.Ai);
+            var missingItemFunc = vm.GetSymbolByName("Player_Mob_Missing_Item");
+            if (missingItemFunc != null)
+            {
+                var oldSelf = vm.GlobalSelf;
+                vm.GlobalSelf = vm.GlobalHero;
+                try
+                {
+                    vm.Call(missingItemFunc.Index);
+                }
+                finally
+                {
+                    vm.GlobalSelf = oldSelf;
+                }
+            }
+            return true;
+        }
+
         public void HandleMobGrab(VobLoader loader)
         {
             var mob = loader.Container.VobAs<IInteractiveObject>();
@@ -192,6 +228,9 @@ namespace Gothic.VR.Services
             // Mobs without a mover target but with an onStateFunc (G2 shrines, alchemy/rune tables, bookstands, ...).
             if (_configService.Dev.EnableMobsiDialogs && string.IsNullOrEmpty(mob.Target) &&
                 TryUseMobStateFunction(loader, mob))
+                return;
+
+            if (!string.IsNullOrEmpty(mob.Target) && IsMissingRequiredItem(mob, vm))
                 return;
 
             // Condition passed (or no condition) — trigger the linked mover via mob.Target.

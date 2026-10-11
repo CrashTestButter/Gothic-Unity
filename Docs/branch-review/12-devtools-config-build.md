@@ -23,16 +23,31 @@
 - HVR keyboard/mouse simulator in PC builds via `GameSettings.json` `"EnableVRDeviceSimulator"` (it is plain runtime
   code; only the old XRIT simulator was Editor-only). XR is stopped while it runs.
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Game profiles:** pick G1, G2 or a mod from a list at start (`GameSettings.json`
+  `EnableGameProfiles`/`GameProfiles`).
+- **Restart game** in the Immersion settings (Editor re-enters Play, a PC build restarts its exe).
+- **Marvin:** shown/hidden from the Immersion settings; `TP +4 m` (Gothic's K) with fall rescue; god mode; "Friends"
+  spawns a list of NPCs (e.g. the Irdorath crew); the panel scrolls with more than 6 options.
+- After the ending's videos and credits the game returns to the main menu / profiles instead of quitting.
+
 ## Key commits
 
 `bb6e7c4d`/`5959c1ad`/`8ea94468`/`aebea3c9`/`5e898826` Marvin · `e26326bb` build · `7c3afb78` project settings ·
 `0d220118` ZSpy · `76f2eace` Production written out · `bc632361` NVorbis
+
+2026-10-10/11: `73d5fb2f` profiles · `17553ec0` restart · `29fddfb8`/`e43f685c`/`b6075f2c`/`6c08c5d3`/`a85286c7` Marvin
+· `bc8dd945` ending to menu
 
 ## Main files
 
 `Models/Config/DeveloperConfig.cs` (+472) · `Resources/DeveloperConfigs/Production.asset` ·
 `Gothic-VR/Adapters/Marvin/MarvinTabHandler.cs` · `Gothic-VR/Editor/VRBuilderActions.cs` · `ProjectSettings/*` ·
 `Scenes/Bootstrap.unity`
+
+Config flags (2026-10-10/11): `EnableMarvinBlink`, `EnableMarvinFallRescue`, `EnableMarvinGodMode`,
+`MarvinFriendsNpcSymbols`, `EnableEndingReturnsToMenu`
 
 ## Review notes
 
@@ -47,3 +62,5 @@
 
 - Fresh clone on another machine: open Bootstrap, play.
 - Build PCVR via `Gothic.VR.Editor.VRBuilderActions.PerformWindows64Build`.
+- `EnableGameProfiles: true` in `GameSettings.json`: the profile list shows before the game.
+- Finish G1 or G2 (or skip to the ending video): the game comes back to the menu.

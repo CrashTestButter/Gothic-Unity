@@ -23,11 +23,21 @@
 - Hero arrow on the world map, turning with the hero: G2 from `Doc_SetLevelCoords`, G1 from bounds calibrated in VR
   (`G1WorldMapBounds`), because G1 maps carry no coordinates.
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Personal space:** NPC bodies are pushed out to 1 m from the VR hero's camera (position only, AI unchanged) - orc
+  attack animations no longer go into the camera and push the hands.
+- **Touchplates and other mobs with the mesh on a child bone** can be hovered and used: their grab colliders are
+  collected again once the mesh exists, child colliders get `HVRGrabbableChild`.
+- Items without a `VobLoader` (backpack/hot slot items after a world change) can be grabbed again.
+
 ## Key commits
 
 `7227eb60`/`1e7389ac`/`05dfa9f7`/`434432cd` hero body · `84a84753` equip · `c62882ff` pouches · `567fc20d`/`bdda2d2a`
 food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067a` quick-win externals ·
 `4df98e0a` Doc_* · `1fb8180a`/`76f2eace` maps · `980feedf`/`2fa62aa7` knocked-out hero
+
+2026-10-10/11: `a3a7209b` personal space · `8a8e717e` mob child colliders · `a2df3346` grab after world change
 
 ## Main files
 
@@ -41,6 +51,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 `EnableScriptEquipEffects`, `EnableSmoking`/`SmokePuffs`/`SmokeStartDelay`, `EnableVrTorch`,
 `EnableQuickWinExternals`, `EnableDocConsumeOnClose`, `EnableMapPlayerMarker`, `G1WorldMapBounds`.
 
+2026-10-10/11: `EnableHeroPersonalSpace`, `EnableMobColliderRefresh`
+
 ## Review notes
 
 - ✅ Body animation reuses the hero's Gothic animations through the existing animation system.
@@ -53,3 +65,5 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 - Look down: armor body, arms follow the controllers. Change armor.
 - G1: open the colony map at the start and in the Swamp Camp — the arrow sits on you and turns with you.
 - Light a torch in a cave; smoke a joint.
+- Let an orc attack you up close: its body stays 1 m away, hits still land.
+- G2 Irdorath: the stone touchplates in the side rooms and on the pillar highlight and react.

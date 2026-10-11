@@ -26,10 +26,18 @@
   thread, synced to the audio sample position. World paused during videos, skippable ("(Trigger) skip" under
   the screen, localized: en/pl/de, English otherwise).
 
+**Added 2026-10-10 – 2026-10-11**
+
+- The Bink video cinema and the lightning strips render in both eyes (stereo instancing macros were missing -
+  single-pass instanced drew them only for the left eye).
+- The video cinema shows on the monitor/stream (spectator camera) too, its smoothing runs on unscaled time.
+
 ## Key commits
 
 `4982a263` lights + pool · `d07e1c4d` day/night · `8c4b4f51`/`d4e451c5` particles · `1fb8180a` PFX loops · `bc831b78` square smoke in builds ·
 `d688f290`/`9504e2c9`/`9f984e2c` Bink · `2de7f2dc` Bink attribution
+
+2026-10-10/11: `9775ab32` stereo cinema · `443afd62` spectator cinema
 
 ## Main files
 
@@ -45,6 +53,8 @@
 `DayNightLightStrength`, `EnableAnimationPfx`, `EnablePfxMinimumEmission`, `EnablePfxFullRateLoops`,
 `EnableWldPlayEffect`, `EnableScriptVideos`, `EnableCinemaSkipHint`.
 
+2026-10-10/11: —
+
 ## Review notes
 
 - ✅ Shader loops are unchanged (still max 32 lights per renderer); the pool only decides *which* lights get slots.
@@ -59,3 +69,4 @@
 - G1 Saturas' cave and G2 caves: walls lit by torches. Walk through Khorinis at night: fires light the ground,
   the world turns dark blue, huts stay lit.
 - Start a new game: the intro video plays in the cinema, in sync, skippable.
+- Watch a video in the headset (both eyes) and on the monitor/OBS at the same time.

@@ -12,11 +12,20 @@
   `INIT_` with `Wld_InsertNpc` suppressed.
 - G2 menus: New Game, save slots 16–20, foreign saves.
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Movers and triggers are saved:** keyframe, open and disabled state of every changed mover plus trigger activation
+  counts, per world in `UNITYSAVE.json`; restored on load and when coming back to a world (level change). Before, every
+  mover was closed again after loading - softlocks in Irdorath, the Adanos temple, the Jharkendar portal.
+  Movers/triggers take their entry when they're created, lazy loaded ones too.
+
 ## Key commits
 
 `dbb7d674`/`2eb4388e` system + data classes · `c41cf7a0` gated by flag · `f9fef67a`/`6f8b5707`/`da641097`/`9d2f1897`/
 `842d2b19` NPC restore · `fefd2f0d` alias rebind · `82677fcb` protection and equipment · `081e0c1b` INIT_ trigger crash ·
 `8d8f5aba` G2 menus
+
+2026-10-10/11: `868cc590` mover/trigger state · `d8666bdb` registry after an in-game reload
 
 ## Main files
 
@@ -26,6 +35,8 @@
 ## Config flags
 
 `EnableSaveLoadSystem` (**off** in Production), `EnableSaveFeature`, `EnableLoadFeature`.
+
+2026-10-10/11: `EnableLogicVobSaveState`
 
 ## Review notes
 
@@ -39,3 +50,5 @@
 
 - Enable `EnableSaveLoadSystem`, save in G1 Old Camp, quit, load: NPCs at posts, dead stay dead, inventory and
   equipment kept.
+- Open a door/gate/portal, save, load: it stays open and its one-time switch stays used.
+- Change the world and come back: opened movers stay open. New game after a loaded save: everything closed.

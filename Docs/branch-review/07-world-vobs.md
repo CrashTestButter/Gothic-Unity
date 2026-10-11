@@ -21,11 +21,33 @@
   VOBs of their own. Child VOBs sit at their own position (ZEN positions are world positions) instead of their
   parent's origin. Movers and children of visual-less VOBs get precached bounds (static cache v6).
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Logic VOBs below other VOBs** (triggers, trigger lists, code masters, movers, message filters) are registered and
+  get their children; children of VOBs we don't build (cutscene cameras, fog zones, …) and of decal/particle VOBs with
+  those visuals off are created; a reload replaces destroyed entries. Triggers send their own name (code masters count
+  slaves by name).
+- **Movers like the engine:** every keyframe with the engine's timing per segment (translation cm/ms, rotation as
+  rotations/s, low speeds scaled up); `zCMessageFilter` Enable/Disable/Toggle and `startEnabled`; keyframes relative to
+  the VOB; a mover below another mover moves along with it (Jharkendar portal petals).
+- **`zCTriggerList` ALL:** delays add up from target to target (OpenGothic), the targets fire in list order.
+- **`zCCodeMaster` like the engine:** every press counts, an ordered code is judged after as many presses as slaves, a
+  wrong one fires the failure target (Irdorath touchplate puzzles).
+- **Mobs:** the condition function runs with `self` = player ("missing something" lines are heard); a mob with a trigger
+  target and `useWithItem` needs the item (Jharkendar portal ring).
+- **Damage targets:** projectiles trigger logic VOBs with `reactToOnDamage`, auto-aim at them, a green X marks invisible
+  ones; treasure X marks are visible in builds (URP Unlit placeholder material).
+- Result: **G2 Irdorath is completable** (bridges, traps, gates, wheels, pillars, main door, last door).
+
 ## Key commits
 
 `75bd89fd`/`b773c4c0`/`a1a8f2a2`/`e37c8952` movers · `9636179d` trigger system · `cd614258`/`f200e883` wheels ·
 `a696f99b` keys · `f44ca0ac` MOBSI · `74302081` G2 beds · `6bd758e0` MT beds · `3edf3460` dig spots ·
 `00f95e72` rooms · `2fb20421`/`8e6b8f44`/`be5105d6` seated NPCs · `05be2e1a` INIT_ triggers · `8764fe40` VOB tree
+
+2026-10-10/11: `136de852` sender names · `1f9e8c8d`/`80304460`/`a480f3dd`/`d8666bdb` child logic VOBs · `2ea79afb` mover
+timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trigger list delays · `481eb8e8` code master ·
+`358f0d92`/`5e175caa` mob condition and item · `e62a1a23`/`f93c37a9`/`03b61a16`/`4ee473e0` damage targets and X marks
 
 ## Main files
 
@@ -40,6 +62,10 @@
 `DigSpotsRequireTool`, `EnableChildVobLoaders`, `EnableEnterRoomPerception`, `EnableEmptyVobContainerChildren`,
 `EnableWorldSpaceChildVobs`, `DebugTraceVobVisual` (debug: logs a VOB's loader creation, init and destruction).
 
+2026-10-10/11: `EnableChildLogicVobs`, `EnableEngineMoverTiming`, `EnableTriggerEnableState`,
+`EnableMoverRelativeKeyframes`, `EnableNestedMovers`, `EnableTriggerListSummedDelays`, `EnableEngineCodeMaster`,
+`EnableMobRequiredItem`, `EnableDamageTargetAutoAim`, `EnableDamageTargetMarkers`
+
 ## Review notes
 
 - ✅ Trigger handlers are small, one per VOB type — fits the adapter pattern.
@@ -51,3 +77,8 @@
 
 - G1: Old Camp main gate winch; Chapter 3 graveyard gate. G2: open a gate via lever.
 - Pray at a shrine, sleep in a bed (G1 MT and G2), dig an X mark in G2.
+- G2 Irdorath end to end: shoot the bridge targets, gate levers (bottom rooms, then top rooms after the wheels turned
+  again), touchplate rooms (left room order: SWITCH_02 → 03 → 01), four pillars, main door, Innos statue + last door
+  (letter read first).
+- G2 Jharkendar portal: without the ornament ring it refuses ("missing item"), with it all petals open.
+- G2 Adanos temple door near the troll area.

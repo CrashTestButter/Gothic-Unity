@@ -30,12 +30,24 @@
 **Other spells**
 - Shrink scales monsters (`Mdl_SetModelScale`, kept on load). Fear: NPCs flee (`AI_Flee`). Berserk.
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Burning:** fire spells (`DAM_FIRE`) set NPCs on fire for 4 s like the engine - `VOB_BURN` flames over the whole
+  skinned body, fire light, burn sound and the `s_Fire_Victim` dance; another hit extends it.
+- **Fire storm splash:** the burning area damages everyone within 2 m of the impact, also when it lands on the ground;
+  knocked out NPCs aren't finished off.
+- **NPC mages** cast one spell per attack (wind-up `t_MagRun_2_FBTShoot`, then `t_FBTShoot_2_Stand`) instead of bursts.
+- Spamming a charged spell no longer stacks its effects in the hand; a throw clears them.
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
 `cdc628c2` throwable spells · `5e898826` G2 mana in Spell_Cast · `934b0305` time_per_mana · `a063883c` shrink ·
 `f2ebe1f2`/`040ecaf8`/`fc784fa9` transformations · `64d0bd47` VISUALFX in hand · `04d53a8d` teleport keeps items ·
 `79896b75` AI_Flee · `a6206509` summons as training dummy · `bc831b78` NPCs ignore the hero's summons
+
+2026-10-10/11: `9b7bf640` burning · `ca86ccb8` fire storm splash · `74066e65` NPC mage one spell per attack · `f819bab9`
+charge effects cleared
 
 ## Main files
 
@@ -47,6 +59,8 @@
 `EnableThrowableSpells`, `EnableSpellTimePerMana`, `MinSpellCastSeconds`, `EnableVrTransformations`,
 `EnableSummonIgnoresMasterHits`, `EnableNpcsIgnoreHeroSummons`, `EnableModelScale`, `EnableAiFlee`, `EnableTeleportKeepsHeldItems`,
 `EnableSpellBodyFx`, `SummonSpawnRangeMultiplier`, `RangedCombatRangeMultiplier`, `EnableCasterPerception`.
+
+2026-10-10/11: `EnableBurning`, `EnableSpellSpreadDamage`
 
 ## Review notes
 
@@ -62,3 +76,5 @@
 - G2: summon a golem; it runs, fights enemies, ignores your hits.
 - Transformation scroll: walk, swim, sneak as the wolf.
 - Shrink the G1 troll; save, load — still small.
+- Fireball an NPC: flames on the whole body for 4 s. Fire storm next to a group: everyone within 2 m burns.
+- An NPC mage casts single spells with a wind-up, no bursts.

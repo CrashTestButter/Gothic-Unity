@@ -20,10 +20,17 @@
 - Fixes: backpack UI froze after a page click during a refresh; food in the backpack isn't eaten; quick slots no
   longer resize items; script inventory changes reach VR.
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Lidless containers** (no `.MDS`, e.g. the orc mummies in the Sleeper's temple) are mobs: highlight and click like a
+  switch, the click shows a loot backpack with their items on the hero's side.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
 `be96097d`/`3f8bcb2a`/`6c9736a9` popup + vacuum · `b1d68e70` script inventory events · `7a682222` UI freeze
+
+2026-10-10/11: `5db3f9fa` lidless containers
 
 ## Main files
 
@@ -39,6 +46,8 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 `NpcLootBackpackTimeout`, `EnableBackpackVacuum`, `BackpackVacuumRadius`, `BackpackVacuumStoreSeconds`,
 `EnableItemDetailsPopup`, `EnableScriptRemovesHeldItems`.
 
+2026-10-10/11: —
+
 ## Review notes
 
 - ✅ Good layering here: pricing is pure domain code with **unit tests**, trade state is a model, VR only presents.
@@ -51,3 +60,4 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 
 - G2 Constantino / G1 Fisk: buy 3 of 10 arrows (split onto the counter), sell something, check the balance.
 - Knock out an NPC: his backpack appears, opens on a category with items, disappears after 20 s.
+- G1 Sleeper temple: click an orc mummy, take its items; they stay gone after save/load.

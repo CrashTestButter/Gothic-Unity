@@ -30,12 +30,30 @@
   (two bandits stunlocked Cavalorn).
 - Berserk (G1): victims attack the next living NPC; guards knock the berserker out instead of killing.
 
+**Added 2026-10-10 – 2026-10-11**
+
+- **Strike out of the run:** NPCs and monsters running at the hero strike out of the run half of the time
+  (`t_<weapon>AttackMove`: fist/1h humans, orcs, wolves, scavengers); the run animation keeps playing under the strike
+  instead of freezing the legs.
+- **NPC archers and crossbowmen** fire one shot per attack, the reload (`t_BowReload`/`t_CBowReload`) belongs to the
+  same attack - before the single-frame shot animation chained into bursts.
+- **Ranged give-up:** archers, crossbowmen and mages leave the attack when the hero is out of reach (24 m), like the
+  script's own ranged abort.
+- **Minimal damage:** a hit never does less than `NPC_MINIMAL_DAMAGE` unless the target is immune (a meatbug burned in a
+  fire storm without losing HP).
+- **Projectiles hit logic VOBs:** arrows, bolts and spell projectiles trigger `zCTrigger`/`oCTriggerScript`/movers with
+  `reactToOnDamage` once per projectile, home on them within 12° (they're often invisible) and such targets get a green
+  X where to shoot (see [World](07-world-vobs.md)).
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
 `e5dfc6ce` chase give-up, finishing moves · `4bb7903c` drop weapon · `a4d92755` hitbox · `d575c3b3`/`bf4969b0` bows ·
 `c0299809` crossbow · `1770b593`/`50d634e2` give up chase · `c1a4c1ad` AI_Attack draws first, two-handers ·
 `fe5777c3`/`7fef08fd`/`035ca617` berserk · `887af70a` engine knockout rule · `84f47c83` hit at opt frame
+
+2026-10-10/11: `68541a82`/`1f17b679` run attack · `5bbdace2` ranged one shot · `065fcc02` ranged give-up · `a24beeaa`
+minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim, X marks
 
 ## Main files
 
@@ -49,6 +67,9 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 `EnableNpcHitAtOptimalFrame`, `EnableAiAttackDrawsWeapon`, `EnableFasterChaseGiveUp`, `EnableGuardsStopBerzerk`,
 `EnableVrBows`, `EnableVrCrossbow`, `EnableCrossbowMasterOneHand`, `EnableHeroDropsWeaponsOnKnockout`,
 `EnableNpcRangedCombat` (**off** in Production), cheats `EnableOneHitKill`/`EnableOneHitKnockout`.
+
+2026-10-10/11: `EnableNpcRunAttack`, `EnableRangedGiveUp`, `EnableMinimalDamage`, `EnableDamageTargetAutoAim`,
+`EnableDamageTargetMarkers`
 
 ## Review notes
 
@@ -67,3 +88,6 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 - G2 city: hit a citizen; guards knock you out; everyone stops fighting; nobody dies in a brawl.
 - G1: a wolf attacking an NPC hurts him. Berserk spell on an NPC near guards.
 - VR bow and crossbow on a target; pick up the missed arrow.
+- Let a wolf or an orc run at you: about every second attack lands out of the run.
+- NPC archer: one shot, reload, next shot. Run 25+ m away: it stops and goes back.
+- G1 Sleeper temple / G2 Irdorath: shoot the switches and bridge targets (green X) with a bow or a spell.

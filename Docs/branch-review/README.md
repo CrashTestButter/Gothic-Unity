@@ -5,12 +5,13 @@ before pushing. Goal: make Gothic 1 and Gothic 2 completable in VR — a "game c
 
 | | |
 |---|---|
-| Compared against | `main` at `e91bc09c` (current `main`, already merged into the branch) |
-| Commits | 260 on the branch that `main` doesn't have |
-| Files | 290 changed (147 added, 143 modified), +29,040 / −1,095 lines |
-| C# | 190 files (62 new) |
-| Period | 2026-06-14 → 2026-10-05 |
-| Tested on | PCVR, G1 (vanilla + Mroczne Tajemnice mod), G2 NotR. **Not** built or tested: Quest/Pico, Flat mode |
+| Compared against | `main` at `e5fa207d` (current `main`, already merged into the branch) |
+| Commits | 349 on the branch that `main` doesn't have |
+| Files | 371 changed (202 added, 169 modified), +36,117 / −1,434 lines |
+| C# | 221 files (81 new) |
+| Period | 2026-06-14 → 2026-10-11 |
+| Tested on | PCVR, G1 (vanilla + Mroczne Tajemnice mod), G2 NotR (played to the end: Irdorath, undead dragon, ending). **Not** built or tested: Quest/Pico, Flat mode |
+| Docs up to | `868cc590` (2026-10-11) - see the [changelog](CHANGELOG.md) for what changed since |
 
 ## Author's note
 
@@ -27,8 +28,12 @@ Please read the changes with two kinds in mind:
 
 ---
 
-Almost everything new is behind a `DeveloperConfig` flag (**116 new fields**), so features can be switched off one by
+Almost everything new is behind a `DeveloperConfig` flag (**155 new fields**), so features can be switched off one by
 one. The production config (`Production.asset`) has them on except cheats, NPC ranged combat and save/load.
+
+## Changelog
+
+What changed build by build (newest first, kept up to date with every push): [CHANGELOG.md](CHANGELOG.md).
 
 ## How to read this
 
@@ -66,6 +71,9 @@ test it. Start with **Must fix before merge** below, then skim the themes you ow
   treasure digging, original Bink videos in a VR cinema.
 - **Look:** caves lit by torches, night falling on the world, particles at Gothic's rate, OpenGothic-like light pool.
 - **Mods:** mod loading (G1 Mroczne Tajemnice, G2 Union mods partly), Ogg Vorbis dubbing, JSON mod switching.
+- **G2 completable to the end:** Irdorath's trigger puzzles (bridges, gates, wheels, touchplates, pillars, doors),
+  dragon dialogs, the undead dragon's death sequence and the ending; movers and triggers survive save/load.
+- **Game profiles** (G1/G2/mods picked at start), hit numbers, HUD on top, engine-like NPC senses and chases.
 
 ## Must fix before merge
 

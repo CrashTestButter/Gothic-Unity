@@ -43,8 +43,9 @@ namespace Gothic.Core.Adapters.Vob
         private void Awake() => this.Inject();
 
         /// <summary>
-        /// After InitVob: a child mover is put back to its world file position after Init (EnableWorldSpaceChildVobs) -
-        /// G2's Adanos temple door was restored open but stood closed.
+        /// After InitVob: the saved pose is set once the mover's children exist, so they move along (G2's canyon teleport
+        /// platform stayed underground), and after a child mover was put back to its world file position
+        /// (EnableWorldSpaceChildVobs - G2's Adanos temple door was restored open but stood closed).
         /// </summary>
         private void Start()
         {
@@ -190,8 +191,9 @@ namespace Gothic.Core.Adapters.Vob
         {
             if (_keyframes.Length > 0)
             {
+                // Not moved yet: the mover's child VOBs (G2 teleport platforms, the focus stone) are created after Init
+                // at their world file positions - moved now, they stayed 9 m below. Start moves it with them.
                 _currentKeyIndex = Mathf.Clamp(saved.KeyIndex, 0, _keyframes.Length - 1);
-                SetPose(_keyframes[_currentKeyIndex]);
                 _isSavedPosePending = true;
             }
             _isOpen = saved.IsOpen;

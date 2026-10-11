@@ -51,16 +51,25 @@ namespace Gothic.Core.Domain.Npc
         public GameObject RootGo;
         private readonly List<(NpcContainer npc, string spawnPoint)> _tmpWldInsertNpcData = new();
 
+        // Wld_InsertNpc queues into _tmpWldInsertNpcData, which is drained only once: during the world's initial NPC
+        // spawn. Vanilla STARTUP scripts only call Wld_InsertNpc in that window, but some mod quest/dialog scripts
+        // call it mid-game to introduce a new NPC (e.g. New Balance's Xardas dialog introducing "Dagoth"). Once this
+        // is true, such calls spawn right away instead of being queued into a list nothing processes again.
+        private bool _isInitialNpcLoadComplete;
+
         private DaedalusVm Vm => _gameStateService.GothicVm;
 
         public async Task InitNpcsNewGame(LoadingService loading)
         {
+            _isInitialNpcLoadComplete = false;
             NewRunDaedalus();
             await NewAddLazyLoading(loading);
+            _isInitialNpcLoadComplete = true;
         }
 
         public async Task InitNpcsSaveGame(LoadingService loading)
         {
+            _isInitialNpcLoadComplete = false;
             var saveGameNpcs = _saveGameService.CurrentWorldData.Npcs;
 
             foreach (var vobNpc in saveGameNpcs)
@@ -72,6 +81,7 @@ namespace Gothic.Core.Domain.Npc
                 var npcContainer = AllocZkInstance(vobNpc);
                 SaveGameAddLazyLoadingAnywhere(npcContainer, vobNpc.ScriptWaypoint);
             }
+            _isInitialNpcLoadComplete = true;
         }
 
         public void InitNpcVobSaveGame(INpc vobNpc)
@@ -95,6 +105,14 @@ namespace Gothic.Core.Domain.Npc
         public void ExtWldInsertNpc(int npcInstanceIndex, string spawnPoint)
         {
             var userDataObject = AllocZkInstance(npcInstanceIndex);
+
+            if (_isInitialNpcLoadComplete)
+            {
+                Logger.Log($"Wld_InsertNpc called after the initial NPC load - spawning at '{spawnPoint}' now.",
+                    LogCat.Npc);
+                SpawnInsertedNpc(userDataObject, spawnPoint);
+                return;
+            }
 
             // For mesh creation later, we need to store that there is a new NPC or a duplicate Monster to be spawned.
             _tmpWldInsertNpcData.Add((userDataObject, spawnPoint));
@@ -166,34 +184,44 @@ namespace Gothic.Core.Domain.Npc
                 loading.Tick();
                 await _frameSkipperService.TrySkipToNextFrame();
 
-                var go = InitLazyLoadNpc(element.npc);
-
-                var spawnPoint = GetSpawnPoint(element.npc, element.spawnPoint);
-                if (spawnPoint == null)
-                {
-                    Logger.LogWarning($"Cannot spawn NPC as waypoint ${element.spawnPoint} does not exist.", LogCat.Npc);
-
-                    // FIXME - Destroy GO and NPCInstance (Do not save the instance inside SaveGame as G1 is also removing it?)
-                    continue;
-                }
-
-                if (spawnPoint.IsFreePoint())
-                {
-                    element.npc.Props.CurrentFreePoint = (FreePoint)spawnPoint;
-                }
-                else
-                {
-                    element.npc.Props.CurrentWayPoint = (WayPoint)spawnPoint;
-                }
-
-                go.transform.SetPositionAndRotation(spawnPoint.Position, spawnPoint.Rotation);
-                _npcMeshCullingService.AddCullingEntry(go);
+                SpawnInsertedNpc(element.npc, element.spawnPoint);
             }
 
             _tmpWldInsertNpcData.ClearAndReleaseMemory();
             
             // Full loading of NPCs is done.
             loading.FinalizePhase();
+        }
+
+        /// <summary>
+        /// Places an NPC from Wld_InsertNpc into the world: resolves its spawn point, assigns the FP/WP, positions the
+        /// GameObject and registers it for mesh culling. Used by the initial spawn and by mid-game Wld_InsertNpc calls.
+        /// </summary>
+        private void SpawnInsertedNpc(NpcContainer npc, string spawnPointName)
+        {
+            var go = InitLazyLoadNpc(npc);
+
+            var spawnPoint = GetSpawnPoint(npc, spawnPointName);
+            if (spawnPoint == null)
+            {
+                Logger.LogWarning($"Cannot spawn NPC as waypoint {spawnPointName} does not exist.", LogCat.Npc);
+
+                // FIXME - Destroy GO and NPCInstance
+                //         (Do not save the instance inside SaveGame as G1 is also removing it?)
+                return;
+            }
+
+            if (spawnPoint.IsFreePoint())
+            {
+                npc.Props.CurrentFreePoint = (FreePoint)spawnPoint;
+            }
+            else
+            {
+                npc.Props.CurrentWayPoint = (WayPoint)spawnPoint;
+            }
+
+            go.transform.SetPositionAndRotation(spawnPoint.Position, spawnPoint.Rotation);
+            _npcMeshCullingService.AddCullingEntry(go);
         }
 
         /// <summary>

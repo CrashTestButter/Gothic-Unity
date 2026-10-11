@@ -93,6 +93,9 @@ namespace Gothic.Core.Domain.StaticCache
                     case VisualType.ParticleEffect:
                         // FIXME - We can easily calculate bbox via position (0,0,0) + radius of emitting pfx.
                         var go2 = _meshService.CreateVobPfx(vob, parent: null);
+                        // PFX not found in the VM (e.g. a mod-only effect): no bounds for this VOB.
+                        if (go2 == null)
+                            continue;
                         boundingBox = CalculateBoundingBox(go2);
                         Object.Destroy(go2);
                         break;

@@ -81,12 +81,20 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private void PrintDialog()
         {
             // FIXME - CutsceneLibrary.Blocks is uncached and will re-read all elements each time we call it! Cache and reuse!
-            var currentMessage = _gameStateService.Dialogs.CutsceneLibrary.Blocks.Find(x => x.Name == OutputName).Message;
+            var block = _gameStateService.Dialogs.CutsceneLibrary.Blocks.Find(x => x.Name == OutputName);
 
+            // Mod-only output names can be missing in OU.BIN/OU.CSL. Skip the subtitle instead of throwing an NRE.
+            if (block == null)
+            {
+                Logger.LogWarning($"Dialog block '{OutputName}' not found in CutsceneLibrary.", LogCat.Dialog);
+                return;
+            }
+
+            var text = block.Message.Text;
             if (_isHeroSpeaking)
-                _npcService.GetHeroContainer().PrefabProps.NpcSubtitles.ShowSubtitles(currentMessage.Text);
+                _npcService.GetHeroContainer().PrefabProps.NpcSubtitles.ShowSubtitles(text);
             else
-                PrefabProps.NpcSubtitles.ShowSubtitles(currentMessage.Text);
+                PrefabProps.NpcSubtitles.ShowSubtitles(text);
         }
 
         /// <summary>

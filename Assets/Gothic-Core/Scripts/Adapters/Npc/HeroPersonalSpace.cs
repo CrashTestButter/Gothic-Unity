@@ -23,6 +23,12 @@ namespace Gothic.Core.Adapters.Npc
 
         private void Awake() => this.Inject();
 
+        private static bool IsTalkableHuman(Gothic.Core.Models.Container.NpcContainer npc)
+        {
+            return npc.Instance.Guild <= (int)VmGothicEnums.Guild.GIL_SEPERATOR_HUM &&
+                   (VmGothicEnums.WeaponState)npc.Vob.FightMode == VmGothicEnums.WeaponState.NoWeapon;
+        }
+
         private void LateUpdate()
         {
             if (!_configService.Dev.EnableHeroPersonalSpace)
@@ -39,6 +45,10 @@ namespace Gothic.Core.Adapters.Npc
                     continue;
                 // Dead/knocked out bodies lie where they fell (loot them standing on top).
                 if (npc.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                    continue;
+                // Humans with their weapon away can be walked up to and grabbed to talk - pushed 1 m away they were out
+                // of reach and no NPC could be talked to. Monsters and anyone with a drawn weapon keep their distance.
+                if (IsTalkableHuman(npc))
                     continue;
 
                 var npcTransform = npc.Go.transform;

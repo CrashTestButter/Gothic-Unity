@@ -9,12 +9,14 @@ using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.World;
 using Gothic.Core;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
 using Gothic.VR.Services;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters
 {
@@ -40,6 +42,8 @@ namespace Gothic.VR.Adapters
         {
             if (_vrPlayerService.IsSpellActive)
             {
+                Logger.Log($"[VRNpc] Grab on '{_npcData.Instance.GetName(NpcNameSlot.Slot0)}' ignored - a spell is active " +
+                           "(targeting or telekinesis)", LogCat.VR);
                 grabber.ForceRelease();
                 return;
             }

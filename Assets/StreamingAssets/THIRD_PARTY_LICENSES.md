@@ -17,10 +17,8 @@ This file is placed inside `StreamingAssets/` so it is included in every build.
 
 | Component                 | Used for                                   | License                     |
 |---------------------------|--------------------------------------------|-----------------------------|
-| ZenKit / ZenKitCAPI       | Parsing Gothic assets (native)             | MIT                         |
-| ZenKitCS                  | .NET bindings for ZenKit                   | MIT                         |
-| libsquish                 | DXT texture decompression (inside ZenKit)  | MIT                         |
-| mio                       | Memory-mapped file IO (inside ZenKit)      | MIT                         |
+| ZenKitCAPI                | Parsing Gothic assets (native)             | MIT                         |
+| ZenKitCS                  | .NET bindings for ZenKitCAPI               | MIT                         |
 | dmusic / dmusic-cs        | DirectMusic reimplementation (music)       | MIT (Modern Variant)        |
 | NVorbis                   | Ogg Vorbis decoding (mod dubbing)          | MIT                         |
 | Mono I18N                 | Windows codepages (1250/1251/1252)         | MIT                         |
@@ -38,11 +36,8 @@ This file is placed inside `StreamingAssets/` so it is included in every build.
 
 The following components are licensed under the MIT License. Copyright holders:
 
-* **ZenKit** - Copyright (c) 2021-2024 GothicKit Contributors - https://github.com/GothicKit/ZenKit
 * **ZenKitCAPI** - Copyright (c) 2023 GothicKit Contributors - https://github.com/GothicKit/ZenKitCAPI
 * **ZenKitCS** - Copyright (c) 2023-2024 GothicKit Contributors - https://github.com/GothicKit/ZenKitCS
-* **libsquish** - Copyright (c) 2006 Simon Brown - https://sourceforge.net/projects/libsquish/
-* **mio** - Copyright (c) 2018 https://github.com/mandreyel/ - https://github.com/mandreyel/mio
 * **Mono I18N** - Copyright (c) 2002 Southern Storm Software, Pty Ltd and Mono contributors -
   https://github.com/mono/mono/tree/main/mcs/class/I18N
 * **Reflex** - Copyright (c) Gustavo P. Santos - https://github.com/gustavopsantos/reflex

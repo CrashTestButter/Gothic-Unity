@@ -553,6 +553,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: \"(Trigger) skip\" under the video cinema's screen (Gothic-UI localization key cinema.skip).")]
         public bool EnableCinemaSkipHint = true;
 
+        [Tooltip("V1: After the ending's videos (G1 ExitGame after the Sleeper, G2 ExitSession after the captain's 'It's " +
+                 "over') the game restarts to the main menu / game profiles instead of closing.")]
+        public bool EnableEndingReturnsToMenu = true;
+
         [Tooltip("The VR hero's body state follows its movement on land (BS_STAND/BS_WALK/BS_RUN) like the " +
                  "engine. Scripts need it: ZS_Attack gives up a chase ('$RUNCOWARD') only while the target runs.")]
         public bool EnableHeroMoveBodyState = true;

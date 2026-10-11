@@ -109,6 +109,16 @@ namespace Gothic.VR.Adapters.UI
 
         private static void Quit()
         {
+            // DeveloperConfig.EnableEndingReturnsToMenu: after the ending's videos and credits back to the start (game
+            // profiles / main menu) like the engine's ExitSession - the game just closed.
+            var configService = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
+            if (configService.Dev.EnableEndingReturnsToMenu)
+            {
+                Logger.Log("[VRCinema] Game ended (ExitGame/ExitSession) - back to the main menu.", LogCat.VR);
+                Gothic.Core.Domain.GameRestartDomain.Restart();
+                return;
+            }
+
             Logger.Log("[VRCinema] Game ended (ExitGame/ExitSession) - quitting.", LogCat.VR);
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;

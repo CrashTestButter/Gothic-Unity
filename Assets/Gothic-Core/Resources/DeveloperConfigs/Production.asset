@@ -103,6 +103,7 @@ MonoBehaviour:
   MarvinTeleportWaypoint: 
   EnableMarvinBlink: 1
   EnableMarvinFallRescue: 1
+  EnableEndingReturnsToMenu: 1
   MarvinSpawnNpcSymbol: 
   MarvinGiveItems: 
   EnableNpcCombatCombos: 1

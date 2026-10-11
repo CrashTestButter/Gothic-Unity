@@ -1,6 +1,7 @@
 using System.Collections;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
 using Reflex.Attributes;
 using UnityEngine;
@@ -12,6 +13,7 @@ namespace Gothic.Core.Adapters.Vob
     public class TriggerListHandler : MonoBehaviour
     {
         [Inject] private VobService _vobService;
+        [Inject] private ConfigService _configService;
 
         private ITriggerList _triggerList;
         private int _activationCount;
@@ -48,8 +50,18 @@ namespace Gothic.Core.Adapters.Vob
             switch (_triggerList.Mode)
             {
                 case TriggerBatchMode.All:
+                    // DeveloperConfig.EnableTriggerListSummedDelays: in the engine every target's delay counts from
+                    // the previous one (OpenGothic TriggerList: offset += delay) - not each from the trigger moment.
+                    var offset = 0f;
                     foreach (var t in targets)
-                        ScheduleDispatch(t.Name, (float)t.Delay.TotalSeconds);
+                    {
+                        var delay = (float)t.Delay.TotalSeconds;
+                        offset = _configService.Dev.EnableTriggerListSummedDelays ? offset + delay : delay;
+                        ScheduleDispatch(t.Name, offset);
+                    }
+                    Logger.Log($"[TriggerList] '{_triggerList.Name}' schedule: " +
+                               string.Join(", ", System.Linq.Enumerable.Select(targets, t => $"{t.Name}+{t.Delay.TotalSeconds:F1}s")),
+                        LogCat.Vob);
                     break;
                 case TriggerBatchMode.Next:
                     var idx = _triggerList.ActTarget;

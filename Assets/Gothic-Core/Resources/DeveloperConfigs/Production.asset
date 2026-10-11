@@ -57,6 +57,7 @@ MonoBehaviour:
   MoverSpeedMultiplier: 3.48
   EnableEngineMoverTiming: 1
   EnableDialogHeroByInstance: 1
+  EnableDialogKeepsOutputs: 1
   EnableDeadStateLoop: 1
   PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0

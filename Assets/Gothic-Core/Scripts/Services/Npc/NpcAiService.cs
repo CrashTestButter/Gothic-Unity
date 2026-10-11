@@ -180,7 +180,34 @@ namespace Gothic.Core.Services.Npc
         public void ExtNpcClearAiQueue(NpcInstance npc)
         {
             var container = npc.GetUserData();
-            container.Props.AnimationQueue.Clear();
+
+            // DeveloperConfig.EnableDialogKeepsOutputs: the hero's dialog partner keeps its lines. G2's dragons talk
+            // from their own state with perceptions running - a Npc_ClearAIQueue there dropped every queued AI_Output,
+            // only the hero's lines (his own queue) were heard. The rest of the queue is cleared as usual.
+            if (_configService.Dev.EnableDialogKeepsOutputs && _gameStateService.Dialogs.IsInDialog &&
+                _gameStateService.Dialogs.CurrentDialogNpc == container)
+            {
+                var outputs = container.Props.AnimationQueue.Where(action => action is Output).ToList();
+                var isTalking = container.Props.CurrentAction is Output;
+                if (outputs.Count > 0 || isTalking)
+                {
+                    Logger.Log($"[Dialog] Npc_ClearAIQueue on '{npc.GetName(NpcNameSlot.Slot0)}' during the dialog - " +
+                               $"{outputs.Count} queued line(s) kept{(isTalking ? ", current line goes on" : "")}", LogCat.Dialog);
+                    container.Props.AnimationQueue.Clear();
+                    foreach (var output in outputs)
+                        container.Props.AnimationQueue.Enqueue(output);
+                    if (isTalking)
+                        return;
+                }
+                else
+                {
+                    container.Props.AnimationQueue.Clear();
+                }
+            }
+            else
+            {
+                container.Props.AnimationQueue.Clear();
+            }
 
             // When called from inside the AiHandler combo-preload (IsInComboPreload=true), the
             // active AttackPlayAni must NOT be stopped — the combo window needs it alive so it can

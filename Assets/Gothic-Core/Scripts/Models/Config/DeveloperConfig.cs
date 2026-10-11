@@ -750,6 +750,10 @@ namespace Gothic.Core.Models.Config
                  "dragon's lines were inaudible, his head is meters away. Dialog lines play on their own AudioSource.")]
         public bool EnableDialogRangeByBodySize = true;
 
+        [Tooltip("V1: Npc_ClearAIQueue on the hero's dialog partner keeps its queued AI_Output lines (and the current " +
+                 "one) - G2's dragons cleared their queue during the dialog, only the hero's lines were heard.")]
+        public bool EnableDialogKeepsOutputs = true;
+
         [Tooltip("V1: Dialog lines tell the hero apart by instance, not by id 0 - monsters have id 0 too, the undead " +
                  "dragon's lines went to the hero's queue and were never said.")]
         public bool EnableDialogHeroByInstance = true;

@@ -1026,10 +1026,34 @@ namespace Gothic.Core.Domain.Vobs
             // Only visual - the trigger's own zone/collider takes the hit.
             Object.Destroy(plank.GetComponent<Collider>());
 
-            var renderer = plank.GetComponent<Renderer>();
-            renderer.material.color = color;
-            if (renderer.material.HasProperty("_BaseColor"))
-                renderer.material.SetColor("_BaseColor", color);
+            var material = GetPlaceholderMaterial(color);
+            if (material != null)
+                plank.GetComponent<Renderer>().sharedMaterial = material;
+        }
+
+        private static readonly Dictionary<Color, Material> _placeholderMaterials = new();
+
+        /// <summary>
+        /// The placeholder X's material: URP Unlit in a plain color. The primitive's default material drew nothing in
+        /// builds - G2's treasure X marks (and the green target X) were there and diggable, but invisible.
+        /// </summary>
+        private static Material GetPlaceholderMaterial(Color color)
+        {
+            if (_placeholderMaterials.TryGetValue(color, out var material) && material != null)
+                return material;
+
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null)
+            {
+                Logger.LogWarning("[DigSpot] URP Unlit shader not found - placeholder X keeps the default material.", LogCat.Vob);
+                return null;
+            }
+
+            material = new Material(shader) { color = color };
+            if (material.HasProperty("_BaseColor"))
+                material.SetColor("_BaseColor", color);
+            _placeholderMaterials[color] = material;
+            return material;
         }
 
         private static void CreateDigSpotPlank(GameObject parent, float yaw)
@@ -1044,11 +1068,9 @@ namespace Gothic.Core.Domain.Vobs
             // Only visual - VRDigSpot compares bounds, no physics needed.
             Object.Destroy(plank.GetComponent<Collider>());
 
-            var renderer = plank.GetComponent<Renderer>();
-            var red = new Color(0.6f, 0.05f, 0.05f);
-            renderer.material.color = red;
-            if (renderer.material.HasProperty("_BaseColor"))
-                renderer.material.SetColor("_BaseColor", red);
+            var material = GetPlaceholderMaterial(new Color(0.6f, 0.05f, 0.05f));
+            if (material != null)
+                plank.GetComponent<Renderer>().sharedMaterial = material;
         }
 
         private GameObject CreateDefaultMesh(IVirtualObject vob, GameObject parent)

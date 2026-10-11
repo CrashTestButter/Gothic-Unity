@@ -175,16 +175,16 @@ namespace Gothic.Core.Domain.Vobs
                     // DeveloperConfig.EnableParticleEffects: a running controller shows its effect (sparks over the
                     // pentagram, Xardas's tower). Controllers started by a trigger aren't handled yet.
                     if (_configService.Dev.EnableParticleEffects && vob is IParticleEffectController pfxController &&
-                        pfxController.InitiallyRunning && !string.IsNullOrEmpty(pfxController.EffectName))
+                        pfxController.InitiallyRunning && !string.IsNullOrEmpty(GetPfxControllerEffect(pfxController)))
                     {
-                        go = _meshService.CreateVobPfx(pfxController.EffectName, vob.Position.ToUnityVector(),
-                            vob.Rotation.ToUnityQuaternion(), parent);
+                        go = _meshService.CreateVobPfx(GetPfxControllerEffect(pfxController),
+                            vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion(), parent);
                         break;
                     }
 
                     // Diagnostics: controllers started later by a trigger (not handled yet) - which effect, where.
                     if (vob is IParticleEffectController waitingController)
-                        Logger.Log($"[PFX] Controller '{vob.Name}' ({waitingController.EffectName}) at " +
+                        Logger.Log($"[PFX] Controller '{vob.Name}' ({GetPfxControllerEffect(waitingController)}) at " +
                                    $"{vob.Position.ToUnityVector()} waits for a trigger - not shown", LogCat.Vob);
 
                     // A Particle controller makes no sense without a visual to show.
@@ -1199,6 +1199,19 @@ namespace Gothic.Core.Domain.Vobs
         {
             return _meshService.CreateVobDecal(vob, (VisualDecal)vob.Visual,
                 vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion(), parent);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnablePfxControllerVisuals: the controller's effect is its particle visual like the engine
+        /// (zCPFXControler, OpenGothic PfxController) - pfxName is mostly a Spacer leftover ".PFX". Before, G2's active
+        /// teleport platforms (RESURRECTION.pfx) and cauldrons showed nothing ("PFX '.PFX' not found in VM").
+        /// </summary>
+        private string GetPfxControllerEffect(IParticleEffectController controller)
+        {
+            if (_configService.Dev.EnablePfxControllerVisuals && controller.Visual?.Type == VisualType.ParticleEffect &&
+                controller.Visual.Name.NotNullOrEmpty())
+                return controller.Visual.Name;
+            return controller.EffectName;
         }
 
         private GameObject CreatePfx(IVirtualObject vob, GameObject parent)

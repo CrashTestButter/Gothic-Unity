@@ -904,6 +904,10 @@ namespace Gothic.Core.Models.Config
                  "page arrow - it moves everything into the hero's inventory.")]
         public bool EnableLootTakeAll = true;
 
+        [Tooltip("V1: Particle controllers show their particle visual like the engine (pfxName is mostly an empty Spacer " +
+                 "leftover) - G2's active teleport platforms and cauldrons showed nothing. Needs EnableParticleEffects.")]
+        public bool EnablePfxControllerVisuals = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

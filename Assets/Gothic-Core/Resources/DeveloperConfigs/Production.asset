@@ -206,6 +206,7 @@ MonoBehaviour:
   MinSpellCastSeconds: 2
   EnableSpellReleaseCheck: 1
   EnableSpawnedNpcSaves: 1
+  EnableWorldRevisitState: 1
   EnableMusicZonesByPosition: 1
   EnableLootTakeAll: 1
   EnableModelScale: 1

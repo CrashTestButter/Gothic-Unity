@@ -195,6 +195,7 @@ namespace Gothic.Core.Services
                 _saveGameService.ClearPendingNpcInit();
                 _saveGameService.StoreLogicVobStates();
                 _saveGameService.StoreSpawnedNpcs();
+                _saveGameService.StoreWorldNpcStates();
                 LogicVobSaveState.BeginWorld(worldName);
                 _vobService.PreWorldCreate();
                 _vobMeshCullingService.PreWorldCreate();

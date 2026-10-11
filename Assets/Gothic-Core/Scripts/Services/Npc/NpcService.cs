@@ -175,7 +175,8 @@ namespace Gothic.Core.Services.Npc
             MobRoutines = new();
 
             var npcInit = _configService.Dev.EnableSaveLoadSystem ? _saveGameService.PendingNpcInit : null;
-            if (_saveGameService.IsNewGame || npcInit == null)
+            // DeveloperConfig.EnableWorldRevisitState: a world visited before uses its stored state - also in a new game.
+            if ((_saveGameService.IsNewGame && !_saveGameService.IsRevisitingWorld) || npcInit == null)
             {
                 if (_saveGameService.IsWorldEnteredFirstTime)
                     await _initializerDomain.InitNpcsNewGame(loading);

@@ -95,6 +95,16 @@ namespace Gothic.Core.Services.World
         // save, updated on save and when leaving a world.
         private readonly Dictionary<string, List<NpcInitEntry>> _spawnedNpcsByWorld = new();
 
+        // DeveloperConfig.EnableWorldRevisitState: NPC state of every visited world (upper case world name) - from the
+        // loaded save, stored when leaving a world. Coming back rebuilds the world's NPCs from it.
+        private readonly Dictionary<string, Dictionary<string, NpcSaveEntry>> _worldNpcStates = new();
+
+        /// <summary>
+        /// The world being entered was visited before in this game (session or loaded save) - its NPCs are rebuilt from
+        /// the init snapshot plus their stored state, also in a game started new.
+        /// </summary>
+        public bool IsRevisitingWorld { get; private set; }
+
         private UnityCustomSave _pendingHeroRestore;
         private SaveGame _pendingSaveRestore;
         private readonly Dictionary<string, NpcSaveEntry> _npcSnapshots = new();
@@ -210,6 +220,7 @@ namespace Gothic.Core.Services.World
             Save = new SaveGame(_contextGameVersionService.Version);
             LogicVobSaveState.Clear();
             _spawnedNpcsByWorld.Clear();
+            _worldNpcStates.Clear();
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
             _npcSnapshots.Clear();
@@ -259,6 +270,7 @@ namespace Gothic.Core.Services.World
             // G2 has for example: AddonWorld\NewWorld.zen --> NewWorld.zen
             // Linux doesn't see \ as a directory separator, Windows sees both \ and /
             CurrentWorldName = Path.GetFileName(worldName.Replace("\\","/"));
+            PrepareWorldRevisit();
 
             // For world-change during a loaded-game session, ClearPendingNpcInit() wiped _pendingNpcInit.
             // Reload the per-world init snapshot for the destination world so InitNpcsFromMergedSnapshots works.
@@ -587,6 +599,11 @@ namespace Gothic.Core.Services.World
                     npcEntries[key] = CreateNpcSnapshot(key, spawnedNpc);
             }
             data.Npcs = npcEntries.Values.ToList();
+            if (_configService.Dev.EnableWorldRevisitState && !string.IsNullOrEmpty(CurrentWorldName))
+            {
+                _worldNpcStates[CurrentWorldName.ToUpperInvariant()] = new Dictionary<string, NpcSaveEntry>(npcEntries);
+                data.NpcsByWorld = _worldNpcStates.ToDictionary(w => w.Key, w => w.Value.Values.ToList());
+            }
             data.SpawnedNpcsByWorld = _configService.Dev.EnableSpawnedNpcSaves
                 ? _spawnedNpcsByWorld.ToDictionary(w => w.Key, w => w.Value)
                 : null;
@@ -626,6 +643,59 @@ namespace Gothic.Core.Services.World
 
             LogicVobSaveState.StoreWorld(CurrentWorldName, entries);
             Logger.Log($"[SaveGame] {entries.Count} changed mover/trigger state(s) stored for '{CurrentWorldName}'", LogCat.Loading);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableWorldRevisitState: the NPCs of the world being left (culled-out snapshots, visible and
+        /// spawned NPCs) - before another world is loaded. Coming back (G2's Valley of Mines, Khorinis) they're where
+        /// they were, dead stay dead; before, a game started new rebuilt them from scratch.
+        /// </summary>
+        public void StoreWorldNpcStates()
+        {
+            if (!_configService.Dev.EnableWorldRevisitState || !_configService.Dev.EnableSaveLoadSystem ||
+                string.IsNullOrEmpty(CurrentWorldName))
+                return;
+
+            var world = CurrentWorldName.ToUpperInvariant();
+            var states = _worldNpcStates.TryGetValue(world, out var previous)
+                ? new Dictionary<string, NpcSaveEntry>(previous)
+                : new Dictionary<string, NpcSaveEntry>();
+            foreach (var (key, entry) in _npcSnapshots)
+                states[key] = entry;
+            foreach (var npc in _multiTypeCacheService.NpcCache)
+            {
+                if (npc?.Go == null || npc.Vob == null || npc.Vob.Player)
+                    continue;
+                var key = MakeNpcKey(npc);
+                if (npc.Go.activeInHierarchy || npc.IsRuntimeSpawned || !states.ContainsKey(key))
+                    states[key] = CreateNpcSnapshot(key, npc);
+            }
+
+            _worldNpcStates[world] = states;
+            _npcSnapshots.Clear();
+            Logger.Log($"[SaveGame] {states.Count} NPC state(s) stored for '{CurrentWorldName}' (leaving the world)",
+                LogCat.Loading);
+        }
+
+        /// <summary>
+        /// Entering a world visited before: init snapshot (+ spawned NPCs) and the stored NPC state become pending.
+        /// </summary>
+        private void PrepareWorldRevisit()
+        {
+            IsRevisitingWorld = false;
+            if (!_configService.Dev.EnableWorldRevisitState || !_configService.Dev.EnableSaveLoadSystem ||
+                !_worldNpcStates.TryGetValue(CurrentWorldName.ToUpperInvariant(), out var states))
+                return;
+
+            _pendingNpcInit = null;
+            TryLoadNpcInitForWorld(CurrentWorldName);
+            if (_pendingNpcInit == null)
+                return;
+
+            _pendingNpcRestore = new Dictionary<string, NpcSaveEntry>(states);
+            IsRevisitingWorld = true;
+            Logger.Log($"[SaveGame] Revisiting '{CurrentWorldName}': {_pendingNpcInit.Count} NPC(s), " +
+                       $"{states.Count} stored state(s)", LogCat.Loading);
         }
 
         /// <summary>
@@ -683,6 +753,12 @@ namespace Gothic.Core.Services.World
 
             var unitySave = JsonConvert.DeserializeObject<UnityCustomSave>(File.ReadAllText(path));
             _pendingHeroRestore = unitySave;
+
+            // DeveloperConfig.EnableWorldRevisitState: NPC state of every visited world.
+            _worldNpcStates.Clear();
+            if (_configService.Dev.EnableWorldRevisitState && unitySave?.NpcsByWorld != null)
+                foreach (var (world, entries) in unitySave.NpcsByWorld)
+                    _worldNpcStates[world.ToUpperInvariant()] = entries.ToDictionary(e => e.Key, e => e);
 
             // DeveloperConfig.EnableSpawnedNpcSaves: NPCs spawned mid-game, per world.
             _spawnedNpcsByWorld.Clear();

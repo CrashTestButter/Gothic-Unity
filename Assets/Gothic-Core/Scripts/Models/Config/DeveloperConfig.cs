@@ -891,6 +891,10 @@ namespace Gothic.Core.Models.Config
                  "back on load and when returning to a world. Summons aren't. Needs EnableSaveLoadSystem.")]
         public bool EnableSpawnedNpcSaves = true;
 
+        [Tooltip("V1: Every visited world keeps its NPCs (position, HP, dead, spawned ones) - coming back to a world in the " +
+                 "same game or after loading. Saved for all worlds. Needs EnableSaveLoadSystem.")]
+        public bool EnableWorldRevisitState = true;
+
         [Tooltip("V1: Music zones like the engine - picked from the player's position every 2 s (current zone stays, else " +
                  "the last zone containing us), theme fallbacks NGT->DAY, THR->FGT->STD, default zone; night from the " +
                  "game time, fight music ends with the fight. G2's pirate camp kept the bandit music before.")]

@@ -90,6 +90,10 @@ namespace Gothic.Core.Services.World
         // NPC dirty delta — additive (update/add only, never delete)
         public List<NpcSaveEntry> Npcs = new();
 
+        // NPC state (position, HP, dead, routine, ...) of every visited world (upper case world file name) - the flat Npcs
+        // list mixed worlds (the same NPC key in two worlds). Null in older saves.
+        public Dictionary<string, List<NpcSaveEntry>> NpcsByWorld;
+
         // NPCs spawned mid-game per world (upper case world file name): added to the world's init list on load, their
         // position/HP come from Npcs like every other NPC. Null in older saves.
         public Dictionary<string, List<NpcInitEntry>> SpawnedNpcsByWorld;

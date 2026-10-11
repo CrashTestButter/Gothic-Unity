@@ -168,6 +168,7 @@ namespace Gothic.Core.Domain.Vobs
                     break;
                 case VirtualObjectType.zCMover:
                     go = CreateMover((IMover)vob, parent);
+                    TryAddDamageTargetMarker(vob, go);
                     RegisterChildLogicVob(vob, go, isRootVob);
                     break;
                 case VirtualObjectType.zCPFXController:
@@ -206,6 +207,7 @@ namespace Gothic.Core.Domain.Vobs
                     return;
                 case VirtualObjectType.oCTriggerScript:
                     go = CreateTriggerScript((ITriggerScript)vob, parent);
+                    TryAddDamageTargetMarker(vob, go);
                     FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCCodeMaster:
@@ -214,6 +216,7 @@ namespace Gothic.Core.Domain.Vobs
                     return;
                 case VirtualObjectType.zCTrigger:
                     go = CreateTriggerZone((ITrigger)vob, parent);
+                    TryAddDamageTargetMarker(vob, go);
                     FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCTriggerUntouch:
@@ -978,6 +981,55 @@ namespace Gothic.Core.Domain.Vobs
 
             Logger.Log($"[DigSpot] '{vob.Name}' has no textured mesh ({vob.GetVisualName()}) - using a placeholder X.", LogCat.Vob);
             return true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableDamageTargetMarkers: a trigger/mover you shoot (reactToOnDamage) with nothing visible -
+        /// its mesh didn't load or it has none (G2: the targets for bows/spells that open movers weren't there in builds).
+        /// A green X in the middle of its zone shows where to shoot, like the red X of treasure spots.
+        /// </summary>
+        private void TryAddDamageTargetMarker(IVirtualObject vob, GameObject go)
+        {
+            if (!_configService.Dev.EnableDamageTargetMarkers || go == null || vob is not ITrigger { ReactToOnDamage: true })
+                return;
+            foreach (var existingRenderer in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (existingRenderer.enabled)
+                    return;
+            }
+
+            // Not as a child right away: trigger zones are scaled to their bounding box - the X keeps its own size.
+            var marker = new GameObject("DamageTargetMarker");
+            var min = vob.BoundingBox.Min.ToUnityVector();
+            var max = vob.BoundingBox.Max.ToUnityVector();
+            var hasBounds = (max - min).sqrMagnitude > 0.0001f;
+            marker.transform.SetPositionAndRotation(hasBounds ? (min + max) / 2f : go.transform.position,
+                Quaternion.Euler(0f, vob.Rotation.ToUnityQuaternion().eulerAngles.y, 0f));
+            marker.transform.SetParent(go.transform, true);
+
+            var green = new Color(0.1f, 0.75f, 0.15f);
+            CreateMarkerPlank(marker, Quaternion.Euler(0f, 0f, 45f), green);
+            CreateMarkerPlank(marker, Quaternion.Euler(0f, 0f, -45f), green);
+
+            Logger.Log($"[DamageTarget] '{vob.Name}' ({vob.Type}) reacts to hits but shows nothing - green X at " +
+                       $"{marker.transform.position}", LogCat.Vob);
+        }
+
+        private static void CreateMarkerPlank(GameObject parent, Quaternion localRotation, Color color)
+        {
+            var plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            plank.name = "DamageTargetMarkerPlank";
+            plank.transform.SetParent(parent.transform, false);
+            plank.transform.localRotation = localRotation;
+            plank.transform.localScale = new Vector3(0.6f, 0.08f, 0.08f);
+
+            // Only visual - the trigger's own zone/collider takes the hit.
+            Object.Destroy(plank.GetComponent<Collider>());
+
+            var renderer = plank.GetComponent<Renderer>();
+            renderer.material.color = color;
+            if (renderer.material.HasProperty("_BaseColor"))
+                renderer.material.SetColor("_BaseColor", color);
         }
 
         private static void CreateDigSpotPlank(GameObject parent, float yaw)

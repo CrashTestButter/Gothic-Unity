@@ -639,6 +639,9 @@ namespace Gothic.Core.Models.Config
                  "like after culling: routine waypoint of the new time, no aggro, weapon away.")]
         public bool EnableTimeSkipResetsNpcs = true;
 
+        [Tooltip("V1: A trigger/mover you shoot (reactToOnDamage) that shows nothing (no mesh or it didn't load) gets " +
+                 "a green X in the middle of its zone - where to shoot with a bow, crossbow or spell.")]
+        public bool EnableDamageTargetMarkers = true;
 
         [Tooltip("V1: Arrows, bolts and spell projectiles home on a VOB that reacts to hits (trigger/mover with " +
                  "reactToOnDamage) within 12 degrees of the flight direction - they are often invisible.")]

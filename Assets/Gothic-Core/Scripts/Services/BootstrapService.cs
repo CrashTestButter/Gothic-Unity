@@ -194,6 +194,7 @@ namespace Gothic.Core.Services
                 // NPCs modified in other worlds are restored when we revisit those worlds this session.
                 _saveGameService.ClearPendingNpcInit();
                 _saveGameService.StoreLogicVobStates();
+                _saveGameService.StoreSpawnedNpcs();
                 LogicVobSaveState.BeginWorld(worldName);
                 _vobService.PreWorldCreate();
                 _vobMeshCullingService.PreWorldCreate();

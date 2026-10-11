@@ -10,6 +10,7 @@ namespace Gothic.Core.Services.World
         public string WaypointName;
         public string NpcInstance;
         public int[] Attributes; // saved post-startup-scripts so dead NPCs have HP=0
+        public bool IsRuntimeSpawned; // spawned mid-game (Marvin, Wld_InsertNpc) - added to the world's init list on load
     }
 
     public class UnityNpcInit
@@ -88,6 +89,10 @@ namespace Gothic.Core.Services.World
 
         // NPC dirty delta — additive (update/add only, never delete)
         public List<NpcSaveEntry> Npcs = new();
+
+        // NPCs spawned mid-game per world (upper case world file name): added to the world's init list on load, their
+        // position/HP come from Npcs like every other NPC. Null in older saves.
+        public Dictionary<string, List<NpcInitEntry>> SpawnedNpcsByWorld;
 
         // Movers and triggers per world (upper case world file name). Null in older saves.
         public Dictionary<string, List<LogicVobSaveEntry>> LogicVobsByWorld;

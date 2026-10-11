@@ -887,6 +887,10 @@ namespace Gothic.Core.Models.Config
                  "spells go off at their level, the rest (fire rain, summons, ...) is stopped. Before every spell went off.")]
         public bool EnableSpellReleaseCheck = true;
 
+        [Tooltip("V1: NPCs spawned mid-game (Marvin, a script's Wld_InsertNpc after the world loaded) are saved and come " +
+                 "back on load and when returning to a world. Summons aren't. Needs EnableSaveLoadSystem.")]
+        public bool EnableSpawnedNpcSaves = true;
+
         [Tooltip("V1: Music zones like the engine - picked from the player's position every 2 s (current zone stays, else " +
                  "the last zone containing us), theme fallbacks NGT->DAY, THR->FGT->STD, default zone; night from the " +
                  "game time, fight music ends with the fight. G2's pirate camp kept the bandit music before.")]

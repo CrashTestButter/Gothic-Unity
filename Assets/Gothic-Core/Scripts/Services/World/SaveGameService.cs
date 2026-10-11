@@ -87,6 +87,14 @@ namespace Gothic.Core.Services.World
         private NpcInventoryService _npcInventorySvc
             => ReflexProjectInstaller.DIContainer.Resolve<NpcInventoryService>();
 
+        // Same reason - resolved lazily.
+        private MultiTypeCacheService _multiTypeCacheService
+            => ReflexProjectInstaller.DIContainer.Resolve<MultiTypeCacheService>();
+
+        // DeveloperConfig.EnableSpawnedNpcSaves: NPCs spawned mid-game per world (upper case world name) - from the loaded
+        // save, updated on save and when leaving a world.
+        private readonly Dictionary<string, List<NpcInitEntry>> _spawnedNpcsByWorld = new();
+
         private UnityCustomSave _pendingHeroRestore;
         private SaveGame _pendingSaveRestore;
         private readonly Dictionary<string, NpcSaveEntry> _npcSnapshots = new();
@@ -201,6 +209,7 @@ namespace Gothic.Core.Services.World
             SaveGameId = 0;
             Save = new SaveGame(_contextGameVersionService.Version);
             LogicVobSaveState.Clear();
+            _spawnedNpcsByWorld.Clear();
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
             _npcSnapshots.Clear();
@@ -520,6 +529,7 @@ namespace Gothic.Core.Services.World
                 .ToList();
 
             StoreLogicVobStates();
+            var spawnedNpcs = StoreSpawnedNpcs();
 
             var data = new UnityCustomSave
             {
@@ -569,7 +579,17 @@ namespace Gothic.Core.Services.World
                 var key = MakeNpcKey(visibleNpc);
                 npcEntries[key] = CreateNpcSnapshot(key, visibleNpc);
             }
+            // Spawned NPCs have no waypoint to come back to - their position must be in the save, culled or not.
+            foreach (var spawnedNpc in spawnedNpcs)
+            {
+                var key = MakeNpcKey(spawnedNpc);
+                if (!npcEntries.ContainsKey(key) || spawnedNpc.Go != null && spawnedNpc.Go.activeInHierarchy)
+                    npcEntries[key] = CreateNpcSnapshot(key, spawnedNpc);
+            }
             data.Npcs = npcEntries.Values.ToList();
+            data.SpawnedNpcsByWorld = _configService.Dev.EnableSpawnedNpcSaves
+                ? _spawnedNpcsByWorld.ToDictionary(w => w.Key, w => w.Value)
+                : null;
 
             var json = JsonConvert.SerializeObject(data, Formatting.Indented);
             var savePath = GetUnityCustomSavePath(saveGameId);
@@ -608,6 +628,44 @@ namespace Gothic.Core.Services.World
             Logger.Log($"[SaveGame] {entries.Count} changed mover/trigger state(s) stored for '{CurrentWorldName}'", LogCat.Loading);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableSpawnedNpcSaves: the current world's NPCs spawned mid-game (Marvin, Wld_InsertNpc) as
+        /// init entries - on save and before another world is loaded. Before, loading a save rebuilt the world's NPCs
+        /// from its init snapshot only and every spawned NPC was gone. Returns the live ones for the position snapshot.
+        /// </summary>
+        public List<NpcContainer> StoreSpawnedNpcs()
+        {
+            var spawned = new List<NpcContainer>();
+            if (!_configService.Dev.EnableSpawnedNpcSaves || string.IsNullOrEmpty(CurrentWorldName))
+                return spawned;
+
+            var entries = new List<NpcInitEntry>();
+            foreach (var npc in _multiTypeCacheService.NpcCache)
+            {
+                if (npc == null || !npc.IsRuntimeSpawned || npc.Vob == null || npc.Vob.Player || npc.Go == null)
+                    continue;
+
+                spawned.Add(npc);
+                var attrs = new int[8];
+                for (var i = 0; i < 8; i++)
+                    attrs[i] = npc.Vob.GetAttribute(i);
+                entries.Add(new NpcInitEntry
+                {
+                    InstanceId = npc.InstanceId,
+                    SymbolIndex = npc.SymbolIndex,
+                    GoName = MakeNpcKey(npc),
+                    WaypointName = npc.SpawnWaypoint ?? "",
+                    NpcInstance = npc.Vob.NpcInstance,
+                    Attributes = attrs,
+                    IsRuntimeSpawned = true
+                });
+            }
+
+            _spawnedNpcsByWorld[CurrentWorldName.ToUpperInvariant()] = entries;
+            Logger.Log($"[SaveGame] {entries.Count} spawned NPC(s) stored for '{CurrentWorldName}'", LogCat.Loading);
+            return spawned;
+        }
+
         private static T[] FindAll<T>() where T : UnityEngine.Object
         {
             return UnityEngine.Object.FindObjectsByType<T>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -625,6 +683,12 @@ namespace Gothic.Core.Services.World
 
             var unitySave = JsonConvert.DeserializeObject<UnityCustomSave>(File.ReadAllText(path));
             _pendingHeroRestore = unitySave;
+
+            // DeveloperConfig.EnableSpawnedNpcSaves: NPCs spawned mid-game, per world.
+            _spawnedNpcsByWorld.Clear();
+            if (_configService.Dev.EnableSpawnedNpcSaves && unitySave?.SpawnedNpcsByWorld != null)
+                foreach (var (world, entries) in unitySave.SpawnedNpcsByWorld)
+                    _spawnedNpcsByWorld[world.ToUpperInvariant()] = entries;
 
             // DeveloperConfig.EnableLogicVobSaveState: movers/triggers of every world; the saved world's become pending.
             LogicVobSaveState.Import(_configService.Dev.EnableLogicVobSaveState ? unitySave?.LogicVobsByWorld : null);
@@ -697,6 +761,14 @@ namespace Gothic.Core.Services.World
             {
                 _pendingNpcInit = npcInit.Npcs;
                 Logger.Log($"TryLoadNpcInitForWorld: loaded {_pendingNpcInit.Count} NPC entries for '{worldName}'", LogCat.Loading);
+
+                // DeveloperConfig.EnableSpawnedNpcSaves: NPCs spawned mid-game in this world come back with the rest.
+                if (_configService.Dev.EnableSpawnedNpcSaves &&
+                    _spawnedNpcsByWorld.TryGetValue(worldName.ToUpperInvariant(), out var spawned) && spawned.Count > 0)
+                {
+                    _pendingNpcInit.AddRange(spawned);
+                    Logger.Log($"TryLoadNpcInitForWorld: + {spawned.Count} spawned NPC(s) for '{worldName}'", LogCat.Loading);
+                }
             }
             else
                 Logger.LogWarning($"TryLoadNpcInitForWorld: file '{pathToUse}' is empty or invalid", LogCat.Loading);

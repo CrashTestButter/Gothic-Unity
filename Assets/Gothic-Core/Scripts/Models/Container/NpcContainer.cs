@@ -176,6 +176,9 @@ namespace Gothic.Core.Models.Container
         public int SymbolIndex;
         public string SpawnWaypoint;
         public string GoName; // Unity parent GO name e.g. "Diego (1)" — set in InitLazyLoadNpc
+        // Spawned after the world's initial NPC load (Marvin, a mid-game Wld_InsertNpc) - not in the world's NPC init
+        // snapshot, so the save keeps it separately (DeveloperConfig.EnableSpawnedNpcSaves). Summons aren't.
+        public bool IsRuntimeSpawned;
 
         // Spell casting state — set by VRRuneCaster while a rune is held
         public int ActiveSpell;

@@ -115,6 +115,9 @@ namespace Gothic.Core.Domain.Npc
                 var container = AllocZkInstance(initEntry.SymbolIndex);
                 if (container == null) continue;
                 container.InstanceId = initEntry.InstanceId; // restore stable init ID
+                container.IsRuntimeSpawned = initEntry.IsRuntimeSpawned;
+                if (initEntry.IsRuntimeSpawned)
+                    container.SpawnWaypoint = initEntry.WaypointName;
 
                 var dirtyKey = initEntry.GoName;
                 NpcSaveEntry dirty = null;
@@ -126,6 +129,13 @@ namespace Gothic.Core.Domain.Npc
                     container.Vob.CurrentRoutine = dirty.CurrentRoutine;
 
                 var go = InitLazyLoadNpc(container);
+
+                // A spawned NPC keeps its saved key - monsters without a waypoint got a running number as name.
+                if (initEntry.IsRuntimeSpawned && !initEntry.GoName.IsNullOrEmpty())
+                {
+                    go.name = initEntry.GoName;
+                    container.GoName = initEntry.GoName;
+                }
 
                 if (hasDirty)
                 {
@@ -215,6 +225,7 @@ namespace Gothic.Core.Domain.Npc
             Vm.InitInstance(container.Instance);
             container.IsZkInstanceInitialized = true;
             container.SummonedBy = summonedBy;
+            container.IsRuntimeSpawned = summonedBy == null;
 
             var go = InitLazyLoadNpc(container);
             go.transform.SetPositionAndRotation(GetFreeAreaAtSpawnPoint(position), rotation);
@@ -247,6 +258,7 @@ namespace Gothic.Core.Domain.Npc
                 // initial batch spawn already drained _tmpWldInsertNpcData for good - queueing here
                 // would never get processed. Spawn immediately instead, same as SpawnNpcRuntime.
                 Logger.Log($"[NpcInitializerDomain] Wld_InsertNpc called after initial load — spawning '{spawnPoint}' immediately.", LogCat.Npc);
+                userDataObject.IsRuntimeSpawned = true;
                 SpawnInsertedNpc(userDataObject, spawnPoint);
                 return;
             }

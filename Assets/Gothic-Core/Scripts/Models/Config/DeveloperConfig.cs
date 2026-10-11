@@ -746,6 +746,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
         public float DialogMaxDistance = 5f;
 
+        [Tooltip("V1: Dialog lines tell the hero apart by instance, not by id 0 - monsters have id 0 too, the undead " +
+                 "dragon's lines went to the hero's queue and were never said.")]
+        public bool EnableDialogHeroByInstance = true;
+
         [Tooltip("V1: A dying NPC runs ZS_Dead_Loop once after ZS_Dead, like the engine - G2 counts killed dragons " +
                  "there (undead dragon: EXTRO video, teleport, UndeadDragonIsDead).")]
         public bool EnableDeadStateLoop = true;

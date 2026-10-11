@@ -156,6 +156,7 @@ MonoBehaviour:
   EnableSpellSpreadDamage: 1
   EnableMinimalDamage: 1
   EnableTimeSkipResetsNpcs: 1
+  EnableChildLogicVobs: 1
   EnableHeroPersonalSpace: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1

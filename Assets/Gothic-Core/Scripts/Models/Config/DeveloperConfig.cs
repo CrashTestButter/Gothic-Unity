@@ -640,6 +640,10 @@ namespace Gothic.Core.Models.Config
         public bool EnableTimeSkipResetsNpcs = true;
 
 
+        [Tooltip("V1: Triggers, trigger lists, code masters, movers, ... below another VOB are registered for trigger " +
+                 "dispatch and get their own children created - before only root ones were found (G2 Irdorath's last door).")]
+        public bool EnableChildLogicVobs = true;
+
         [Tooltip("V1: NPC bodies never come closer than 1 m to the VR hero's head - their models went into the " +
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
         public bool EnableHeroPersonalSpace = true;

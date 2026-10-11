@@ -168,6 +168,7 @@ namespace Gothic.Core.Domain.Vobs
                     break;
                 case VirtualObjectType.zCMover:
                     go = CreateMover((IMover)vob, parent);
+                    RegisterChildLogicVob(vob, go, isRootVob);
                     break;
                 case VirtualObjectType.zCPFXController:
                     // DeveloperConfig.EnableParticleEffects: a running controller shows its effect (sparks over the
@@ -201,15 +202,19 @@ namespace Gothic.Core.Domain.Vobs
                     ((TriggerList)vob).SendOnTrigger = true;
 
                     go = CreateTriggerList((ITriggerList)vob, parent);
+                    FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.oCTriggerScript:
                     go = CreateTriggerScript((ITriggerScript)vob, parent);
+                    FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCCodeMaster:
                     go = CreateCodeMaster((ICodeMaster)vob, parent);
+                    FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCTrigger:
                     go = CreateTriggerZone((ITrigger)vob, parent);
+                    FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCTriggerUntouch:
                     go = CreateTriggerUntouch((ITriggerUntouch)vob, parent);
@@ -219,9 +224,11 @@ namespace Gothic.Core.Domain.Vobs
                     return;
                 case VirtualObjectType.zCMoverController:
                     go = CreateMoverController((IMoverController)vob, parent);
+                    FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCMessageFilter:
                     go = CreateMessageFilter((IMessageFilter)vob, parent);
+                    FinishChildLogicVob(vob, go, parent, worldPosition, isRootVob, isInRelativeTree);
                     return;
                 case VirtualObjectType.zCVobScreenFX:
                 case VirtualObjectType.oCCSTrigger:
@@ -265,6 +272,72 @@ namespace Gothic.Core.Domain.Vobs
             {
                 InitVob(childVob, go, worldPosition, false, isInRelativeTree);
             }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableChildLogicVobs: a trigger/trigger list/code master/... below another VOB - registered
+        /// like a root one, and its own children created (the trigger cases returned before them).
+        /// </summary>
+        private void FinishChildLogicVob(IVirtualObject vob, GameObject go, GameObject parent, Vector3 worldPosition,
+            bool isRootVob, bool isInRelativeTree)
+        {
+            RegisterChildLogicVob(vob, go, isRootVob);
+            if (!_configService.Dev.EnableChildLogicVobs || go == null)
+                return;
+
+            // Not below go: trigger zones are scaled to their bounding box.
+            foreach (var childVob in vob.Children)
+                InitVob(childVob, parent, worldPosition, false, isInRelativeTree);
+        }
+
+        /// <summary>
+        /// Triggers, trigger lists, code masters, movers, ... are only registered (VobService.AddToMobInteractableList)
+        /// when they are root VOBs. As children of another VOB nobody found them - G2 Irdorath's last door: the Innos
+        /// statue sent 'EVT_FINAL_DOOR_TRIGGERLIST' ... "not found", the door stayed shut. Same lookup keys as for roots.
+        /// </summary>
+        private void RegisterChildLogicVob(IVirtualObject vob, GameObject go, bool isRootVob)
+        {
+            if (isRootVob || go == null || !_configService.Dev.EnableChildLogicVobs)
+                return;
+
+            var name = vob.Name;
+            if (string.IsNullOrEmpty(name) && vob.Type == VirtualObjectType.oCTriggerScript)
+                name = vob.GetVisualName();
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            var key = name.ToUpper();
+            var container = new VobContainer(vob) { Go = go };
+            switch (vob.Type)
+            {
+                case VirtualObjectType.zCMover:
+                    if (!_gameStateService.VobsMover.TryGetValue(key, out var movers))
+                        _gameStateService.VobsMover[key] = movers = new();
+                    movers.Add(container);
+                    break;
+                case VirtualObjectType.oCTriggerScript:
+                    _gameStateService.VobsTriggerScript.TryAdd(key, container);
+                    break;
+                case VirtualObjectType.zCTriggerList:
+                    _gameStateService.VobsTriggerList.TryAdd(key, container);
+                    break;
+                case VirtualObjectType.zCCodeMaster:
+                    _gameStateService.VobsCodeMaster.TryAdd(key, container);
+                    break;
+                case VirtualObjectType.zCTrigger:
+                    _gameStateService.VobsTrigger.TryAdd(key, container);
+                    break;
+                case VirtualObjectType.zCMoverController:
+                    _gameStateService.VobsMoverController.TryAdd(key, container);
+                    break;
+                case VirtualObjectType.zCMessageFilter:
+                    _gameStateService.VobsMessageFilter.TryAdd(key, container);
+                    break;
+                default:
+                    return;
+            }
+
+            Logger.Log($"[ChildVob] Registered child {vob.Type} '{key}'", LogCat.Vob);
         }
 
         /// <summary>

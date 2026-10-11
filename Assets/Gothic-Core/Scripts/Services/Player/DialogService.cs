@@ -57,19 +57,14 @@ namespace Gothic.Core.Manager
         /// Check if NPC has at least one dialog which isn't told and Hero should know about.
         /// important
         ///     - TRUE - check if there's one important dialog untold.
-        ///     - FALSE - check if there's one unimportant dialog untold. (unused in G1)
+        ///     - FALSE - check if there's one unimportant dialog available (untold or permanent, condition true). G2's
+        ///       undead dragon calls it after his first talk - it logged an error and answered like important=1.
         /// </summary>
         public bool ExtCheckInfo(NpcInstance npc, bool important)
         {
-            if (!important)
-            {
-                // Don't worry. I assume this even makes no sense at all, as also the "END" dialog would always trigger a return true.
-                Logger.LogError("Npc_CheckInfo isn't implemented for important=0.", LogCat.Dialog);
-            }
-
             _npcService.SetDialogs(npc.GetUserData());
-            
-            return TryGetImportant(npc.GetUserData(), out _);
+
+            return TryGetInfo(npc.GetUserData(), important ? 1 : 0, out _);
         }
 
         /// <summary>
@@ -181,17 +176,25 @@ namespace Gothic.Core.Manager
         /// </summary>
         private bool TryGetImportant(NpcContainer npcContainer, out InfoInstance item)
         {
+            return TryGetInfo(npcContainer, 1, out item);
+        }
+
+        /// <summary>
+        /// The first info with this "important" value that is available: not told yet (or permanent), condition true.
+        /// </summary>
+        private bool TryGetInfo(NpcContainer npcContainer, int important, out InfoInstance item)
+        {
             // DeveloperConfig.EnableImportantInfoOrder: the engine checks them by nr (lowest first).
             var dialogs = _configService.Dev.EnableImportantInfoOrder
                 ? npcContainer.Props.Dialogs.OrderBy(d => d.Nr)
                 : (IEnumerable<InfoInstance>)npcContainer.Props.Dialogs;
             foreach (var dialog in dialogs)
             {
-                // Dialog is not important.
-                if (dialog.Important != 1)
+                // Not the kind asked for (important or not).
+                if (dialog.Important != important)
                     continue;
 
-                // Important dialog has already been told.
+                // Dialog has already been told.
                 if (dialog.Permanent != 1 && GetInfoState(dialog.Index).Told)
                     continue;
 

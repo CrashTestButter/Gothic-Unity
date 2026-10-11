@@ -329,8 +329,17 @@ namespace Gothic.Core.Manager
             _gameStateService.GothicVm.GlobalSelf = npcContainer.Instance;
             _gameStateService.GothicVm.GlobalOther = _gameStateService.GothicVm.GlobalHero;
 
-            _gameStateService.GothicVm.Call(information);
-
+            // A failing dialog function (e.g. a mod's external called with an uninitialized NPC) must not skip the
+            // queue handling below. Otherwise the choice box never comes back and the dialog soft-locks.
+            try
+            {
+                _gameStateService.GothicVm.Call(information);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Dialog function threw an exception - dialog may be incomplete: {ex}",
+                    LogCat.Dialog);
+            }
 
             var animationQueue = npcContainer.Props.AnimationQueue;
 

@@ -9,7 +9,10 @@ namespace Gothic.Core.Services.Context
         float GetFrameRate();
         void SetupPlayerController(DeveloperConfig developerConfig);
         GameObject GetCurrentPlayerController();
-        void LockPlayerInPlace();
+        /// <summary>
+        /// No walking/teleporting. allowTurning: the player can still turn (snap/smooth turn) - knocked out heroes.
+        /// </summary>
+        void LockPlayerInPlace(bool allowTurning = false);
         void UnlockPlayer();
         void SetWalkingControls();
         void SetSwimmingControls();

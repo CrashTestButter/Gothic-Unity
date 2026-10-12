@@ -779,7 +779,9 @@ namespace Gothic.Core.Services.Npc
             hero.Props.BodyState = VmGothicEnums.BodyState.BsUnconscious;
             hero.Vob.SetAttribute((int)NpcAttribute.HitPoints, 1);
             hero.Instance.SetAttribute(NpcAttribute.HitPoints, 1);
-            _contextInteractionService.LockPlayerInPlace();
+            // DeveloperConfig.EnableKnockoutTurning: knocked out the hero can't walk, but can turn with the stick -
+            // seated players couldn't look around otherwise.
+            _contextInteractionService.LockPlayerInPlace(_configService.Dev.EnableKnockoutTurning);
 
             // Anyone still actively confronting the hero (e.g. mid ZS_ProclaimAndPunish, cut short by
             // this very knockout before its SVM warning/ZS_Attack ever ran) gets its tempAttitude reset

@@ -237,9 +237,9 @@ namespace Gothic.VR.Services.Context
             return _playerController.VrInputs;
         }
 
-        public void LockPlayerInPlace()
+        public void LockPlayerInPlace(bool allowTurning = false)
         {
-            _playerController.SetLockedControls();
+            _playerController.SetLockedControls(allowTurning);
         }
 
         public void UnlockPlayer()

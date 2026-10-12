@@ -205,6 +205,7 @@ MonoBehaviour:
   EnableSpellTimePerMana: 1
   MinSpellCastSeconds: 2
   EnableSpellReleaseCheck: 1
+  EnableKnockoutTurning: 1
   EnableSpawnedNpcSaves: 1
   EnableWorldRevisitState: 1
   EnableMusicZonesByPosition: 1

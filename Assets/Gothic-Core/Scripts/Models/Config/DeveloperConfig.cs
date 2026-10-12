@@ -887,6 +887,10 @@ namespace Gothic.Core.Models.Config
                  "spells go off at their level, the rest (fire rain, summons, ...) is stopped. Before every spell went off.")]
         public bool EnableSpellReleaseCheck = true;
 
+        [Tooltip("V1: A knocked out hero can't walk but can still turn with the stick (snap/smooth turn) - seated " +
+                 "players couldn't look around.")]
+        public bool EnableKnockoutTurning = true;
+
         [Tooltip("V1: NPCs spawned mid-game (Marvin, a script's Wld_InsertNpc after the world loaded) are saved and come " +
                  "back on load and when returning to a world. Summons aren't. Needs EnableSaveLoadSystem.")]
         public bool EnableSpawnedNpcSaves = true;

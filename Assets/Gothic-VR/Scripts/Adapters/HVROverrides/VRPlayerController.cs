@@ -201,14 +201,14 @@ namespace Gothic.VR.Adapters.HVROverrides
         /// <summary>
         /// Disable certain actions to keep player stuck in current position.
         /// </summary>
-        public void SetLockedControls()
+        public void SetLockedControls(bool allowTurning = false)
         {
             // HINT: Disable physics
             // We can't disable physics as it would prevent HVRTeleport.Teleport() from finishing (as it checks for Player.IsGrounded every frame).
             // Therefore, we need to ground the player always on a plane and disable movement only.
 
             MovementEnabled = false;
-            RotationEnabled = false;
+            RotationEnabled = allowTurning;
             Teleporter.enabled = false;
         }
 

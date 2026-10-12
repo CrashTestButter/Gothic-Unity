@@ -924,6 +924,10 @@ namespace Gothic.Core.Models.Config
                  "ones like OpenGothic - they stood next to the mob before.")]
         public bool EnableMobAnimationWithoutPosition = true;
 
+        [Tooltip("V1: A mob that shows a page with Doc_Show (G2 bookstands) shows it above the mob like a held document - " +
+                 "touch again or walk away to close. Before, touching a bookstand showed nothing.")]
+        public bool EnableMobDocuments = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

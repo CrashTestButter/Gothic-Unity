@@ -45,6 +45,7 @@ namespace Gothic.VR.Services
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly NpcInventoryService _npcInventoryService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
+        [Inject] private readonly DocService _docService;
         
         public VRContextInteractionService VRContextInteractionService => _contextInteractionService.GetImpl<VRContextInteractionService>();
         public VRPlayerInputs VRPlayerInputs => VRContextInteractionService.GetVRPlayerInputs();
@@ -304,6 +305,21 @@ namespace Gothic.VR.Services
                 }
             }
 
+            // DeveloperConfig.EnableMobDocuments: an open page (bookstand) closes on the next touch.
+            VRMobDocument document = null;
+            if (_configService.Dev.EnableMobDocuments)
+            {
+                var openDocument = loader.transform.Find(VRMobDocument.AnchorName);
+                if (openDocument != null)
+                {
+                    UnityEngine.Object.Destroy(openDocument.gameObject);
+                    Logger.Log($"[MobDialog] Closed the page of '{loader.name}'.", LogCat.Dialog);
+                    return true;
+                }
+                document = VRMobDocument.Create(loader.gameObject);
+                _docService.PendingItemGo = document.gameObject;
+            }
+
             _dialogService.PrepareMobDialog(CreateMobDialogAnchor(loader));
 
             var oldSelf = vm.GlobalSelf;
@@ -320,6 +336,15 @@ namespace Gothic.VR.Services
             finally
             {
                 vm.GlobalSelf = oldSelf;
+            }
+
+            if (document != null)
+            {
+                _docService.PendingItemGo = null;
+                if (document.HasPages)
+                    Logger.Log($"[MobDialog] '{loader.name}' shows a page (Doc_Show).", LogCat.Dialog);
+                else
+                    UnityEngine.Object.Destroy(document.gameObject);
             }
 
             return true;

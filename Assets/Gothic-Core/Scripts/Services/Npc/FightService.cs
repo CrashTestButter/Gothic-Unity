@@ -249,6 +249,16 @@ namespace Gothic.Core.Services.Npc
             if (isHero && target.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious)
                 return;
 
+            // DeveloperConfig.EnableSummonActsForMaster: summons stop at a downed target like the scripts
+            // (ZS_MM_Attack_Loop: C_NpcIsDown(other)) - a swing already under way doesn't finish it off.
+            if (_configService.Dev.EnableSummonActsForMaster && attacker.SummonedBy != null &&
+                target.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious)
+            {
+                Logger.Log($"[FightService] {attacker.Instance.GetName(NpcNameSlot.Slot0)} (summon) doesn't finish off " +
+                           $"unconscious {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
+                return;
+            }
+
             // Hero is being hit — alert party members immediately. We already know isHero here so no
             // comparison needed; attacker is directly the enemy party members should engage.
             if (isHero)
@@ -279,10 +289,10 @@ namespace Gothic.Core.Services.Npc
                     Logger.LogWarning("[FightService] Hero knocked out!", LogCat.Fight);
                     OnHeroKnockedOut(target);
                 }
-                else if (IsHuman(target) && IsKnockedOutNotKilled(attacker, target))
+                else if (IsHuman(target) && IsKnockedOutNotKilled(GetCreditedAttacker(attacker), target))
                 {
                     Logger.Log($"[FightService.OnHit] {target.Instance.GetName(NpcNameSlot.Slot0)} is UNCONSCIOUS", LogCat.Npc);
-                    OnNpcKnockedOut(target, attacker);
+                    OnNpcKnockedOut(target, GetCreditedAttacker(attacker));
                 }
                 
                 else
@@ -290,7 +300,7 @@ namespace Gothic.Core.Services.Npc
                     Logger.Log($"[FightService.OnHit] {target.Instance.GetName(NpcNameSlot.Slot0)} is DEAD", LogCat.Npc);
                     target.Props.BodyState = VmGothicEnums.BodyState.BsDead;
                     OnDyingChangeAnimation(target);
-                    OnNpcDied(target, attacker);
+                    OnNpcDied(target, GetCreditedAttacker(attacker));
                 }
             }
             else
@@ -324,6 +334,20 @@ namespace Gothic.Core.Services.Npc
         {
             return _configService.Dev.EnableSummonIgnoresMasterHits && target?.SummonedBy != null &&
                    attacker?.Instance != null && target.SummonedBy.Index == attacker.Instance.Index;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableSummonActsForMaster: what the hero's summon does counts as the hero's - a knockout by
+        /// it is the hero's win (ZS_Unconscious checks C_NpcIsHero(other): Buster's admission duel didn't go on after
+        /// the hero's goblins beat him), witnesses see the hero as the attacker. Anyone else: the attacker itself.
+        /// </summary>
+        private NpcContainer GetCreditedAttacker(NpcContainer attacker)
+        {
+            if (!_configService.Dev.EnableSummonActsForMaster || attacker?.SummonedBy == null)
+                return attacker;
+
+            var hero = _npcService.GetHeroContainer();
+            return hero?.Instance != null && attacker.SummonedBy.Index == hero.Instance.Index ? hero : attacker;
         }
 
         // HAI_DIST_HELPATTACKEDCHARGES-like: guards in this range step in.
@@ -463,6 +487,7 @@ namespace Gothic.Core.Services.Npc
 
             if (attacker.Go == null) return;
 
+            var creditedAttacker = GetCreditedAttacker(attacker);
             var broadcasted = 0;
             foreach (var candidate in _multiTypeCacheService.NpcCache)
             {
@@ -541,13 +566,16 @@ namespace Gothic.Core.Services.Npc
                     Logger.Log($"[FightService] {candidate.Instance.GetName(NpcNameSlot.Slot0)} switches focus from hidden hero to visible {attacker.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
                 }
 
+                // DeveloperConfig.EnableSummonActsForMaster: bystanders blame the hero for his summon's hits - guards
+                // go for him; the victim itself still fights back against the summon.
+                var witnessedAttacker = creditedAttacker;
                 if (candidate.Props.Perceptions.ContainsKey(VmGothicEnums.PerceptionType.AssessOthersDamage))
                 {
                     _npcAiService.ExecutePerception(
                         VmGothicEnums.PerceptionType.AssessOthersDamage,
                         candidate.Props, candidate.Instance,
                         victim: target.Instance,
-                        other: attacker.Instance);
+                        other: witnessedAttacker.Instance);
                 }
 
                 if (candidate.Props.Perceptions.ContainsKey(VmGothicEnums.PerceptionType.AssessFightSound))
@@ -556,7 +584,7 @@ namespace Gothic.Core.Services.Npc
                         VmGothicEnums.PerceptionType.AssessFightSound,
                         candidate.Props, candidate.Instance,
                         victim: target.Instance,
-                        other: attacker.Instance);
+                        other: witnessedAttacker.Instance);
                 }
                 else if (candidate.Instance.Guild >= 16 && candidate.Instance.Guild < 37)
                 {
@@ -712,6 +740,20 @@ namespace Gothic.Core.Services.Npc
                 _physicsService.DisablePhysicsForNpc(npc.PrefabProps);
                 npc.Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(string0: "T_Stand_2_Wounded"), npc));
                 npc.Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(string0: "S_Wounded"), npc));
+            }
+
+            // DeveloperConfig.EnableSummonActsForMaster: summons fighting the NPC stop like the scripts
+            // (ZS_MM_Attack_Loop ends on C_NpcIsDown) - their queued attacks kept hitting the downed NPC.
+            if (_configService.Dev.EnableSummonActsForMaster)
+            {
+                foreach (var summon in _multiTypeCacheService.NpcCache)
+                {
+                    if (summon?.SummonedBy == null || summon.Props?.TargetNpc?.Index != npc.Instance.Index)
+                        continue;
+                    _npcAiService.ExtNpcClearAiQueue(summon.Instance);
+                    Logger.Log($"[FightService] {summon.Instance.GetName(NpcNameSlot.Slot0)} (summon) stops attacking " +
+                               $"downed {npc.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
+                }
             }
 
             // Give XP — AIV_WASDEFEATEDBYSC already set above, so B_UnconciousXP won't double-count.

@@ -912,6 +912,10 @@ namespace Gothic.Core.Models.Config
                  "drop a third of the tough guys (Mdl_ApplyRandomAni), the rest stood or T-posed while unconscious.")]
         public bool EnableKnockoutFallAnimation = true;
 
+        [Tooltip("V1: The hero's summons act for him - their knockouts/kills count as his (Buster's duel, XP), witnesses " +
+                 "blame the hero for their hits, and they stop hitting a downed NPC like the scripts.")]
+        public bool EnableSummonActsForMaster = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

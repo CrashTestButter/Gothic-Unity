@@ -35,6 +35,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
         [Inject] private readonly FrameSkipperService _frameSkipperService;
         [Inject] private readonly StationaryLightsService _stationaryLightsService;
         [Inject] private readonly RoomService _roomService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _worldConfigService;
 
         private StaticCacheService.WorldChunkContainer _worldChunks;
         private IMesh _mesh;
@@ -76,7 +77,13 @@ namespace Gothic.Core.Domain.Meshes.Builder
             // Expanded (pre-deduplication, worst-case) vertex count, cached during the GetPolygon sweep in
             // GatherMaterialEntries so ExtractChunks can size its buffers without a second native sweep.
             public int ExpandedVertexCount;
+
+            // Has polygons of noCollDet materials (bushes, leaves) - its collider is built without them.
+            public bool HasNoCollisionPolygons;
         }
+
+        // Per material index: noCollDet (DeveloperConfig.EnableMaterialCollisionFilter).
+        private bool[] _noCollisionMaterials;
 
         private struct ExtractionBuffers : IDisposable
         {
@@ -185,10 +192,58 @@ namespace Gothic.Core.Domain.Meshes.Builder
             return chunks;
         }
 
+        /// <summary>
+        /// The chunk's polygons without noCollDet materials, fan triangulated like the render mesh.
+        /// </summary>
+        [CanBeNull]
+        private Mesh BuildChunkCollisionMesh(ChunkBuildData data)
+        {
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            var vertexByPosition = new Dictionary<int, int>();
+            foreach (var polygonId in data.Chunk.PolygonIds)
+            {
+                var polygon = _mesh.GetPolygon(polygonId);
+                if (_noCollisionMaterials[polygon.MaterialIndex])
+                    continue;
+
+                var positionIndices = polygon.PositionIndices;
+                int Corner(int fanIndex)
+                {
+                    var positionIndex = positionIndices[fanIndex];
+                    if (vertexByPosition.TryGetValue(positionIndex, out var vertex))
+                        return vertex;
+                    var position = _mesh.GetPosition(positionIndex);
+                    vertex = vertices.Count;
+                    vertices.Add(new Vector3(position.X, position.Y, position.Z) / 100f);
+                    vertexByPosition[positionIndex] = vertex;
+                    return vertex;
+                }
+
+                for (var p = 1; p < positionIndices.Count - 1; p++)
+                {
+                    triangles.Add(Corner(0));
+                    triangles.Add(Corner(p + 1));
+                    triangles.Add(Corner(p));
+                }
+            }
+
+            if (triangles.Count == 0)
+                return null;
+
+            var collisionMesh = new Mesh { name = "Collision" };
+            if (vertices.Count > ushort.MaxValue)
+                collisionMesh.indexFormat = IndexFormat.UInt32;
+            collisionMesh.SetVertices(vertices);
+            collisionMesh.SetTriangles(triangles, 0);
+            return collisionMesh;
+        }
+
         private MaterialEntry[] GatherMaterialEntries(List<ChunkBuildData> chunks)
         {
             var entries = new MaterialEntry[_mesh.MaterialCount];
             var gathered = new bool[_mesh.MaterialCount];
+            _noCollisionMaterials = new bool[_mesh.MaterialCount];
 
             foreach (var data in chunks)
             {
@@ -206,6 +261,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
                     gathered[materialIndex] = true;
 
                     var material = _mesh.GetMaterial(materialIndex);
+                    _noCollisionMaterials[materialIndex] = material.DisableCollision;
 
                     var textureArrayIndex = -1;
                     var textureScale = Vector2.one;
@@ -366,6 +422,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
                     var featureIndices = polygon.FeatureIndices;
                     var materialIndex = polygon.MaterialIndex;
                     var material = materials[materialIndex];
+                    if (_noCollisionMaterials[materialIndex])
+                        data.HasNoCollisionPolygons = true;
 
                     // Gothic lit these (caves, houses) with lightmaps from static lights, which we don't render.
                     // Their static lights are shown as runtime stationary lights instead (StationaryLightsService).
@@ -572,7 +630,19 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 meshFilter.sharedMesh = mesh;
 
                 PrepareMeshRenderer(meshRenderer, data.Type);
-                PrepareMeshCollider(chunkGo, mesh);
+                // DeveloperConfig.EnableMaterialCollisionFilter: like the engine, noCollDet polygons (bushes, leaves on
+                // the level mesh) don't collide - they blocked the player before.
+                if (_worldConfigService.Dev.EnableMaterialCollisionFilter && data.HasNoCollisionPolygons &&
+                    data.Type != TextureCacheService.TextureArrayTypes.Water)
+                {
+                    var collisionMesh = BuildChunkCollisionMesh(data);
+                    if (collisionMesh != null)
+                        PrepareMeshCollider(chunkGo, collisionMesh);
+                }
+                else
+                {
+                    PrepareMeshCollider(chunkGo, mesh);
+                }
 
 #if UNITY_EDITOR
                 if (data.Type != TextureCacheService.TextureArrayTypes.Opaque)

@@ -210,7 +210,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 }
                 else
                 {
-                    PrepareMeshCollider(RootGo, meshFilter.sharedMesh, Mrm.Materials);
+                    PrepareMeshCollider(RootGo, meshFilter.sharedMesh, Mrm);
                 }
             }
 
@@ -683,15 +683,78 @@ namespace Gothic.Core.Domain.Meshes.Builder
         /// <summary>
         /// Check if Collider needs to be added.
         /// </summary>
-        protected void PrepareMeshCollider(GameObject obj, Mesh mesh, List<IMaterial> materialDatas)
+        protected void PrepareMeshCollider(GameObject obj, Mesh mesh, IMultiResolutionMesh mrm)
         {
+            var materialDatas = mrm.Materials;
             var anythingDisableCollission = materialDatas.Any(i => i.DisableCollision);
             var anythingWater = materialDatas.Any(i => i.Group == MaterialGroup.Water);
 
             if (!anythingDisableCollission && !anythingWater)
             {
                 PrepareMeshCollider(obj, mesh);
+                return;
             }
+
+            // DeveloperConfig.EnableMaterialCollisionFilter: like the engine, only polygons of materials without
+            // noCollDet (and not water) collide - a tree's trunk blocks, its leaves don't. Before, one leaf material
+            // left the whole tree without a collider.
+            if (!_builderConfigService.Dev.EnableMaterialCollisionFilter)
+                return;
+
+            var collisionMesh = GetCollisionMesh(mrm);
+            if (collisionMesh != null)
+                PrepareMeshCollider(obj, collisionMesh);
+        }
+
+        /// <summary>
+        /// The triangles of the sub meshes whose material collides (no noCollDet, not water), cached per mesh name.
+        /// </summary>
+        [CanBeNull]
+        private Mesh GetCollisionMesh(IMultiResolutionMesh mrm)
+        {
+            var cacheKey = $"{MeshName}_collision";
+            if (_multiTypeCacheService.Meshes.TryGetValue(cacheKey, out var cached))
+                return cached;
+
+            var vertices = new List<Vector3>();
+            var triangles = new List<int>();
+            var positions = mrm.Positions;
+            var vertexByPosition = new Dictionary<int, int>();
+            foreach (var subMesh in mrm.SubMeshes)
+            {
+                if (subMesh.Material.DisableCollision || subMesh.Material.Group == MaterialGroup.Water)
+                    continue;
+
+                var wedges = subMesh.Wedges;
+                foreach (var triangle in subMesh.Triangles)
+                {
+                    // Reversed like the render mesh (Gothic -> Unity winding).
+                    foreach (var wedgeIndex in new[] { triangle.Wedge2, triangle.Wedge1, triangle.Wedge0 })
+                    {
+                        var positionIndex = wedges[wedgeIndex].Index;
+                        if (!vertexByPosition.TryGetValue(positionIndex, out var vertex))
+                        {
+                            var position = positions[positionIndex];
+                            vertex = vertices.Count;
+                            vertices.Add(new Vector3(position.X / 100f, position.Y / 100f, position.Z / 100f));
+                            vertexByPosition[positionIndex] = vertex;
+                        }
+                        triangles.Add(vertex);
+                    }
+                }
+            }
+
+            Mesh collisionMesh = null;
+            if (triangles.Count > 0)
+            {
+                collisionMesh = new Mesh { name = cacheKey };
+                if (vertices.Count > ushort.MaxValue)
+                    collisionMesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                collisionMesh.SetVertices(vertices);
+                collisionMesh.SetTriangles(triangles, 0);
+            }
+            _multiTypeCacheService.Meshes[cacheKey] = collisionMesh;
+            return collisionMesh;
         }
         
         protected void PrepareCachedCollider(GameObject rootGo, Mesh mesh)
@@ -1018,7 +1081,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
 
                 PrepareMeshFilter(meshFilter, subMesh.Value, meshRenderer, meshCounter);
                 PrepareMeshRenderer(meshRenderer, subMesh.Value);
-                PrepareMeshCollider(meshObj, meshFilter.sharedMesh, subMesh.Value.Materials);
+                PrepareMeshCollider(meshObj, meshFilter.sharedMesh, subMesh.Value);
 
                 // As Attachments are also just meshes, we need to increase the mesh counter for Filter's meshCache index.
                 meshCounter++;

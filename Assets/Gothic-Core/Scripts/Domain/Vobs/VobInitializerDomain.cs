@@ -536,9 +536,14 @@ namespace Gothic.Core.Domain.Vobs
         {
             var go = CreateDefaultMesh(vob, parent);
 
+            // DeveloperConfig.EnableFireVobChildren: a fireplace without a fire tree is still a mesh - returning null
+            // dropped its child VOBs. Mroczne Tajemnice's smithy on the smugglers' beach (a high fireplace below
+            // another one) was missing.
+            var meshOnly = _configService.Dev.EnableFireVobChildren ? go : null;
+
             if (vob.VobTree == "")
             {
-                return null;
+                return meshOnly;
             }
 
             var fireWorld = _resourceCacheService.TryGetWorld(vob.VobTree, _contextGameVersionService.Version, true);
@@ -546,7 +551,7 @@ namespace Gothic.Core.Domain.Vobs
             if (fireWorld == null)
             {
                 Logger.LogWarning($"Fire world {vob.VobTree} not found. Skipping usage...", LogCat.Loading);
-                return null;
+                return meshOnly;
             }
             
             CreateFireVobs(fireWorld.RootObjects, go.FindChildRecursively(vob.Slot) ?? go, worldPosition);

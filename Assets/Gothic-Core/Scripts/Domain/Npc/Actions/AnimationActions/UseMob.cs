@@ -192,7 +192,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             else
             {
                 // Loop animations carry the slot position as well (e.g. s_Bed_Front_S1 vs. s_Cauldron_S1).
-                var animName = string.Format(_mobLoopAnimationString, _mobsiScheme, GetSlotPositionTag(_slotGo.name), TargetState);
+                var animName = GetMobAnimationName(tag => string.Format(_mobLoopAnimationString, _mobsiScheme, tag, TargetState));
                 PrefabProps.AnimationSystem.PlayAnimation(animName);
             }
 
@@ -247,6 +247,23 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             // TickMobUsage() will replay the loop animation and finish without a transition.
             if (Props.CurrentInteractableStateId != TargetState)
                 PlayTransitionAnimation();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMobAnimationWithoutPosition: like OpenGothic, the slot position (FRONT/BACK) is only part
+        /// of the name when the model has such an animation - beds have t_Bed_Back_S0_2_S1, the saw, repair spot and roast
+        /// spit only t_BaumSaege_S0_2_S1. A pirate at the saw stood next to it (S_BAUMSAEGE_BACK_S1 not found).
+        /// </summary>
+        private string GetMobAnimationName(System.Func<string, string> format)
+        {
+            var positionTag = GetSlotPositionTag(_slotGo.name);
+            var animName = format(positionTag);
+            if (!ConfigService.Dev.EnableMobAnimationWithoutPosition || positionTag == "_" ||
+                PrefabProps.AnimationSystem.HasAnimation(animName))
+                return animName;
+
+            var withoutPosition = format("_");
+            return PrefabProps.AnimationSystem.HasAnimation(withoutPosition) ? withoutPosition : animName;
         }
 
         private string GetSlotPositionTag(string name)
@@ -311,8 +328,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             var from = current == -1 ? "Stand" : $"S{current}";
             var to = next == -1 ? "Stand" : $"S{next}";
 
-            var slotPositionName = GetSlotPositionTag(_slotGo.name);
-            var animName = string.Format(_mobTransitionAnimationString, _mobsiScheme, slotPositionName, from, to);
+            var animName = GetMobAnimationName(tag => string.Format(_mobTransitionAnimationString, _mobsiScheme, tag, from, to));
 
             _currentMobAnimation = animName;
             PrefabProps.AnimationSystem.PlayAnimation(animName);

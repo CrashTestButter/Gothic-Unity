@@ -920,6 +920,10 @@ namespace Gothic.Core.Models.Config
                  "Exchange/Remove/Destroy) - G2's forge turns raw steel into hot steel, the anvil takes it for smithing.")]
         public bool EnableMobItemEvents = true;
 
+        [Tooltip("V1: NPCs at mobs whose animations have no FRONT/BACK variant (saw, repair spot, roast spit) play the plain " +
+                 "ones like OpenGothic - they stood next to the mob before.")]
+        public bool EnableMobAnimationWithoutPosition = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

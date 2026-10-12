@@ -485,6 +485,14 @@ namespace Gothic.Core.Adapters.Animations
             }
         }
 
+        /// <summary>
+        /// The NPC's model scripts (base + overlay) have this animation or alias.
+        /// </summary>
+        public bool HasAnimation(string animationName)
+        {
+            return _animationService.GetTrack(animationName, Properties.MdsNameBase, Properties.MdsNameOverlay) != null;
+        }
+
         public bool PlayAnimation(string animationName)
         {
 #if UNITY_EDITOR

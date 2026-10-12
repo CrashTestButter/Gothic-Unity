@@ -254,11 +254,6 @@ namespace Gothic.Core.Models.Config
                  "try/catch can stop it). Turn music off for mods that hit this.")]
         public bool EnableMusic = true;
 
-        [Tooltip("Editor only; builds use GameSettings.json EnableOggAudio. Some mods (e.g. New Balance) ship " +
-                 "dubbing as Ogg Vorbis with a '.wav' extension, decoded via NVorbis. Vanilla never uses it. " +
-                 "Turn off to play such files silently (text-length fallback).")]
-        public bool EnableOggAudio = true;
-
 
         /**
          * ##########

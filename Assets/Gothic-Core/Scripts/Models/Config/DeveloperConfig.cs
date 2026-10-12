@@ -957,6 +957,10 @@ namespace Gothic.Core.Models.Config
                  "and turned him hostile before.")]
         public bool EnableSummonSpellWithoutTarget = true;
 
+        [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
+                 "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
+        public bool EnableVrFists = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

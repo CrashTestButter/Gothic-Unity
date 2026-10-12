@@ -875,6 +875,11 @@ namespace Gothic.Core.Services.Npc
             else
             {
                 var equippedWeapon = _npcHelperService.ExtNpcGetEquippedMeleeWeapon(attacker.Instance);
+                // DeveloperConfig.EnableVrFists: in fist mode the engine hits with the fist - an equipped sword in the
+                // belt doesn't add its damage (the VR hero punches with his weapon equipped).
+                if (_fightConfigService.Dev.EnableVrFists &&
+                    (VmGothicEnums.WeaponState)attacker.Vob.FightMode == VmGothicEnums.WeaponState.Fist)
+                    equippedWeapon = null;
 
                 // G1 melee damage: weapon damage + strength, reduced by the protection matching the damage type.
                 // Unarmed attackers (fists, monster claws/bites) deal blunt damage with their strength alone.

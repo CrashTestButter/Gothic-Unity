@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core;
+using ZenKit.Daedalus;
+using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Vobs;
 using Gothic.VR.Adapters.HVROverrides;
@@ -20,6 +22,7 @@ using Gothic.Core.Services.Player;
 using Gothic.VR.Domain.Player;
 using Gothic.VR.Models.Vob;
 using Gothic.Core.Extensions;
+using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Core.Utils;
 using HurricaneVR.Framework.Shared;
@@ -53,6 +56,13 @@ namespace Gothic.VR.Services
 
         private bool _isRuneReadied;
         private VmGothicEnums.WeaponState? _readiedRangedState;
+
+        // DeveloperConfig.EnableVrFists: a fist is an empty hand with grip + trigger held; it punches like a weapon swing.
+        private const float _fistPunchVelocity = 2f;
+        private const float _fistPunchCooldownSeconds = 0.5f;
+        private readonly List<(HVRHandGrabber Hand, VRFistHitbox Hitbox)> _fists = new();
+        private readonly Dictionary<HVRHandSide, float> _lastPunchTime = new();
+        private bool _isFistReadied;
 
         public void Init()
         {
@@ -180,6 +190,83 @@ namespace Gothic.VR.Services
         {
             _firstAttackDomain.FixedUpdate();
             _secondAttackDomain.FixedUpdate();
+            UpdateFists();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVrFists: an empty hand with grip + trigger held is a fist - the hero is in fist mode
+        /// (NPCs react like to drawn fists) and its knuckle hitbox punches.
+        /// </summary>
+        private void UpdateFists()
+        {
+            if (!_configService.Dev.EnableVrFists)
+                return;
+
+            if (_fists.Count == 0 || _fists.Any(f => f.Hand == null || f.Hitbox == null))
+                CreateFistHitboxes();
+
+            var isAnyFist = false;
+            foreach (var (hand, hitbox) in _fists)
+            {
+                var side = hand.HandSide;
+                var isFist = hand.GrabbedTarget == null &&
+                             HVRController.GetButtonState(side, HVRButtons.Grip).Active &&
+                             HVRController.GetButtonState(side, HVRButtons.Trigger).Active;
+                if (hitbox.gameObject.activeSelf != isFist)
+                    hitbox.gameObject.SetActive(isFist);
+                isAnyFist |= isFist;
+            }
+
+            if (isAnyFist == _isFistReadied)
+                return;
+            _isFistReadied = isAnyFist;
+            Logger.Log($"[VRFist] Fists {(isAnyFist ? "up" : "down")}", LogCat.Fight);
+            UpdateHeroWeaponState();
+        }
+
+        private void CreateFistHitboxes()
+        {
+            foreach (var (_, hitbox) in _fists)
+            {
+                if (hitbox != null)
+                    Object.Destroy(hitbox.gameObject);
+            }
+            _fists.Clear();
+
+            foreach (var hand in Object.FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None))
+            {
+                var hitbox = VRFistHitbox.Create(hand.transform, hand.HandSide);
+                hitbox.OnNpcEntered = OnFistEnteredNpc;
+                _fists.Add((hand, hitbox));
+            }
+        }
+
+        /// <summary>
+        /// A punch needs a swing (hand speed) like a weapon attack, and one punch per hand per moment. The damage is the
+        /// engine's fist damage (FightService: strength, blunt).
+        /// </summary>
+        private void OnFistEnteredNpc(VRFistHitbox hitbox, NpcLoader npcLoader, Vector3 position)
+        {
+            var hero = _playerService.HeroContainer;
+            var target = npcLoader.Container;
+            if (hero == null || target == null || target == hero)
+                return;
+
+            var controller = hitbox.HandSide == HVRHandSide.Left
+                ? HVRInputManager.Instance?.LeftController
+                : HVRInputManager.Instance?.RightController;
+            var speed = controller != null ? controller.Velocity.magnitude : 0f;
+            if (speed < _fistPunchVelocity)
+            {
+                Logger.Log($"[VRFist] {hitbox.HandSide} fist touched {target.Instance.GetName(NpcNameSlot.Slot0)} - too slow ({speed:F1} m/s)", LogCat.Fight);
+                return;
+            }
+            if (_lastPunchTime.TryGetValue(hitbox.HandSide, out var last) && Time.time - last < _fistPunchCooldownSeconds)
+                return;
+
+            _lastPunchTime[hitbox.HandSide] = Time.time;
+            Logger.Log($"[VRFist] {hitbox.HandSide} punch at {speed:F1} m/s → {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
+            GlobalEventDispatcher.FightHit.Invoke(hero, target, position);
         }
 
         public void OnGrabbed(HVRHandSide handSide, VobContainer vobContainer, WeaponPhysicsConfig weaponConfig)
@@ -239,6 +326,8 @@ namespace Gothic.VR.Services
                 state = _readiedRangedState.Value;
             if (state == VmGothicEnums.WeaponState.NoWeapon && _isRuneReadied)
                 state = VmGothicEnums.WeaponState.Mage;
+            if (state == VmGothicEnums.WeaponState.NoWeapon && _isFistReadied)
+                state = VmGothicEnums.WeaponState.Fist;
 
             // Which melee weapon is readied - Npc_GetReadiedWeapon (orcs tolerate the Ulu-Mulu in the hero's hand).
             var meleeWeapon = _firstAttackDomain.WeaponVobContainer ?? _secondAttackDomain.WeaponVobContainer;

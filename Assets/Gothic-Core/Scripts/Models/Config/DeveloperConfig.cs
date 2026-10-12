@@ -932,6 +932,10 @@ namespace Gothic.Core.Models.Config
                  "write into them during the game (the anvil's weapon names, ambient infos' npc) was lost before.")]
         public bool EnableDialogsPerGameVm = true;
 
+        [Tooltip("V1: Meshes on texture arrays get one material per texture array group, matching their sub meshes - " +
+                 "palm leaves and fishing nets (G2 addon, mods) showed stone textures without alpha before.")]
+        public bool EnableTextureArraySubmeshMaterials = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

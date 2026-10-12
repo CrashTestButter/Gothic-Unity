@@ -346,6 +346,12 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 return;
             }
 
+            if (UseTextureArray && _builderConfigService.Dev.EnableTextureArraySubmeshMaterials)
+            {
+                PrepareTextureArrayMaterials(rend, mrmData);
+                return;
+            }
+
             var finalMaterials = new List<Material>(mrmData.SubMeshes.Count);
             var submeshCount = rend is MeshRenderer
                 ? rend.GetComponent<MeshFilter>().sharedMesh.subMeshCount
@@ -393,6 +399,41 @@ namespace Gothic.Core.Domain.Meshes.Builder
 
                 material.mainTexture = texture;
                 rend.material = material;
+                finalMaterials.Add(material);
+            }
+
+            rend.SetMaterials(finalMaterials);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableTextureArraySubmeshMaterials: with texture arrays the mesh has one sub mesh per texture
+        /// array (PrepareMeshFilter: opaque, alpha cutout, water - in the order they first appear), not one per Gothic
+        /// sub mesh. Its materials follow the same grouping. Before, sub mesh i got the material of Gothic's sub mesh i:
+        /// a palm (bark, trunk, leaves) had its leaves sampling the opaque array with alpha array indices - stone
+        /// textures without alpha on G2 addon palms, fishing nets and mod meshes.
+        /// </summary>
+        private void PrepareTextureArrayMaterials(Renderer rend, IMultiResolutionMesh mrmData)
+        {
+            var groups = new List<(TextureCacheService.TextureArrayTypes Type, IMaterial Material)>();
+            foreach (var subMesh in mrmData.SubMeshes)
+            {
+                TextureCacheService.GetTextureArrayIndex(subMesh.Material, out var type, out _, out _, out _, out _);
+                if (groups.All(g => g.Type != type))
+                    groups.Add((type, subMesh.Material));
+            }
+
+            var finalMaterials = new List<Material>(groups.Count);
+            foreach (var (type, materialData) in groups)
+            {
+                if (type == TextureCacheService.TextureArrayTypes.Unknown)
+                {
+                    // Untextured (or not cached) - keep the slot so the following sub meshes keep their materials.
+                    finalMaterials.Add(CreateUntexturedMaterial(materialData) ?? new Material(Constants.ShaderWorldLit));
+                    continue;
+                }
+
+                var material = GetDefaultMaterial(type);
+                material.mainTexture = TextureCacheService.GetTextureArrayEntry(type);
                 finalMaterials.Add(material);
             }
 

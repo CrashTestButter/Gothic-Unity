@@ -916,6 +916,10 @@ namespace Gothic.Core.Models.Config
                  "blame the hero for their hits, and they stop hitting a downed NPC like the scripts.")]
         public bool EnableSummonActsForMaster = true;
 
+        [Tooltip("V1: Crafting mobs move their useWithItem like the engine's animation events (HUMANS.MDS ItemInsert/" +
+                 "Exchange/Remove/Destroy) - G2's forge turns raw steel into hot steel, the anvil takes it for smithing.")]
+        public bool EnableMobItemEvents = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

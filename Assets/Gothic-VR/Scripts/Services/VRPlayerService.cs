@@ -1,5 +1,6 @@
 ﻿#if GOTHIC_HVR_INSTALLED
 using System;
+using System.Linq;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -25,6 +26,7 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
+using EventType = ZenKit.EventType;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Services
@@ -42,6 +44,7 @@ namespace Gothic.VR.Services
         [Inject] private readonly DialogService _dialogService;
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly NpcInventoryService _npcInventoryService;
+        [Inject] private readonly ResourceCacheService _resourceCacheService;
         
         public VRContextInteractionService VRContextInteractionService => _contextInteractionService.GetImpl<VRContextInteractionService>();
         public VRPlayerInputs VRPlayerInputs => VRContextInteractionService.GetVRPlayerInputs();
@@ -225,6 +228,11 @@ namespace Gothic.VR.Services
                 return;
             }
 
+            // Crafting mobs that take their useWithItem into the hand (forge, anvil, ...): items swapped like the engine.
+            if (_configService.Dev.EnableMobItemEvents && string.IsNullOrEmpty(mob.Target) &&
+                TryUseMobWithItemEvents(loader, mob))
+                return;
+
             // Mobs without a mover target but with an onStateFunc (G2 shrines, alchemy/rune tables, bookstands, ...).
             if (_configService.Dev.EnableMobsiDialogs && string.IsNullOrEmpty(mob.Target) &&
                 TryUseMobStateFunction(loader, mob))
@@ -264,7 +272,7 @@ namespace Gothic.VR.Services
         /// PrayShrine_S1 then open a dialog via AI_ProcessInfos(hero) whose choices are C_INFOs with npc = PC_Hero.
         /// The dialog box is anchored next to the mob (like at an NPC).
         /// </summary>
-        private bool TryUseMobStateFunction(VobLoader loader, IInteractiveObject mob)
+        private bool TryUseMobStateFunction(VobLoader loader, IInteractiveObject mob, bool isItemInHand = false)
         {
             if (string.IsNullOrEmpty(mob.OnStateChangeFunction))
                 return false;
@@ -283,8 +291,9 @@ namespace Gothic.VR.Services
             }
 
             // Like the engine: a mob used with an item needs it in the inventory (e.g. a lab flask).
+            // Not when it was already taken into the hand (TryUseMobWithItemEvents).
             var hero = _playerService.HeroContainer;
-            if (!string.IsNullOrEmpty(mob.Item))
+            if (!isItemInHand && !string.IsNullOrEmpty(mob.Item))
             {
                 var item = _vmCacheService.TryGetItemData(mob.Item);
                 if (item != null && _npcInventoryService.ExtNpcHasItems(hero.Instance, item.Index) <= 0)
@@ -313,6 +322,54 @@ namespace Gothic.VR.Services
                 vm.GlobalSelf = oldSelf;
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMobItemEvents: like the engine, the human mob animations move the mob's useWithItem
+        /// (HUMANS.MDS events of T_[scheme]_S0_2_S1 / _S1_2_S0): ItemInsert takes one into the hand, ItemExchange swaps
+        /// it, ItemRemove puts it back into the inventory, ItemDestroy uses it up. G2's forge turns raw steel into hot
+        /// steel (BSFIRE), the anvil takes the hot steel before SMITHWEAPON_S1 counts it (Npc_HasItems + 1). Before,
+        /// the forge did nothing and the anvil only said "With what?".
+        /// </summary>
+        private bool TryUseMobWithItemEvents(VobLoader loader, IInteractiveObject mob)
+        {
+            if (string.IsNullOrEmpty(mob.Item) || string.IsNullOrEmpty(mob.Visual?.Name))
+                return false;
+
+            var scheme = mob.Visual.Name.Split('_')[0];
+            var mds = _resourceCacheService.TryGetModelScript("HUMANS", false);
+            var useAnim = mds?.Animations.FirstOrDefault(a => a.Name.EqualsIgnoreCase($"T_{scheme}_S0_2_S1"));
+            if (useAnim == null || useAnim.EventTags.All(e => e.Type != EventType.ItemInsert))
+                return false;
+
+            var hero = _playerService.HeroContainer;
+            var item = _vmCacheService.TryGetItemData(mob.Item);
+            if (item == null || _npcInventoryService.ExtNpcHasItems(hero.Instance, item.Index) <= 0)
+            {
+                Logger.Log($"[MobItem] '{loader.name}' ({scheme}) needs '{mob.Item}'.", LogCat.Ai);
+                PlayMobMissingItemReaction(hero);
+                return true;
+            }
+
+            _playerService.RemoveItem(mob.Item);
+            var handItem = mob.Item;
+            foreach (var tag in useAnim.EventTags)
+            {
+                if (tag.Type == EventType.ItemExchange && !string.IsNullOrEmpty(tag.Item))
+                    handItem = tag.Item;
+            }
+
+            if (!string.IsNullOrEmpty(mob.OnStateChangeFunction))
+                TryUseMobStateFunction(loader, mob, isItemInHand: true);
+
+            var leaveAnim = mds.Animations.FirstOrDefault(a => a.Name.EqualsIgnoreCase($"T_{scheme}_S1_2_S0"));
+            var isPutBack = leaveAnim?.EventTags.Any(e => e.Type == EventType.ItemRemove) ?? false;
+            if (isPutBack)
+                _playerService.AddItem(handItem);
+
+            Logger.Log($"[MobItem] '{loader.name}' ({scheme}): '{mob.Item}' taken" +
+                       (isPutBack ? $", '{handItem}' back into the inventory" : " and used up"), LogCat.Ai);
             return true;
         }
 

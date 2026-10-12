@@ -212,6 +212,7 @@ MonoBehaviour:
   EnablePfxControllerVisuals: 1
   EnableKnockoutFallAnimation: 1
   EnableSummonActsForMaster: 1
+  EnableMobItemEvents: 1
   EnableModelScale: 1
   EnableMapPlayerMarker: 1
   G1WorldMapBounds: {x: -84056, y: 67222, z: 84451, w: -61217}

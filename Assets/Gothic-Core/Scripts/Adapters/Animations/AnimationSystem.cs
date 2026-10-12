@@ -1076,6 +1076,12 @@ namespace Gothic.Core.Adapters.Animations
             Logger.LogWarning("StopHeadAnimation not yet implemented.", LogCat.Animation);
         }
 
+        /// <summary>
+        /// Combo windows of the current attack animation: DEF_WINDOW holds start/end frame pairs, one per follow-up hit
+        /// (lurker s_FistAttack 10,20 = one, human s_1hAttack 12,36,47,71,82,106 = three).
+        /// </summary>
+        public int ComboWindowCount => AttackWindowFrames == null ? 0 : AttackWindowFrames.Count / 2;
+
         /// True when the current attack animation has advanced past the DEF_WINDOW start frame.
         /// DEF_WINDOW fires at frame 0 in MDS (stores window bounds as params), so we check elapsed time
         /// against the actual window start frame — matching how VrWeaponAttackDomain reads it.

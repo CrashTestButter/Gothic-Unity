@@ -148,6 +148,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
             if (IsFinishedFlag)
             {
+                // The attack played to its end - the next one starts a new combo.
+                Props.AttackComboLength = 0;
                 StopTurnAnimation();
                 // Magic/ranged animations have no DEF_OPT_FRAME, so HasComboWindowOpened never fires.
                 // Fire the hit at animation end instead.
@@ -186,9 +188,15 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                     TryFireHit();
                 }
 
-                if (Props.AnimationQueue.Count > 0)
+                // DeveloperConfig.EnableNpcComboLimit: like the engine (OpenGothic Pose::continueCombo), a combo has as
+                // many follow-up hits as the animation has DEF_WINDOW pairs - then it breaks and the attack plays to its
+                // end. ZS_MM_Attack_Loop queues AI_Attack every loop: a lurker chained 4 bites a second forever.
+                var isComboLeft = !_configService.Dev.EnableNpcComboLimit ||
+                                  Props.AttackComboLength < PrefabProps.AnimationSystem.ComboWindowCount;
+                if (Props.AnimationQueue.Count > 0 && isComboLeft)
                 {
-                    Logger.LogWarning($"[Combo] {NpcInstance.GetName(NpcNameSlot.Slot0)} cutting anim early → next hit (queue={Props.AnimationQueue.Count})", LogCat.Animation);
+                    Props.AttackComboLength++;
+                    Logger.LogWarning($"[Combo] {NpcInstance.GetName(NpcNameSlot.Slot0)} cutting anim early → next hit (queue={Props.AnimationQueue.Count}, combo {Props.AttackComboLength}/{PrefabProps.AnimationSystem.ComboWindowCount})", LogCat.Animation);
                     // Stop the current track so IsAlreadyPlaying won't block the next attack from starting fresh.
                     PrefabProps.AnimationSystem.StopAnimation(Action.String0);
                     IsFinishedFlag = true;

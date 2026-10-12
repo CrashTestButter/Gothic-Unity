@@ -88,6 +88,9 @@ namespace Gothic.Core.Adapters.Properties
         // Time.time of the last threat before a chase (DeveloperConfig.EnablePursuitWarn).
         public float LastPursuitWarnTime = float.MinValue;
         public LoopState CurrentLoopState = LoopState.None;
+
+        // DeveloperConfig.EnableNpcComboLimit: attacks chained at combo windows since the last one that played to its end.
+        public int AttackComboLength;
         public AbstractAnimationAction CurrentAction;
 
         // "other" and "victim" saved when a state is started via AI_StartState with a specific enemy.

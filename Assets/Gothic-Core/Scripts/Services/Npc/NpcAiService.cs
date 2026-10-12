@@ -423,6 +423,11 @@ namespace Gothic.Core.Services.Npc
             if (container?.PrefabProps == null)
                 return;
 
+            // DeveloperConfig.EnableKnockoutFallAnimation: the knockout drops the NPC already (FightService) - this
+            // only registers random idle anis in the engine (not implemented), it doesn't drop anybody.
+            if (_configService.Dev.EnableKnockoutFallAnimation)
+                return;
+
             _physicsService.DisablePhysicsForNpc(container.PrefabProps);
             // transitionName (T_Wounded_Try) is a "struggle to stand" random — not the fall animation.
             // Map state to the correct fall transition from HUMANS.MDS.

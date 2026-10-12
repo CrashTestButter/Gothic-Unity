@@ -908,6 +908,10 @@ namespace Gothic.Core.Models.Config
                  "leftover) - G2's active teleport platforms and cauldrons showed nothing. Needs EnableParticleEffects.")]
         public bool EnablePfxControllerVisuals = true;
 
+        [Tooltip("V1: A knocked out NPC falls down like in the engine (T_Stand_2_Wounded -> S_Wounded) - the scripts only " +
+                 "drop a third of the tough guys (Mdl_ApplyRandomAni), the rest stood or T-posed while unconscious.")]
+        public bool EnableKnockoutFallAnimation = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

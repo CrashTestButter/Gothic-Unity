@@ -1,5 +1,6 @@
 using System.Collections;
 using Gothic.Core.Const;
+using Gothic.Core.Domain.Npc.Actions;
 using Gothic.Core.Domain.Npc.Actions.AnimationActions;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -702,6 +703,16 @@ namespace Gothic.Core.Services.Npc
             // ClearState(false) inside ExtAiStartState resets BodyState=BsStand — set BsUnconscious after.
             _npcAiService.ExtAiStartState(npc.Instance, zsUnconscious.Index, true, "");
             npc.Props.BodyState = VmGothicEnums.BodyState.BsUnconscious;
+
+            // DeveloperConfig.EnableKnockoutFallAnimation: the engine drops the NPC itself - ZS_Unconscious only calls
+            // Mdl_ApplyRandomAni for a third of the tough guys, everybody else stood or T-posed while unconscious
+            // (Buster) and still stood up normally afterwards.
+            if (_configService.Dev.EnableKnockoutFallAnimation && npc.PrefabProps != null)
+            {
+                _physicsService.DisablePhysicsForNpc(npc.PrefabProps);
+                npc.Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(string0: "T_Stand_2_Wounded"), npc));
+                npc.Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(string0: "S_Wounded"), npc));
+            }
 
             // Give XP — AIV_WASDEFEATEDBYSC already set above, so B_UnconciousXP won't double-count.
             if (npc.Instance.GetAiVar(aivWasDefeated) == 1)

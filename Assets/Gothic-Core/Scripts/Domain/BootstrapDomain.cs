@@ -36,7 +36,7 @@ namespace Gothic.Core.Domain
         
         public BootstrapDomain()
         {
-            GlobalEventDispatcher.LoadGameStart.AddListener(LoadGothicVm);
+            GlobalEventDispatcher.LoadGameStart.AddListener(OnLoadGameStart);
         }
         
         public void Boot()
@@ -132,6 +132,25 @@ namespace Gothic.Core.Domain
             var l10nString = l10nSymbol.GetString(0);
 
             return valuesToCheck.Contains(l10nString);
+        }
+
+        /// <summary>
+        /// Every game start gets a fresh Gothic VM. DeveloperConfig.EnableDialogsPerGameVm: its C_Info instances too -
+        /// the dialogs were initialized once at boot on the first VM, so what scripts write into them during the game
+        /// (SMITHWEAPON_S1: PC_ItMw_1H_Common.description = NAME_ItMw_1H_Common_01) went to the new VM's unbound symbols
+        /// and the anvil's weapon choices stayed empty.
+        /// </summary>
+        private void OnLoadGameStart()
+        {
+            LoadGothicVm();
+
+            if (_configService.Dev.EnableDialogsPerGameVm)
+            {
+                _gameStateService.Dialogs.Instances.Clear();
+                LoadDialogs();
+                Logger.Log($"[Bootstrap] {_gameStateService.Dialogs.Instances.Count} dialogs initialized on the new VM",
+                    LogCat.Dialog);
+            }
         }
 
         public void LoadGothicVm()

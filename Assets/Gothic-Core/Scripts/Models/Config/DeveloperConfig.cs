@@ -928,6 +928,10 @@ namespace Gothic.Core.Models.Config
                  "touch again or walk away to close. Before, touching a bookstand showed nothing.")]
         public bool EnableMobDocuments = true;
 
+        [Tooltip("V1: Dialogs (C_Info) are initialized on every game's fresh VM, not only on the boot VM - what scripts " +
+                 "write into them during the game (the anvil's weapon names, ambient infos' npc) was lost before.")]
+        public bool EnableDialogsPerGameVm = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

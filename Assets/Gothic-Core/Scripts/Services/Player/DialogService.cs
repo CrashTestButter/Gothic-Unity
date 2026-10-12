@@ -434,6 +434,15 @@ namespace Gothic.Core.Manager
             if (MobDialogAnchor == null || !IsHero(npcContainer))
                 return;
 
+            // Like the engine, AI_ProcessInfos is a queued action: the dialog starts after the calling script returns.
+            // Started right away, the dialog was built inside the external - SMITHWEAPON_S1 sets the weapon descriptions
+            // after AI_ProcessInfos, so the anvil's weapon choices were empty.
+            _unityMonoService.StartCoroutine(RunHeroQueueNextFrame());
+        }
+
+        private IEnumerator RunHeroQueueNextFrame()
+        {
+            yield return null;
             RunHeroQueue();
         }
 

@@ -663,7 +663,13 @@ namespace Gothic.Core.Services.Npc
             if (guildAbbr == null)
                 return;
 
-            _ambientInfoByPrefix ??= BuildAmbientInfoPrefixLookup();
+            // Rebuilt when the dialogs were initialized anew (new game VM, DeveloperConfig.EnableDialogsPerGameVm).
+            var firstInfo = _gameStateService.Dialogs.Instances.FirstOrDefault();
+            if (_ambientInfoByPrefix == null || !ReferenceEquals(firstInfo, _ambientInfoSourceFirst))
+            {
+                _ambientInfoByPrefix = BuildAmbientInfoPrefixLookup();
+                _ambientInfoSourceFirst = firstInfo;
+            }
 
             var voice = npcContainer.Instance.Voice;
             if (!_ambientInfoByPrefix.TryGetValue($"INFO_{guildAbbr}_{voice}", out var ambientDialogs) &&
@@ -680,6 +686,7 @@ namespace Gothic.Core.Services.Npc
         // Cached lookup: "INFO_GRD_6" → list of ambient C_INFO instances with that guild+voice prefix.
         // Built lazily from symbol names to avoid repeated GetSymbolByIndex calls per frame.
         private Dictionary<string, List<InfoInstance>> _ambientInfoByPrefix;
+        private InfoInstance _ambientInfoSourceFirst;
 
         private Dictionary<string, List<InfoInstance>> BuildAmbientInfoPrefixLookup()
         {

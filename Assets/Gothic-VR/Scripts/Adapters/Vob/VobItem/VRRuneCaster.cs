@@ -562,8 +562,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     var spellDmg = GetSpellDamage(_item.Spell) * _manaInvested;
                     var hero = _npcService.GetHeroContainer();
                     var isAoe = mfxName != null && SpellConst.AoeEffectNames.Contains(mfxName);
+                    // DeveloperConfig.EnableSummonSpellWithoutTarget: summons have no target like the engine
+                    // (targetCollectAlgo = TARGET_COLLECT_NONE) - aimed at somebody, the summon hit him for
+                    // DamagePerLevel x mana and his magic perception turned him against the hero.
+                    var isUntargetedSummon = _configService.Dev.EnableSummonSpellWithoutTarget &&
+                                             SpellConst.SummonEffectNames.Contains(mfxName ?? string.Empty);
 
-                    if (_spellTarget != null && _spellTarget.Go != null)
+                    if (_spellTarget != null && _spellTarget.Go != null && !isUntargetedSummon)
                     {
                         // SpellHit both applies direct damage (if any) and fires PERC_ASSESSMAGIC on the
                         // target, so Daedalus content (ZS_MagicFreeze, ZS_MagicSleep, ZS_Zapped, Fear/

@@ -949,6 +949,10 @@ namespace Gothic.Core.Models.Config
                  "attack plays to its end - a lurker bit 4 times a second without end before.")]
         public bool EnableNpcComboLimit = true;
 
+        [Tooltip("V1: Summon spells have no target like the engine (TARGET_COLLECT_NONE) - aimed at an NPC they hit him " +
+                 "and turned him hostile before.")]
+        public bool EnableSummonSpellWithoutTarget = true;
+
         [Tooltip("V1: Mdl_SetModelScale scales the NPC like the engine - the Shrink spell (G1 troll) and NPCs whose " +
                  "scripts set a size. Off: the scale is only stored.")]
         public bool EnableModelScale = true;

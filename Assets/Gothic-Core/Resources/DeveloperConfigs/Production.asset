@@ -219,6 +219,7 @@ MonoBehaviour:
   EnableTextureArraySubmeshMaterials: 1
   EnableMaterialCollisionFilter: 1
   EnableFireVobChildren: 1
+  EnableSummonSpellWithoutTarget: 1
   EnableNpcComboLimit: 1
   EnableModelScale: 1
   EnableMapPlayerMarker: 1

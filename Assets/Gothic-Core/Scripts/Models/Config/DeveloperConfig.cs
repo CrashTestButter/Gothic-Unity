@@ -1008,6 +1008,10 @@ namespace Gothic.Core.Models.Config
                  "as its PFX and hits on arrival, the others show their cast and hit effects. Off: an invisible instant hit.")]
         public bool EnableNpcSpellFx = true;
 
+        [Tooltip("V1: Sleep and freeze spells (also Mroczne Tajemnice's crawler web) work on the hero - can't move for " +
+                 "SPL_TIME_SLEEP/FREEZE, damage wakes up, and the caster's scripts see the state (no endless re-casting).")]
+        public bool EnableHeroSpellStates = true;
+
         [Tooltip("V1: In the menu the right stick pulls the menu closer (down) or pushes it away (up), 1-8 m - from 5 m the " +
                  "save game list was unreadable. Kept for the session.")]
         public bool EnableMenuZoom = true;

@@ -322,6 +322,18 @@ namespace Gothic.Core.Services.Npc
 
             var container = npc.GetUserData();
 
+            // DeveloperConfig.EnableHeroSpellStates: G2's Spell_Logic_Sleep puts its victim to sleep itself
+            // (AI_StartState(other, ZS_MagicSleep)) - the hero runs no states, it was queued and never happened.
+            if (_configService.Dev.EnableHeroSpellStates && container?.Vob != null && container.Vob.Player)
+            {
+                var stateName = _gameStateService.GothicVm.GetSymbolByIndex(action)?.Name;
+                if (stateName is "ZS_MAGICSLEEP" or "ZS_MAGICFREEZE")
+                {
+                    Gothic.Core.Adapters.Npc.HeroMagicState.Apply(container, stateName);
+                    return;
+                }
+            }
+
             if (stopCurrentState)
             {
                 container.Props.StateEnd = 0;

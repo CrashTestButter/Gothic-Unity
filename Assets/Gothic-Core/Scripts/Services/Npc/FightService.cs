@@ -163,6 +163,13 @@ namespace Gothic.Core.Services.Npc
                     other: caster.Instance);
             }
 
+            // DeveloperConfig.EnableHeroSpellStates: the hero has no PERC_ASSESSMAGIC - sleep/freeze are set here so the
+            // caster's scripts see them (Npc_IsInState) instead of casting again and again.
+            if (_fightConfigService.Dev.EnableHeroSpellStates && target.Vob.Player &&
+                target.Props.BodyState != VmGothicEnums.BodyState.BsDead)
+                Gothic.Core.Adapters.Npc.HeroMagicState.Apply(target,
+                    Gothic.Core.Adapters.Npc.HeroMagicState.GetSpellState(GetSpellMfxName(caster.ActiveSpell)));
+
             // Direct damage (Firebolt, Fireball, ...) still goes through the normal hit pipeline for
             // HP/animation/death handling. Reaction-only spells (damage=0) stop here — their effect
             // (freeze, sleep, ...) is entirely driven by the ASSESSMAGIC dispatch above, and routing

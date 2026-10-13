@@ -444,6 +444,17 @@ namespace Gothic.Core.Services.Npc
                                $"(state {target.Vob.CurrentStateName}) by {attacker.Instance.GetName(NpcNameSlot.Slot0)}: {percFunction}",
                         LogCat.Fight);
                 }
+                // DeveloperConfig.EnableHitStopsWalking: like the engine's stumble, a hit interrupts walking - the
+                // reaction (ZS_ReactToDamage: AI_StartState(ZS_AssessMonster)) queued behind a guide's long AI_GotoWP
+                // and never ran: Baal Parvez stood still under a wolf's bites until spoken to.
+                if (_configService.Dev.EnableHitStopsWalking && !target.PrefabProps.IsHero() &&
+                    target.Props.CurrentAction is AbstractWalkAnimationAction or AbstractWalkAnimationAction2)
+                {
+                    Logger.Log($"[FightService] {target.Instance.GetName(NpcNameSlot.Slot0)} stops walking - hit by " +
+                               $"{attacker.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
+                    _npcAiService.ExtNpcClearAiQueue(target.Instance);
+                }
+
                 _npcAiService.ExecutePerception(
                     VmGothicEnums.PerceptionType.AssessDamage,
                     target.Props, target.Instance,

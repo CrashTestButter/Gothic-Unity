@@ -961,9 +961,14 @@ namespace Gothic.Core.Models.Config
                  "target before (damage_per_level = 1 from C_Spell_Proto).")]
         public bool EnableOnlyBadSpellsDamage = true;
 
-        [Tooltip("V1: Guides/followers (ZS_GuidePC, ZS_Guide_Player, ...) sense the hero all around their senses range, " +
-                 "like the engine's smell - with the quiet senses they ran ahead and never waited.")]
+        [Tooltip("V1: Guides/followers (ZS_GuidePC, ZS_Guide_Player, ...) keep the engine's senses (smell all around their " +
+                 "senses range) - for the hero and for enemies: with the quiet senses they never waited and only noticed " +
+                 "monsters once bitten.")]
         public bool EnableEscortSensesHero = true;
+
+        [Tooltip("V1: A hit interrupts an NPC's walking like the engine's stumble - the damage reaction queued behind a " +
+                 "guide's long walk and never ran (Baal Parvez froze under a wolf's bites).")]
+        public bool EnableHitStopsWalking = true;
 
         [Tooltip("V1: Waypoint paths use Dijkstra with a binary heap and stop at the destination - the old search was " +
                  "quadratic on G1's waynet and froze the game whenever a guide resumed its walk.")]
@@ -972,6 +977,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Fire trees (oCMobFire vobTree) place their nested VOBs relative to the tree's root - the smoke under a " +
                  "fire's light kept the fire world's absolute position and piled up hundreds of meters away (Old Camp).")]
         public bool EnableFireTreeRelativePositions = true;
+
+        [Tooltip("V1: An NPC's own attitude (Npc_SetAttitude) only counts towards the hero like the engine - between two " +
+                 "NPCs the guild table decides. A guide friendly to the hero was friendly to every monster too.")]
+        public bool EnablePersonalAttitudeOnlyForHero = true;
 
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]

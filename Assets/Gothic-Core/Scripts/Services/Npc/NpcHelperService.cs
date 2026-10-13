@@ -360,6 +360,24 @@ namespace Gothic.Core.Services.Npc
             }
 
             const int attNull = (int)VmGothicEnums.Attitude.Null;
+
+            // DeveloperConfig.EnablePersonalAttitudeOnlyForHero: like the engine (OpenGothic personAttitude), an NPC's own
+            // attitude (Npc_SetAttitude/Npc_SetTempAttitude) is its attitude towards the hero - between two NPCs only
+            // the guild table counts. Baal Parvez (friendly to the hero as a guide) was friendly to every lurker and
+            // scavenger too and never attacked them.
+            if (_configService.Dev.EnablePersonalAttitudeOnlyForHero)
+            {
+                if (!IsHero(self) && !IsHero(other))
+                    return GetGuildAttitude(self.Vob.Guild, other.Vob.Guild);
+
+                var npc = IsHero(self) ? other : self;
+                if (npc.Vob.AttitudeTemp != attNull)
+                    return (VmGothicEnums.Attitude)npc.Vob.AttitudeTemp;
+                if (npc.Vob.Attitude != attNull)
+                    return (VmGothicEnums.Attitude)npc.Vob.Attitude;
+                return GetGuildAttitude(self.Vob.Guild, other.Vob.Guild);
+            }
+
             // Temp attitude is a hero-specific override (e.g. theft, summoned ally via ZS_MM_SummonedByPC)
             if (other.PrefabProps.IsHero() && self.Vob.AttitudeTemp != attNull)
                 return (VmGothicEnums.Attitude)self.Vob.AttitudeTemp;
@@ -442,7 +460,10 @@ namespace Gothic.Core.Services.Npc
             // DeveloperConfig.EnableQuietSenses: hearing/smell sensed the hero all around within the full senses range
             // (orcs: 20 m) - also standing still behind them. Sight keeps the full range (in front, or freeLOS);
             // hearing needs noise (walking/running) within half the range; smell only works close by.
-            if (_configService.Dev.EnableQuietSenses)
+            // DeveloperConfig.EnableEscortSensesHero: guides/followers keep the engine's senses (smell all around the senses
+            // range) - ZS_GuidePC sets SENSE_SMELL with HAI_DIST_ASSESS_MONSTER so B_AssessEnemy spots monsters on the way
+            // ("another one of these beasts"); with the quiet senses Baal Parvez only reacted once bitten.
+            if (_configService.Dev.EnableQuietSenses && !(_configService.Dev.EnableEscortSensesHero && IsInEscortState(self)))
                 return CanSenseNpcQuietly(self, other, senses, freeLOS, range, senseRangeMeters);
 
             if ((senses & (VmGothicEnums.NpcSenses.Hear | VmGothicEnums.NpcSenses.Smell)) != 0)
@@ -453,6 +474,16 @@ namespace Gothic.Core.Services.Npc
             }
 
             return CanSeeNpc(self, other, freeLOS);
+        }
+
+        /// <summary>
+        /// Guide/follow states (G1 ZS_GuidePC/ZS_FollowPC, G2 ZS_Guide_Player/ZS_Follow_Player).
+        /// </summary>
+        public static bool IsInEscortState(NpcInstance npc)
+        {
+            var state = npc?.GetUserData()?.Vob?.CurrentStateName;
+            return state != null && (state.StartsWith("ZS_GUIDE", StringComparison.OrdinalIgnoreCase) ||
+                                     state.StartsWith("ZS_FOLLOW", StringComparison.OrdinalIgnoreCase));
         }
 
         private bool CanSenseNpcQuietly(NpcInstance self, NpcInstance other, VmGothicEnums.NpcSenses senses,

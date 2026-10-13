@@ -223,8 +223,10 @@ MonoBehaviour:
   EnableSummonSpellWithoutTarget: 1
   EnableOnlyBadSpellsDamage: 1
   EnableEscortSensesHero: 1
+  EnableHitStopsWalking: 1
   EnableFireTreeRelativePositions: 1
   EnableFastWaypointPath: 1
+  EnablePersonalAttitudeOnlyForHero: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1
   EnableModelScale: 1

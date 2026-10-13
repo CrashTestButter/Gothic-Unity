@@ -400,9 +400,7 @@ namespace Gothic.Core.Adapters.Npc
             if (!_configService.Dev.EnableEscortSensesHero)
                 return false;
 
-            var state = NpcData?.Vob?.CurrentStateName;
-            return state != null && (state.StartsWith("ZS_GUIDE", System.StringComparison.OrdinalIgnoreCase) ||
-                                     state.StartsWith("ZS_FOLLOW", System.StringComparison.OrdinalIgnoreCase));
+            return NpcHelperService.IsInEscortState(NpcInstance);
         }
 
         private void ExecuteStates()

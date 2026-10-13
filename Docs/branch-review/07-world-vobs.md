@@ -54,6 +54,13 @@
 - **Fireplaces keep their children:** `CreateFire` returned null without a fire tree and the child VOBs were dropped
   (Mroczne Tajemnice's smithy furnace on the smugglers' beach).
 
+**Added 2026-10-13**
+
+- **Fires burn where they are:** fire trees (`oCMobFire` vobTree) place their VOBs relative to the fire's slot. The
+  cached tree zeroed only its roots, so the smoke under a fire's light kept the tree's absolute position (every
+  `FIRETREE_MEDIUM` smoke at (-36, -5, 24) m - a smoke column at the Old Camp's gate), and particle effects took the
+  tree position as a world position (torch flames at the world's origin).
+
 ## Key commits
 
 `75bd89fd`/`b773c4c0`/`a1a8f2a2`/`e37c8952` movers · `9636179d` trigger system · `cd614258`/`f200e883` wheels ·
@@ -65,6 +72,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 `358f0d92`/`5e175caa` mob condition and item · `e62a1a23`/`f93c37a9`/`03b61a16`/`4ee473e0` damage targets and X marks
 
 2026-10-11/13: `d6f3fb6c` smithing items · `10a998e6` mob animations without position · `3108985a` bookstands · `7a7f20ab` material collision filter · `5ce0cbcd` fireplace children
+
+2026-10-13: `ef9bcdd3` fire trees relative to the slot
 
 ## Main files
 
@@ -84,6 +93,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 `EnableMobRequiredItem`, `EnableDamageTargetAutoAim`, `EnableDamageTargetMarkers`
 
 2026-10-11/13: `EnableMobItemEvents`, `EnableMobAnimationWithoutPosition`, `EnableMobDocuments`, `EnableMaterialCollisionFilter`, `EnableFireVobChildren`
+
+2026-10-13: `EnableFireTreeRelativePositions`
 
 ## Review notes
 
@@ -108,3 +119,5 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 - G2 monastery/city: touch a bookstand - the book appears above it; touch again or walk away to close.
 - Walk through bushes and tree leaves, bump into trunks, walls and rocks.
 - Mroczne Tajemnice: the smithy on the smugglers' beach has its furnace, anvil and grindstone.
+
+- G1 Old Camp: every fireplace has its fire and smoke, no smoke column at the gate.

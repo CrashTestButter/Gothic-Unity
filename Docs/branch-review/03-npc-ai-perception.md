@@ -50,6 +50,11 @@
   the hero all around their senses range like the engine's smell. With the quiet senses (smell 3 m) a guide running
   ahead with its back to the hero never got `PERC_ASSESSPLAYER` (`B_GuidePC_AssessPlayer`/`B_AssessGuidePlayer` stop and
   turn to the hero) - Baal Parvez, Lares and Jack Alligator never waited.
+- **Guides fight monsters on the way:** an NPC's own attitude (`Npc_SetAttitude`) only counts towards the hero like the
+  engine (OpenGothic `personAttitude`) - between NPCs the guild table decides. Baal Parvez, friendly to the hero as a
+  guide, was friendly to every lurker and scavenger. Guides keep the engine's senses for enemies too, and a hit
+  interrupts an NPC's walking (the engine's stumble) so `ZS_ReactToDamage`'s `AI_StartState` doesn't wait behind a long
+  `AI_GotoWP`.
 
 ## Key commits
 
@@ -62,7 +67,7 @@ switching · `1f73a5a6` EnemyOverride · `1e18996d` culled NPC routines · `d7d9
 `868a1960`/`ad2b0947`/`7be610d8` orc guilds, warnings, Ulu-Mulu · `26c60bf1` sleep reset · `9f5b92a1` wisp · `0da3529f`
 ZS_Dead_Loop · `247ac69d` routine-less NPCs
 
-2026-10-13: `d522e413` guides sense the hero
+2026-10-13: `d522e413` guides sense the hero · `857bd827` NPC attitudes towards NPCs, guides fight
 
 ## Main files
 
@@ -80,7 +85,7 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 2026-10-10/11: `EnableQuietSenses`, `EnablePursuitWarn`, `EnableChaseGiveUpCooldown`, `EnableStickyHeroRun`,
 `EnableTimeSkipResetsNpcs`, `EnableDeadStateLoop`
 
-2026-10-13: `EnableEscortSensesHero`
+2026-10-13: `EnableEscortSensesHero`, `EnablePersonalAttitudeOnlyForHero`, `EnableHitStopsWalking`
 
 ## Review notes
 
@@ -103,3 +108,5 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 - Sleep in a bed: NPCs stand at their new routine spots. G2: wear the wisp amulet.
 
 - G1/MT: Baal Parvez to the swamp camp, G2: Jack Alligator to the pirate camp / Lares - fall behind, they stop and wait.
+
+- G1/MT: Baal Parvez attacks a lurker that comes within ~10 m by himself ("$DIEMONSTER").

@@ -966,6 +966,10 @@ namespace Gothic.Core.Models.Config
                  "target before (damage_per_level = 1 from C_Spell_Proto).")]
         public bool EnableOnlyBadSpellsDamage = true;
 
+        [Tooltip("V1: Thrown spells fly out of the hand like a ball - direction and speed from the swing, a weak throw arcs, " +
+                 "no swing drops it; only a real throw homes on targets. Off (and in the simulator): towards the camera's view.")]
+        public bool EnableSpellThrowPhysics = true;
+
         [Tooltip("V1: Guides/followers (ZS_GuidePC, ZS_Guide_Player, ...) keep the engine's senses (smell all around their " +
                  "senses range) - for the hero and for enemies: with the quiet senses they never waited and only noticed " +
                  "monsters once bitten.")]

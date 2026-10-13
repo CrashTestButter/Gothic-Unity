@@ -21,6 +21,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         public NpcContainer Owner;
         public Vector3 Velocity;
         public bool UseGravity;
+        [Tooltip("Share of the gravity applied with UseGravity (thrown spells: weaker throws fall more).")]
+        public float GravityScale = 1f;
+        [Tooltip("May lock on to a hit-reactive VOB in a small cone (Irdorath's bridge targets).")]
+        public bool AllowAutoAim = true;
         public float Radius = 0.05f;
         public float MaxDistance = 60f;
 
@@ -56,8 +60,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
 
             var deltaTime = Time.deltaTime;
-            if (UseGravity)
-                Velocity += Physics.gravity * deltaTime;
+            // Locked on to a target, the homing carries it there - gravity would pull it under the target.
+            if (UseGravity && !IsHoming)
+                Velocity += Physics.gravity * (GravityScale * deltaTime);
 
             ApplyHoming(deltaTime);
 
@@ -87,7 +92,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             }
 
             transform.position += step;
-            transform.rotation = Quaternion.LookRotation(Velocity);
+            if (Velocity.sqrMagnitude > 0.0001f)
+                transform.rotation = Quaternion.LookRotation(Velocity);
 
             _travelled += distance;
             if (_travelled > MaxDistance)
@@ -124,10 +130,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// Once, at the start of the flight: without an NPC to home on, the closest hit-reactive VOB within a small cone
         /// (G2 Irdorath's bridge targets: invisible, the engine focuses them with a bow drawn).
         /// </summary>
+        private bool IsHoming => HomingDegreesPerSecond > 0f && (_homingVobTarget != null || HomingTarget?.Go != null);
+
         private void TryAutoAimAtDamageTarget()
         {
             _isAutoAimChecked = true;
-            if (HomingTarget != null || Velocity.sqrMagnitude < 0.01f)
+            if (!AllowAutoAim || HomingTarget != null || Velocity.sqrMagnitude < 0.01f)
                 return;
 
             var config = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Config.ConfigService>();

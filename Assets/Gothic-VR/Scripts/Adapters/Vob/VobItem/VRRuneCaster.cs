@@ -113,6 +113,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private readonly Queue<(float time, Vector3 position)> _handSamples = new();
         private const float _handVelocityWindow = 0.1f;
         private const float _minThrowSpeed = 1.5f;
+
+        // DeveloperConfig.EnableSpellThrowPhysics: what the swing of the last throw gives the projectile.
+        private float _throwGravityScale;
+        private bool _isThrowHoming = true;
+        private const float _minHomingSwingFactor = 0.5f;
+        private const float _minThrowDirectionSpeed = 0.2f;
+        private const float _droppedSpellSpeed = 0.1f;
         private const float _homingConeDegrees = 12f;
         private const float _homingDegreesPerSecond = 90f;
         private const float _defaultThrowRange = 30f;
@@ -1066,15 +1073,35 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
             }
 
-            // A swing throws along the hand's movement; without one (or in the simulator) it flies where you look.
             var handVelocity = isWasd ? Vector3.zero : GetHandVelocity();
-            var direction = handVelocity.magnitude >= _minThrowSpeed || Camera.main == null
-                ? handVelocity.normalized
-                : Camera.main.transform.forward;
-            // The simulator can't swing - full speed there.
-            _throwSpeedFactor = isWasd
-                ? 1f
-                : Mathf.Clamp(handVelocity.magnitude / _fullSwingSpeed, _minSwingFactor, _maxSwingFactor);
+            Vector3 direction;
+            if (_configService.Dev.EnableSpellThrowPhysics && !isWasd)
+            {
+                // DeveloperConfig.EnableSpellThrowPhysics: thrown like a ball out of the hand - the swing gives direction,
+                // speed and how straight it flies. A full swing flies straight like in Gothic, half a swing arcs, no
+                // swing drops it from the hand. Only a real throw homes on NPCs and hit targets (and then ignores the
+                // gravity). Before it flew where the camera looked, slowly but straight, even without moving the hand.
+                var swingFactor = Mathf.Clamp(handVelocity.magnitude / _fullSwingSpeed, 0f, _maxSwingFactor);
+                direction = handVelocity.magnitude >= _minThrowDirectionSpeed ? handVelocity.normalized : Vector3.down;
+                _throwSpeedFactor = swingFactor;
+                _throwGravityScale = Mathf.Clamp01(1f - swingFactor);
+                _isThrowHoming = swingFactor >= _minHomingSwingFactor;
+                Logger.Log($"[VRRuneCaster] Throw: hand {handVelocity.magnitude:F1} m/s, swing {swingFactor:F2}, " +
+                           $"gravity {_throwGravityScale:F2}, homing {_isThrowHoming}", LogCat.VR);
+            }
+            else
+            {
+                // A swing throws along the hand's movement; without one (or in the simulator) it flies where you look.
+                direction = handVelocity.magnitude >= _minThrowSpeed || Camera.main == null
+                    ? handVelocity.normalized
+                    : Camera.main.transform.forward;
+                // The simulator can't swing - full speed there.
+                _throwSpeedFactor = isWasd
+                    ? 1f
+                    : Mathf.Clamp(handVelocity.magnitude / _fullSwingSpeed, _minSwingFactor, _maxSwingFactor);
+                _throwGravityScale = 0f;
+                _isThrowHoming = true;
+            }
             if (direction.sqrMagnitude < 0.01f)
                 direction = handGo.transform.forward;
 
@@ -1157,11 +1184,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             light.intensity = 2f;
             light.color = GetSpellLightColor(mfxName);
 
-            var homingTarget = FindHomingTarget(hero, origin, direction, range);
+            var homingTarget = _isThrowHoming ? FindHomingTarget(hero, origin, direction, range) : null;
             var projectile = projectileGo.AddComponent<VRProjectile>();
             projectile.Owner = hero;
-            projectile.Velocity = direction * speed;
-            projectile.UseGravity = false;
+            projectile.Velocity = direction * Mathf.Max(speed, _droppedSpellSpeed);
+            projectile.UseGravity = _throwGravityScale > 0f;
+            projectile.GravityScale = _throwGravityScale;
+            projectile.AllowAutoAim = _isThrowHoming;
             projectile.Radius = 0.15f;
             projectile.MaxDistance = range;
             projectile.HomingTarget = homingTarget;

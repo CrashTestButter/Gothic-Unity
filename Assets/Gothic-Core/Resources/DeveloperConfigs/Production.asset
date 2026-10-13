@@ -222,6 +222,7 @@ MonoBehaviour:
   EnableFireVobChildren: 1
   EnableSummonSpellWithoutTarget: 1
   EnableOnlyBadSpellsDamage: 1
+  EnableSpellThrowPhysics: 1
   EnableEscortSensesHero: 1
   EnableHitStopsWalking: 1
   EnableFireTreeRelativePositions: 1

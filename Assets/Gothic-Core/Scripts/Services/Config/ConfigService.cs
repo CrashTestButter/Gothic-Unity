@@ -21,6 +21,9 @@ namespace Gothic.Core.Services.Config
         public GothicIniConfig Gothic { get; private set; }
         public GothicModIniConfig GothicMod { get; private set; }
 
+        /// <summary>
+        /// Editor: DeveloperConfig EnableMod + ModPath. Builds: no source yet (mod selection menu pending).
+        /// </summary>
         public string EffectiveModPath
         {
             get
@@ -28,44 +31,18 @@ namespace Gothic.Core.Services.Config
 #if UNITY_EDITOR
                 return Dev.EnableMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
 #else
-                return Root.ModPath;
+                return null;
 #endif
             }
         }
 
         /// <summary>
-        /// The game to start without the game selection. Editor: DeveloperConfig PreselectGameVersion + GameVersion.
-        /// Builds: GameSettings.json "GameVersion" (Gothic1/Gothic2) when set, so one build runs G1, G2 and their
-        /// mods by editing the JSON (like ModPath/ModIni); otherwise the build's DeveloperConfig decides.
+        /// The game to start without the game selection (DeveloperConfig PreselectGameVersion + GameVersion).
         /// </summary>
         public bool TryGetPreselectedGameVersion(out GameVersion version)
         {
-#if !UNITY_EDITOR
-            if (TryParseGameVersion(Root.GameVersion, out version))
-                return true;
-#endif
             version = Dev.GameVersion;
             return Dev.PreselectGameVersion;
-        }
-
-        private static bool TryParseGameVersion(string value, out GameVersion version)
-        {
-            switch (value?.Trim().ToUpperInvariant())
-            {
-                case "GOTHIC1":
-                case "G1":
-                case "1":
-                    version = GameVersion.Gothic1;
-                    return true;
-                case "GOTHIC2":
-                case "G2":
-                case "2":
-                    version = GameVersion.Gothic2;
-                    return true;
-                default:
-                    version = GameVersion.Gothic1;
-                    return false;
-            }
         }
 
         public string EffectiveModIni
@@ -75,7 +52,7 @@ namespace Gothic.Core.Services.Config
 #if UNITY_EDITOR
                 return Dev.EnableMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
 #else
-                return Root.ModIni;
+                return null;
 #endif
             }
         }

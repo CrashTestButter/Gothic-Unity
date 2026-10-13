@@ -48,7 +48,7 @@ namespace Gothic.Core.Models.Config
         public GameVersion GameVersion = GameVersion.Gothic1;
 
         [Separator("Mod")]
-        [Tooltip("Editor only; builds use GameSettings.json ModPath/ModIni. Load the mod set below.")]
+        [Tooltip("Editor only. Load the mod set below.")]
         public bool EnableMod;
         [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
         [Tooltip("Mod folder used as the game root (contains Data/, _work/, system/), " +

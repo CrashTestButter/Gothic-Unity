@@ -1348,6 +1348,14 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         {
             var mfxName = GetSpellMfxName(spellId);
             if (mfxName == null) return 0;
+
+            // DeveloperConfig.EnableOnlyBadSpellsDamage: like the engine, only SPELL_BAD spells hurt - G1's sleep
+            // (SPELL_NEUTRAL) inherits damage_per_level = 1 from C_Spell_Proto and hit its target.
+            var spell = _vmCacheService.TryGetSpellData(spellId);
+            var spellBad = _gameStateService.GothicVm.GetSymbolByName("SPELL_BAD")?.GetInt(0) ?? 2;
+            if (_configService.Dev.EnableOnlyBadSpellsDamage && spell != null && spell.SpellType != spellBad)
+                return 0;
+
             var sym = _gameStateService.GothicVm.GetSymbolByName($"SPL_DAMAGE_{mfxName.ToUpper()}");
             // The engine's value: SPELL_<effect>.damage_per_level. G2's fire storm rune has the effect "Pyrokinesis"
             // (SPL_Damage_Firestorm, no SPL_DAMAGE_PYROKINESIS) - it did 0 damage.

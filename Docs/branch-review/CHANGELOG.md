@@ -12,6 +12,11 @@ Link), not on Quest/Pico standalone.
 
 - Nothing at the moment.
 
+## 2026-10-13: harmless spells stay harmless
+
+- Sleep, light, charm and the other spells that aren't attacks no longer hurt their target (only "bad" spells deal
+  damage, like in the original).
+
 ## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
 
 **Fighting**

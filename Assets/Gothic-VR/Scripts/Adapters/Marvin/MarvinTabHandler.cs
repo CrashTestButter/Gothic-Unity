@@ -68,7 +68,10 @@ namespace Gothic.VR.Adapters.Marvin
                 buttons.Add(($"Spawn {_configService.Dev.MarvinSpawnNpcSymbol}", CheatSpawnNpc));
 
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinFriendsNpcSymbols))
-                buttons.Add(("Friends", CheatSpawnFriends));
+                buttons.Add(("Irdo team", () => CheatSpawnGroup("Irdo team", _configService.Dev.MarvinFriendsNpcSymbols)));
+
+            if (!string.IsNullOrEmpty(_configService.Dev.MarvinCheatFriendsNpcSymbols))
+                buttons.Add(("Cheat friends", () => CheatSpawnGroup("Cheat friends", _configService.Dev.MarvinCheatFriendsNpcSymbols)));
 
             if (!string.IsNullOrEmpty(_configService.Dev.MarvinGiveItems))
                 buttons.Add(("Give items", CheatGiveItems));
@@ -251,16 +254,20 @@ namespace Gothic.VR.Adapters.Marvin
         /// <summary>
         /// DeveloperConfig.MarvinFriendsNpcSymbols: all of them at once, on an arc in front of the hero.
         /// </summary>
-        private void CheatSpawnFriends()
+        /// <summary>
+        /// Spawns a group of NPCs in an arc in front of the hero, facing him: "Irdo team" (DeveloperConfig
+        /// MarvinFriendsNpcSymbols - the Irdorath crew) or "Cheat friends" (MarvinCheatFriendsNpcSymbols - SH/CH).
+        /// </summary>
+        private void CheatSpawnGroup(string groupName, string npcSymbols)
         {
             var hero = _npcService.GetHeroContainer();
             if (hero?.Go == null)
             {
-                Logger.LogWarning("[MarvinMode] Friends: hero GO not found", LogCat.Ui);
+                Logger.LogWarning($"[MarvinMode] {groupName}: hero GO not found", LogCat.Ui);
                 return;
             }
 
-            var symbols = _configService.Dev.MarvinFriendsNpcSymbols.Split(',', ';', '\n');
+            var symbols = npcSymbols.Split(',', ';', '\n');
             var names = new System.Collections.Generic.List<string>();
             foreach (var entry in symbols)
             {
@@ -280,7 +287,7 @@ namespace Gothic.VR.Adapters.Marvin
                 // Facing the hero.
                 var rotation = Quaternion.LookRotation(-direction);
                 if (_npcService.SpawnNpcByName(names[i], position, rotation))
-                    Logger.Log($"[MarvinMode] Friends: spawned '{names[i]}'", LogCat.Ui);
+                    Logger.Log($"[MarvinMode] {groupName}: spawned '{names[i]}'", LogCat.Ui);
             }
         }
 

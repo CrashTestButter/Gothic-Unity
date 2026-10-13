@@ -445,9 +445,14 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Daedalus symbol name of NPC to spawn next to player via Marvin 'Spawn NPC' button. E.g. SH, PC_THIEF. Leave empty to disable.")]
         public string MarvinSpawnNpcSymbol = string.Empty;
 
-        [Tooltip("Daedalus symbols of NPCs the Marvin 'Friends' button spawns at once in front of the player, comma " +
-                 "separated. E.g. PC_THIEF_DI, PC_FIGHTER_DI, PC_MAGE_DI, PC_PSIONIC_DI. Leave empty to hide the button.")]
+        [Tooltip("Daedalus symbols of NPCs the Marvin 'Irdo team' button spawns at once in front of the player, comma " +
+                 "separated. E.g. PC_THIEF_DI, PC_FIGHTER_DI, PC_MAGE_DI, PC_PSIONIC_DI, SLD_801_TORLOF_DI. Leave empty to " +
+                 "hide the button.")]
         public string MarvinFriendsNpcSymbols = string.Empty;
+
+        [Tooltip("Daedalus symbols of NPCs the Marvin 'Cheat friends' button spawns, comma separated - the scripts' test " +
+                 "helpers SH (story helper) and CH (character helper). Leave empty to hide the button.")]
+        public string MarvinCheatFriendsNpcSymbols = string.Empty;
 
         [Tooltip("Items for the Marvin 'Give items' button, comma separated, optional amount: " +
                  "ITRU_FIREBOLT, ITSC_ICEBOLT:3, ITPO_MANA_03:5. Leave empty to hide the button.")]

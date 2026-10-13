@@ -48,6 +48,9 @@
   hit him for `damage_per_level` × mana and his magic perception turned him against the hero.
 - **Only harmful spells hurt:** like the engine, only `SPELL_BAD` spells deal damage - sleep, light, charm, ...
   (`SPELL_NEUTRAL`/`SPELL_GOOD`) inherit `damage_per_level = 1` from `C_Spell_Proto` and hurt their target.
+- **Thrown spells fly like a ball:** direction and speed come from the throwing hand's swing (sampled over 0.1 s), not
+  the camera's view. A weak throw arcs with gravity, letting go without a swing drops the spell, and only a real throw
+  homes on targets (homing disables gravity). In the simulator (WASD) the old camera aim stays.
 
 ## Key commits
 
@@ -59,7 +62,8 @@
 2026-10-10/11: `9b7bf640` burning · `ca86ccb8` fire storm splash · `74066e65` NPC mage one spell per attack · `f819bab9`
 charge effects cleared
 
-2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target · `0d6977ad` only harmful spells hurt
+2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target · `0d6977ad` only harmful spells hurt ·
+`aaab7cdf` throw physics
 
 ## Main files
 
@@ -74,7 +78,8 @@ charge effects cleared
 
 2026-10-10/11: `EnableBurning`, `EnableSpellSpreadDamage`
 
-2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`, `EnableOnlyBadSpellsDamage`
+2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`, `EnableOnlyBadSpellsDamage`,
+`EnableSpellThrowPhysics`
 
 ## Review notes
 
@@ -96,3 +101,5 @@ charge effects cleared
 - Charge a fireball and release early: weaker fireball. Same with fire rain / a summon: it fizzles.
 - Aim a summon rune at an NPC: only the summons appear, the NPC takes no damage and stays calm.
 - G1: cast sleep on an NPC - he falls asleep without losing HP; a fireball still hurts.
+- Throw a fireball hard at an NPC: it flies fast and homes. Throw softly: it arcs into the ground. Open the hand without
+  a swing: the fireball drops in front of you.

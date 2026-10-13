@@ -59,7 +59,9 @@
   window cut the animation into a new attack - a lurker bit 4 times a second without end.
 - **VR fists:** an empty hand with grip + trigger held is a fist - the hero is in fist mode (NPCs react like to raised
   fists) and a knuckle hitbox punches with a swing (hand speed ≥ 2 m/s, one punch per hand per 0.5 s). Damage is the
-  engine's fist damage: in fist mode an equipped sword doesn't add its damage.
+  engine's fist damage: in fist mode an equipped sword doesn't add its damage. A swing plays the fist attack's sound
+  from `Humans.mds` (`S_FISTATTACK`) with a short vibration, a punch vibrates harder; `ShowNpcColliders` shows the
+  punch volume as a sphere.
 
 ## Key commits
 
@@ -71,7 +73,8 @@
 2026-10-10/11: `68541a82`/`1f17b679` run attack · `5bbdace2` ranged one shot · `065fcc02` ranged give-up · `a24beeaa`
 minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim, X marks
 
-2026-10-11/13: `78de091f` knockout fall · `ec35b444` summons act for the hero · `45b6db3d` combo limit · `87665888` VR fists
+2026-10-11/13: `78de091f` knockout fall · `ec35b444` summons act for the hero · `45b6db3d` combo limit · `87665888` VR fists ·
+`fef6b87f` fist sound/haptics
 
 ## Main files
 
@@ -117,3 +120,4 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
   city, let a summon hit a citizen: the guards go for the hero.
 - G2: a lurker or wolf bites in a normal rhythm, not 4 times a second; humans chain at most their animation's combo.
 - VR: grip + trigger on an empty hand and swing into an NPC (Buster's duel) - fist damage, he fights back with fists.
+  Each swing whooshes and vibrates, a punch vibrates harder.

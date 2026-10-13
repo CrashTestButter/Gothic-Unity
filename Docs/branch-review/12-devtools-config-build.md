@@ -39,6 +39,8 @@
   and into the Android APK (temporary `StreamingAssets/Licenses`, removed after the build).
 - `main` merged in (shared Claude Code setup, robustness split).
 - Changelog for the experimental build's Discord channel ([CHANGELOG.md](CHANGELOG.md)).
+- **Marvin teams:** "Friends" is now "Irdo team" (the Irdorath crew including Torlof in one button); "Cheat friends"
+  spawns the scripts' test helpers SH and CH (`MarvinCheatFriendsNpcSymbols`).
 
 ## Key commits
 
@@ -58,6 +60,8 @@
 
 Config flags (2026-10-10/11): `EnableMarvinBlink`, `EnableMarvinFallRescue`, `EnableMarvinGodMode`,
 `MarvinFriendsNpcSymbols`, `EnableEndingReturnsToMenu`
+
+Config (2026-10-13): `MarvinCheatFriendsNpcSymbols` (`adf2d34e` Marvin teams)
 
 ## Review notes
 

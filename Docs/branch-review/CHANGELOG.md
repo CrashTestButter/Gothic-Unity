@@ -10,7 +10,20 @@ Link), not on Quest/Pico standalone.
 
 ## In testing (not in the build yet)
 
-- Nothing at the moment.
+- Frozen NPCs aren't treated as knocked out: Mroczne Tajemnice's crawlers freeze you with their web, then bite.
+- NPC spells are visible: a fireball or the crawler web flies to its target and hits when it arrives.
+- Sleep and freeze work on you too (you can't move for a while, a hit wakes you up) and the caster stops re-casting.
+- G2 Xardas' sleep no longer hurts.
+- Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
+- The throwing hand can't grab the rune by accident (fireballs that didn't come), the backpack vacuum takes a dropped
+  rune again, fists stay closed over NPCs and items further away.
+
+## 2026-10-13 (evening): thrown spells like a ball, fists you hear, Marvin teams
+
+- Thrown spells (fireball, ...) fly where you throw them, as fast as you swing: a weak throw arcs down, letting go
+  without a swing drops the spell, only a real throw homes on a target.
+- Fists make the fist swing sound and vibrate; a punch vibrates harder.
+- Marvin: "Irdo team" spawns the whole Irdorath crew including Torlof, "Cheat friends" spawns the scripts' test helpers.
 
 ## 2026-10-13: harmless spells stay harmless, guides wait
 

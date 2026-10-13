@@ -81,7 +81,7 @@ namespace Gothic.Core.Models.Config
 
         [Foldout("Logging", true)]
         [Separator("ZSpy")]
-        [Tooltip("Enable Daedalus logs inside .d scripts. Editor only; builds use GameSettings.json EnableZSpyLogs.")]
+        [Tooltip("Enable Daedalus logs inside .d scripts.")]
         [OverrideLabel("Enable ZSpy Logs")]
         public bool EnableZSpyLogs;
         [ConditionalField(fieldToCheck: nameof(EnableZSpyLogs))]

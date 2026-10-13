@@ -41,6 +41,11 @@
   `i` got the material of Gothic's sub mesh `i`: palm leaves sampled the opaque array with alpha indices (stone
   textures without alpha on G2 addon palms, fishing nets and Mroczne Tajemnice meshes).
 
+**Added 2026-10-13**
+
+- **Rain around the player:** the `Rain` object sat at the world's origin below the player rig's root, which doesn't
+  move - it now follows the player's head.
+
 ## Key commits
 
 `4982a263` lights + pool · `d07e1c4d` day/night · `8c4b4f51`/`d4e451c5` particles · `1fb8180a` PFX loops · `bc831b78` square smoke in builds ·
@@ -49,6 +54,8 @@
 2026-10-10/11: `9775ab32` stereo cinema · `443afd62` spectator cinema
 
 2026-10-11/13: `87bb86c8` particle controller visuals · `4d39c699` texture array materials
+
+2026-10-13: `3f9923d1` rain follows the player
 
 ## Main files
 
@@ -68,6 +75,8 @@
 
 2026-10-11/13: `EnablePfxControllerVisuals` (needs `EnableParticleEffects`), `EnableTextureArraySubmeshMaterials`
 
+2026-10-13: `EnableRainFollowsPlayer`
+
 ## Review notes
 
 - ✅ Shader loops are unchanged (still max 32 lights per renderer); the pool only decides *which* lights get slots.
@@ -86,3 +95,5 @@
 
 - G2 Jharkendar: activate the canyon teleport - sparks over the platform. Cauldrons bubble in the bandit camp.
 - G2 addon beach and Mroczne Tajemnice: palms have leaves, fishing nets look like nets.
+
+- Let it rain (Marvin skip time): it rains around you anywhere in the world.

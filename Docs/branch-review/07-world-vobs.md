@@ -60,6 +60,10 @@
   cached tree zeroed only its roots, so the smoke under a fire's light kept the tree's absolute position (every
   `FIRETREE_MEDIUM` smoke at (-36, -5, 24) m - a smoke column at the Old Camp's gate), and particle effects took the
   tree position as a world position (torch flames at the world's origin).
+- **Fires by day and night:** fireplaces and torches (`oCMobFire`) follow the scripts' mob routine of their scheme (G1
+  `STARTUP`: `Wld_SetMobRoutine` `FIREPLACE` lit 22:00-05:00 - stored but never applied before). Fires indoors (light
+  mapped: houses, mines) always burn; touching one in VR lights it or puts it out until the routine switches; further
+  than 60 m the effects are off. A fire that is out gives no light, smoke nor sound.
 
 ## Key commits
 
@@ -73,7 +77,7 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 
 2026-10-11/13: `d6f3fb6c` smithing items · `10a998e6` mob animations without position · `3108985a` bookstands · `7a7f20ab` material collision filter · `5ce0cbcd` fireplace children
 
-2026-10-13: `ef9bcdd3` fire trees relative to the slot
+2026-10-13: `ef9bcdd3` fire trees relative to the slot · `3442aebd` fire states (routine, indoors, toggle, distance)
 
 ## Main files
 
@@ -94,7 +98,7 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 
 2026-10-11/13: `EnableMobItemEvents`, `EnableMobAnimationWithoutPosition`, `EnableMobDocuments`, `EnableMaterialCollisionFilter`, `EnableFireVobChildren`
 
-2026-10-13: `EnableFireTreeRelativePositions`
+2026-10-13: `EnableFireTreeRelativePositions`, `EnableFireStates`
 
 ## Review notes
 
@@ -121,3 +125,5 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 - Mroczne Tajemnice: the smithy on the smugglers' beach has its furnace, anvil and grindstone.
 
 - G1 Old Camp: every fireplace has its fire and smoke, no smoke column at the gate.
+
+- G1: torches/fireplaces outside are out by day and burn from 22:00 (Marvin skip time); in mines they always burn; touching one toggles it; from the swamp camp no Old Camp smoke is visible.

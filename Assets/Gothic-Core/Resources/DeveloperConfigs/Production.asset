@@ -223,6 +223,7 @@ MonoBehaviour:
   EnableSummonSpellWithoutTarget: 1
   EnableOnlyBadSpellsDamage: 1
   EnableSpellThrowPhysics: 1
+  SpellThrowSpeedMultiplier: 0.5
   EnableEscortSensesHero: 1
   EnableHitStopsWalking: 1
   EnableFireTreeRelativePositions: 1
@@ -232,6 +233,7 @@ MonoBehaviour:
   EnableRainFollowsPlayer: 1
   EnableMenuZoom: 1
   EnableSaveNameKeyboard: 1
+  EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1
   EnableModelScale: 1

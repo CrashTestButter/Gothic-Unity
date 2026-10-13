@@ -970,6 +970,11 @@ namespace Gothic.Core.Models.Config
                  "no swing drops it; only a real throw homes on targets. Off (and in the simulator): towards the camera's view.")]
         public bool EnableSpellThrowPhysics = true;
 
+        [Tooltip("Speed of thrown spells relative to the spell's own speed (VISUALFX emTrjEaseVel) - 1 = engine speed, " +
+                 "0.5 = half (felt right in VR).")]
+        [Range(0.1f, 2f)]
+        public float SpellThrowSpeedMultiplier = 0.5f;
+
         [Tooltip("V1: Guides/followers (ZS_GuidePC, ZS_Guide_Player, ...) keep the engine's senses (smell all around their " +
                  "senses range) - for the hero and for enemies: with the quiet senses they never waited and only noticed " +
                  "monsters once bitten.")]
@@ -1006,6 +1011,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Saving asks for the save's name on an on-screen keyboard in Gothic's font (letters, digits, space, " +
                  "backspace, OK, cancel; a physical keyboard types too). Off: the name is 'Gothic-Unity - <date>'.")]
         public bool EnableSaveNameKeyboard = true;
+
+        [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
+                 "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
+        public bool EnableThrowRuneOneHand = true;
 
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]

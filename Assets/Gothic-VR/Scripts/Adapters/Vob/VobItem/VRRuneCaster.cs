@@ -20,6 +20,7 @@ using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.World;
 using Gothic.VR.Services;
 using HurricaneVR.Framework.ControllerInput;
+using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Bags;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
@@ -154,11 +155,26 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_configService.Dev.EnableThrowableSpells)
                 _throwCastKey = GetThrowableCastKey(_item.Spell);
 
+            // DeveloperConfig.EnableThrowRuneOneHand: the throwing hand (grip + trigger) can't grab the rune.
+            if (IsThrowable && _configService.Dev.EnableThrowRuneOneHand &&
+                TryGetComponent<HVRGrabbable>(out var grabbable) && GetComponent<VRThrowRuneGrabFilter>() == null)
+            {
+                gameObject.AddComponent<VRThrowRuneGrabFilter>().Grabbable = grabbable;
+                grabbable.LoadFilters();
+            }
+
             ShowManaBar();
         }
 
         private void OnDestroy()
         {
+            if (TryGetComponent<VRThrowRuneGrabFilter>(out var grabFilter))
+            {
+                DestroyImmediate(grabFilter);
+                if (TryGetComponent<HVRGrabbable>(out var grabbable))
+                    grabbable.LoadFilters();
+            }
+
             var hero = _npcService.GetHeroContainer();
             if (hero != null)
                 hero.ActiveSpell = 0;
@@ -890,6 +906,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             {
                 if (_isCasting)
                     CancelThrow("no free throwing hand");
+                else
+                    LogBlockedThrow();
                 return;
             }
 
@@ -938,6 +956,23 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _isThrowCharged = true;
                 Logger.Log($"[VRRuneCaster] Throw fully charged at level {_manaInvested}", LogCat.VR);
             }
+        }
+
+        /// <summary>
+        /// A trigger pressed while no hand is free to throw - why the spell doesn't come (logged once per press).
+        /// </summary>
+        private void LogBlockedThrow()
+        {
+            if (_vrPlayerService.VRPlayerInputs.UseWASD ||
+                (!HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Trigger).JustActivated &&
+                 !HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).JustActivated))
+                return;
+
+            var left = _vrPlayerService.GrabbedItemLeft;
+            var right = _vrPlayerService.GrabbedItemRight;
+            Logger.LogWarning($"[VRRuneCaster] Throw of {_item.Name} blocked - no free hand " +
+                              $"(left: {(left == null ? "-" : left == gameObject ? "rune" : left.name)}, " +
+                              $"right: {(right == null ? "-" : right == gameObject ? "rune" : right.name)})", LogCat.VR);
         }
 
         /// <summary>
@@ -1148,7 +1183,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             var mfxName = GetSpellMfxName(_item.Spell);
             var damage = GetSpellDamage(_item.Spell) * level;
             var investLevel = _investLevel;
-            var speed = _throwCastKey.EmTrjEaseVel / 100f * _throwSpeedFactor;
+            // DeveloperConfig.SpellThrowSpeedMultiplier: the spell's own speed (emTrjEaseVel) felt too fast in VR.
+            var speed = _throwCastKey.EmTrjEaseVel / 100f * _throwSpeedFactor * _configService.Dev.SpellThrowSpeedMultiplier;
             var range = GetThrowRange(mfxName);
 
             var projectileGo = new GameObject($"SpellProjectile ({mfxName})");

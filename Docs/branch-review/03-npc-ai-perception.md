@@ -44,6 +44,13 @@
   `UndeadDragonIsDead`).
 - `AI_ContinueRoutine` on an NPC without a routine goes back to its start state instead of throwing.
 
+**Added 2026-10-13**
+
+- **Guides wait again:** guides and followers (`ZS_GuidePC`/`ZS_FollowPC`, G2 `ZS_Guide_Player`/`ZS_Follow_Player`) sense
+  the hero all around their senses range like the engine's smell. With the quiet senses (smell 3 m) a guide running
+  ahead with its back to the hero never got `PERC_ASSESSPLAYER` (`B_GuidePC_AssessPlayer`/`B_AssessGuidePlayer` stop and
+  turn to the hero) - Baal Parvez, Lares and Jack Alligator never waited.
+
 ## Key commits
 
 `b459f4f7` passive perc broadcast, ASSESSBODY, MURDER/DEFEAT · `00f95e72` hero perceptions (sneak, rooms, usemob) ·
@@ -54,6 +61,8 @@ switching · `1f73a5a6` EnemyOverride · `1e18996d` culled NPC routines · `d7d9
 2026-10-10/11: `6c4452d7` senses · `b6085f3c` orc threats · `c42cfdac`/`fab42830` chase give-up ·
 `868a1960`/`ad2b0947`/`7be610d8` orc guilds, warnings, Ulu-Mulu · `26c60bf1` sleep reset · `9f5b92a1` wisp · `0da3529f`
 ZS_Dead_Loop · `247ac69d` routine-less NPCs
+
+2026-10-13: `d522e413` guides sense the hero
 
 ## Main files
 
@@ -70,6 +79,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 
 2026-10-10/11: `EnableQuietSenses`, `EnablePursuitWarn`, `EnableChaseGiveUpCooldown`, `EnableStickyHeroRun`,
 `EnableTimeSkipResetsNpcs`, `EnableDeadStateLoop`
+
+2026-10-13: `EnableEscortSensesHero`
 
 ## Review notes
 
@@ -90,3 +101,5 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 - Stand still behind an orc: it doesn't see you. Walk: it hears you within half its range.
 - Attack an orc in a group: its comrades attack you. Hold the Ulu-Mulu: orcs tolerate you.
 - Sleep in a bed: NPCs stand at their new routine spots. G2: wear the wisp amulet.
+
+- G1/MT: Baal Parvez to the swamp camp, G2: Jack Alligator to the pirate camp / Lares - fall behind, they stop and wait.

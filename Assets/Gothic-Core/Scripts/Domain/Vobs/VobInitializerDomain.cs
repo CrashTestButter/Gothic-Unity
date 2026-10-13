@@ -122,7 +122,7 @@ namespace Gothic.Core.Domain.Vobs
                         case VisualType.ParticleEffect:
                             if (_configService.Dev.EnableParticleEffects)
                             {
-                                go = CreatePfx(vob, parent);
+                                go = CreatePfx(vob, parent, isInRelativeTree);
                             }
 
                             break;
@@ -178,7 +178,7 @@ namespace Gothic.Core.Domain.Vobs
                         pfxController.InitiallyRunning && !string.IsNullOrEmpty(GetPfxControllerEffect(pfxController)))
                     {
                         go = _meshService.CreateVobPfx(GetPfxControllerEffect(pfxController),
-                            vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion(), parent);
+                            GetPfxPosition(vob, parent, isInRelativeTree), vob.Rotation.ToUnityQuaternion(), parent);
                         break;
                     }
 
@@ -1219,9 +1219,23 @@ namespace Gothic.Core.Domain.Vobs
             return controller.EffectName;
         }
 
-        private GameObject CreatePfx(IVirtualObject vob, GameObject parent)
+        private GameObject CreatePfx(IVirtualObject vob, GameObject parent, bool isInRelativeTree = false)
         {
-            return _meshService.CreateVobPfx(vob, vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion(), parent);
+            return _meshService.CreateVobPfx(vob, GetPfxPosition(vob, parent, isInRelativeTree),
+                vob.Rotation.ToUnityQuaternion(), parent);
+        }
+
+        /// <summary>
+        /// Particle effects are placed in world space. DeveloperConfig.EnableFireTreeRelativePositions: in a fire tree
+        /// (oCMobFire vobTree) the VOB position is relative to the fire's slot - taken as world position, every fire,
+        /// torch flame and smoke of the world burned at the world's origin (torches showed no fire at all).
+        /// </summary>
+        private Vector3 GetPfxPosition(IVirtualObject vob, GameObject parent, bool isInRelativeTree)
+        {
+            var position = vob.Position.ToUnityVector();
+            if (isInRelativeTree && parent != null && _configService.Dev.EnableFireTreeRelativePositions)
+                position += parent.transform.position;
+            return position;
         }
 
         /// <summary>

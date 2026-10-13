@@ -11,6 +11,7 @@ using JetBrains.Annotations;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit;
+using ZenKit.Vobs;
 using Font = ZenKit.Font;
 using Logger = Gothic.Core.Logging.Logger;
 using Mesh = ZenKit.Mesh;
@@ -93,6 +94,15 @@ namespace Gothic.Core.Services.Caches
                 {
                     // We do not cache the world itself, but only the loading pointer. As Mesh could exhaust our memory consumption.
                     var fireWorld = new ZenKit.World(Vfs, s, version);
+
+                    // DeveloperConfig.EnableFireTreeRelativePositions: the roots' children (smoke under a fire's light)
+                    // carry the fire world's absolute positions too - zeroing only the roots put every FIRETREE_MEDIUM
+                    // smoke of the world at its absolute (-36, -5, 24) m: a smoke column at the Old Camp's gate.
+                    foreach (var root in fireWorld.RootObjects)
+                    {
+                        if (IsFireTreeRelativePositions() && root.Position != System.Numerics.Vector3.Zero)
+                            ShiftFireTreeChildren(root.Children, root.Position);
+                    }
 
                     // FIRE worlds aren't positioned at 0,0,0. We need to do it now, to have the correct parent-child positioning.
                     fireWorld.RootObjects.ForEach(i => i.Position = default);
@@ -325,6 +335,18 @@ namespace Gothic.Core.Services.Caches
         /// <param name="version"></param>
         /// <param name="cache"></param>
         /// <returns></returns>
+        private static bool IsFireTreeRelativePositions() =>
+            ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Config.ConfigService>().Dev.EnableFireTreeRelativePositions;
+
+        private static void ShiftFireTreeChildren(List<IVirtualObject> children, System.Numerics.Vector3 offset)
+        {
+            foreach (var child in children)
+            {
+                child.Position -= offset;
+                ShiftFireTreeChildren(child.Children, offset);
+            }
+        }
+
         [CanBeNull]
         public ZenKit.World TryGetWorld([NotNull] string key, GameVersion version, bool cache = false)
         {

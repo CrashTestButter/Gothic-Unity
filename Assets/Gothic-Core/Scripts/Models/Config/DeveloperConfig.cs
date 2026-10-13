@@ -969,6 +969,10 @@ namespace Gothic.Core.Models.Config
                  "quadratic on G1's waynet and froze the game whenever a guide resumed its walk.")]
         public bool EnableFastWaypointPath = true;
 
+        [Tooltip("V1: Fire trees (oCMobFire vobTree) place their nested VOBs relative to the tree's root - the smoke under a " +
+                 "fire's light kept the fire world's absolute position and piled up hundreds of meters away (Old Camp).")]
+        public bool EnableFireTreeRelativePositions = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

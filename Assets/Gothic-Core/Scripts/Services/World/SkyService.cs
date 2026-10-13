@@ -327,7 +327,12 @@ namespace Gothic.Core.Services.World
         private void InitRainGo()
         {
             // by default rainPFX is disabled so we need to find the parent and activate it
-            var rainParticlesGameObject = GameObject.Find("Rain").FindChildRecursively("RainParticles");
+            var rainGo = GameObject.Find("Rain");
+            // DeveloperConfig.EnableRainFollowsPlayer: the rain stood at the world's origin (the player rig's root
+            // doesn't move) - now it follows the player's head.
+            if (_configService.Dev.EnableRainFollowsPlayer && rainGo.GetComponent<Adapters.Audio.RainFollower>() == null)
+                rainGo.AddComponent<Adapters.Audio.RainFollower>();
+            var rainParticlesGameObject = rainGo.FindChildRecursively("RainParticles");
             rainParticlesGameObject.SetActive(true);
             _rainParticleSystem = rainParticlesGameObject.GetComponent<ParticleSystem>();
             _rainParticleSystem.Stop();

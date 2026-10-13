@@ -987,6 +987,9 @@ namespace Gothic.Core.Models.Config
                  "fire that is out gives no light, smoke nor sound.")]
         public bool EnableFireStates = true;
 
+        [Tooltip("V1: Rain falls around the player instead of at the world's origin.")]
+        public bool EnableRainFollowsPlayer = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

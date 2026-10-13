@@ -1,7 +1,9 @@
 #if GOTHIC_HVR_INSTALLED
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.VR.Adapters.HVROverrides;
 using Gothic.Core;
+using HurricaneVR.Framework.ControllerInput;
 using Reflex.Attributes;
 using UnityEngine;
 
@@ -19,7 +21,17 @@ namespace Gothic.VR.Adapters.UI
         [SerializeField] private float _positionSmoothTime = 0.3f;
 
         [Inject] private readonly ContextInteractionService _contextInteractionService;
-        
+        [Inject] private readonly ConfigService _configService;
+
+        // DeveloperConfig.EnableMenuZoom: the right stick pulls the menu closer (down) or pushes it away (up) - from 5 m
+        // the save list was unreadable. Kept for the session, the menu opens again where it was left.
+        private const float _minDistance = 1f;
+        private const float _maxDistance = 8f;
+        private const float _zoomSpeed = 2.5f;
+        private const float _stickDeadZone = 0.2f;
+        private static float? _zoomDistance;
+        private Vector3 _flatForward;
+
         private Transform _playerTransform;
         private VRPlayerController _playerController;
         private Vector3 _moveVelocity;
@@ -42,14 +54,30 @@ namespace Gothic.VR.Adapters.UI
         {
             if (_playerTransform == null) return;
 
+            UpdateZoom();
             UpdateOffset();
         }
 
         private void RecalculatePositionOffset()
         {
             // We want the position offset on the x axis to be recalculated only when turning on the menu
-            Vector3 flatForward = Vector3.ProjectOnPlane(_playerTransform.forward, Vector3.up).normalized;
-            _finalPositionOffset = flatForward * _positionOffset.z;
+            _flatForward = Vector3.ProjectOnPlane(_playerTransform.forward, Vector3.up).normalized;
+            var distance = _configService.Dev.EnableMenuZoom ? _zoomDistance ?? _positionOffset.z : _positionOffset.z;
+            _finalPositionOffset = _flatForward * distance;
+        }
+
+        private void UpdateZoom()
+        {
+            if (!_configService.Dev.EnableMenuZoom || HVRInputManager.Instance == null)
+                return;
+            var controller = HVRInputManager.Instance.RightController;
+            if (controller == null || Mathf.Abs(controller.JoystickAxis.y) < _stickDeadZone)
+                return;
+
+            var distance = _zoomDistance ?? _positionOffset.z;
+            _zoomDistance = Mathf.Clamp(distance + controller.JoystickAxis.y * _zoomSpeed * Time.unscaledDeltaTime,
+                _minDistance, _maxDistance);
+            _finalPositionOffset = _flatForward * _zoomDistance.Value;
         }
 
         private void UpdateOffset(bool immediate = false)

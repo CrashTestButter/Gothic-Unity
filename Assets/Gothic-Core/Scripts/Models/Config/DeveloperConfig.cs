@@ -999,6 +999,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Rain falls around the player instead of at the world's origin.")]
         public bool EnableRainFollowsPlayer = true;
 
+        [Tooltip("V1: In the menu the right stick pulls the menu closer (down) or pushes it away (up), 1-8 m - from 5 m the " +
+                 "save game list was unreadable. Kept for the session.")]
+        public bool EnableMenuZoom = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

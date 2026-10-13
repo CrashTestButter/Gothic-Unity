@@ -269,9 +269,24 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
             else
             {
-                _saveGameService.SaveCurrentGame((SaveGameService.SlotId)id, $"Gothic-Unity - {DateTime.Now}");
-                FillSaveGameEntries();
+                var defaultTitle = $"Gothic-Unity - {DateTime.Now}";
+                // DeveloperConfig.EnableSaveNameKeyboard: name the save on the on-screen keyboard (Gothic asks too).
+                if (!ConfigService.Dev.EnableSaveNameKeyboard)
+                {
+                    SaveToSlot(id, defaultTitle);
+                    return;
+                }
+
+                var currentTitle = _saves[id]?.Metadata?.Title;
+                VirtualKeyboard.Show(currentTitle ?? string.Empty,
+                    title => SaveToSlot(id, string.IsNullOrWhiteSpace(title) ? defaultTitle : title), null);
             }
+        }
+
+        private void SaveToSlot(int id, string title)
+        {
+            _saveGameService.SaveCurrentGame((SaveGameService.SlotId)id, title);
+            FillSaveGameEntries();
         }
     }
 }

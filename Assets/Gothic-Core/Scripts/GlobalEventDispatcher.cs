@@ -180,5 +180,9 @@ namespace Gothic.Core
 
         // DocModel — document to show; GameObject — item GO to attach the viewer to (may be null in flat mode).
         public static readonly UnityEvent<DocModel, GameObject> DocShow = new();
+
+        // A canvas created at runtime (VirtualKeyboard) - VR registers it for the UI laser, and forgets it when hidden.
+        public static readonly UnityEvent<Canvas> UiCanvasShown = new();
+        public static readonly UnityEvent<Canvas> UiCanvasHidden = new();
     }
 }

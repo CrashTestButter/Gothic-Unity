@@ -1003,6 +1003,10 @@ namespace Gothic.Core.Models.Config
                  "save game list was unreadable. Kept for the session.")]
         public bool EnableMenuZoom = true;
 
+        [Tooltip("V1: Saving asks for the save's name on an on-screen keyboard in Gothic's font (letters, digits, space, " +
+                 "backspace, OK, cancel; a physical keyboard types too). Off: the name is 'Gothic-Unity - <date>'.")]
+        public bool EnableSaveNameKeyboard = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

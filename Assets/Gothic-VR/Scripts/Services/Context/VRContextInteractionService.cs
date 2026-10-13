@@ -76,6 +76,17 @@ namespace Gothic.VR.Services.Context
                 Gothic.VR.Adapters.Trade.VRTradeCounter.Spawn(session, _playerController.Camera));
             
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
+            // Runtime canvases (the save name keyboard): the UI laser only hits canvases HVRInputModule knows.
+            GlobalEventDispatcher.UiCanvasShown.AddListener(canvas =>
+            {
+                if (canvas != null && HVRInputModule.Instance != null)
+                    HVRInputModule.Instance.AddCanvas(canvas);
+            });
+            GlobalEventDispatcher.UiCanvasHidden.AddListener(canvas =>
+            {
+                if (canvas != null && HVRInputModule.Instance != null)
+                    HVRInputModule.Instance.RemoveCanvas(canvas);
+            });
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>
             {
                 SetRenderDistance(_configService.Gothic.IniVisualRange);

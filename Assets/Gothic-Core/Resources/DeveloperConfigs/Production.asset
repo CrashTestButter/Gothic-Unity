@@ -231,6 +231,7 @@ MonoBehaviour:
   EnableFireStates: 1
   EnableRainFollowsPlayer: 1
   EnableMenuZoom: 1
+  EnableSaveNameKeyboard: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1
   EnableModelScale: 1

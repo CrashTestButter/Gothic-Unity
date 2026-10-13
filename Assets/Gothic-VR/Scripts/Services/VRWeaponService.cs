@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core;
+using Gothic.Core.Services.Caches;
+using Gothic.Core.Models.Audio;
 using ZenKit.Daedalus;
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Services;
@@ -50,6 +52,8 @@ namespace Gothic.VR.Services
         [Inject] private GameStateService _gameStateService;
         [Inject] private NpcInventoryService _npcInventoryService;
         [Inject] private VobService _vobService;
+        [Inject] private VmCacheService _vmCacheService;
+        [Inject] private ResourceCacheService _resourceCacheService;
 
         private readonly VrWeaponAttackDomain _firstAttackDomain = new VrWeaponAttackDomain().Inject();
         private readonly VrWeaponAttackDomain _secondAttackDomain = new VrWeaponAttackDomain().Inject();
@@ -62,7 +66,15 @@ namespace Gothic.VR.Services
         private const float _fistPunchCooldownSeconds = 0.5f;
         private readonly List<(HVRHandGrabber Hand, VRFistHitbox Hitbox)> _fists = new();
         private readonly Dictionary<HVRHandSide, float> _lastPunchTime = new();
+        private readonly Dictionary<HVRHandSide, bool> _isFistSwinging = new();
         private bool _isFistReadied;
+        private SfxModel _fistSwingSound;
+        private bool _isFistSwingSoundResolved;
+        private const string _fistAttackAnimName = "S_FISTATTACK";
+        private const float _fistSwingHapticAmplitude = 0.25f;
+        private const float _fistSwingHapticSeconds = 0.05f;
+        private const float _fistHitHapticAmplitude = 0.8f;
+        private const float _fistHitHapticSeconds = 0.12f;
 
         public void Init()
         {
@@ -215,6 +227,17 @@ namespace Gothic.VR.Services
                 if (hitbox.gameObject.activeSelf != isFist)
                     hitbox.gameObject.SetActive(isFist);
                 isAnyFist |= isFist;
+
+                if (isFist)
+                {
+                    KeepFistPose(hand);
+                    TickFistSwing(hand, hitbox);
+                    hitbox.SetDebugVisible(_configService.Dev.ShowNpcColliders);
+                }
+                else
+                {
+                    _isFistSwinging[side] = false;
+                }
             }
 
             if (isAnyFist == _isFistReadied)
@@ -222,6 +245,51 @@ namespace Gothic.VR.Services
             _isFistReadied = isAnyFist;
             Logger.Log($"[VRFist] Fists {(isAnyFist ? "up" : "down")}", LogCat.Fight);
             UpdateHeroWeaponState();
+        }
+
+        /// <summary>
+        /// The held grip + trigger win over the hover pose: HVR opens the hand over a highlighted NPC/item, which is
+        /// always the case when punching. The highlight itself stays.
+        /// </summary>
+        private static void KeepFistPose(HVRHandGrabber hand)
+        {
+            if (hand.HoverPoser != null && hand.HandAnimator != null && hand.HandAnimator.CurrentPoser == hand.HoverPoser)
+                hand.HandAnimator.ResetToDefault();
+        }
+
+        /// <summary>
+        /// A swing (hand faster than a punch needs) is heard and felt like a weapon swing: the fist attack's sound from
+        /// Humans.mds (S_FISTATTACK) and a short vibration - once per swing.
+        /// </summary>
+        private void TickFistSwing(HVRHandGrabber hand, VRFistHitbox hitbox)
+        {
+            var side = hand.HandSide;
+            var speed = hand.Controller != null ? hand.Controller.Velocity.magnitude : 0f;
+            var isSwinging = speed >= _fistPunchVelocity;
+            _isFistSwinging.TryGetValue(side, out var wasSwinging);
+            _isFistSwinging[side] = isSwinging;
+            if (!isSwinging || wasSwinging)
+                return;
+
+            hand.Controller?.Vibrate(_fistSwingHapticAmplitude, _fistSwingHapticSeconds);
+            var sound = GetFistSwingSound();
+            if (sound != null)
+                SFXPlayer.Instance.PlaySFX(_audioService.CreateAudioClip(sound.GetRandomSound()), hitbox.transform.position);
+        }
+
+        private SfxModel GetFistSwingSound()
+        {
+            if (_isFistSwingSoundResolved)
+                return _fistSwingSound;
+            _isFistSwingSoundResolved = true;
+
+            var mds = _resourceCacheService.TryGetModelScript("HUMANS", false);
+            var anim = mds?.Animations.FirstOrDefault(a => a.Name.EqualsIgnoreCase(_fistAttackAnimName));
+            var soundName = anim?.SoundEffects.FirstOrDefault()?.Name;
+            _fistSwingSound = soundName != null ? _vmCacheService.TryGetSfxData(soundName) : null;
+            if (_fistSwingSound == null)
+                Logger.LogWarning($"[VRFist] Humans.mds: {_fistAttackAnimName} has no sound - fist swings are silent", LogCat.Fight);
+            return _fistSwingSound;
         }
 
         private void CreateFistHitboxes()
@@ -265,6 +333,7 @@ namespace Gothic.VR.Services
                 return;
 
             _lastPunchTime[hitbox.HandSide] = Time.time;
+            controller.Vibrate(_fistHitHapticAmplitude, _fistHitHapticSeconds);
             Logger.Log($"[VRFist] {hitbox.HandSide} punch at {speed:F1} m/s → {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
             GlobalEventDispatcher.FightHit.Invoke(hero, target, position);
         }

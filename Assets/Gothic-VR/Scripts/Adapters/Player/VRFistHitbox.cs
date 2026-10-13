@@ -19,6 +19,27 @@ namespace Gothic.VR.Adapters.Player
         public HVRHandSide HandSide { get; private set; }
         public Action<VRFistHitbox, NpcLoader, Vector3> OnNpcEntered;
 
+        private GameObject _debugSphere;
+
+        /// <summary>
+        /// DeveloperConfig.ShowNpcColliders: the punch volume as a see-through sphere, to check where the fist hits.
+        /// </summary>
+        public void SetDebugVisible(bool isVisible)
+        {
+            if (isVisible && _debugSphere == null)
+            {
+                _debugSphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                _debugSphere.name = "FistHitboxDebug";
+                Destroy(_debugSphere.GetComponent<Collider>());
+                _debugSphere.transform.SetParent(transform, false);
+                _debugSphere.transform.localScale = Vector3.one * (_radius * 2f);
+                var debugRenderer = _debugSphere.GetComponent<Renderer>();
+                debugRenderer.material.color = new Color(1f, 0.2f, 0.2f, 0.35f);
+            }
+            if (_debugSphere != null && _debugSphere.activeSelf != isVisible)
+                _debugSphere.SetActive(isVisible);
+        }
+
         public static VRFistHitbox Create(Transform hand, HVRHandSide side)
         {
             var go = new GameObject($"FistHitbox_{side}")

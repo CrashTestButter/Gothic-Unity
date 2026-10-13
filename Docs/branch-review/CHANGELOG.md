@@ -17,6 +17,7 @@ Link), not on Quest/Pico standalone.
 - Sleep, light, charm and the other spells that aren't attacks no longer hurt their target (only "bad" spells deal
   damage, like in the original).
 - Guides wait for you again (Baal Parvez, Lares, Jack Alligator) instead of running off to the destination.
+- No more short freeze when a guide walks on after waiting (faster path finding for all NPCs).
 
 ## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
 

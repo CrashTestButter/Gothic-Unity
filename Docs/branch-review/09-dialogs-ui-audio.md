@@ -32,6 +32,19 @@
 - **HUD on top:** HP/mana bars, screen messages, the chapter popup and menus draw on top of the world like the dialog
   box; VR hands and the UI laser draw above it.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Music zones like the engine** (OpenGothic `WorldSound`): the zone comes from the player's position every 2 s (the
+  current zone stays while inside, else the last zone containing us, else the default zone), themes fall back NGT→DAY,
+  THR→FGT→STD and to the default zone, night follows the game time, fight music ends with the fight. G2's pirate camp
+  kept the bandit music, night themes never played.
+- **No more music crash:** a world's music starts on a fresh DirectMusic performance - dmusic crashed natively on the
+  audio thread (`DmPerformance_renderPcm`) once world themes played after `gamestart.sgt` on the same performance
+  (reproduced outside Unity). Segments are downloaded once and cached.
+- **Dialogs on every game's VM:** `C_Info` instances were initialized once at boot, so what scripts write into them
+  during the game went to the new VM's unbound symbols - the anvil's weapon choices were empty. Mob dialogs start after
+  the calling script like the engine's queued `AI_ProcessInfos`.
+
 ## Key commits
 
 `ee4dbc2a` dialog bubble · `c1a4c1ad` free movement · `d109a6aa`/`cd10002c` on top · `bf3703ca` subtitles on death ·
@@ -40,6 +53,8 @@
 
 2026-10-10/11: `e8f50e2f`/`170e723b`/`b40e757d`/`ae8731a5` dragon dialogs · `8b402034`/`4a12c4e7`/`687a0b67` hit numbers
 · `768d61a8` HUD on top
+
+2026-10-11/13: `fd2195b1` music zones · `dd15ecdc` fresh DirectMusic performance · `03788c08` dialogs per game VM
 
 ## Main files
 
@@ -55,6 +70,8 @@
 2026-10-10/11: `EnableDialogHeroByInstance`, `EnableDialogRangeByBodySize`, `EnableDialogKeepsOutputs`,
 `EnableHudAlwaysOnTop`
 
+2026-10-11/13: `EnableMusicZonesByPosition`, `EnableDialogsPerGameVm`
+
 ## Review notes
 
 - ⚠️ **`VRScreenMessages` and `VRCinema` use static `_instance` singletons** instead of DI. They should be
@@ -69,3 +86,6 @@
 - A mod with Ogg dubbing (G2 New Balance) — voices play.
 - G2: talk to a dragon (Irdorath: undead dragon) - his lines are heard with subtitles.
 - Immersion settings: hit numbers and HP numbers on, hit an NPC and get hit.
+
+- G2: walk into and out of the pirate camp several times - the music changes, no crash; at night night themes.
+- G2 anvil: "Forge a sword" shows the weapon names (also after loading a save).

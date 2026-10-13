@@ -32,12 +32,23 @@
   single-pass instanced drew them only for the left eye).
 - The video cinema shows on the monitor/stream (spectator camera) too, its smoothing runs on unscaled time.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Particle controllers** show their particle visual like the engine (`zCPFXControler`, OpenGothic `PfxController`) -
+  `pfxName` is mostly an empty Spacer leftover `.PFX`: G2's active teleport platforms (`RESURRECTION.pfx`, visible once
+  the mover raises them), cauldrons and the bandit camp's fire smoke showed nothing.
+- **Texture array materials** follow the sub mesh grouping (opaque, alpha cutout, water in first-seen order) - sub mesh
+  `i` got the material of Gothic's sub mesh `i`: palm leaves sampled the opaque array with alpha indices (stone
+  textures without alpha on G2 addon palms, fishing nets and Mroczne Tajemnice meshes).
+
 ## Key commits
 
 `4982a263` lights + pool · `d07e1c4d` day/night · `8c4b4f51`/`d4e451c5` particles · `1fb8180a` PFX loops · `bc831b78` square smoke in builds ·
 `d688f290`/`9504e2c9`/`9f984e2c` Bink · `2de7f2dc` Bink attribution
 
 2026-10-10/11: `9775ab32` stereo cinema · `443afd62` spectator cinema
+
+2026-10-11/13: `87bb86c8` particle controller visuals · `4d39c699` texture array materials
 
 ## Main files
 
@@ -55,6 +66,8 @@
 
 2026-10-10/11: —
 
+2026-10-11/13: `EnablePfxControllerVisuals` (needs `EnableParticleEffects`), `EnableTextureArraySubmeshMaterials`
+
 ## Review notes
 
 - ✅ Shader loops are unchanged (still max 32 lights per renderer); the pool only decides *which* lights get slots.
@@ -70,3 +83,6 @@
   the world turns dark blue, huts stay lit.
 - Start a new game: the intro video plays in the cinema, in sync, skippable.
 - Watch a video in the headset (both eyes) and on the monitor/OBS at the same time.
+
+- G2 Jharkendar: activate the canyon teleport - sparks over the platform. Cauldrons bubble in the bandit camp.
+- G2 addon beach and Mroczne Tajemnice: palms have leaves, fishing nets look like nets.

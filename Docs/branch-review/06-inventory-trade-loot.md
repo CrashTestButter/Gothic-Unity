@@ -25,12 +25,20 @@
 - **Lidless containers** (no `.MDS`, e.g. the orc mummies in the Sleeper's temple) are mobs: highlight and click like a
   switch, the click shows a loot backpack with their items on the hero's side.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Quick loot:** the loot backpack of a dead NPC or a lidless container (mummy) gets a green **X** above the right page
+  arrow (a copy of the arrow, Gothic font) - it moves everything into the hero's inventory at once. Not for knocked out
+  NPCs (robbed item by item) nor traders.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
 `be96097d`/`3f8bcb2a`/`6c9736a9` popup + vacuum · `b1d68e70` script inventory events · `7a682222` UI freeze
 
 2026-10-10/11: `5db3f9fa` lidless containers
+
+2026-10-11/13: `f4439ca6` quick loot
 
 ## Main files
 
@@ -48,6 +56,8 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 
 2026-10-10/11: —
 
+2026-10-11/13: `EnableLootTakeAll`
+
 ## Review notes
 
 - ✅ Good layering here: pricing is pure domain code with **unit tests**, trade state is a model, VR only presents.
@@ -61,3 +71,5 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 - G2 Constantino / G1 Fisk: buy 3 of 10 arrows (split onto the counter), sell something, check the balance.
 - Knock out an NPC: his backpack appears, opens on a category with items, disappears after 20 s.
 - G1 Sleeper temple: click an orc mummy, take its items; they stay gone after save/load.
+
+- Kill an NPC, open his loot: the green X takes everything; a knocked out NPC and a trader have no X.

@@ -45,6 +45,22 @@
   `reactToOnDamage` once per projectile, home on them within 12° (they're often invisible) and such targets get a green
   X where to shoot (see [World](07-world-vobs.md)).
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Knocked out NPCs fall down** like in the engine (`T_Stand_2_Wounded` → `S_Wounded`). G2's `ZS_Unconscious` only
+  calls `Mdl_ApplyRandomAni` for a third of the tough guys (G1 always), everybody else stood or T-posed while down
+  (Buster). `Mdl_ApplyRandomAni` no longer drops anybody (eating monsters got the fall too).
+- **The hero's summons act for him:** their knockouts and kills count as his (`ZS_Unconscious` checks
+  `C_NpcIsHero(other)` - Buster's admission duel goes on after the goblins beat him), bystanders blame the hero for
+  their hits (guards go for him, the victim still fights the summon), and summons stop hitting a downed NPC like the
+  scripts (`ZS_MM_Attack_Loop` ends on `C_NpcIsDown`).
+- **Combo limit:** NPC/monster combos are as long as the attack animation's `DEF_WINDOW` pairs (OpenGothic
+  `Pose::continueCombo`), then the attack plays to its end. `ZS_MM_Attack_Loop` queues `AI_Attack` every loop and each
+  window cut the animation into a new attack - a lurker bit 4 times a second without end.
+- **VR fists:** an empty hand with grip + trigger held is a fist - the hero is in fist mode (NPCs react like to raised
+  fists) and a knuckle hitbox punches with a swing (hand speed ≥ 2 m/s, one punch per hand per 0.5 s). Damage is the
+  engine's fist damage: in fist mode an equipped sword doesn't add its damage.
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
@@ -54,6 +70,8 @@
 
 2026-10-10/11: `68541a82`/`1f17b679` run attack · `5bbdace2` ranged one shot · `065fcc02` ranged give-up · `a24beeaa`
 minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim, X marks
+
+2026-10-11/13: `78de091f` knockout fall · `ec35b444` summons act for the hero · `45b6db3d` combo limit · `87665888` VR fists
 
 ## Main files
 
@@ -70,6 +88,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 
 2026-10-10/11: `EnableNpcRunAttack`, `EnableRangedGiveUp`, `EnableMinimalDamage`, `EnableDamageTargetAutoAim`,
 `EnableDamageTargetMarkers`
+
+2026-10-11/13: `EnableKnockoutFallAnimation`, `EnableSummonActsForMaster`, `EnableNpcComboLimit`, `EnableVrFists`
 
 ## Review notes
 
@@ -91,3 +111,9 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 - Let a wolf or an orc run at you: about every second attack lands out of the run.
 - NPC archer: one shot, reload, next shot. Run 25+ m away: it stops and goes back.
 - G1 Sleeper temple / G2 Irdorath: shoot the switches and bridge targets (green X) with a bow or a spell.
+
+- G2: knock out Buster or anyone - he falls and lies (`S_Wounded`), stands up afterwards. Same in G1.
+- G2: let summoned goblins beat Buster - the duel counts as won, the summons stop hitting him while he's down. In the
+  city, let a summon hit a citizen: the guards go for the hero.
+- G2: a lurker or wolf bites in a normal rhythm, not 4 times a second; humans chain at most their animation's combo.
+- VR: grip + trigger on an empty hand and swing into an NPC (Buster's duel) - fist damage, he fights back with fists.

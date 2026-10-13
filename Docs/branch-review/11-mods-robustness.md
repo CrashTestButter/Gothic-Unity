@@ -17,11 +17,18 @@
 Status: G1 **Mroczne Tajemnice** is playable. G2 Union mods boot (Renovation); some (Dolina Zombie, Świat
 Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope for this branch.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- Mroczne Tajemnice: the missing smithy furnace (fireplace children, [World](07-world-vobs.md)) and stone textures on
+  palms/nets (texture array materials, [Rendering](08-rendering-video.md)) are fixed.
+
 ## Key commits
 
 `5eb534aa`/`fca4712c` mod loading · `75287b0e` OU.BIN · `803816ee` extended classes · `1107c651` language ·
 `77d74e77`/`4b801c12`/`50c3a989`/`0e6359ef` robustness · `a39b128c` Ikarus/LeGo · `33c5f200` JSON switching ·
 `bc632361` Ogg · `54f97e9b` Wld_InsertNpc
+
+2026-10-11/13: `5ce0cbcd` fireplace children · `4d39c699` texture array materials
 
 ## Main files
 
@@ -45,3 +52,5 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 
 - Point `ModPath` at Mroczne Tajemnice; new game, talk, sleep, fight.
 - Vanilla G1 and G2 still boot with `ModPath` empty.
+
+- Mroczne Tajemnice: smugglers' beach smithy complete, palms and nets textured.

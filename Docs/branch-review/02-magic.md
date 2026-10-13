@@ -39,6 +39,14 @@
 - **NPC mages** cast one spell per attack (wind-up `t_MagRun_2_FBTShoot`, then `t_FBTShoot_2_Stand`) instead of bursts.
 - Spamming a charged spell no longer stacks its effects in the hand; a throw clears them.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Charged spells can't be spammed:** firing before the spell is cast asks the game's `Spell_ProcessMana_Release`
+  like the engine - fireball, fire storm, wind fist, ... go off at their level, fire rain, summons, transformations and
+  the rest fizzle out (a summon army in 3 seconds, fire rain on repeat). Invested mana isn't refunded.
+- **Summons have no target** like the engine (`targetCollectAlgo = TARGET_COLLECT_NONE`) - aimed at an NPC, the summon
+  hit him for `damage_per_level` × mana and his magic perception turned him against the hero.
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
@@ -48,6 +56,8 @@
 
 2026-10-10/11: `9b7bf640` burning · `ca86ccb8` fire storm splash · `74066e65` NPC mage one spell per attack · `f819bab9`
 charge effects cleared
+
+2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target
 
 ## Main files
 
@@ -61,6 +71,8 @@ charge effects cleared
 `EnableSpellBodyFx`, `SummonSpawnRangeMultiplier`, `RangedCombatRangeMultiplier`, `EnableCasterPerception`.
 
 2026-10-10/11: `EnableBurning`, `EnableSpellSpreadDamage`
+
+2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`
 
 ## Review notes
 
@@ -78,3 +90,6 @@ charge effects cleared
 - Shrink the G1 troll; save, load — still small.
 - Fireball an NPC: flames on the whole body for 4 s. Fire storm next to a group: everyone within 2 m burns.
 - An NPC mage casts single spells with a wind-up, no bursts.
+
+- Charge a fireball and release early: weaker fireball. Same with fire rain / a summon: it fizzles.
+- Aim a summon rune at an NPC: only the summons appear, the NPC takes no damage and stays calm.

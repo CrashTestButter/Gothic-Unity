@@ -31,6 +31,15 @@
   collected again once the mesh exists, child colliders get `HVRGrabbableChild`.
 - Items without a `VobLoader` (backpack/hot slot items after a world change) can be grabbed again.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Talking works again:** the personal space around the VR hero (NPC bodies 1 m from the head) leaves out humans with
+  their weapon away - NPCs were out of the hands' reach and none could be grabbed to talk. Monsters and anyone with a
+  drawn weapon keep their distance.
+- **Turning while knocked out:** the hero can't walk but can still turn with the stick (snap/smooth turn) - seated
+  players couldn't look around while down.
+- **Fists** (see [Combat](01-combat.md)): grip + trigger on an empty hand.
+
 ## Key commits
 
 `7227eb60`/`1e7389ac`/`05dfa9f7`/`434432cd` hero body · `84a84753` equip · `c62882ff` pouches · `567fc20d`/`bdda2d2a`
@@ -38,6 +47,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 `4df98e0a` Doc_* · `1fb8180a`/`76f2eace` maps · `980feedf`/`2fa62aa7` knocked-out hero
 
 2026-10-10/11: `a3a7209b` personal space · `8a8e717e` mob child colliders · `a2df3346` grab after world change
+
+2026-10-11/13: `51f2be43` personal space vs talking · `d5731bdb` turning while knocked out · `87665888` fists
 
 ## Main files
 
@@ -53,6 +64,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 
 2026-10-10/11: `EnableHeroPersonalSpace`, `EnableMobColliderRefresh`
 
+2026-10-11/13: `EnableKnockoutTurning`, `EnableVrFists`
+
 ## Review notes
 
 - ✅ Body animation reuses the hero's Gothic animations through the existing animation system.
@@ -67,3 +80,6 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 - Light a torch in a cave; smoke a joint.
 - Let an orc attack you up close: its body stays 1 m away, hits still land.
 - G2 Irdorath: the stone touchplates in the side rooms and on the pillar highlight and react.
+
+- Walk up to any citizen and grab him to talk; orcs/wolves and NPCs with drawn weapons still keep 1 m away.
+- Get knocked out (VR): the right stick turns you, walking/teleport is locked until you stand up.

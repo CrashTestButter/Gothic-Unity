@@ -32,6 +32,14 @@
   spawns a list of NPCs (e.g. the Irdorath crew); the panel scrolls with more than 6 options.
 - After the ending's videos and credits the game returns to the main menu / profiles instead of quitting.
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Licenses in every build:** `LICENSE` and `THIRD_PARTY_NOTICES.md` (Bink decoder LGPL-2.1+/MIT, NVorbis, Uber Logger,
+  package dependencies; OpenGothic as behavior reference; no Gothic data shipped) are copied next to the PC executable
+  and into the Android APK (temporary `StreamingAssets/Licenses`, removed after the build).
+- `main` merged in (shared Claude Code setup, robustness split).
+- Changelog for the experimental build's Discord channel ([CHANGELOG.md](CHANGELOG.md)).
+
 ## Key commits
 
 `bb6e7c4d`/`5959c1ad`/`8ea94468`/`aebea3c9`/`5e898826` Marvin · `e26326bb` build · `7c3afb78` project settings ·
@@ -39,6 +47,8 @@
 
 2026-10-10/11: `73d5fb2f` profiles · `17553ec0` restart · `29fddfb8`/`e43f685c`/`b6075f2c`/`6c08c5d3`/`a85286c7` Marvin
 · `bc8dd945` ending to menu
+
+2026-10-11/13: `22b00d9a` third party notices · `d3130b8f` licenses in builds · `4d9acf18` merge `main` · `360812b6` changelog
 
 ## Main files
 
@@ -64,3 +74,5 @@ Config flags (2026-10-10/11): `EnableMarvinBlink`, `EnableMarvinFallRescue`, `En
 - Build PCVR via `Gothic.VR.Editor.VRBuilderActions.PerformWindows64Build`.
 - `EnableGameProfiles: true` in `GameSettings.json`: the profile list shows before the game.
 - Finish G1 or G2 (or skip to the ending video): the game comes back to the menu.
+
+- Build PCVR: `LICENSE` and `THIRD_PARTY_NOTICES.md` next to the executable.

@@ -39,6 +39,21 @@
   ones; treasure X marks are visible in builds (URP Unlit placeholder material).
 - Result: **G2 Irdorath is completable** (bridges, traps, gates, wheels, pillars, main door, last door).
 
+**Added 2026-10-11 – 2026-10-13**
+
+- **Smithing:** crafting mobs move their `useWithItem` like the engine's human animation events (`HUMANS.MDS`
+  `T_<scheme>_S0_2_S1`/`_S1_2_S0`: `ItemInsert`, `ItemExchange`, `ItemRemove`, `ItemDestroy`) - the forge turns raw
+  steel into hot steel, the anvil takes the hot steel before `SMITHWEAPON_S1` counts it. Before the forge did nothing
+  and the anvil only said "With what?".
+- **NPCs work at their mobs:** at mobs without FRONT/BACK animations (saw, repair spot, roast spit) NPCs play the plain
+  ones like OpenGothic - G2's pirates stood next to the saw and spit (`S_BAUMSAEGE_BACK_S1` not found).
+- **Bookstands show their book:** the page a mob shows with `Doc_Show` (`Use_Bookstand*_S1`) appears above it like a
+  held document; touch again or walk away (3 m) to close.
+- **Collisions like the engine:** only polygons of materials without `noCollDet` collide - trees block at the trunk,
+  not the leaves, bushes on the level mesh can be walked through.
+- **Fireplaces keep their children:** `CreateFire` returned null without a fire tree and the child VOBs were dropped
+  (Mroczne Tajemnice's smithy furnace on the smugglers' beach).
+
 ## Key commits
 
 `75bd89fd`/`b773c4c0`/`a1a8f2a2`/`e37c8952` movers · `9636179d` trigger system · `cd614258`/`f200e883` wheels ·
@@ -48,6 +63,8 @@
 2026-10-10/11: `136de852` sender names · `1f9e8c8d`/`80304460`/`a480f3dd`/`d8666bdb` child logic VOBs · `2ea79afb` mover
 timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trigger list delays · `481eb8e8` code master ·
 `358f0d92`/`5e175caa` mob condition and item · `e62a1a23`/`f93c37a9`/`03b61a16`/`4ee473e0` damage targets and X marks
+
+2026-10-11/13: `d6f3fb6c` smithing items · `10a998e6` mob animations without position · `3108985a` bookstands · `7a7f20ab` material collision filter · `5ce0cbcd` fireplace children
 
 ## Main files
 
@@ -66,6 +83,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 `EnableMoverRelativeKeyframes`, `EnableNestedMovers`, `EnableTriggerListSummedDelays`, `EnableEngineCodeMaster`,
 `EnableMobRequiredItem`, `EnableDamageTargetAutoAim`, `EnableDamageTargetMarkers`
 
+2026-10-11/13: `EnableMobItemEvents`, `EnableMobAnimationWithoutPosition`, `EnableMobDocuments`, `EnableMaterialCollisionFilter`, `EnableFireVobChildren`
+
 ## Review notes
 
 - ✅ Trigger handlers are small, one per VOB type — fits the adapter pattern.
@@ -82,3 +101,10 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
   (letter read first).
 - G2 Jharkendar portal: without the ornament ring it refuses ("missing item"), with it all petals open.
 - G2 Adanos temple door near the troll area.
+
+- G2 Onar's farm: raw steel from Bennet, touch the forge (hot steel in the inventory), then the anvil - the
+  smithing dialog with named weapons.
+- G2 pirate beach: pirates saw wood and turn the roast spit.
+- G2 monastery/city: touch a bookstand - the book appears above it; touch again or walk away to close.
+- Walk through bushes and tree leaves, bump into trunks, walls and rocks.
+- Mroczne Tajemnice: the smithy on the smugglers' beach has its furnace, anvil and grindstone.

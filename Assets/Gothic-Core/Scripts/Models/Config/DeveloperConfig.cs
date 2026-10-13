@@ -982,6 +982,11 @@ namespace Gothic.Core.Models.Config
                  "NPCs the guild table decides. A guide friendly to the hero was friendly to every monster too.")]
         public bool EnablePersonalAttitudeOnlyForHero = true;
 
+        [Tooltip("V1: Fireplaces and torches (oCMobFire) burn by the scripts' mob routine (G1: lit 22:00-05:00), always " +
+                 "indoors (houses, mines), can be lit/put out by touching them and show no effects when far away. A " +
+                 "fire that is out gives no light, smoke nor sound.")]
+        public bool EnableFireStates = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

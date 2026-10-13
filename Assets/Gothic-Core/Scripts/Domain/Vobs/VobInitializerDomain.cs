@@ -554,7 +554,21 @@ namespace Gothic.Core.Domain.Vobs
                 return meshOnly;
             }
             
-            CreateFireVobs(fireWorld.RootObjects, go.FindChildRecursively(vob.Slot) ?? go, worldPosition);
+            var slot = go.FindChildRecursively(vob.Slot) ?? go;
+            var childCountBefore = slot.transform.childCount;
+            CreateFireVobs(fireWorld.RootObjects, slot, worldPosition);
+
+            // DeveloperConfig.EnableFireStates: the fire tree burns by the scheme's mob routine (lit at night), always
+            // indoors (light mapped: houses, mines), can be toggled and is off when far away.
+            if (_configService.Dev.EnableFireStates)
+            {
+                var fireObjects = new List<GameObject>();
+                for (var i = childCountBefore; i < slot.transform.childCount; i++)
+                    fireObjects.Add(slot.transform.GetChild(i).gameObject);
+                var scheme = vob.Visual?.Name?.Split('_')[0];
+                var isIndoor = _stationaryLightsService.IsNearLightMappedPolygons(worldPosition, _fireIndoorRadius);
+                go.AddComponent<VobFireHandler>().Init(scheme, isIndoor, fireObjects);
+            }
 
             return go;
         }
@@ -573,6 +587,9 @@ namespace Gothic.Core.Domain.Vobs
                 InitVob(vob, parent, worldPosition, false, true);
             }
         }
+
+        // A fire this close to light mapped polygons (houses, caves, mines) is indoors - it always burns.
+        private const float _fireIndoorRadius = 3f;
 
         private GameObject CreateLight(Light vob, GameObject parent, Vector3 worldPosition)
         {

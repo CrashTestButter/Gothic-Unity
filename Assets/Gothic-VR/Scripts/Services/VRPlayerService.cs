@@ -219,6 +219,14 @@ namespace Gothic.VR.Services
                 }
             }
 
+            // DeveloperConfig.EnableFireStates: touching a fireplace/torch lights it or puts it out.
+            if (_configService.Dev.EnableFireStates && mob is IFire &&
+                loader.GetComponentInChildren<VobFireHandler>(true) is { } fire)
+            {
+                fire.Toggle();
+                return;
+            }
+
             // A container without a lid (mummy) is a plain mob: the click shows/hides a loot backpack like a corpse.
             // Chests with a lid (VRVobContainer) come here too when their lid is grabbed - they open physically.
             if (mob is IContainer container && loader.GetComponentInChildren<VRVobContainer>(true) == null)

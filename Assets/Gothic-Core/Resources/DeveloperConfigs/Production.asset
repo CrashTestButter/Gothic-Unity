@@ -227,6 +227,7 @@ MonoBehaviour:
   EnableFireTreeRelativePositions: 1
   EnableFastWaypointPath: 1
   EnablePersonalAttitudeOnlyForHero: 1
+  EnableFireStates: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1
   EnableModelScale: 1

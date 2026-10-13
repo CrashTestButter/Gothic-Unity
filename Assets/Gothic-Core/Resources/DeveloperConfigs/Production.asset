@@ -231,6 +231,7 @@ MonoBehaviour:
   EnablePersonalAttitudeOnlyForHero: 1
   EnableFireStates: 1
   EnableRainFollowsPlayer: 1
+  EnableNpcSpellFx: 1
   EnableMenuZoom: 1
   EnableSaveNameKeyboard: 1
   EnableThrowRuneOneHand: 1

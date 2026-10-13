@@ -22,6 +22,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
     {
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly AudioService _audioService;
+        [Inject] private readonly Gothic.Core.Services.Meshes.ParticleService _particleService;
         [Inject] private readonly NpcNavMeshService _npcNavMeshService;
 
         private FightAiMove _move => (FightAiMove)Action.Int0;
@@ -722,7 +723,16 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 // so Daedalus content (ZS_MagicFreeze, ZS_MagicSleep, ZS_Zapped, Fear/Charm/Berzerk...)
                 // drives the actual reaction — nothing per-spell to hardcode here.
                 Logger.Log($"[AttackPlayAni] spell hit: ActiveSpell={NpcContainer.ActiveSpell} level={NpcContainer.ActiveSpellLevel} damage={spellDamage}", LogCat.Fight);
-                GlobalEventDispatcher.SpellHit.Invoke(NpcContainer, target, targetPos, spellDamage);
+                // DeveloperConfig.EnableNpcSpellFx: a spell that flies hits when it arrives.
+                var caster = NpcContainer;
+                void Hit() => GlobalEventDispatcher.SpellHit.Invoke(caster, target,
+                    target.Go != null ? target.Go.transform.position : targetPos, spellDamage);
+                if (!_configService.Dev.EnableNpcSpellFx || !_particleService.PlayNpcSpell(mfxName, caster, target, Hit))
+                {
+                    Hit();
+                    if (_configService.Dev.EnableNpcSpellFx && !SpellConst.AoeEffectNames.Contains(mfxName ?? ""))
+                        _particleService.PlaySpellHitFx(mfxName, target);
+                }
             }
             else
             {

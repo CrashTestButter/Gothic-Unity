@@ -1004,6 +1004,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Rain falls around the player instead of at the world's origin.")]
         public bool EnableRainFollowsPlayer = true;
 
+        [Tooltip("V1: An NPC's spell is visible - a flying spell (fire ball, ice block, crawler web) flies to its target " +
+                 "as its PFX and hits on arrival, the others show their cast and hit effects. Off: an invisible instant hit.")]
+        public bool EnableNpcSpellFx = true;
+
         [Tooltip("V1: In the menu the right stick pulls the menu closer (down) or pushes it away (up), 1-8 m - from 5 m the " +
                  "save game list was unreadable. Kept for the session.")]
         public bool EnableMenuZoom = true;

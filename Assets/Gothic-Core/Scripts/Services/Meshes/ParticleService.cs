@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Const;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
@@ -23,6 +25,10 @@ namespace Gothic.Core.Services.Meshes
         // Gothic's 4 cm drops are hard to see in VR.
         private const float _bloodSizeScale = 2.5f;
         private const float _oneShotFxSeconds = 5f;
+        private const float _npcSpellDefaultSpeed = 15f;
+        private const float _npcSpellMaxSeconds = 4f;
+        private const float _npcSpellHandHeight = 1.3f;
+        private const float _npcSpellHandForward = 0.5f;
 
         public void Init()
         {
@@ -147,6 +153,69 @@ namespace Gothic.Core.Services.Meshes
                 hitFx = string.IsNullOrEmpty(castFx) ? null : _vmCacheService.TryGetVfxData(castFx)?.EmFxCollDynS;
             }
             PlayVisualFx(hitFx, target.Go.transform.position, target.Go.transform);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableNpcSpellFx: what an NPC's spell looks like. A spell flying to its target (CAST key
+        /// emTrjMode_S TARGET: fire ball, ice block, Mroczne Tajemnice's crawler web) flies there as its PFX and hits
+        /// on arrival (onHit). Other spells (sleep, summoning) show their cast effect at the caster and hit at once.
+        /// Before NPC spells hit invisibly the moment the cast animation reached its frame.
+        /// Returns false when nothing flies - the caller hits at once.
+        /// </summary>
+        public bool PlayNpcSpell(string mfxName, NpcContainer caster, NpcContainer target, Action onHit)
+        {
+            if (string.IsNullOrEmpty(mfxName) || caster?.Go == null || target?.Go == null)
+                return false;
+
+            var castKey = _vmCacheService.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_CAST");
+            var baseFx = _vmCacheService.TryGetVfxData($"spellFX_{mfxName}");
+            var isFlying = castKey != null && castKey.EmTrjEaseVel > 0f &&
+                           castKey.EmTrjModeS.Contains("TARGET", StringComparison.OrdinalIgnoreCase);
+            if (!isFlying)
+            {
+                PlayVisualFx(castKey?.EmCreateFxId, caster.Go.transform.position + Vector3.up * _npcSpellHandHeight);
+                Logger.Log($"[NpcSpellFx] {mfxName}: no flight (key {(castKey == null ? "missing" : castKey.EmTrjModeS)})",
+                    LogCat.Fight);
+                return false;
+            }
+
+            var casterTransform = caster.Go.transform;
+            var origin = casterTransform.position + Vector3.up * _npcSpellHandHeight +
+                         casterTransform.forward * _npcSpellHandForward;
+            var flightGo = new GameObject($"NpcSpell ({mfxName})");
+            flightGo.transform.SetPositionAndRotation(origin, casterTransform.rotation);
+
+            var pfxName = !string.IsNullOrEmpty(castKey.VisNameS) ? castKey.VisNameS
+                : !string.IsNullOrEmpty(baseFx?.VisNameS) ? baseFx.VisNameS : $"MFX_{mfxName}_INIT";
+            var pfxGo = _meshService.CreateVobPfx(pfxName, parent: flightGo, isFullRate: true);
+            if (pfxGo == null)
+            {
+                Logger.LogWarning($"[NpcSpellFx] {mfxName}: PFX {pfxName} not found - hits at once", LogCat.Fight);
+                UnityEngine.Object.Destroy(flightGo);
+                return false;
+            }
+            foreach (var particleSystem in flightGo.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                var main = particleSystem.main;
+                main.loop = true;
+                particleSystem.Play();
+            }
+
+            var flight = flightGo.AddComponent<NpcSpellFlight>();
+            flight.Target = target.Go.transform;
+            flight.Speed = castKey.EmTrjEaseVel / 100f > 0f ? castKey.EmTrjEaseVel / 100f : _npcSpellDefaultSpeed;
+            flight.MaxSeconds = _npcSpellMaxSeconds;
+            flight.OnArrive = () =>
+            {
+                onHit?.Invoke();
+                // Area spells play it on everyone they reach (FightService).
+                if (!SpellConst.AoeEffectNames.Contains(mfxName))
+                    PlaySpellHitFx(mfxName, target);
+            };
+            Logger.Log($"[NpcSpellFx] {caster.Instance.GetName(ZenKit.Daedalus.NpcNameSlot.Slot0)} casts {mfxName} " +
+                       $"({pfxName}, {flight.Speed:F1} m/s) at {target.Instance.GetName(ZenKit.Daedalus.NpcNameSlot.Slot0)}",
+                LogCat.Fight);
+            return true;
         }
 
         private void EmitBlood(NpcContainer _, NpcContainer target, Vector3 position)

@@ -12,10 +12,11 @@ Link), not on Quest/Pico standalone.
 
 - Nothing at the moment.
 
-## 2026-10-13: harmless spells stay harmless
+## 2026-10-13: harmless spells stay harmless, guides wait
 
 - Sleep, light, charm and the other spells that aren't attacks no longer hurt their target (only "bad" spells deal
   damage, like in the original).
+- Guides wait for you again (Baal Parvez, Lares, Jack Alligator) instead of running off to the destination.
 
 ## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
 

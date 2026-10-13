@@ -13,10 +13,18 @@
 - **Ladders:** smooth climbing — stance in front of the rungs, no root hiccup between cycles, snap to the top.
 - Skeletons no longer float or fall through geometry; NPC-NPC separation.
 
+**Added 2026-10-13**
+
+- **Fast waypoint paths:** Dijkstra with a binary heap that stops at the destination. The list based search put every
+  waypoint of the world in, searched it linearly and walked the path back on every step - quadratic on G1's waynet: a
+  guide resuming its walk (Baal Parvez, 39 waypoints) froze the game for a moment whenever the hero caught up.
+
 ## Key commits
 
 `768c676d` water + NavMesh · `150d31c2` falling, climbing, walls · `b4380dfe` ladders · `28191858` skeletons ·
 `c272029e` separation · `0ac83519` GoToNpc via waypoints
+
+2026-10-13: `8094823f` fast waypoint paths
 
 ## Main files
 
@@ -26,6 +34,8 @@
 ## Config flags
 
 `EnableNpcNavMesh`, `EnableNpcWater`, `EnableNpcJumpAndFall`, `EnableNpcWallCollision`.
+
+2026-10-13: `EnableFastWaypointPath`
 
 ## Review notes
 
@@ -39,3 +49,5 @@
 
 - Run away over a small cliff; the NPC jumps after you. Lure a wolf into deep water.
 - G1: an NPC climbing a ladder (e.g. the Old Camp towers).
+
+- G1/MT: follow Baal Parvez, fall behind and catch up - no hitch when he walks on; NPCs still take their usual routes.

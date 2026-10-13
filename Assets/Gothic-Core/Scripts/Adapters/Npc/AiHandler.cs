@@ -302,7 +302,7 @@ namespace Gothic.Core.Adapters.Npc
             // Use the NPC's own senses_range (not the fixed global PERC_DIST_ASSESS_PLAYER).
             // ZS_GuidePC sets self.senses_range = HAI_DIST_ASSESS_MONSTER (~35m) so escort NPCs
             // can detect a lagging player far enough away to stop and wait.
-            if(isHeroInSensesRange && _npcHelperService.CanSenseNpc(NpcInstance, hero, false))
+            if(isHeroInSensesRange && (IsEscortSensingHero() || _npcHelperService.CanSenseNpc(NpcInstance, hero, false)))
             {
                 _npcAiService.ExecutePerception(VmGothicEnums.PerceptionType.AssessPlayer, Properties, NpcInstance, null, hero);
 
@@ -387,6 +387,22 @@ namespace Gothic.Core.Adapters.Npc
 
             // Reset timer if we executed Perceptions.
             Properties.CurrentPerceptionTime = 0f;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableEscortSensesHero: a guide/follower (ZS_GuidePC/ZS_FollowPC in G1, ZS_Guide_Player/
+        /// ZS_Follow_Player in G2) senses the hero all around its senses range - the states set SENSE_SMELL with
+        /// HAI_DIST_ASSESS_MONSTER so PERC_ASSESSPLAYER notices a lagging hero. The quiet senses (smell only 3 m)
+        /// let the guide run ahead with its back to the hero: Baal Parvez, Lares and Jack Alligator never waited.
+        /// </summary>
+        private bool IsEscortSensingHero()
+        {
+            if (!_configService.Dev.EnableEscortSensesHero)
+                return false;
+
+            var state = NpcData?.Vob?.CurrentStateName;
+            return state != null && (state.StartsWith("ZS_GUIDE", System.StringComparison.OrdinalIgnoreCase) ||
+                                     state.StartsWith("ZS_FOLLOW", System.StringComparison.OrdinalIgnoreCase));
         }
 
         private void ExecuteStates()

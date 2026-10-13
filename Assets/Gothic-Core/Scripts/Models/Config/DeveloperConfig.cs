@@ -961,6 +961,10 @@ namespace Gothic.Core.Models.Config
                  "target before (damage_per_level = 1 from C_Spell_Proto).")]
         public bool EnableOnlyBadSpellsDamage = true;
 
+        [Tooltip("V1: Guides/followers (ZS_GuidePC, ZS_Guide_Player, ...) sense the hero all around their senses range, " +
+                 "like the engine's smell - with the quiet senses they ran ahead and never waited.")]
+        public bool EnableEscortSensesHero = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

@@ -50,7 +50,17 @@
   (`SPELL_NEUTRAL`/`SPELL_GOOD`) inherit `damage_per_level = 1` from `C_Spell_Proto` and hurt their target.
 - **Thrown spells fly like a ball:** direction and speed come from the throwing hand's swing (sampled over 0.1 s), not
   the camera's view. A weak throw arcs with gravity, letting go without a swing drops the spell, and only a real throw
-  homes on targets (homing disables gravity). In the simulator (WASD) the old camera aim stays.
+  homes on targets (homing disables gravity). In the simulator (WASD) the old camera aim stays. They fly at half the
+  spell's own speed (`SpellThrowSpeedMultiplier`), and the throwing hand can't grab the rune: squeezing grip + trigger
+  (like a fist) grabbed it, both hands on the rune left none to throw with and fire balls never came.
+- **NPC spells are visible:** a flying spell (CAST key `emTrjMode_S` TARGET: fire ball, ice block, the crawler web)
+  flies from the caster's hand to its target as its PFX and hits when it arrives; the others show their cast effect and
+  the hit effect on the target. They used to hit invisibly at the cast animation's frame.
+- **Sleep and freeze on the hero:** the hero runs no Daedalus states (its `PERC_ASSESSMAGIC` never put it in
+  `ZS_MagicSleep`), so the caster cast again and again (G2 Xardas). Now the state is set on the hero's VOB (G1 via the
+  spell, G2's `Spell_Logic_Sleep` via `AI_StartState`): the scripts see it (`Npc_IsInState`, `C_NpcIsDown`), the hero
+  can't move for `SPL_TIME_SLEEP`/`SPL_TIME_FREEZE`, damage wakes him up. NPC spells follow the "only `SPELL_BAD`
+  hurts" rule too.
 
 ## Key commits
 
@@ -63,7 +73,8 @@
 charge effects cleared
 
 2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target · `0d6977ad` only harmful spells hurt ·
-`aaab7cdf` throw physics
+`aaab7cdf` throw physics · `cac631f2` throw hand can't grab the rune · `1e7895fb` visible NPC spells · `3854e391`
+sleep/freeze on the hero
 
 ## Main files
 
@@ -79,7 +90,8 @@ charge effects cleared
 2026-10-10/11: `EnableBurning`, `EnableSpellSpreadDamage`
 
 2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`, `EnableOnlyBadSpellsDamage`,
-`EnableSpellThrowPhysics`
+`EnableSpellThrowPhysics`, `SpellThrowSpeedMultiplier`, `EnableThrowRuneOneHand`, `EnableNpcSpellFx`,
+`EnableHeroSpellStates`
 
 ## Review notes
 
@@ -101,5 +113,8 @@ charge effects cleared
 - Charge a fireball and release early: weaker fireball. Same with fire rain / a summon: it fizzles.
 - Aim a summon rune at an NPC: only the summons appear, the NPC takes no damage and stays calm.
 - G1: cast sleep on an NPC - he falls asleep without losing HP; a fireball still hurts.
+- G2: anger Xardas - his sleep spell flies at you, you can't move and lose no HP, a hit wakes you up, he doesn't
+  re-cast while you sleep. An NPC mage's fire ball flies visibly and hurts when it arrives.
+- Throw a fireball with grip + trigger in the throwing hand - it flies, the rune stays in the other hand.
 - Throw a fireball hard at an NPC: it flies fast and homes. Throw softly: it arcs into the ground. Open the hand without
   a swing: the fireball drops in front of you.

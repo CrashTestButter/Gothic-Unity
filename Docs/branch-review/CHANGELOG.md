@@ -11,12 +11,19 @@ Link), not on Quest/Pico standalone.
 ## In testing (not in the build yet)
 
 - Frozen NPCs aren't treated as knocked out: Mroczne Tajemnice's crawlers freeze you with their web, then bite.
-- NPC spells are visible: a fireball or the crawler web flies to its target and hits when it arrives.
-- Sleep and freeze work on you too (you can't move for a while, a hit wakes you up) and the caster stops re-casting.
-- G2 Xardas' sleep no longer hurts.
 - Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
-- The throwing hand can't grab the rune by accident (fireballs that didn't come), the backpack vacuum takes a dropped
-  rune again, fists stay closed over NPCs and items further away.
+- The backpack vacuum takes a dropped rune again.
+
+## 2026-10-13 (night): visible NPC spells, sleep on you, save names, menu zoom
+
+- NPC spells are visible: a fireball or an ice block flies from the caster's hand to you and hits when it arrives.
+- Sleep and freeze work on you too: you can't move for a while, a hit wakes you up, and the caster stops re-casting.
+  G2 Xardas' sleep no longer hurts.
+- Fireballs come again when you squeeze grip + trigger to throw (the throwing hand grabbed the rune), and fly at half
+  the speed.
+- Fists stay closed over NPCs and items further away.
+- Name your saves on an on-screen keyboard in Gothic's font (the key under the laser lights up).
+- Pull the menu closer or push it away with the right stick - the save list is readable now.
 
 ## 2026-10-13 (evening): thrown spells like a ball, fists you hear, Marvin teams
 

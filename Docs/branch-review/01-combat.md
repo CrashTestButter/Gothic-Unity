@@ -61,7 +61,8 @@
   fists) and a knuckle hitbox punches with a swing (hand speed ≥ 2 m/s, one punch per hand per 0.5 s). Damage is the
   engine's fist damage: in fist mode an equipped sword doesn't add its damage. A swing plays the fist attack's sound
   from `Humans.mds` (`S_FISTATTACK`) with a short vibration, a punch vibrates harder; `ShowNpcColliders` shows the
-  punch volume as a sphere.
+  punch volume as a sphere. The fist stays closed over highlighted NPCs and items, near (hand grabber) and far (force
+  grabber, its own hover pose).
 
 ## Key commits
 
@@ -74,7 +75,7 @@
 minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim, X marks
 
 2026-10-11/13: `78de091f` knockout fall · `ec35b444` summons act for the hero · `45b6db3d` combo limit · `87665888` VR fists ·
-`fef6b87f` fist sound/haptics
+`fef6b87f` fist sound/haptics · `f71d91ee` fist stays closed on hover
 
 ## Main files
 

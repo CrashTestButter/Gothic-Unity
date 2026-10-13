@@ -44,6 +44,11 @@
 - **Dialogs on every game's VM:** `C_Info` instances were initialized once at boot, so what scripts write into them
   during the game went to the new VM's unbound symbols - the anvil's weapon choices were empty. Mob dialogs start after
   the calling script like the engine's queued `AI_ProcessInfos`.
+- **Save names on an on-screen keyboard** (`VirtualKeyboard`): saving opens a panel in Gothic's font in front of the
+  camera (letters, digits, shift, space, backspace, OK, cancel; the key under the laser lights up), an occupied slot
+  suggests its old name, a physical keyboard types too. VR registers runtime canvases for the UI laser through
+  `GlobalEventDispatcher.UiCanvasShown/Hidden`.
+- **Menu zoom:** the right stick pulls the VR menu closer (down) or pushes it away (up), 1-8 m, kept for the session.
 
 ## Key commits
 
@@ -54,7 +59,7 @@
 2026-10-10/11: `e8f50e2f`/`170e723b`/`b40e757d`/`ae8731a5` dragon dialogs · `8b402034`/`4a12c4e7`/`687a0b67` hit numbers
 · `768d61a8` HUD on top
 
-2026-10-11/13: `fd2195b1` music zones · `dd15ecdc` fresh DirectMusic performance · `03788c08` dialogs per game VM
+2026-10-11/13: `fd2195b1` music zones · `dd15ecdc` fresh DirectMusic performance · `03788c08` dialogs per game VM · `08aea420` save name keyboard · `c2d9f34c` menu zoom
 
 ## Main files
 
@@ -70,7 +75,7 @@
 2026-10-10/11: `EnableDialogHeroByInstance`, `EnableDialogRangeByBodySize`, `EnableDialogKeepsOutputs`,
 `EnableHudAlwaysOnTop`
 
-2026-10-11/13: `EnableMusicZonesByPosition`, `EnableDialogsPerGameVm`
+2026-10-11/13: `EnableMusicZonesByPosition`, `EnableDialogsPerGameVm`, `EnableSaveNameKeyboard`, `EnableMenuZoom`
 
 ## Review notes
 
@@ -89,3 +94,5 @@
 
 - G2: walk into and out of the pirate camp several times - the music changes, no crash; at night night themes.
 - G2 anvil: "Forge a sword" shows the weapon names (also after loading a save).
+- Save the game: the keyboard shows, type a name, OK - the slot shows the name; X saves nothing.
+- In the menu push the right stick up/down - the menu moves away/closer; reopen it - same distance.

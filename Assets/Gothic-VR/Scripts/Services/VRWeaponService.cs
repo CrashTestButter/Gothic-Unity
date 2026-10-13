@@ -249,12 +249,24 @@ namespace Gothic.VR.Services
 
         /// <summary>
         /// The held grip + trigger win over the hover pose: HVR opens the hand over a highlighted NPC/item, which is
-        /// always the case when punching. The highlight itself stays.
+        /// always the case when punching. The highlight itself stays. NPCs and items further away are hovered by the
+        /// force grabber, with a hover pose of its own - only the hand grabber's was reset and the fist still opened.
         /// </summary>
         private static void KeepFistPose(HVRHandGrabber hand)
         {
-            if (hand.HoverPoser != null && hand.HandAnimator != null && hand.HandAnimator.CurrentPoser == hand.HoverPoser)
-                hand.HandAnimator.ResetToDefault();
+            var animator = hand.HandAnimator;
+            if (animator == null || animator.CurrentPoser == null)
+                return;
+
+            var current = animator.CurrentPoser;
+            var force = hand.ForceGrabber;
+            var isHoverPose = current == hand.HoverPoser ||
+                              (force != null && (current == force.HoverPoser || current == force.GrabPoser));
+            if (!isHoverPose)
+                return;
+
+            animator.ResetToDefault();
+            hand.ResetCloneAnimator();
         }
 
         /// <summary>

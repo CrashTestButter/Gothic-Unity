@@ -46,6 +46,8 @@
   the rest fizzle out (a summon army in 3 seconds, fire rain on repeat). Invested mana isn't refunded.
 - **Summons have no target** like the engine (`targetCollectAlgo = TARGET_COLLECT_NONE`) - aimed at an NPC, the summon
   hit him for `damage_per_level` × mana and his magic perception turned him against the hero.
+- **Only harmful spells hurt:** like the engine, only `SPELL_BAD` spells deal damage - sleep, light, charm, ...
+  (`SPELL_NEUTRAL`/`SPELL_GOOD`) inherit `damage_per_level = 1` from `C_Spell_Proto` and hurt their target.
 
 ## Key commits
 
@@ -57,7 +59,7 @@
 2026-10-10/11: `9b7bf640` burning · `ca86ccb8` fire storm splash · `74066e65` NPC mage one spell per attack · `f819bab9`
 charge effects cleared
 
-2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target
+2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target · `0d6977ad` only harmful spells hurt
 
 ## Main files
 
@@ -72,7 +74,7 @@ charge effects cleared
 
 2026-10-10/11: `EnableBurning`, `EnableSpellSpreadDamage`
 
-2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`
+2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`, `EnableOnlyBadSpellsDamage`
 
 ## Review notes
 
@@ -93,3 +95,4 @@ charge effects cleared
 
 - Charge a fireball and release early: weaker fireball. Same with fire rain / a summon: it fizzles.
 - Aim a summon rune at an NPC: only the summons appear, the NPC takes no damage and stays calm.
+- G1: cast sleep on an NPC - he falls asleep without losing HP; a fireball still hurts.

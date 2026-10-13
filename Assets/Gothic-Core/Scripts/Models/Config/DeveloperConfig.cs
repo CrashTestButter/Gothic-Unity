@@ -965,6 +965,10 @@ namespace Gothic.Core.Models.Config
                  "like the engine's smell - with the quiet senses they ran ahead and never waited.")]
         public bool EnableEscortSensesHero = true;
 
+        [Tooltip("V1: Waypoint paths use Dijkstra with a binary heap and stop at the destination - the old search was " +
+                 "quadratic on G1's waynet and froze the game whenever a guide resumed its walk.")]
+        public bool EnableFastWaypointPath = true;
+
         [Tooltip("V1: An empty VR hand with grip + trigger held is a fist - the hero is in fist mode and punches with a " +
                  "swing (hand speed), the damage is the engine's fist damage (strength, blunt).")]
         public bool EnableVrFists = true;

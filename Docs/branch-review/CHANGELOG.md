@@ -18,6 +18,8 @@ Link), not on Quest/Pico standalone.
   damage, like in the original).
 - Guides wait for you again (Baal Parvez, Lares, Jack Alligator) instead of running off to the destination.
 - No more short freeze when a guide walks on after waiting (faster path finding for all NPCs).
+- Guides fight the monsters on the way (Baal Parvez attacks a lurker himself).
+- Fireplaces have their fire and smoke again; no smoke column at the Old Camp's gate.
 
 ## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
 

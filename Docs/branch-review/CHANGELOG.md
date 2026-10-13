@@ -20,6 +20,9 @@ Link), not on Quest/Pico standalone.
 - No more short freeze when a guide walks on after waiting (faster path finding for all NPCs).
 - Guides fight the monsters on the way (Baal Parvez attacks a lurker himself).
 - Fireplaces have their fire and smoke again; no smoke column at the Old Camp's gate.
+- Torches and fireplaces burn at night and are out by day like in Gothic, always burn in mines and houses, and can be
+  lit or put out by touching them; far away fires no longer smoke.
+- Rain falls around you instead of somewhere in the middle of the world.
 
 ## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
 

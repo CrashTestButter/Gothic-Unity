@@ -10,11 +10,41 @@ Link), not on Quest/Pico standalone.
 
 ## In testing (not in the build yet)
 
-- **Charged spells can't be spammed:** firing before a spell is cast asks the game's own `Spell_ProcessMana_Release`,
-  like the original. Fireball, fire storm, wind fist, … still go off weaker; fire rain, summons, transformations and
-  the rest fizzle out. No more demon army in 3 seconds.
-- **Hand tracking moves all five fingers** of the VR hands (PCVR with hand tracking, e.g. Steam Link). Touching a
-  controller switches back to the controller's finger curls.
+- Nothing at the moment.
+
+## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
+
+**Fighting**
+- **VR fists:** grip + trigger on an empty hand makes a fist; swing it into an NPC to punch (fist damage like Gothic).
+- Knocked out NPCs fall down and lie instead of standing or T-posing.
+- Monsters and NPCs fight in a normal rhythm - no more lurker biting 4 times a second (combos end like in the original).
+- Your summons fight for you: their wins count as yours (Buster's duel), guards blame you for their hits, and they
+  stop hitting someone who's down.
+- Knocked out you can still turn with the right stick.
+- Talking works again: NPCs no longer stay out of the hands' reach.
+
+**Magic**
+- Charged spells can't be spammed: releasing early makes a fireball weaker, fire rain or a summon fizzles out.
+- Aiming a summon at someone no longer hurts them or makes them hostile.
+
+**World and crafting**
+- **Smithing:** the forge heats raw steel, the anvil forges named weapons.
+- **Bookstands** show their book above them; touch again or walk away to close.
+- NPCs saw wood, turn the roast spit and use their work spots instead of standing next to them.
+- Walk through bushes and leaves, bump into tree trunks.
+- Active teleports glow, cauldrons bubble; palms and fishing nets have the right textures (G2 addon, Mroczne Tajemnice).
+- Mroczne Tajemnice: the smugglers' beach smithy is complete.
+
+**Music**
+- Music follows where you are, like the original (pirate camp, cities, night themes); fight music ends with the fight.
+- Fixed a crash when the music changed (leaving the pirate camp).
+
+**Saves**
+- Activated teleports, the Irdorath bridge progress, NPCs spawned during the game and the NPCs of every visited world
+  survive saving, loading and travelling between worlds.
+
+**Loot**
+- **Quick loot:** a green X in a corpse's or mummy's loot takes everything at once.
 
 ## 2026-10-11: G2 can be finished, movers survive saves
 

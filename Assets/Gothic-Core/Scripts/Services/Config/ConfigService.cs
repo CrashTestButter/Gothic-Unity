@@ -113,26 +113,7 @@ namespace Gothic.Core.Services.Config
         }
 
         /// <summary>
-        /// Some mod music compositions embed a native dmusic segue we can't intercept (see
-        /// MusicDomain.PCMReaderCallback) — turning music off entirely is the only workaround.
-        /// Standalone builds read this from GameSettings.json/.dev.json so one build can be
-        /// repointed at a different mod (and its music requirement) without a recompile; the
-        /// Editor uses the DeveloperConfig Inspector toggle instead for quick iteration.
-        /// </summary>
-        public bool EffectiveEnableMusic
-        {
-            get
-            {
-#if UNITY_EDITOR
-                return Dev.EnableMusic;
-#else
-                return Root.EnableMusic;
-#endif
-            }
-        }
-
-        /// <summary>
-        /// ZSpy (Daedalus PrintDebug/PrintDebugInst) logging, same Editor/build split as EffectiveEnableMusic —
+        /// ZSpy (Daedalus PrintDebug/PrintDebugInst) logging, same Editor/build split as EffectiveModPath —
         /// lets a standalone build be toggled on/off via GameSettings.json/.dev.json without a recompile,
         /// instead of only being reachable via the DeveloperConfig Inspector toggle in the Editor.
         /// </summary>

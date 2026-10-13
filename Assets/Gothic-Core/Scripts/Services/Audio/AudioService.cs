@@ -34,11 +34,9 @@ namespace Gothic.Core.Manager
 
         public void InitMusic()
         {
-            // ConfigService.EffectiveEnableMusic escape hatch: some mod compositions embed a native dmusic
-            // segue we can't pre-validate or catch (see MusicDomain.PCMReaderCallback) — skipping Init()
-            // entirely leaves _themes empty, so every Play*/Zone* call below safely no-ops instead of
-            // ever touching dmusic's native performance engine.
-            if (_configService.EffectiveEnableMusic)
+            // Skipping Init() leaves _themes empty, so every Play*/Zone* call below safely no-ops and
+            // dmusic's native engine is never touched (see GothicModIniConfig.UnitySkipMusicPlayback).
+            if (!_configService.GothicMod.UnitySkipMusicPlayback)
                 _musicDomain.Init();
 
             GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(OnMainMenuLoaded);

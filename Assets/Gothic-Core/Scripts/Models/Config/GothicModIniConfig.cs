@@ -23,6 +23,13 @@ namespace Gothic.Core.Models.Config
         public IReadOnlyList<string> Vdfs => _config.GetValueOrDefault("vdf", "")
             .Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
 
+        // Safety hatch, not a user setting (the in-game music toggle only mutes, see Gothic.ini musicEnabled).
+        // Set unitySkipMusicPlayback=1 for mods whose music crashes dmusic natively, e.g. Gothic II New Balance
+        // (EGE_DAY_Std.sgt segues into a segment with incomplete instruments; no C# try/catch can stop it).
+        // Music is then never initialized for the whole runtime.
+        public bool UnitySkipMusicPlayback =>
+            Convert.ToBoolean(Convert.ToInt16(_config.GetValueOrDefault("unitySkipMusicPlayback", "0")));
+
 
         public GothicModIniConfig(Dictionary<string, string> config, string iniFilePath)
         {

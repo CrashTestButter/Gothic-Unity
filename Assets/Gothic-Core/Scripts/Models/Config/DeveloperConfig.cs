@@ -249,11 +249,6 @@ namespace Gothic.Core.Models.Config
         [Foldout("Audio", true)]
         public bool EnableGameSounds = true;
 
-        [Tooltip("Editor only; builds use GameSettings.json EnableMusic. Escape hatch: some mod music embeds " +
-                 "dmusic segues to segments with incomplete instruments, which crash dmusic natively (no C# " +
-                 "try/catch can stop it). Turn music off for mods that hit this.")]
-        public bool EnableMusic = true;
-
 
         /**
          * ##########

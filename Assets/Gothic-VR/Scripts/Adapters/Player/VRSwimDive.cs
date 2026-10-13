@@ -83,10 +83,6 @@ namespace Gothic.VR.Adapters.Player
         // Diving: the surface can be deep above us - only reset the water level if there's no water at all.
         private const float _diveSurfaceRayLength = 100f;
 
-        // Diagnostics: one line per second while a grip is held in the water.
-        private float _nextSwimDiagnosticTime;
-        private const float _swimDiagnosticInterval = 1f;
-
         [Header("Debugging")]
         [SerializeField] private bool _debugStartDive;
 
@@ -341,7 +337,6 @@ namespace Gothic.VR.Adapters.Player
             }
 
             UpdateHeroBodyState();
-            Logger.Log($"[VRSwimDive] Water level {(ZenGineConst.WaterLevel)_playerAi.WaterLevel} -> mode {_mode}", LogCat.VR);
         }
 
         /// <summary>
@@ -476,7 +471,6 @@ namespace Gothic.VR.Adapters.Player
                 }
 
                 desiredLocalVelocity *= _swimHandMovementMultiplier;
-                LogSwimDiagnostics("swim", desiredLocalVelocity);
 
                 // Transform velocity to world space based on player rotation
                 var rotatedVelocity = _playerController.CameraRig.transform.TransformDirection(desiredLocalVelocity);
@@ -515,22 +509,6 @@ namespace Gothic.VR.Adapters.Player
             }
         }
 
-        /// <summary>
-        /// Why a stroke does or doesn't move: grips, hands under water, controller velocities, resulting push.
-        /// </summary>
-        private void LogSwimDiagnostics(string mode, Vector3 desiredLocalVelocity)
-        {
-            if (Time.time < _nextSwimDiagnosticTime)
-                return;
-            _nextSwimDiagnosticTime = Time.time + _swimDiagnosticInterval;
-
-            Logger.Log($"[VRSwimDive] {mode}: grip L={_playerInputs.IsLeftGripHoldActive} R={_playerInputs.IsRightGripHoldActive}, " +
-                       $"under water L={IsHandBelowWater(_playerController.LeftControllerTransform)} " +
-                       $"R={IsHandBelowWater(_playerController.RightControllerTransform)}, " +
-                       $"hand velocity L={_playerInputs.LeftController.Velocity} R={_playerInputs.RightController.Velocity}, " +
-                       $"push={desiredLocalVelocity}, current={_currentVelocity}", LogCat.VR);
-        }
-
         private bool IsHandBelowWater(Transform handTransform)
         {
             RaycastHit hit;
@@ -565,7 +543,6 @@ namespace Gothic.VR.Adapters.Player
                 }
 
                 desiredLocalVelocity *= _diveHandMovementMultiplier;
-                LogSwimDiagnostics("dive", desiredLocalVelocity);
 
                 // Transform velocity to world space based on player rotation
                 var rotatedVelocity = _playerController.CameraRig.transform.TransformDirection(desiredLocalVelocity);

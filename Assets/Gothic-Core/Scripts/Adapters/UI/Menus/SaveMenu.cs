@@ -167,9 +167,10 @@ namespace Gothic.Core.Adapters.UI.Menus
 
                 // Our menu prefab shows 15 slots (G1 layout); G2 installations can hold savegame16-20.
                 // Skip out-of-range folders instead of crashing the whole menu init on the array access.
+                // FIXME - Add proper 20 slots for G2 in GameObjects. (Why are they 16 for G1? Maybe 15 with missing 0 index?)
                 if (folderSaveId < 1 || folderSaveId >= SaveSlots.Length || SaveSlots[folderSaveId] == null)
                 {
-                    Logger.LogWarning($"[SaveMenu] Save folder '{saveGameFolderName}' has no UI slot. Skipping.",
+                    Logger.LogWarning($"[SaveMenu] Save folder '{saveGameFolderName}' has no UI slot for G2. Skipping for now.",
                         LogCat.Ui);
                     continue;
                 }

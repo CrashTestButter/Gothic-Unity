@@ -31,6 +31,11 @@ namespace Gothic.Core.Models.Config
             Convert.ToBoolean(Convert.ToInt16(_config.GetValueOrDefault("unitySkipMusicPlayback", "0")));
 
 
+        // Language used when auto-detection fails. Mods often rename MOBNAME_CRATE (the probe constant), e.g.
+        // G2 Renovation uses 'Skrzynka'. One of: cs, pl, ru, de, en, es, fr, it. Empty = fail the boot.
+        public string UnityFallbackLanguage => _config.GetValueOrDefault("unityFallbackLanguage", string.Empty);
+
+
         public GothicModIniConfig(Dictionary<string, string> config, string iniFilePath)
         {
             _config = config;

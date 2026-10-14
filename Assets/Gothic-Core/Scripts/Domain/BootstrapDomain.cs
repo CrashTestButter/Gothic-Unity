@@ -88,18 +88,18 @@ namespace Gothic.Core.Domain
             // TODO - Add values for Gothic 2
             else if (!TrySetFallbackLanguage())
                 throw new CultureNotFoundException("Language couldn't be identified based on current Gothic " +
-                                                   "installation. Set DeveloperConfig.FallbackLanguage to boot " +
-                                                   "anyway.");
+                                                   "installation. Set unityFallbackLanguage in the mod's ini " +
+                                                   "to boot anyway.");
         }
 
         /// <summary>
         /// Mods frequently rename MOBNAME_CRATE (the auto-detection probe constant), which would
-        /// otherwise hard-fail the boot. DeveloperConfig.FallbackLanguage lets the user pick the
-        /// language manually for such installations.
+        /// otherwise hard-fail the boot. The unityFallbackLanguage entry in the mod's ini lets
+        /// the mod author/user pick the language manually for such installations.
         /// </summary>
         private bool TrySetFallbackLanguage()
         {
-            var fallback = _configService.Dev.FallbackLanguage?.Trim().ToLowerInvariant();
+            var fallback = _configService.GothicMod?.UnityFallbackLanguage.Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(fallback))
                 return false;
 
@@ -112,14 +112,14 @@ namespace Gothic.Core.Domain
             };
             if (encoding == 0)
             {
-                Logger.LogError($"DeveloperConfig.FallbackLanguage '{fallback}' is not a known language code " +
+                Logger.LogError($"unityFallbackLanguage '{fallback}' is not a known language code " +
                                 "(cs, pl, ru, de, en, es, fr, it).", LogCat.ZenKit);
                 return false;
             }
 
             var probeValue = _gameStateService.GothicVm.GetSymbolByName("MOBNAME_CRATE")?.GetString(0) ?? "<missing>";
             Logger.LogWarning($"Language auto-detection failed (MOBNAME_CRATE='{probeValue}') — using " +
-                              $"DeveloperConfig fallback '{fallback}'.",
+                              $"mod ini unityFallbackLanguage '{fallback}'.",
                 LogCat.ZenKit);
 
             StringEncodingController.SetEncoding(encoding);

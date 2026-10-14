@@ -17,7 +17,6 @@ MonoBehaviour:
   EnableMod: 0
   ModPath: 
   ModIni: 
-  FallbackLanguage: 
   GameControls: 0
   EnableVRDeviceSimulator: 0
   ActivateMarvinMode: 0

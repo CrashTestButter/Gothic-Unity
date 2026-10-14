@@ -24,7 +24,7 @@
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "99a365d54db86897994421e96fbfc9c2255ce7b4"
+      "hash": "41e3df7f4aa5a07dffa913a088f423aa6bb688f5"
     },
     "com.gustavopsantos.reflex": {
       "version": "https://github.com/gustavopsantos/reflex.git?path=/Assets/Reflex/#12.0.1",

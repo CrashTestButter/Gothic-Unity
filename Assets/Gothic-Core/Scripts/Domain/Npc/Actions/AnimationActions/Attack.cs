@@ -39,7 +39,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             }
 
             var aiFunctionTemplate = FindAiFunctionTemplate();
-            _move = VmCacheService.TryGetFightAiData(aiFunctionTemplate, Vob.FightTactic).GetRandomMove();
+            // Null when the FIGHT VM couldn't be loaded at all (e.g. a mod DAT ZenKit can't parse and
+            // no loose fallback existed - see ResourceCacheService.TryGetDaedalusVm). Plain Attack
+            // keeps combat functional without move tables, instead of NRE-ing the whole AiHandler.
+            var fightAi = VmCacheService.TryGetFightAiData(aiFunctionTemplate, Vob.FightTactic);
+            _move = fightAi?.GetRandomMove() ?? FightAiMove.Attack;
             StartAttackAction();
         }
 

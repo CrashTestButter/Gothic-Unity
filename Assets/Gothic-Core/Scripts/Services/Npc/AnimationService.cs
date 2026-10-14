@@ -110,7 +110,12 @@ namespace Gothic.Core.Services.Npc
                 return track;
             }
 
-            var mds = _resourceCacheService.TryGetModelScript(mdsName)!;
+            var mds = _resourceCacheService.TryGetModelScript(mdsName);
+            if (mds == null)
+            {
+                mdsTracks.Add(animName, null);
+                return null;
+            }
 
             var anim = mds.Animations.FirstOrDefault(i => i.Name.EqualsIgnoreCase(animName));
             IAnimationAlias animAlias = null;
@@ -235,9 +240,14 @@ namespace Gothic.Core.Services.Npc
             {
                 track.ShareBakedSamples(bakedSource);
             }
-            else
+            else if (modelAnimation.NodeIndices.Any())
             {
                 BakeSamples(track, modelAnimation, skeleton, modelAnimation.NodeIndices.ToArray());
+            }
+            else
+            {
+                Logger.LogWarning($"{track.Name}: animation has no node indices, skipping pose baking.",
+                    LogCat.Animation);
             }
 
             if (track.Flags.HasFlag(AnimationFlags.Rotate))
@@ -383,6 +393,15 @@ namespace Gothic.Core.Services.Npc
             // We assume, that only lowest level animations are movement animations. (e.g. S_WALKL)
             if (track.Layer != 1)
             {
+                return;
+            }
+
+            // A mod's .man can fail to parse its node list (e.g. a malformed MDS event section) and come back
+            // empty - skip movement-speed detection for it instead of crashing the shared animation-track cache.
+            if (!modelAnim.NodeIndices.Any())
+            {
+                Logger.LogWarning($"{track.Name}: animation has no node indices, skipping movement-speed detection.",
+                    LogCat.Animation);
                 return;
             }
 

@@ -30,6 +30,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private string _randomDialogAnimationName;
 
+        private static bool _hasLoggedMissingSubtitles;
+
 
         public Output(AnimationAction action, NpcContainer npcContainer) : base(action, npcContainer)
         { }
@@ -80,8 +82,18 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private void PrintDialog()
         {
+            // No OU.BIN/CSL found at boot (e.g. a mod without them, see BootstrapDomain.LoadSubtitles).
+            var cutsceneLibrary = _gameStateService.Dialogs.CutsceneLibrary;
+            if (cutsceneLibrary == null)
+            {
+                if (!_hasLoggedMissingSubtitles)
+                    Logger.LogWarning("No cutscene library loaded. Dialogs play without subtitles.", LogCat.Dialog);
+                _hasLoggedMissingSubtitles = true;
+                return;
+            }
+
             // FIXME - CutsceneLibrary.Blocks is uncached and will re-read all elements each time we call it! Cache and reuse!
-            var block = _gameStateService.Dialogs.CutsceneLibrary.Blocks.Find(x => x.Name == OutputName);
+            var block = cutsceneLibrary.Blocks.Find(x => x.Name == OutputName);
 
             // Mod-only output names can be missing in OU.BIN/OU.CSL. Skip the subtitle instead of throwing an NRE.
             if (block == null)
@@ -107,6 +119,13 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 // FIXME - We might need to check overlayMds and baseMds
                 // FIXME - We might need to save amount of gestures based on mds names (if they differ for e.g. humans and orcs)
                 var mds = _resourceCacheService.TryGetModelScript(Props.MdsNameBase);
+                if (mds == null)
+                {
+                    Logger.LogError($"{Props.MdsNameBase}.mds failed to load or parse. Dialog gestures are " +
+                                    "unavailable.",
+                        LogCat.Dialog);
+                    return 0;
+                }
 
                 _gameStateService.Dialogs.GestureCount = mds.Animations
                     .Count(anim => anim.Name.StartsWithIgnoreCase("T_DIALOGGESTURE_"));

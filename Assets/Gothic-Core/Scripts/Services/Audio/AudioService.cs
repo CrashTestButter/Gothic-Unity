@@ -34,7 +34,10 @@ namespace Gothic.Core.Manager
 
         public void InitMusic()
         {
-            _musicDomain.Init();
+            // Skipping Init() leaves _themes empty, so every Play*/Zone* call below safely no-ops and
+            // dmusic's native engine is never touched (see GothicModIniConfig.UnitySkipMusicPlayback).
+            if (!_configService.GothicMod.UnitySkipMusicPlayback)
+                _musicDomain.Init();
 
             GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(OnMainMenuLoaded);
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);

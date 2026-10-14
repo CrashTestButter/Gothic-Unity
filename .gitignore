@@ -95,6 +95,7 @@ ProjectSettings/Packages/com.unity.testtools.codecoverage/Settings.json
 *.dll.meta
 *.so
 *.so.meta
+
 *CullingData.asset
 *CullingData.asset.meta
 

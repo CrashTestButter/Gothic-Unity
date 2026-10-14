@@ -48,24 +48,7 @@ namespace Gothic.Core.Domain.Config
             // We need to do a final check for Gothic installation path and which one to ultimately use.
             loadedSettings.Gothic1Path = AlterGothicInstallationPath(loadedSettings.Gothic1Path, GameVersion.Gothic1);
             loadedSettings.Gothic2Path = AlterGothicInstallationPath(loadedSettings.Gothic2Path, GameVersion.Gothic2);
-
-            // Sanitize optional mod fields - placeholder strings from the template start with "---" and must be
-            // ignored.
-            if (string.IsNullOrEmpty(loadedSettings.ModPath) || loadedSettings.ModPath.StartsWith("---"))
-            {
-                loadedSettings.ModPath = null;
-            }
-            else if (!Directory.Exists(loadedSettings.ModPath))
-            {
-                Logger.LogWarning($"GameSettings.json ModPath >{loadedSettings.ModPath}< doesn't exist. " +
-                                  "Starting without mod.", LogCat.Loading);
-                loadedSettings.ModPath = null;
-            }
-            if (string.IsNullOrEmpty(loadedSettings.ModIni) || loadedSettings.ModIni.StartsWith("---"))
-                loadedSettings.ModIni = null;
-            if (string.IsNullOrEmpty(loadedSettings.GameVersion) || loadedSettings.GameVersion.StartsWith("---"))
-                loadedSettings.GameVersion = null;
-
+            
             return loadedSettings;
         }
 

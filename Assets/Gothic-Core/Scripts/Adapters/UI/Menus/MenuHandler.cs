@@ -115,6 +115,7 @@ namespace Gothic.Core.Adapters.UI.Menus
                 // it — treat opening it as an immediate "yes" and start the new game right away (same
                 // call MainMenu.Close makes for G1's direct NEW_GAME action). The set of compatible
                 // mods is finite in practice, so a plain name list is simpler than generic detection.
+                //FIXME - Find proper way of having a yes/no popup. Maybe the type is a new one we need to support rather than hardcoded name checking like this.
                 if (menuName is "MENU_NEW_GAME" or "MENU_WIRKLICH_NEUES" or "MENU_PLAY_SELECT" or "MENU_NG")
                 {
                     // GothicMod.World defaults to G1's "World.zen" when no mod ini is loaded — for a

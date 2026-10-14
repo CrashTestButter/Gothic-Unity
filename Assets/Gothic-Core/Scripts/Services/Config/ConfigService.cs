@@ -29,7 +29,7 @@ namespace Gothic.Core.Services.Config
             get
             {
 #if UNITY_EDITOR
-                return Dev.EnableMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
+                return Dev.PreSelectMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
 #else
                 return null;
 #endif
@@ -50,7 +50,7 @@ namespace Gothic.Core.Services.Config
             get
             {
 #if UNITY_EDITOR
-                return Dev.EnableMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
+                return Dev.PreSelectMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
 #else
                 return null;
 #endif

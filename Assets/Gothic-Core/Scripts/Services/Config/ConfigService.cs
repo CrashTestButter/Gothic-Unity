@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using Gothic.Core.Domain.Config;
 using Gothic.Core.Models.Config;
 using MyBox;
@@ -20,6 +21,64 @@ namespace Gothic.Core.Services.Config
         public GothicIniConfig Gothic { get; private set; }
         public GothicModIniConfig GothicMod { get; private set; }
 
+        /// <summary>
+        /// DeveloperConfig PreSelectMod + ModPath.
+        /// </summary>
+        public string EffectiveModPath =>
+            Dev.PreSelectMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
+
+        /// <summary>
+        /// The game to start without the game selection (DeveloperConfig PreselectGameVersion + GameVersion).
+        /// </summary>
+        public bool TryGetPreselectedGameVersion(out GameVersion version)
+        {
+            version = Dev.GameVersion;
+            return Dev.PreselectGameVersion;
+        }
+
+        public string EffectiveModIni =>
+            Dev.PreSelectMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
+
+        public string EffectiveModIniFileName => EffectiveModIni.IsNullOrEmpty() ? "GothicGame.ini" : EffectiveModIni;
+
+        /// <summary>
+        /// Whether a mod is active right now, i.e. ModPath (mod in its own game root) or ModIni (mod installed
+        /// into the Gothic folder, selected by its ini) resolved to something. This is the single source of
+        /// truth for "is a mod active" — use it instead of Dev.PreSelectMod directly, which only means
+        /// "use DeveloperConfig's ModPath/ModIni" and ignores any other mod source.
+        /// </summary>
+        public bool IsModActive => !EffectiveModPath.IsNullOrEmpty() || !EffectiveModIni.IsNullOrEmpty();
+
+        /// <summary>
+        /// Folder-safe suffix identifying the active mod, so StaticCacheService keeps a separate cache
+        /// per (GameVersion, mod) instead of one shared per GameVersion — switching between vanilla and
+        /// several mods (or between mods) would otherwise stomp on each other's cached VOB bounds/texture
+        /// arrays/world chunks, forcing a full recreate every time. Naming uses the mod folder (only if the mod
+        /// has its own ModPath) and the resolved ini file (several mods use the default GothicGame.ini), e.g.
+        /// "_mod_MroczneTajemnice_GothicGame" or "_mod_DM_E" for a mod inside the Gothic folder.
+        /// Empty when running vanilla.
+        /// </summary>
+        public string ModCacheSuffix
+        {
+            get
+            {
+                if (!IsModActive)
+                    return string.Empty;
+
+                var iniName = ToFolderSafeName(Path.GetFileNameWithoutExtension(EffectiveModIniFileName));
+                if (EffectiveModPath.IsNullOrEmpty())
+                    return $"_mod_{iniName}";
+
+                var folderName = ToFolderSafeName(Path.GetFileName(EffectiveModPath.TrimEnd('/', '\\')));
+                return $"_mod_{folderName}_{iniName}";
+            }
+        }
+
+        private static string ToFolderSafeName(string name)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return new string(name.Where(c => !char.IsWhiteSpace(c) && !invalidChars.Contains(c)).ToArray());
+        }
 
         /// <summary>
         /// First one to load.
@@ -45,12 +104,11 @@ namespace Gothic.Core.Services.Config
         /// </summary>
         public void LoadGothicInis(GameVersion version)
         {
-            var rootPath = version == GameVersion.Gothic1 ? Root.Gothic1Path : Root.Gothic2Path;
-            var gothicIniPath = Path.Combine(rootPath, "system/Gothic.ini");
-            
-            var gothicModIniPath = Path.Combine(rootPath, "system");
-            gothicModIniPath =
-                Path.Combine(gothicModIniPath, Dev.ModIni.IsNullOrEmpty() ? "GothicGame.ini" : Dev.ModIni);
+            var baseRootPath = version == GameVersion.Gothic1 ? Root.Gothic1Path : Root.Gothic2Path;
+            var rootPath = EffectiveModPath ?? baseRootPath;
+            var gothicIniPath = Path.Combine(baseRootPath, "system/Gothic.ini");
+
+            var gothicModIniPath = Path.Combine(rootPath, "system", EffectiveModIniFileName);
 
             Gothic = new GothicIniConfig(IniLoader.LoadFile(gothicIniPath), gothicIniPath);
             GothicMod = new GothicModIniConfig(IniLoader.LoadFile(gothicModIniPath), gothicModIniPath);
@@ -63,12 +121,8 @@ namespace Gothic.Core.Services.Config
 
         public bool CheckIfGothicInstallationExists(GameVersion version)
         {
-            var gothicRootPath = version == GameVersion.Gothic1 ? Root.Gothic1Path : Root.Gothic2Path;
-
-            var gothicDataPath = $"{gothicRootPath}/Data";
-            var gothicWorkPath = $"{gothicRootPath}/_work";
-
-            return Directory.Exists(gothicWorkPath) && Directory.Exists(gothicDataPath);
+            var rootPath = version == GameVersion.Gothic1 ? Root.Gothic1Path : Root.Gothic2Path;
+            return Directory.Exists($"{rootPath}/_work") && Directory.Exists($"{rootPath}/Data");
         }
     }
 }

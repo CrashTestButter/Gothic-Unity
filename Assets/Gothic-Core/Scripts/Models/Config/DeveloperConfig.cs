@@ -51,12 +51,12 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Pre-select a mod.")]
         public bool PreSelectMod;
         [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
+        [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
+        public string ModIni = string.Empty;
+        [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
         [Tooltip("If Mod is outside Gothic installation, select folder used as the game root " +
                  "(contains Data/, _work/, system/), e.g. C:\\Gothic Mods\\Mroczne Tajemnice")]
         public string ModPath = string.Empty;
-        [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
-        [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
-        public string ModIni = string.Empty;
 
         public Controls GameControls = Controls.VR;
 

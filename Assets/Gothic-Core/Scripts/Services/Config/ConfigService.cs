@@ -22,19 +22,10 @@ namespace Gothic.Core.Services.Config
         public GothicModIniConfig GothicMod { get; private set; }
 
         /// <summary>
-        /// Editor: DeveloperConfig EnableMod + ModPath. Builds: no source yet (mod selection menu pending).
+        /// DeveloperConfig PreSelectMod + ModPath.
         /// </summary>
-        public string EffectiveModPath
-        {
-            get
-            {
-#if UNITY_EDITOR
-                return Dev.PreSelectMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
-#else
-                return null;
-#endif
-            }
-        }
+        public string EffectiveModPath =>
+            Dev.PreSelectMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
 
         /// <summary>
         /// The game to start without the game selection (DeveloperConfig PreselectGameVersion + GameVersion).
@@ -45,43 +36,43 @@ namespace Gothic.Core.Services.Config
             return Dev.PreselectGameVersion;
         }
 
-        public string EffectiveModIni
-        {
-            get
-            {
-#if UNITY_EDITOR
-                return Dev.PreSelectMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
-#else
-                return null;
-#endif
-            }
-        }
+        public string EffectiveModIni =>
+            Dev.PreSelectMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
 
-        /// <summary>
-        /// EffectiveModIni with the same "GothicGame.ini" fallback LoadGothicInis applies — a mod
-        /// (e.g. New Balance) can be active with no ModIni set at all, relying purely on the default.
-        /// </summary>
         public string EffectiveModIniFileName => EffectiveModIni.IsNullOrEmpty() ? "GothicGame.ini" : EffectiveModIni;
 
         /// <summary>
-        /// Whether a mod is active right now, i.e. whether ModPath resolved to something. This is the
-        /// single source of truth for "is a mod active" — use it instead of Dev.EnableMod directly,
-        /// which only means "use the Editor's ModPath/ModIni override" and is meaningless in a build.
+        /// Whether a mod is active right now, i.e. ModPath (mod in its own game root) or ModIni (mod installed
+        /// into the Gothic folder, selected by its ini) resolved to something. This is the single source of
+        /// truth for "is a mod active" — use it instead of Dev.PreSelectMod directly, which only means
+        /// "use DeveloperConfig's ModPath/ModIni" and ignores any other mod source.
         /// </summary>
-        public bool IsModActive => !EffectiveModPath.IsNullOrEmpty();
+        public bool IsModActive => !EffectiveModPath.IsNullOrEmpty() || !EffectiveModIni.IsNullOrEmpty();
 
         /// <summary>
         /// Folder-safe suffix identifying the active mod, so StaticCacheService keeps a separate cache
         /// per (GameVersion, mod) instead of one shared per GameVersion — switching between vanilla and
         /// several mods (or between mods) would otherwise stomp on each other's cached VOB bounds/texture
-        /// arrays/world chunks, forcing a full recreate every time. Naming uses the mod folder and the
-        /// resolved ini file (several mods use the default GothicGame.ini), e.g.
-        /// "_mod_MroczneTajemnice_GothicGame". Empty when running vanilla.
+        /// arrays/world chunks, forcing a full recreate every time. Naming uses the mod folder (only if the mod
+        /// has its own ModPath) and the resolved ini file (several mods use the default GothicGame.ini), e.g.
+        /// "_mod_MroczneTajemnice_GothicGame" or "_mod_DM_E" for a mod inside the Gothic folder.
+        /// Empty when running vanilla.
         /// </summary>
-        public string ModCacheSuffix => IsModActive
-            ? $"_mod_{ToFolderSafeName(Path.GetFileName(EffectiveModPath.TrimEnd('/', '\\')))}" +
-              $"_{ToFolderSafeName(Path.GetFileNameWithoutExtension(EffectiveModIniFileName))}"
-            : string.Empty;
+        public string ModCacheSuffix
+        {
+            get
+            {
+                if (!IsModActive)
+                    return string.Empty;
+
+                var iniName = ToFolderSafeName(Path.GetFileNameWithoutExtension(EffectiveModIniFileName));
+                if (EffectiveModPath.IsNullOrEmpty())
+                    return $"_mod_{iniName}";
+
+                var folderName = ToFolderSafeName(Path.GetFileName(EffectiveModPath.TrimEnd('/', '\\')));
+                return $"_mod_{folderName}_{iniName}";
+            }
+        }
 
         private static string ToFolderSafeName(string name)
         {

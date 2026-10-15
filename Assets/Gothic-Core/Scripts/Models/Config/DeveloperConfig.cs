@@ -1062,6 +1062,14 @@ namespace Gothic.Core.Models.Config
                  "stayed black/garbage and big textures tiled twice as often.")]
         public bool EnableTextureArrayMipFix = true;
 
+        [Tooltip("How much the world's lights color the VR hands (0..1, 1 = fully lit like before). The rest is their own " +
+                 "skin color - fully lit they turned purple, white or orange.")]
+        [Range(0f, 1f)]
+        public float HandLightInfluence = 0.3f;
+
+        [Tooltip("Skin color of the VR hands (multiplies the hand texture) - like the hero body's arm.")]
+        public Color HandSkinTint = new(0.78f, 0.58f, 0.48f, 1f);
+
         [Tooltip("V1: Loading a game (a new GOTHIC VM) resets the cached item/SVM/spell instances of the old VM - " +
                  "Wld_DetectItem handed scripts a dead item and the VM crashed natively (Mroczne Tajemnice's abandoned mine).")]
         public bool EnableVmCacheResetOnLoad = true;

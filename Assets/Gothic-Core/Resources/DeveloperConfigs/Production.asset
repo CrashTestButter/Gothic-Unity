@@ -245,6 +245,8 @@ MonoBehaviour:
   EnableVobWorldLight: 1
   EnableMeshCachePerTextureMode: 1
   EnableTextureArrayMipFix: 1
+  HandLightInfluence: 0.3
+  HandSkinTint: {r: 0.78, g: 0.58, b: 0.48, a: 1}
   EnableVmCacheResetOnLoad: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1

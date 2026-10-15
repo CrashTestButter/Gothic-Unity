@@ -236,7 +236,11 @@ MonoBehaviour:
   EnableHeroSpellStates: 1
   EnableMenuZoom: 1
   EnableSaveNameKeyboard: 1
+  EnableWorldLightmaps: 1
+  WorldLightmapBrightness: 1
+  EnableIndoorWorldDarkness: 1
   EnableSpellMonsterMelee: 1
+  EnableVobWorldLight: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1

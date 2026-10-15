@@ -83,6 +83,8 @@ namespace Gothic.Core.Const
             public const string HealthNumbers = "healthNumbers";
             // Slider 0...1 for the "-X HP" numbers: 0 = smallest (default size), 1 = HitNumbersMaxScale times bigger.
             public const string HitNumbersSize = "hitNumbersSize";
+            // Choice 0 Low / 1 Medium / 2 High: how often moving lights (torch, Light spell) update the world shader.
+            public const string LightRefresh = "lightRefresh";
             public const float HitNumbersMaxScale = 3f;
         }
 

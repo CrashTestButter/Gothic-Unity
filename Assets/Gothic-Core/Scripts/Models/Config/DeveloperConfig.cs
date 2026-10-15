@@ -1024,9 +1024,25 @@ namespace Gothic.Core.Models.Config
                  "backspace, OK, cancel; a physical keyboard types too). Off: the name is 'Gothic-Unity - <date>'.")]
         public bool EnableSaveNameKeyboard = true;
 
+        [Tooltip("V1: Light mapped world polygons (caves, mines, houses) show Gothic's lightmaps like the engine - before " +
+                 "they had only their dim/black vertex light. Static lights then light VOBs and NPCs only.")]
+        public bool EnableWorldLightmaps = true;
+
+        [Tooltip("Brightness of the world's lightmaps (1 = as compiled by Gothic).")]
+        [Range(0.25f, 4f)]
+        public float WorldLightmapBrightness = 1f;
+
+        [Tooltip("V1: Indoor worlds (BSP indoor: Old Mine, Free Mine, Orc Temple, mod caves) get no sun and no fog - " +
+                 "dark like the night, lit by their lights and lightmaps only.")]
+        public bool EnableIndoorWorldDarkness = true;
+
         [Tooltip("V1: Mroczne Tajemnice's web crawler casts from afar, but bites (its melee fight table) when its target is " +
                  "frozen or right in front of it - it kept freezing the hero again and again (a freeze lock).")]
         public bool EnableSpellMonsterMelee = true;
+
+        [Tooltip("V1: VOBs in light mapped areas (caves, mines, houses) take the lightmap light of the floor below them - " +
+                 "stairs and planks shone like the day next to the dark walls.")]
+        public bool EnableVobWorldLight = true;
 
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]

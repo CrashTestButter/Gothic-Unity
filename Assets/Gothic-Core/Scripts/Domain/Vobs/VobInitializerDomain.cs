@@ -288,6 +288,11 @@ namespace Gothic.Core.Domain.Vobs
             if (!isRootVob)
                 EnsureOwnVobLoader(vob, go);
 
+            // DeveloperConfig.EnableVobWorldLight: static VOBs in caves/houses take the light of the floor below.
+            if (vob.Type is not (VirtualObjectType.oCItem or VirtualObjectType.zCVobLight or VirtualObjectType.zCMover or
+                VirtualObjectType.zCPFXController))
+                _stationaryLightsService.ApplyWorldLight(go);
+
             foreach (var childVob in vob.Children)
             {
                 InitVob(childVob, go, worldPosition, false, isInRelativeTree);
@@ -618,6 +623,9 @@ namespace Gothic.Core.Domain.Vobs
             lightComp.Range = vob.Range * .01f;
             lightComp.SpotAngle = vob.ConeAngle;
             lightComp.Intensity = 1;
+
+            // DeveloperConfig.EnableWorldLightmaps: a static light is in the lightmaps - VOBs and NPCs only.
+            lightComp.IsBakedIntoWorld = vob.LightStatic && _stationaryLightsService.HasWorldLightmaps;
 
             // DeveloperConfig.EnablePooledStationaryLights: fire lights share the pool too (closest to the camera).
             if (isRuntimeSlot || _configService.Dev.EnablePooledStationaryLights)

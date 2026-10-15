@@ -24,6 +24,11 @@ namespace Gothic.Core.Services.World
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly TextureCacheService _textureCacheService;
         [Inject] private readonly TextureService _textureService;
+        [Inject] private readonly SaveGameService _saveGameService;
+
+        // DeveloperConfig.EnableIndoorWorldDarkness: the light of indoor worlds (no sun, no fog) - like the night.
+        private static readonly Color _indoorLight = new(0.25f, 0.25f, 0.3f);
+        private bool? _isIndoorWorld;
         
         
         private Vector3 _sunDirection;
@@ -82,8 +87,37 @@ namespace Gothic.Core.Services.World
             GlobalEventDispatcher.GameTimeHourChangeCallback.AddListener(UpdateRainTime);
 
             RenderSettings.skybox = Object.Instantiate(_textureService.SkyMaterial);
+            _isIndoorWorld = null;
             InitRainGo();
             InitSky();
+            if (IsIndoorWorld())
+            {
+                RenderSettings.fog = false;
+                Logger.Log("[Sky] Indoor world - no sun, no fog", LogCat.Vob);
+            }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableIndoorWorldDarkness: an indoor BSP world (Old Mine, Free Mine, Orc Temple, mod caves).
+        /// The engine's indoor sky controller has no sun and no fog there - our sun lit the mines like the day.
+        /// </summary>
+        private bool IsIndoorWorld()
+        {
+            if (_isIndoorWorld.HasValue)
+                return _isIndoorWorld.Value;
+            if (!_configService.Dev.EnableIndoorWorldDarkness)
+                return false;
+
+            try
+            {
+                _isIndoorWorld = _saveGameService.CurrentWorldData?.BspTree?.Type == ZenKit.BspTreeType.Indoor;
+            }
+            catch (Exception)
+            {
+                // No world loaded yet (menu) - ask again later.
+                return false;
+            }
+            return _isIndoorWorld.Value;
         }
 
         /// <summary>
@@ -119,7 +153,7 @@ namespace Gothic.Core.Services.World
             });
 
 
-            RenderSettings.fog = true;
+            RenderSettings.fog = !IsIndoorWorld();
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.ambientMode = AmbientMode.Flat;
             InitRainState();
@@ -300,6 +334,9 @@ namespace Gothic.Core.Services.World
             var dayLight = _configService.Dev.EnableDayNightWorldLight
                 ? Color.Lerp(Color.white, polyColor, _configService.Dev.DayNightLightStrength)
                 : Color.white;
+            var isIndoor = IsIndoorWorld();
+            if (isIndoor)
+                dayLight = _indoorLight;
 
             Shader.SetGlobalColor(_dayLightColorShaderId, dayLight);
             if (Mathf.Abs(dayLight.r - _loggedDayLight.r) + Mathf.Abs(dayLight.b - _loggedDayLight.b) > 0.1f)
@@ -307,7 +344,7 @@ namespace Gothic.Core.Services.World
                 _loggedDayLight = dayLight;
                 Logger.Log($"[Sky] Day light {dayLight}", LogCat.Vob);
             }
-            Shader.SetGlobalColor(_sunColorShaderId, _configService.Dev.SunLightColor * dayLight);
+            Shader.SetGlobalColor(_sunColorShaderId, isIndoor ? Color.black : _configService.Dev.SunLightColor * dayLight);
             Shader.SetGlobalColor(_ambientShaderId, _configService.Dev.AmbientLightColor * dayLight);
         }
 

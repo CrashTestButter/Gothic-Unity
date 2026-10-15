@@ -229,13 +229,23 @@ namespace Gothic.Core.Adapters.Vob
             }
         }
 
+        /// <summary>
+        /// A static light whose light is baked into the world's lightmaps (StationaryLightsService.HasWorldLightmaps):
+        /// it lights NPCs and VOBs outside the lightmaps only - the light mapped walls and the VOBs tinted with their
+        /// light (ApplyWorldLight) would get it twice: the Old Mine's scaffolds got brighter with every lamp the pool lit.
+        /// </summary>
+        public bool IsBakedIntoWorld { get; set; }
+
+        public int AffectedRendererCount => _affectedRenderers.Count;
+
         private void GatherRenderers()
         {
             var colliders = Physics.OverlapSphere(transform.position, Range);
             for (var i = 0; i < colliders.Length; i++)
             {
                 var renderer = colliders[i].GetComponent<MeshRenderer>();
-                if (renderer)
+                if (renderer && !(IsBakedIntoWorld && (LightsService.IsWorldChunk(renderer) ||
+                                                       LightsService.IsWorldLit(renderer))))
                 {
                     _affectedRenderers.Add(renderer);
                 }

@@ -249,6 +249,7 @@ MonoBehaviour:
   HandSkinTint: {r: 0.78, g: 0.58, b: 0.48, a: 1}
   EnableVmCacheResetOnLoad: 1
   EnableZenMaterialCountFix: 1
+  EnableLevelChangeSpawnFallback: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1

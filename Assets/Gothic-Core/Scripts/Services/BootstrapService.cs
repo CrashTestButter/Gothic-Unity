@@ -142,6 +142,7 @@ namespace Gothic.Core.Services
             GlobalEventDispatcher.LevelChangeTriggered.AddListener((world, spawn) =>
             {
                 _playerService.LastLevelChangeTriggerVobName = spawn;
+                _playerService.LastLevelChangeFromWorld = _saveGameService.CurrentWorldName;
                 LoadWorld(world, SaveGameService.SlotId.WorldChangeOnly, SceneManager.GetActiveScene().name);
             });
 

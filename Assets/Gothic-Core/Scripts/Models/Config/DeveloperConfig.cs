@@ -1078,6 +1078,10 @@ namespace Gothic.Core.Models.Config
                  "material count's first byte when it's a newline (266 materials: Mroczne Tajemnice's ANCIENTTEMPLE.ZEN).")]
         public bool EnableZenMaterialCountFix = true;
 
+        [Tooltip("V1: A level change whose start VOB isn't a free point spawns at the waypoint/VOB of that name, or next to " +
+                 "the trigger back to the old world - Mroczne Tajemnice's temple sends you to a start VOB the mine lacks.")]
+        public bool EnableLevelChangeSpawnFallback = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

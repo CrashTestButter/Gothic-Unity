@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Model.UI.Menu;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
@@ -10,6 +11,7 @@ using Gothic.Core.Services.World;
 using MyBox;
 using Reflex.Attributes;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Logger = Gothic.Core.Logging.Logger;
 
@@ -23,6 +25,7 @@ namespace Gothic.Core.Adapters.UI.Menus
         [Inject] private readonly BootstrapService _bootstrapService;
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly MarvinService _marvinService;
 
         private Dictionary<string, GameObject> _menuList = new();
         private string _currentMenu;
@@ -39,6 +42,18 @@ namespace Gothic.Core.Adapters.UI.Menus
         private void OnEnable()
         {
             OpenMenu("MENU_MAIN");
+
+            // Marvin mode activation: typed "marvin" while the menu is open, like in the original status screen.
+            _marvinService.OnMenuOpened();
+            if (Keyboard.current != null)
+                Keyboard.current.onTextInput += _marvinService.OnTextTyped;
+        }
+
+        private void OnDisable()
+        {
+            if (Keyboard.current != null)
+                Keyboard.current.onTextInput -= _marvinService.OnTextTyped;
+            _marvinService.OnMenuClosed();
         }
 
         private void InitializeMenus()

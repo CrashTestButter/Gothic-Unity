@@ -5,6 +5,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Models.UI;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
@@ -214,6 +215,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, string>("PrintDebugCh", PrintDebugCh);
             vm.RegisterExternal<string>("PrintDebugInst", PrintDebugInst);
             vm.RegisterExternal<int, string>("PrintDebugInstCh", PrintDebugInstCh);
+            vm.RegisterExternal<int, string, int, int, string, int>("PrintScreen", PrintScreen);
 
             // Sound
 
@@ -687,6 +689,15 @@ namespace Gothic.Core.Domain.Vm
                 return;
 
             Logger.Log($"[zspy,{channel}]: {message}", LogCat.ZSpy);
+        }
+
+        /// <summary>
+        /// posX/posY are percent of the screen, -1 centers the text. The return value isn't used by the scripts.
+        /// </summary>
+        public int PrintScreen(string message, int posX, int posY, string font, int timeSec)
+        {
+            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, timeSec));
+            return 0;
         }
 
         #endregion

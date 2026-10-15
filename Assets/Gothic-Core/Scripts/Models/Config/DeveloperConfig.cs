@@ -64,8 +64,8 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(fieldToCheck: nameof(GameControls), compareValues: Controls.VR)]
         public bool EnableVRDeviceSimulator;
 
-        [Tooltip("Show Marvin Mode menu next to left hand in VR.")]
-        public bool ActivateMarvinMode;
+        [Tooltip("Start with Marvin mode on (shortcut). Without it, Marvin mode can still be activated in game.")]
+        public bool PreselectMarvinMode;
 
         
         /**

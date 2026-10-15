@@ -185,6 +185,9 @@ namespace Gothic.Core.Models.Container
         // Npc_SetActiveSpellInfo: for transformation spells the monster instance the caster becomes.
         public int ActiveSpellInfo;
         public int ActiveSpellLevel = 1;
+        // DeveloperConfig.EnableSpellMonsterMelee: a spell casting monster (Mroczne Tajemnice's web crawler) fights in
+        // melee right now - its target is frozen or right in front of it (Attack sets it, AttackPlayAni bites).
+        public bool IsSpellMonsterInMelee;
         public GameObject ActiveSpellVfxGo;
 
         // Light spell toggle — persists across rune grab/ungrab (unlike ActiveSpellVfxGo, which

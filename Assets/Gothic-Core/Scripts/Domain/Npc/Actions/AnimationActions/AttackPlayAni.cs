@@ -695,7 +695,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             Logger.LogWarning($"[AttackPlayAni] HIT: {NpcInstance.GetName(NpcNameSlot.Slot0)} → {target.Instance.GetName(NpcNameSlot.Slot0)} dist={toTarget.magnitude:F2}m angle={angle:F0}°", LogCat.Fight);
 
             var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
-            if (weaponState == VmGothicEnums.WeaponState.Mage)
+            // DeveloperConfig.EnableSpellMonsterMelee: the web crawler bites its frozen/close target instead.
+            if (weaponState == VmGothicEnums.WeaponState.Mage && !NpcContainer.IsSpellMonsterInMelee)
             {
                 var mfxName = GetSpellMfxName();
                 var spellDamage = GetNpcSpellDamage(mfxName);
@@ -781,7 +782,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             // Matches Attack.cs's MyFkFocusFar routing: a ranged/magic attack can be dispatched from
             // anywhere within FK-range, not just the old artificial "close" W-range guess — otherwise
             // TryFireHit() rejects the very attacks the fight-AI just chose to fire as "out of reach".
-            if (weaponState is VmGothicEnums.WeaponState.Mage or VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow)
+            if (!NpcContainer.IsSpellMonsterInMelee &&
+                weaponState is VmGothicEnums.WeaponState.Mage or VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow)
                 return FightConst.RangedAttackReachMeters * _configService.Dev.RangedCombatRangeMultiplier;
 
             var baseRange = GameStateService.GuildValues.GetFightRangeBase(Vob.GuildTrue);

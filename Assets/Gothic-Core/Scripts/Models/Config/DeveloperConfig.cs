@@ -1024,6 +1024,10 @@ namespace Gothic.Core.Models.Config
                  "backspace, OK, cancel; a physical keyboard types too). Off: the name is 'Gothic-Unity - <date>'.")]
         public bool EnableSaveNameKeyboard = true;
 
+        [Tooltip("V1: Mroczne Tajemnice's web crawler casts from afar, but bites (its melee fight table) when its target is " +
+                 "frozen or right in front of it - it kept freezing the hero again and again (a freeze lock).")]
+        public bool EnableSpellMonsterMelee = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

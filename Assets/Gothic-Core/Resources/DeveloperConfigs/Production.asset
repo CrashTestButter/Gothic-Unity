@@ -236,6 +236,7 @@ MonoBehaviour:
   EnableHeroSpellStates: 1
   EnableMenuZoom: 1
   EnableSaveNameKeyboard: 1
+  EnableSpellMonsterMelee: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1

@@ -57,13 +57,15 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             if (TryGiveUpOutOfRangedReach())
                 return;
 
+            var tactic = UpdateSpellMonsterMelee(out var meleeTactic) ? meleeTactic : Vob.FightTactic;
             var aiFunctionTemplate = FindAiFunctionTemplate();
             // Null when the FIGHT VM couldn't be loaded at all (e.g. a mod DAT ZenKit can't parse and
             // no loose fallback existed — see ResourceCacheService.TryGetDaedalusVm). Plain Attack
             // keeps combat functional without move tables, instead of NRE-ing the whole AiHandler.
-            var fightAi = VmCacheService.TryGetFightAiData(aiFunctionTemplate, Vob.FightTactic);
+            var fightAi = VmCacheService.TryGetFightAiData(aiFunctionTemplate, tactic);
             _move = fightAi?.GetRandomMove() ?? FightAiMove.Attack;
-            Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} move={_move} fightMode={(VmGothicEnums.WeaponState)Vob.FightMode} tactic={Vob.FightTactic}", LogCat.Ai);
+            Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} move={_move} fightMode={(VmGothicEnums.WeaponState)Vob.FightMode} tactic={tactic}" +
+                       (NpcContainer.IsSpellMonsterInMelee ? " (spell monster in melee)" : ""), LogCat.Ai);
             StartAttackAction();
         }
 
@@ -101,11 +103,52 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             return true;
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableSpellMonsterMelee: Mroczne Tajemnice's crawlers freeze with their web, then bite
+        /// (B_SelectWeapon picks the mage or the melee crawler once). The mage crawler kept casting at a frozen hero -
+        /// a freeze lock. With its target frozen or right in front of it, it fights with its melee table
+        /// (FAI_MINECRAWLER) and bites; farther away it casts again. Mods with such monsters: the finite list below.
+        /// </summary>
+        private bool UpdateSpellMonsterMelee(out int meleeTactic)
+        {
+            meleeTactic = -1;
+            var wasInMelee = NpcContainer.IsSpellMonsterInMelee;
+            NpcContainer.IsSpellMonsterInMelee = false;
+            if (!_configService.Dev.EnableSpellMonsterMelee ||
+                (VmGothicEnums.WeaponState)Vob.FightMode != VmGothicEnums.WeaponState.Mage)
+                return false;
+
+            var vm = GameStateService.GothicVm;
+            var crawlerGuild = vm.GetSymbolByName("GIL_MINECRAWLER");
+            var crawlerTactic = vm.GetSymbolByName("FAI_MINECRAWLER");
+            if (crawlerGuild == null || crawlerTactic == null || NpcInstance.Guild != crawlerGuild.GetInt(0))
+                return false;
+
+            var target = _enemy.GetUserData();
+            var isFrozen = NpcHelperService.IsMagicFrozen(target);
+            var meleeRange = GetAttackRange(isMelee: true);
+            if (!isFrozen && GetDistance() > meleeRange * _spellMonsterMeleeRangeFactor)
+            {
+                if (wasInMelee)
+                    Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} back to casting", LogCat.Ai);
+                return false;
+            }
+
+            meleeTactic = crawlerTactic.GetInt(0);
+            NpcContainer.IsSpellMonsterInMelee = true;
+            if (!wasInMelee)
+                Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} closes in to bite " +
+                           $"({(isFrozen ? "target frozen" : "target close")})", LogCat.Ai);
+            return true;
+        }
+
+        private const float _spellMonsterMeleeRangeFactor = 2f;
+
         private string FindAiFunctionTemplate()
         {
             var isInFocus = _npcAiService.ExtNpcCanSeeNpc(NpcInstance, _enemy, false, 30f); // 60° is also assumed by Open Gothic.
             var distance = GetDistance();
-            var attackRange = GetAttackRange();
+            var attackRange = GetAttackRange(NpcContainer.IsSpellMonsterInMelee);
             var isInWRange = distance <= attackRange; // W-Range == Weapon range
             var isInGRange = !isInWRange && distance <= attackRange * 3; // G-Range == Goto range
             // FIXME - We need to handle an "isRunning" state for >MyGRunTo<
@@ -122,7 +165,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             // table with real Attack entries for ranged combat. Without this, a mage/archer beyond
             // W-Range gets stuck cycling Turn/Strafe forever and can never actually fire.
             var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
-            var isRangedWeapon = weaponState is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow or VmGothicEnums.WeaponState.Mage;
+            var isRangedWeapon = !NpcContainer.IsSpellMonsterInMelee &&
+                                 weaponState is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow or VmGothicEnums.WeaponState.Mage;
             if (isRangedWeapon)
                 return isInFocus ? FightConst.AttackActions.MyFkFocusFar : FightConst.AttackActions.MyFkNoFocusFar;
 
@@ -224,9 +268,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         }
 
         /// Fight range is calculated by base range + weapon attack range.
-        private float GetAttackRange()
+        private float GetAttackRange(bool isMelee = false)
         {
-            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
+            // A spell monster in melee (EnableSpellMonsterMelee) bites with its fist range.
+            var weaponState = isMelee ? VmGothicEnums.WeaponState.Fist : (VmGothicEnums.WeaponState)Vob.FightMode;
 
             // Magic and ranged use fixed engagement ranges instead of guild melee values. These are
             // the W-range boundary only (inside it the close-quarters W tables are used; beyond it

@@ -680,14 +680,14 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private IEnumerator DriveDynamicLight(GameObject lightGo, StationaryLight stationaryLight)
         {
-            const float refreshInterval = 0.3f;
             var linearColor = _lightColor.linear;
 
             while (lightGo != null)
             {
                 _stationaryLightsService.UpdateDynamicLight(lightGo.transform.position, _lightRange, linearColor);
                 stationaryLight.Refresh();
-                yield return new WaitForSeconds(refreshInterval);
+                // Immersion setting "Light refresh" (Low/Medium/High).
+                yield return new WaitForSeconds(_stationaryLightsService.MovingLightRefreshSeconds);
             }
         }
 

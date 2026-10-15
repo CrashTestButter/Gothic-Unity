@@ -33,7 +33,6 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private const float _lightRange = 7f;
         private const float _lightIntensity = 1.6f;
         private static readonly Color _lightColor = new(1f, 0.7f, 0.4f);
-        private const float _lightRefreshSeconds = 0.3f;
 
         private GameObject _fire;
         private StationaryLight _light;
@@ -119,12 +118,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private IEnumerator DriveLight()
         {
-            var wait = new WaitForSeconds(_lightRefreshSeconds);
             while (_light != null)
             {
                 _stationaryLightsService.UpdateDynamicLight(_light.transform.position, _lightRange, _lightColor.linear);
                 _light.Refresh();
-                yield return wait;
+                // Immersion setting "Light refresh" (Low/Medium/High).
+                yield return new WaitForSeconds(_stationaryLightsService.MovingLightRefreshSeconds);
             }
         }
 

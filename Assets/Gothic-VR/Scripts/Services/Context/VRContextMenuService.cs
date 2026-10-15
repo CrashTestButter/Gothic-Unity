@@ -74,7 +74,10 @@ namespace Gothic.VR.Services.Context
                 "Show the Marvin panel (needs Marvin mode)", menuStartY + menuDY * 4));
             vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "MARVIN", VRConstants.IniNames.MarvinPanel,
                 menuStartY + menuDY * 4, 1));
-            vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * 5));
+            vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "LIGHT_REFRESH", "Light refresh",
+                "How smoothly a torch's light follows your hand", menuStartY + menuDY * 5));
+            vrImmersionMenu.Items.Add(CreateLightRefreshChoice(gameMenu, menuStartY + menuDY * 5));
+            vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * 6));
             vrImmersionMenu.Items.Add(CreateImmersionBackButton(mainMenu));
         }
 
@@ -105,6 +108,13 @@ namespace Gothic.VR.Services.Context
             item.OnChgSetOption = iniName;
             item.OnChgSetOptionSection = VRConstants.IniSectionImmersion;
 
+            return item;
+        }
+
+        private MutableMenuItemInstance CreateLightRefreshChoice(AbstractMenuInstance gameMenu, int posY)
+        {
+            var item = CreateToggleChoice(gameMenu, "LIGHT_REFRESH", Constants.IniNames.LightRefresh, posY);
+            item.SetText(0, "Low|Medium|High");
             return item;
         }
 

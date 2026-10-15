@@ -469,7 +469,14 @@ namespace Gothic.Core.Domain.Meshes.Builder
             var subMeshPerTextureFormat = new Dictionary<TextureCacheService.TextureArrayTypes, int>();
 
             // Elements like NPC armors might have multiple meshes. We therefore need to store each mesh with it's associated index.
-            if (_multiTypeCacheService.Meshes.TryGetValue($"{MeshName}_{meshIndex}", out Mesh mesh))
+            // DeveloperConfig.EnableMeshCachePerTextureMode: a texture array mesh (slice in uv.z, one sub mesh per array)
+            // and a single texture mesh (one sub mesh per Gothic material) of the same model aren't interchangeable.
+            // Mroczne Tajemnice has items with world object visuals (planks, palisade): the item's mesh was cached
+            // first and the world VOBs got it - stone textures (slice 0) and black parts on their wood.
+            var meshCacheKey = _builderConfigService.Dev.EnableMeshCachePerTextureMode
+                ? $"{MeshName}_{meshIndex}_{(UseTextureArray ? "array" : "single")}"
+                : $"{MeshName}_{meshIndex}";
+            if (_multiTypeCacheService.Meshes.TryGetValue(meshCacheKey, out Mesh mesh))
             {
                 meshFilter.sharedMesh = mesh;
                 return;
@@ -590,7 +597,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
             if (weldVertices)
                 mesh.Optimize();
 
-            _multiTypeCacheService.Meshes.Add($"{MeshName}_{meshIndex}", mesh);
+            _multiTypeCacheService.Meshes.Add(meshCacheKey, mesh);
         }
 
         protected void PrepareMeshFilter(MeshFilter meshFilter, ISoftSkinMesh soft, Renderer renderer, int meshIndex)

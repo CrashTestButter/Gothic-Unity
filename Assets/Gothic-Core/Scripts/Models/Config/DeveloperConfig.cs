@@ -1048,6 +1048,10 @@ namespace Gothic.Core.Models.Config
                  "stairs and planks shone like the day next to the dark walls.")]
         public bool EnableVobWorldLight = true;
 
+        [Tooltip("V1: Meshes are cached separately for texture array and single texture use - a mod item with a world " +
+                 "object's visual (Mroczne Tajemnice's planks) handed its mesh to the world VOBs: stone textures, black parts.")]
+        public bool EnableMeshCachePerTextureMode = true;
+
         [Tooltip("V1: Textures above the texture array size without enough mips (Mroczne Tajemnice's 1024x1024 ones) are " +
                  "downscaled with a generated mip chain, and uv scale/mip limit follow what the slice holds - their slices " +
                  "stayed black/garbage and big textures tiled twice as often.")]

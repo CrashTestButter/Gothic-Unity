@@ -28,8 +28,13 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
   dynamic lights work ([Rendering](08-rendering-video.md)); the web crawler bites frozen/close targets
   ([Combat](01-combat.md)).
 - ⚠️ Known: `ANCIENTTEMPLE.ZEN` (the portal from the abandoned mine, the Guardians quest) fails in ZenKit's native
-  world parser (`ZkWorld_load() failed: std::bad_alloc`, reproduced outside Unity; same archive format as the
-  abandoned mine, standard VOB classes) - needs a ZenKit fix.
+  world parser (`ZkWorld_load() failed: std::bad_alloc`). Cause found: the world has 266 materials (`0A 01 00 00`)
+  and ZenKit's binary archive header skips the count's `0x0A` byte as a blank line - a workaround is in testing, the
+  ZenKit issue draft is in `_notes/active/zenkit-material-count-newline-issue.md`.
+- **Items where scripts expect an NPC:** NPC/item parameters of the externals are taken as instances and checked - G1's
+  `B_FetchWeapon` calls `Npc_GetDistToNpc(self, item)` (the engine measures between any two VOBs), the item failed
+  ZenKitCS' cast, the stack stayed broken and the VM crashed natively (Mroczne Tajemnice's giant skeleton by Fellan's
+  armor). Loading a game also resets the item/SVM/spell instances cached from the old VM.
 
 ## Key commits
 
@@ -39,7 +44,8 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 
 2026-10-11/13: `5ce0cbcd` fireplace children · `4d39c699` texture array materials
 
-2026-10-15: `23d763df` texture array mips · `25183f71` dynamic VOB lights · `075f9e69` crawler melee
+2026-10-15: `23d763df` texture array mips · `25183f71` dynamic VOB lights · `075f9e69` crawler melee · `4dcdfff6`
+items as NPC parameters
 
 ## Main files
 
@@ -51,6 +57,8 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 `EnableMod`, `ModPath`, `FallbackLanguage`, `EnableMusic`, `EnableOggAudio`; `GameSettings.json` (builds): `GameVersion`,
 `ModPath`, `ModIni`, `EnableMusic`, `EnableZSpyLogs`, `EnableOggAudio`, `EnableVRDeviceSimulator` — one build runs G1, G2 and their mods
 (see [How to test](14-how-to-test.md)).
+
+2026-10-15: `EnableVmCacheResetOnLoad`
 
 ## Review notes
 
@@ -67,3 +75,4 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 - Mroczne Tajemnice: smugglers' beach smithy complete, palms and nets textured.
 
 - Mroczne Tajemnice: Siekacz's tavern and the catapult textured; the abandoned mine lit blue/teal.
+- Mroczne Tajemnice abandoned mine: let the giant skeleton by Fellan's armor pick up the sword - no crash.

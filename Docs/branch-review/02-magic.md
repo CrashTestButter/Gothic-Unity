@@ -62,6 +62,12 @@
   can't move for `SPL_TIME_SLEEP`/`SPL_TIME_FREEZE`, damage wakes him up. NPC spells follow the "only `SPELL_BAD`
   hurts" rule too.
 
+**Added 2026-10-15**
+
+- **NPC spells can be dodged:** a flying spell steers to a mix of where its target was at the cast and where it is now
+  (`NpcSpellHoming` = 0.2), hits only within 0.8 m and otherwise flies on and fades - fully homing, nobody could dodge
+  a crawler's web.
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
@@ -75,6 +81,8 @@ charge effects cleared
 2026-10-11/13: `ff788ac1` spell release check · `d940825d` summons without target · `0d6977ad` only harmful spells hurt ·
 `aaab7cdf` throw physics · `cac631f2` throw hand can't grab the rune · `1e7895fb` visible NPC spells · `3854e391`
 sleep/freeze on the hero
+
+2026-10-15: `b6dcf8c7` dodgeable NPC spells
 
 ## Main files
 
@@ -92,6 +100,8 @@ sleep/freeze on the hero
 2026-10-11/13: `EnableSpellReleaseCheck`, `EnableSummonSpellWithoutTarget`, `EnableOnlyBadSpellsDamage`,
 `EnableSpellThrowPhysics`, `SpellThrowSpeedMultiplier`, `EnableThrowRuneOneHand`, `EnableNpcSpellFx`,
 `EnableHeroSpellStates`
+
+2026-10-15: `NpcSpellHoming`
 
 ## Review notes
 
@@ -118,3 +128,4 @@ sleep/freeze on the hero
 - Throw a fireball with grip + trigger in the throwing hand - it flies, the rune stays in the other hand.
 - Throw a fireball hard at an NPC: it flies fast and homes. Throw softly: it arcs into the ground. Open the hand without
   a swing: the fireball drops in front of you.
+- Mroczne Tajemnice crawler / G2 fire mage: step aside when the spell flies at you - it misses and fades behind you.

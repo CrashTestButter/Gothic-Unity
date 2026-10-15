@@ -40,6 +40,12 @@
   players couldn't look around while down.
 - **Fists** (see [Combat](01-combat.md)): grip + trigger on an empty hand.
 
+**Added 2026-10-15**
+
+- **Skin colored hands:** the `VRHands` material gets the hero's arm skin tint (`HandSkinTint`); lights and the sky
+  colored ambient tint it only 30% (`HandLightInfluence`), emission with the skin texture carries the rest, no
+  highlights or reflections (matte, not waxy). Fully lit they turned navy at night, red in the evening.
+
 ## Key commits
 
 `7227eb60`/`1e7389ac`/`05dfa9f7`/`434432cd` hero body · `84a84753` equip · `c62882ff` pouches · `567fc20d`/`bdda2d2a`
@@ -49,6 +55,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-10/11: `a3a7209b` personal space · `8a8e717e` mob child colliders · `a2df3346` grab after world change
 
 2026-10-11/13: `51f2be43` personal space vs talking · `d5731bdb` turning while knocked out · `87665888` fists
+
+2026-10-15: `367d7f78` skin colored hands
 
 ## Main files
 
@@ -65,6 +73,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-10/11: `EnableHeroPersonalSpace`, `EnableMobColliderRefresh`
 
 2026-10-11/13: `EnableKnockoutTurning`, `EnableVrFists`
+
+2026-10-15: `HandLightInfluence`, `HandSkinTint`
 
 ## Review notes
 
@@ -83,3 +93,4 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 
 - Walk up to any citizen and grab him to talk; orcs/wolves and NPCs with drawn weapons still keep 1 m away.
 - Get knocked out (VR): the right stick turns you, walking/teleport is locked until you stand up.
+- Skip time to night and evening, enter a cave: the hands stay skin colored and matte, only slightly tinted.

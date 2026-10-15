@@ -12,10 +12,17 @@ Link), not on Quest/Pico standalone.
 
 - Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
 - The backpack vacuum takes a dropped rune again.
-- NPC spells can be dodged with a step aside (they follow you only a little).
-- VR hands keep a skin color like the hero's arm, matte; light and time of day tint them only a little.
-- Mroczne Tajemnice: no crash next to the giant skeleton by Fellan's armor in the abandoned mine.
 - A light flick throws a spell weakly, only a real swing throws it hard.
+- Mroczne Tajemnice: the abandoned mine's portal takes you to the ancient temple (the Guardians quest) - the world
+  loads with a workaround for a ZenKit header bug.
+
+## 2026-10-15 (evening): dodge spells, skin colored hands, no crash by Fellan's armor
+
+- NPC spells can be dodged with a step aside: they follow you only a little and fly on when they miss (a crawler's
+  web, a fireball).
+- VR hands keep a skin color like the hero's arm and look matte; light and time of day tint them only a little (they
+  turned navy, light blue or red).
+- Mroczne Tajemnice: no crash when the giant skeleton picks up a sword by Fellan's armor in the abandoned mine.
 
 ## 2026-10-15: caves and mines like in Gothic, Mroczne Tajemnice textures and crawlers
 

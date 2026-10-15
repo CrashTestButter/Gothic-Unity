@@ -231,6 +231,7 @@ MonoBehaviour:
   EnablePersonalAttitudeOnlyForHero: 1
   EnableFireStates: 1
   EnableRainFollowsPlayer: 1
+  EnableFrozenIsNotDown: 1
   EnableNpcSpellFx: 1
   EnableHeroSpellStates: 1
   EnableMenuZoom: 1

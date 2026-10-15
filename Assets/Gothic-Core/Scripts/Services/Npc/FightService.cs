@@ -94,7 +94,7 @@ namespace Gothic.Core.Services.Npc
                 {
                     if (candidate == caster || candidate.Go == null || !candidate.Go.activeInHierarchy)
                         continue;
-                    if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                    if (NpcHelperService.IsDown(candidate))
                         continue;
                     if (Vector3.Distance(casterPos, candidate.Go.transform.position) > rangeM)
                         continue;
@@ -130,7 +130,7 @@ namespace Gothic.Core.Services.Npc
                 if (candidate == caster || candidate == directTarget || candidate.Go == null ||
                     !candidate.Go.activeInHierarchy)
                     continue;
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                if (NpcHelperService.IsDown(candidate))
                     continue;
                 if (Vector3.Distance(pos, candidate.Go.transform.position) > SpellConst.SpreadRangeMeters)
                     continue;
@@ -259,7 +259,7 @@ namespace Gothic.Core.Services.Npc
             // DeveloperConfig.EnableSummonActsForMaster: summons stop at a downed target like the scripts
             // (ZS_MM_Attack_Loop: C_NpcIsDown(other)) - a swing already under way doesn't finish it off.
             if (_configService.Dev.EnableSummonActsForMaster && attacker.SummonedBy != null &&
-                target.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious)
+                NpcHelperService.IsKnockedOut(target))
             {
                 Logger.Log($"[FightService] {attacker.Instance.GetName(NpcNameSlot.Slot0)} (summon) doesn't finish off " +
                            $"unconscious {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
@@ -272,7 +272,7 @@ namespace Gothic.Core.Services.Npc
                 AlertPartyMembersToDefendHero(attacker);
 
             // Any attacker finishes off unconscious NPC — set dead and call ZS_Dead.
-            if (target.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious && !isHero)
+            if (NpcHelperService.IsKnockedOut(target) && !isHero)
             {
                 Logger.Log($"[FightService] {attacker.Instance.GetName(NpcNameSlot.Slot0)} finishes off unconscious {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
                 target.Props.BodyState = VmGothicEnums.BodyState.BsDead;
@@ -284,7 +284,7 @@ namespace Gothic.Core.Services.Npc
             Logger.Log($"[FightService.OnHit] *** {attacker.Instance.GetName(NpcNameSlot.Slot0)} HIT {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
             if (OnHitUpdateHealth(attacker, target, damageOverride, overrideProtectionIndex))
             {
-                if (!isHero && target.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious)
+                if (!isHero && NpcHelperService.IsKnockedOut(target))
                 {
                     Logger.Log($"[FightService.OnHit] {target.Instance.GetName(NpcNameSlot.Slot0)} finished off while unconscious — DEAD", LogCat.Npc);
                     target.Props.BodyState = VmGothicEnums.BodyState.BsDead;
@@ -511,7 +511,7 @@ namespace Gothic.Core.Services.Npc
             {
                 if (candidate == target || candidate == attacker)
                     continue;
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                if (NpcHelperService.IsDown(candidate))
                     continue;
                 // Skip culled NPCs — Go is null or inactive (out of cull range).
                 if (candidate.Go == null || !candidate.Go.activeInHierarchy)
@@ -656,7 +656,7 @@ namespace Gothic.Core.Services.Npc
             foreach (var candidate in _multiTypeCacheService.NpcCache)
             {
                 if (!IsPartyMember(candidate)) continue;
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious) continue;
+                if (NpcHelperService.IsDown(candidate)) continue;
                 if (candidate.Go == null || !candidate.Go.activeInHierarchy) continue;
 
                 // Fallback only — if the party member is already committed to a live primary target

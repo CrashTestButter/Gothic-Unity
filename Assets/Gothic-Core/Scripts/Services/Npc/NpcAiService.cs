@@ -164,7 +164,7 @@ namespace Gothic.Core.Services.Npc
         public bool ExtNpcCanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f)
         {
             var otherContainer = other?.GetUserData();
-            if (otherContainer != null && otherContainer.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious)
+            if (otherContainer != null && NpcHelperService.IsKnockedOut(otherContainer))
                 return false;
 
             // A seated NPC's root faces its mob slot direction (into the bench) while the sit animation turned his body
@@ -981,7 +981,7 @@ namespace Gothic.Core.Services.Npc
                     continue;
                 if (candidate.Instance.Index == npc.Index)
                     continue;
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                if (NpcHelperService.IsDown(candidate))
                     continue;
 
                 var sqrDist = (candidate.Go.transform.position - selfPosition).sqrMagnitude;
@@ -1078,7 +1078,7 @@ namespace Gothic.Core.Services.Npc
             {
                 if (candidate == sender || candidate == exclude || candidate.Props == null || candidate.Instance == null) continue;
                 if (candidate.PrefabProps != null && candidate.PrefabProps.IsHero()) continue;
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious) continue;
+                if (NpcHelperService.IsDown(candidate)) continue;
                 if (candidate.Go == null || !candidate.Go.activeInHierarchy) continue;
                 if (!candidate.Props.Perceptions.TryGetValue(perception, out var perceptionFunction) || perceptionFunction < 0) continue;
 
@@ -1210,8 +1210,7 @@ namespace Gothic.Core.Services.Npc
                 // excludes both states).
                 var stillValid = currentTargetNpc != null &&
                                   currentTargetNpc.Go != null &&
-                                  currentTargetNpc.Props.BodyState != VmGothicEnums.BodyState.BsDead &&
-                                  currentTargetNpc.Props.BodyState != VmGothicEnums.BodyState.BsUnconscious &&
+                                  !NpcHelperService.IsDown(currentTargetNpc) &&
                                   currentTarget.Guild != self.Guild &&
                                   !IsPartyMember(currentTarget) &&
                                   (selfNpc.SummonedBy == null || selfNpc.SummonedBy.Index != currentTarget.Index) &&
@@ -1240,7 +1239,7 @@ namespace Gothic.Core.Services.Npc
                     continue;
 
                 // Corpses aren't enemies, and neither is someone currently knocked out.
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
+                if (NpcHelperService.IsDown(candidate))
                     continue;
 
                 // Range and closest-so-far gates before the expensive attitude and senses checks.
@@ -1475,7 +1474,7 @@ namespace Gothic.Core.Services.Npc
             foreach (var candidate in _multiTypeCacheService.NpcCache)
             {
                 if (candidate == hero || candidate.Props == null) continue;
-                if (candidate.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious) continue;
+                if (NpcHelperService.IsDown(candidate)) continue;
                 // Culled NPCs don't perceive anything.
                 if (candidate.Go == null || !candidate.Go.activeInHierarchy) continue;
                 if (!candidate.Props.Perceptions.TryGetValue(perception, out var perceptionFunction) || perceptionFunction < 0) continue;

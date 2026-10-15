@@ -1004,6 +1004,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Rain falls around the player instead of at the world's origin.")]
         public bool EnableRainFollowsPlayer = true;
 
+        [Tooltip("V1: A magically frozen NPC (ZS_MagicFreeze sets BS_UNCONSCIOUS) isn't down like in the scripts - monsters " +
+                 "see and keep attacking it and a hit doesn't kill it at once (Mroczne Tajemnice's crawler web).")]
+        public bool EnableFrozenIsNotDown = true;
+
         [Tooltip("V1: An NPC's spell is visible - a flying spell (fire ball, ice block, crawler web) flies to its target " +
                  "as its PFX and hits on arrival, the others show their cast and hit effects. Off: an invisible instant hit.")]
         public bool EnableNpcSpellFx = true;

@@ -314,13 +314,33 @@ namespace Gothic.Core.Services.Npc
 
         public NpcInstance ExtHlpGetNpc(int instanceId)
         {
-            return _multiTypeCacheService.NpcCache
+            var npc = _multiTypeCacheService.NpcCache
                 .FirstOrDefault(i => i.Instance.Index == instanceId)?
                 .Instance;
+            if (npc != null || !_configService.Dev.EnableHlpGetNpcVariables)
+                return npc;
+
+            // DeveloperConfig.EnableHlpGetNpcVariables: the engine resolves any instance symbol, also a variable like
+            // SELF/OTHER - Mroczne Tajemnice's ZS_DragonEscape_Loop calls B_KillNpc(self) and then inserts the dragon's
+            // human form (NON_2013_ALGIRION); a null NPC broke the function before the insert and the dragon just vanished.
+            var symbol = _gameStateService.GothicVm.GetSymbolByIndex(instanceId);
+            if (symbol is not { Type: DaedalusDataType.Instance } || symbol.GetInstance() is not NpcInstance variableNpc)
+                return null;
+
+            Logger.Log($"[NpcService] Hlp_GetNpc({symbol.Name}): the NPC the variable points to", LogCat.Npc);
+            return variableNpc;
         }
 
         public void ExtNpcChangeAttribute(NpcInstance npc, int attributeId, int value)
         {
+            // A script passing a missing NPC (Hlp_GetNpc found none) mustn't break the calling function.
+            if (npc?.GetUserData()?.Vob == null)
+            {
+                Logger.LogWarning($"[NpcService] Npc_ChangeAttribute({attributeId}, {value}) without an NPC - skipped",
+                    LogCat.Npc);
+                return;
+            }
+
             var vob = npc.GetUserData().Vob;
             var newValue = vob.GetAttribute(attributeId) + value;
 

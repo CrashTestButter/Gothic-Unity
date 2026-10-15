@@ -56,6 +56,13 @@
   interrupts an NPC's walking (the engine's stumble) so `ZS_ReactToDamage`'s `AI_StartState` doesn't wait behind a long
   `AI_GotoWP`.
 
+**Added 2026-10-16**
+
+- **`Hlp_GetNpc(self)`:** like the engine, `Hlp_GetNpc` resolves instance variables (`SELF`, `OTHER`, ...) to the NPC
+  they point to, not only NPC instance definitions. Mroczne Tajemnice's `ZS_DragonEscape_Loop` calls
+  `B_KillNpc(self)` and then `Wld_InsertNpc(NON_2013_ALGIRION)`: the null NPC threw in `Npc_ChangeAttribute`, the
+  function stopped before the insert and the dragon only vanished. `Npc_ChangeAttribute` without an NPC now warns.
+
 ## Key commits
 
 `b459f4f7` passive perc broadcast, ASSESSBODY, MURDER/DEFEAT · `00f95e72` hero perceptions (sneak, rooms, usemob) ·
@@ -68,6 +75,8 @@ switching · `1f73a5a6` EnemyOverride · `1e18996d` culled NPC routines · `d7d9
 ZS_Dead_Loop · `247ac69d` routine-less NPCs
 
 2026-10-13: `d522e413` guides sense the hero · `857bd827` NPC attitudes towards NPCs, guides fight
+
+2026-10-16: `63eddacb` Hlp_GetNpc resolves instance variables
 
 ## Main files
 
@@ -86,6 +95,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 `EnableTimeSkipResetsNpcs`, `EnableDeadStateLoop`
 
 2026-10-13: `EnableEscortSensesHero`, `EnablePersonalAttitudeOnlyForHero`, `EnableHitStopsWalking`
+
+2026-10-16: `EnableHlpGetNpcVariables`
 
 ## Review notes
 
@@ -110,3 +121,4 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 - G1/MT: Baal Parvez to the swamp camp, G2: Jack Alligator to the pirate camp / Lares - fall behind, they stop and wait.
 
 - G1/MT: Baal Parvez attacks a lurker that comes within ~10 m by himself ("$DIEMONSTER").
+- Mroczne Tajemnice ancient temple: finish the Black Dragon's talk - it teleports away and Algirion appears.

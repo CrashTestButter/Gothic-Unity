@@ -65,6 +65,14 @@
   mapped: houses, mines) always burn; touching one in VR lights it or puts it out until the routine switches; further
   than 60 m the effects are off. A fire that is out gives no light, smoke nor sound.
 
+**Added 2026-10-16**
+
+- **Level change arrival:** a `oCTriggerChangeLevel`'s start VOB is looked up as a free point, a waypoint or any
+  named VOB. When it's missing (Mroczne Tajemnice's temple sends you to `TEMPLE_TO_CAVE`, which the abandoned mine
+  doesn't have) the hero stands at the way point next to the trigger back to the old world - outside its box, height
+  weighted triple so it's the same floor - instead of a null reference and a stalled loading screen. The engine would
+  use START, which in that mine is over the void.
+
 ## Key commits
 
 `75bd89fd`/`b773c4c0`/`a1a8f2a2`/`e37c8952` movers · `9636179d` trigger system · `cd614258`/`f200e883` wheels ·
@@ -78,6 +86,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 2026-10-11/13: `d6f3fb6c` smithing items · `10a998e6` mob animations without position · `3108985a` bookstands · `7a7f20ab` material collision filter · `5ce0cbcd` fireplace children
 
 2026-10-13: `ef9bcdd3` fire trees relative to the slot · `3442aebd` fire states (routine, indoors, toggle, distance)
+
+2026-10-16: `e276d797` level change arrival fallback
 
 ## Main files
 
@@ -99,6 +109,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 2026-10-11/13: `EnableMobItemEvents`, `EnableMobAnimationWithoutPosition`, `EnableMobDocuments`, `EnableMaterialCollisionFilter`, `EnableFireVobChildren`
 
 2026-10-13: `EnableFireTreeRelativePositions`, `EnableFireStates`
+
+2026-10-16: `EnableLevelChangeSpawnFallback`
 
 ## Review notes
 
@@ -127,3 +139,5 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 - G1 Old Camp: every fireplace has its fire and smoke, no smoke column at the gate.
 
 - G1: torches/fireplaces outside are out by day and burn from 22:00 (Marvin skip time); in mines they always burn; touching one toggles it; from the swamp camp no Old Camp smoke is visible.
+- Mroczne Tajemnice: from the ancient temple back through the portal - you arrive next to the mine's portal; G1/G2
+  level changes (Old Mine, Irdorath) still arrive at their spots.

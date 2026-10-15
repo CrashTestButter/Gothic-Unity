@@ -27,10 +27,16 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 - Mroczne Tajemnice: 1024x1024 single mip textures (Siekacz's tavern, catapult, roofs) and the abandoned mine's
   dynamic lights work ([Rendering](08-rendering-video.md)); the web crawler bites frozen/close targets
   ([Combat](01-combat.md)).
-- ⚠️ Known: `ANCIENTTEMPLE.ZEN` (the portal from the abandoned mine, the Guardians quest) fails in ZenKit's native
-  world parser (`ZkWorld_load() failed: std::bad_alloc`). Cause found: the world has 266 materials (`0A 01 00 00`)
-  and ZenKit's binary archive header skips the count's `0x0A` byte as a blank line - a workaround is in testing, the
-  ZenKit issue draft is in `_notes/active/zenkit-material-count-newline-issue.md`.
+- **`ANCIENTTEMPLE.ZEN` loads** (the portal from the abandoned mine, the Guardians quest): ZenKit's
+  `ReadArchiveBinary::read_header` reads the second `END` with `read_line_then_ignore("\n")`, which also eats the
+  first payload byte when it's `0x0A` - the world mesh's material count 266 (`0A 01 00 00`) was read one byte off and
+  `ZkWorld_load()` died with `std::bad_alloc`. A world ZenKit can't load is retried with that header as `END\0` (the
+  `0xB020` chunk and the `MeshAndBsp` blob shrink by one byte) - `ZenWorldArchiveFixDomain`. Normal worlds don't pay
+  anything (only after a failed load).
+  ⚠️ This is a workaround on our side - the bug should be raised and fixed in ZenKit too (it hits any binary archive
+  whose payload starts with `0x0A`, e.g. meshes with 10/266/522 materials). Issue/PR draft with repro and the suggested
+  one-line fix: [zenkit-issue-material-count.md](zenkit-issue-material-count.md). Once ZenKit is fixed, the fallback
+  never triggers and `ZenWorldArchiveFixDomain` + `EnableZenMaterialCountFix` can be removed.
 - **Items where scripts expect an NPC:** NPC/item parameters of the externals are taken as instances and checked - G1's
   `B_FetchWeapon` calls `Npc_GetDistToNpc(self, item)` (the engine measures between any two VOBs), the item failed
   ZenKitCS' cast, the stack stayed broken and the VM crashed natively (Mroczne Tajemnice's giant skeleton by Fellan's
@@ -47,6 +53,8 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 2026-10-15: `23d763df` texture array mips · `25183f71` dynamic VOB lights · `075f9e69` crawler melee · `4dcdfff6`
 items as NPC parameters
 
+2026-10-16: `af632900` ZEN material count header
+
 ## Main files
 
 `Services/Config/ConfigService.cs` · `Services/Caches/ResourceCacheService.cs` · `Domain/Audio/SoundDomain.cs` ·
@@ -59,6 +67,8 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 (see [How to test](14-how-to-test.md)).
 
 2026-10-15: `EnableVmCacheResetOnLoad`
+
+2026-10-16: `EnableZenMaterialCountFix`
 
 ## Review notes
 
@@ -76,3 +86,4 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 
 - Mroczne Tajemnice: Siekacz's tavern and the catapult textured; the abandoned mine lit blue/teal.
 - Mroczne Tajemnice abandoned mine: let the giant skeleton by Fellan's armor pick up the sword - no crash.
+- Mroczne Tajemnice abandoned mine: the portal takes you to the ancient temple (log: "header fixed").

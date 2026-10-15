@@ -13,8 +13,15 @@ Link), not on Quest/Pico standalone.
 - Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
-- Mroczne Tajemnice: the abandoned mine's portal takes you to the ancient temple (the Guardians quest) - the world
-  loads with a workaround for a ZenKit header bug.
+- An NPC who beats you in a duel knows it won - Mroczne Tajemnice's Sheer'Ghar talks about honor afterwards.
+
+## 2026-10-16: Mroczne Tajemnice's ancient temple and the Ancients
+
+- Mroczne Tajemnice: the abandoned mine's portal takes you to the ancient temple (the Guardians quest) - ZenKit
+  couldn't read the world because of a header bug, we fix the header before loading.
+- The way back from the temple works: the loading screen no longer hangs when a portal's arrival spot is missing in
+  the world (the mod's temple portal) - you arrive next to the portal back.
+- The Black Dragon turns into Algirion after the talk instead of vanishing - the Ancients' quest goes on.
 
 ## 2026-10-15 (evening): dodge spells, skin colored hands, no crash by Fellan's armor
 

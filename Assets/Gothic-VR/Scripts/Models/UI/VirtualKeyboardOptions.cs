@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Gothic.Core.Models.UI
+namespace Gothic.VR.Models.UI
 {
     /// <summary>
     /// Settings of one VirtualKeyboard session. Everything is optional except the callbacks you care about.
@@ -24,18 +24,18 @@ namespace Gothic.Core.Models.UI
         [Tooltip("Every letter is typed in upper case (Gothic symbols), shift does nothing.")]
         public bool IsForcedUpperCase;
 
-        [Tooltip("Adds a row with _ - . , : + (and lets the physical keyboard type them).")]
+        [Tooltip("Adds a row with _ - . , : +")]
         public bool IsSymbolRowShown;
 
         [Tooltip("Gets the current text after each change and returns suggestions - the first ones are shown as "
                  + "buttons between the text and the keys; tapping one replaces the text.")]
         public Func<string, IReadOnlyList<string>> SuggestionProvider;
 
-        [Tooltip("Called with the current text and a key's character (after case handling). false greys the key out "
-                 + "and blocks physical input of it. null allows everything.")]
+        [Tooltip("Called with the current text and a key's character (after case handling). false greys the key out. "
+                 + "null allows everything.")]
         public Func<string, char, bool> KeyFilter;
 
-        [Tooltip("Called with the current text. false disables OK and Enter. null allows always.")]
+        [Tooltip("Called with the current text. false disables OK. null allows always.")]
         public Func<string, bool> CanSubmit;
 
         [Tooltip("Called whenever the user changes the text (typing, backspace, suggestion), not for SetText().")]

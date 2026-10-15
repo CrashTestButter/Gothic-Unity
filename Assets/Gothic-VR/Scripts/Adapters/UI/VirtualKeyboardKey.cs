@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Gothic.Core.Adapters.UI
+namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
     /// A character key of the VirtualKeyboard prefab. The keyboard wires the button and updates the label (shift).

@@ -1,27 +1,30 @@
 using System;
 using System.Collections.Generic;
+using Gothic.Core;
+using Gothic.Core.Adapters.UI;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Caches;
-using Gothic.Core.Models.Context;
-using Gothic.Core.Models.UI;
 using Gothic.Core.Services.Caches;
-using Gothic.Core.Services.Config;
+using Gothic.VR.Models.UI;
+#if GOTHIC_HVR_INSTALLED
+using HurricaneVR.Framework.Core.UI;
+#endif
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using Logger = Gothic.Core.Logging.Logger;
 
-namespace Gothic.Core.Adapters.UI
+namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
     /// An on-screen keyboard in Gothic's font (like SteamVR's) - a panel with the typed text, letters, digits, shift,
     /// space, backspace, OK and cancel, clicked with the UI laser. It shows in front of the camera (or at a follow
-    /// target); a physical keyboard types into it as well (flat mode, Editor).
+    /// target).
     /// Optional: a symbol row (_ - . , : +), forced upper case, a max length, tappable suggestions (e.g. for
     /// cheat commands like "insert ITPO_MANA_03 5" or "goto pos -1200.5 300 40"), a key filter greying out keys
     /// and a submit condition.
-    /// Layout lives in the prefab (PrefabType.UiVirtualKeyboard), the optional rows collapse via layout groups.
+    /// Layout lives in the prefab (PrefabType.UiVirtualKeyboard, VR/Prefabs/UI), the optional rows collapse via
+    /// layout groups.
     /// </summary>
     public class VirtualKeyboard : MonoBehaviour
     {
@@ -29,9 +32,6 @@ namespace Gothic.Core.Adapters.UI
         private const float _distance = 1.2f;
         private const float _heightBelowEyes = 0.25f;
         private const float _disabledLabelAlpha = 0.25f;
-        private const string _symbols = "_-.,:+";
-        // Without the symbol row, the physical keyboard still types these (save names as before).
-        private const string _defaultPhysicalSymbols = "-_";
 
         [SerializeField] private TMP_Text _display;
         [SerializeField] private GameObject _suggestionRow;
@@ -52,7 +52,6 @@ namespace Gothic.Core.Adapters.UI
         private bool _isSymbolRowShown;
         private bool _isClosed;
         private bool _isClosedOnSubmit = true;
-        private bool _isPhysicalKeyboardUsed;
         private Transform _followTarget;
         private bool _hasFollowTarget;
         private Action<string> _onSubmit;
@@ -151,13 +150,11 @@ namespace Gothic.Core.Adapters.UI
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)transform);
 
             RefreshDisplay();
-            GlobalEventDispatcher.UiCanvasShown.Invoke(GetComponent<Canvas>());
-
-            // VR: laser only. The XR Device Simulator holds keys like E/Q, which would be typed otherwise.
-            var configService = ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
-            _isPhysicalKeyboardUsed = configService.Dev.GameControls != Controls.VR;
-            if (_isPhysicalKeyboardUsed && Keyboard.current != null)
-                Keyboard.current.onTextInput += OnPhysicalTextInput;
+#if GOTHIC_HVR_INSTALLED
+            // A canvas created at runtime: the UI laser only hits canvases HVRInputModule knows.
+            if (HVRInputModule.Instance != null)
+                HVRInputModule.Instance.AddCanvas(GetComponent<Canvas>());
+#endif
             Logger.Log("[VirtualKeyboard] Shown", LogCat.Ui);
         }
 
@@ -333,19 +330,6 @@ namespace Gothic.Core.Adapters.UI
             onCancel?.Invoke();
         }
 
-        private void Update()
-        {
-            var keyboard = Keyboard.current;
-            if (!_isPhysicalKeyboardUsed || keyboard == null)
-                return;
-            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
-                Submit();
-            else if (keyboard.escapeKey.wasPressedThisFrame)
-                Cancel();
-            else if (keyboard.backspaceKey.wasPressedThisFrame)
-                Backspace();
-        }
-
         private void LateUpdate()
         {
             if (!_hasFollowTarget || _isClosed)
@@ -367,23 +351,6 @@ namespace Gothic.Core.Adapters.UI
             transform.localScale = _followTarget.lossyScale;
         }
 
-        private void OnPhysicalTextInput(char character)
-        {
-            var symbols = _isSymbolRowShown ? _symbols : _defaultPhysicalSymbols;
-            if (!char.IsLetterOrDigit(character) && character != ' ' && symbols.IndexOf(character) < 0)
-                return;
-            if (_text.Length >= _maxLength)
-                return;
-
-            var typed = _isForcedUpperCase ? char.ToUpperInvariant(character) : character;
-            if (_keyFilter != null && !_keyFilter(_text, typed))
-                return;
-
-            _text += typed;
-            RefreshDisplay();
-            _onTextChanged?.Invoke(_text);
-        }
-
         private string ApplyForcedCase(string text)
         {
             return _isForcedUpperCase ? text.ToUpperInvariant() : text;
@@ -400,9 +367,10 @@ namespace Gothic.Core.Adapters.UI
                 return;
             _isClosed = true;
 
-            if (Keyboard.current != null)
-                Keyboard.current.onTextInput -= OnPhysicalTextInput;
-            GlobalEventDispatcher.UiCanvasHidden.Invoke(GetComponent<Canvas>());
+#if GOTHIC_HVR_INSTALLED
+            if (HVRInputModule.Instance != null)
+                HVRInputModule.Instance.RemoveCanvas(GetComponent<Canvas>());
+#endif
             if (_current == this)
                 _current = null;
             _onSubmit = null;
@@ -416,8 +384,6 @@ namespace Gothic.Core.Adapters.UI
 
         private void OnDestroy()
         {
-            if (Keyboard.current != null)
-                Keyboard.current.onTextInput -= OnPhysicalTextInput;
             if (_current == this)
                 _current = null;
         }

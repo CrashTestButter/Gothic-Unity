@@ -22,6 +22,7 @@ namespace Gothic.Core.Adapters.UI.Menus
     public class SaveMenu : AbstractMenu
     {
         private const string EmptySlotText = "---";
+        private const int _titleMaxLength = 30;
 
         private bool _isInitialized;
         private GameObject[] SaveSlots = new GameObject[16];
@@ -46,6 +47,7 @@ namespace Gothic.Core.Adapters.UI.Menus
         [Inject] private readonly BootstrapService _bootstrapService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly ContextTextInputService _contextTextInputService;
 
         
         /// <summary>
@@ -263,10 +265,22 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
             else
             {
-                // Name the save on the on-screen keyboard (Gothic asks too). Empty names save too, as in the original.
-                var currentTitle = _saves[id]?.Metadata?.Title;
-                VirtualKeyboard.Show(currentTitle ?? string.Empty, title => SaveToSlot(id, title), null);
+                // Name the save (Gothic asks too). Empty names save too, as in the original.
+                // The slot shows the typed name, like the original's inline edit.
+                var slotText = SaveSlots[id].GetComponentInChildren<TMP_Text>();
+                var slotTextBefore = slotText.text;
+                var currentTitle = _saves[id]?.Metadata?.Title ?? string.Empty;
+                ShowTypedTitle(slotText, currentTitle);
+                _contextTextInputService.RequestText(currentTitle, _titleMaxLength,
+                    title => SaveToSlot(id, title),
+                    () => slotText.text = slotTextBefore,
+                    title => ShowTypedTitle(slotText, title));
             }
+        }
+
+        private static void ShowTypedTitle(TMP_Text slotText, string title)
+        {
+            slotText.text = title + "_";
         }
 
         private void SaveToSlot(int id, string title)

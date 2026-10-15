@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Gothic.Core;
-using Gothic.Core.Adapters.UI;
 using Gothic.Core.Logging;
-using Gothic.Core.Models.UI;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Marvin;
+using Gothic.VR.Adapters.UI;
+using Gothic.VR.Models.UI;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;

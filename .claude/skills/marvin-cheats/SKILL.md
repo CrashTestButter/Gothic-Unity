@@ -25,6 +25,12 @@ Marvin is the in-game debug menu (name from Gothic's own marvin mode). Before ad
   `MarvinProperty<T>(name, getter, setter, min, max)` entries. Supported: `bool`, `int`, `float`.
   Example: `VRPlayerWeaponInteraction.CollectMarvinInspectorProperties`.
 - `MarvinService` (Core) only holds the selection state.
+- **Marvin tab = command console** (like the original F2 console, typed on the `VirtualKeyboard`). Grammar in
+  `MarvinCommandService.BuildCommands()`: `root.Add("goto").Add("waypoint").Add(value).Runs(values => ...)`,
+  `.Describe()`, `.Only(GameVersion...)`. Values: `MarvinClosedSetValue` (waypoints, instances, guilds - lazy, via
+  `MarvinPrefixIndex`) or `MarvinNumberValue`. A node with `Runs()` and further children = optional value.
+  The actions live in `MarvinCheatDomain`. Only commands in the grammar can be typed, so add a command only
+  together with its action. Document new commands in the wiki page `Player/Cheats-and-Marvin-Mode.md`.
 
 ## Marvin or DeveloperConfig?
 

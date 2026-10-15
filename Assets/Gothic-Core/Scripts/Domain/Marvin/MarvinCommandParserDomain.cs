@@ -100,7 +100,8 @@ namespace Gothic.Core.Domain.Marvin
         }
 
         /// <summary>
-        /// Placeholder of the value the line expects next, e.g. "&lt;HOUR&gt;". Null if no value is expected.
+        /// Placeholder of the value the line expects next, e.g. "&lt;HOUR&gt;". In brackets if the line is already
+        /// runnable without it, e.g. "[&lt;AMOUNT&gt;]". Null if no value is expected.
         /// </summary>
         public string GetPlaceholder(string line)
         {
@@ -110,8 +111,10 @@ namespace Gothic.Core.Domain.Marvin
 
             foreach (var child in result.Current.Children)
             {
-                if (child.IsAvailable(_version) && !child.IsWord)
-                    return child.Value.Placeholder;
+                if (!child.IsAvailable(_version) || child.IsWord)
+                    continue;
+
+                return result.Current.Execute != null ? $"[{child.Value.Placeholder}]" : child.Value.Placeholder;
             }
 
             return null;

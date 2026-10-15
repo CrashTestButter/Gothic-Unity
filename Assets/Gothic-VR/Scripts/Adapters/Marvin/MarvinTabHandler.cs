@@ -268,7 +268,9 @@ namespace Gothic.VR.Adapters.Marvin
 
             _optionsHint.gameObject.SetActive(isHintShown);
             if (isHintShown)
-                _optionsHint.text = $"Type <noparse>{placeholder}</noparse> on the keyboard";
+                _optionsHint.text = _marvinCommandService.CanExecute(_line)
+                    ? $"Run, or type <noparse>{placeholder}</noparse> on the keyboard"
+                    : $"Type <noparse>{placeholder}</noparse> on the keyboard";
 
             for (var i = 0; i < _optionButtons.Length; i++)
             {

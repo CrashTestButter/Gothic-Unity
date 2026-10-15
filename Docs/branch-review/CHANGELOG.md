@@ -15,6 +15,19 @@ Link), not on Quest/Pico standalone.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 - An NPC who beats you in a duel knows it won - Mroczne Tajemnice's Sheer'Ghar talks about honor afterwards.
 
+## 2026-10-16 (night): main merged - Marvin console, Marvin mode for everyone
+
+- Marvin mode can be switched on in game by everyone, like in Gothic: open the menu, type `marvin` (or click the
+  Gothic-Unity logo 3 times), close the menu - "testmode on". `42` (or the 3 clicks again) switches it off.
+- The Marvin tab is a command console like Gothic's F2 (on the on-screen keyboard, with completions): `goto waypoint`,
+  `insert <item or NPC> [amount]`, `set time`, `cheat full/level/guild`, and ours: `cheat god`, `goto forward` (4 m
+  through walls), `team irdorath`, `team helpers` (SH/CH).
+- Saving asks for the name on the new on-screen keyboard; the slot shows what you type.
+- Scripts' screen messages from Marvin show in Gothic's font in front of you.
+- Mods: a mod installed into the Gothic folder (only its ini) counts as a mod too; caches are kept per mod folder (the
+  first start of each game/mod rebuilds them once). A mod's ini can turn music off (`unitySkipMusicPlayback=1`) or set
+  the language (`unityFallbackLanguage`).
+
 ## 2026-10-16: Mroczne Tajemnice's ancient temple and the Ancients
 
 - Mroczne Tajemnice: the abandoned mine's portal takes you to the ancient temple (the Guardians quest) - ZenKit

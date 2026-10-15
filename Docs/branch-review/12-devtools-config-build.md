@@ -44,6 +44,25 @@
 - **Fall rescue** goes back to the last spot the hero stood on (`642070e5`) - Mroczne Tajemnice's abandoned mine has
   its START over the void.
 
+**Added 2026-10-16**
+
+- **`main` merged** (`f9b48c31`: split/02-mods, split/03-devtools). From `main`: Marvin mode toggled in game
+  (`MarvinService.IsMarvinMode`; `DeveloperConfig.PreselectMarvinMode` only starts with it on - was
+  `ActivateMarvinMode`), the Marvin tab as a command console (`MarvinCommandService`, actions in `MarvinCheatDomain`),
+  `PrintScreen` overlay (`VRPrintScreen`), the on-screen keyboard in the VR module via `ContextTextInputService` (save
+  names; our Core keyboard and `EnableSaveNameKeyboard` are gone), NVorbis from `com.gothic.core.binaries`.
+- Kept from the branch: game profiles and the build keys in `GameSettings.json` (`main` has no mod source in builds
+  yet - its issue #395), our `PrintScreen` registration for scripts (G1/G2 signatures, `AI_PrintScreen`).
+- Our Marvin buttons missing in the console are commands now: `cheat god` (`EnableMarvinGodMode`), `goto forward`
+  (`EnableMarvinBlink`, now through `TeleportPlayerTo` - held items go into the backpack), `team irdorath`
+  (`MarvinFriendsNpcSymbols`), `team helpers` (`MarvinCheatFriendsNpcSymbols`). Fall rescue and the Immersion "Marvin"
+  option follow `MarvinService.IsMarvinMode`.
+- The prefab cache is created in the `ResourceCacheService` constructor: our player scene (profile menu) loads before
+  `Init()`, and `main`'s `PrintScreen` overlay needs a prefab there.
+- ⚠️ Left over: `EnableLevel5Cheat`, `EnableGuildCheat`, `EnableScavengerGuildCheat`, `EnableTimeSkip`,
+  `MarvinSpawnNpcSymbol`, `MarvinGiveItems` are unused now (the console has these commands) - to be removed; two
+  screen message paths (scripts: ours, Marvin: `main`'s overlay) - to be unified.
+
 ## Key commits
 
 `bb6e7c4d`/`5959c1ad`/`8ea94468`/`aebea3c9`/`5e898826` Marvin · `e26326bb` build · `7c3afb78` project settings ·
@@ -53,6 +72,8 @@
 · `bc8dd945` ending to menu
 
 2026-10-11/13: `22b00d9a` third party notices · `d3130b8f` licenses in builds · `4d9acf18` merge `main` · `360812b6` changelog
+
+2026-10-16: `f9b48c31` merge `main` (Marvin console, in-game Marvin mode, keyboard, NVorbis package)
 
 ## Main files
 
@@ -82,3 +103,5 @@ Config (2026-10-13): `MarvinCheatFriendsNpcSymbols` (`adf2d34e` Marvin teams)
 - Finish G1 or G2 (or skip to the ending video): the game comes back to the menu.
 
 - Build PCVR: `LICENSE` and `THIRD_PARTY_NOTICES.md` next to the executable.
+- In game: menu, type `marvin`, close - "testmode on" and the Marvin panel; `cheat god`, `goto forward`,
+  `insert ITFO_APPLE 3`, `team helpers`. Save: name typed on the keyboard.

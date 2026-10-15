@@ -75,7 +75,7 @@
 2026-10-10/11: `EnableDialogHeroByInstance`, `EnableDialogRangeByBodySize`, `EnableDialogKeepsOutputs`,
 `EnableHudAlwaysOnTop`
 
-2026-10-11/13: `EnableMusicZonesByPosition`, `EnableDialogsPerGameVm`, `EnableSaveNameKeyboard`, `EnableMenuZoom`
+2026-10-11/13: `EnableMusicZonesByPosition`, `EnableDialogsPerGameVm`, `EnableSaveNameKeyboard` (removed 2026-10-16: `main`'s keyboard), `EnableMenuZoom`
 
 ## Review notes
 

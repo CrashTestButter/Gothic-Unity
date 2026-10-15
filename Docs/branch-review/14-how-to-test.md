@@ -27,7 +27,7 @@ Which game starts and which mod is loaded comes from **different places** in the
 | | Editor | Build |
 |---|---|---|
 | Which game | DeveloperConfig `PreselectGameVersion` + `GameVersion` | `GameSettings.json` `"GameVersion"`; if empty, the build's DeveloperConfig |
-| Mod | DeveloperConfig `EnableMod` + `ModPath` + `ModIni` | `GameSettings.json` `"ModPath"` + `"ModIni"` |
+| Mod | DeveloperConfig `PreSelectMod` + `ModPath` + `ModIni` | `GameSettings.json` `"ModPath"` + `"ModIni"` |
 | Music / ZSpy | DeveloperConfig `EnableMusic` / `EnableZSpyLogs` | `GameSettings.json` `"EnableMusic"` / `"EnableZSpyLogs"` |
 | Keyboard/mouse instead of a headset | DeveloperConfig `EnableVRDeviceSimulator` | `GameSettings.json` `"EnableVRDeviceSimulator"` (PC only; stops XR, so a connected headset doesn't move the camera) |
 
@@ -64,10 +64,9 @@ For testing:
    | Field | What it does |
    |---|---|
    | `PreselectGameVersion` / `GameVersion` | Editor: which game starts. Keep it on — there is no game selection screen yet, with both games installed and this off the start stops |
-   | `EnableMod` / `ModPath` / `ModIni` | Editor: load a mod (see the table in section 1) |
-   | `ActivateMarvinMode` | Shows the Marvin cheat panel on the hand menu |
-   | `EnableLevel5Cheat` | Marvin button: +5 levels (+50 LP, more HP, +100 mana) |
-   | `EnableTimeSkip` | Marvin button: skip 30 minutes (routines, day/night) |
+   | `PreSelectMod` / `ModPath` / `ModIni` | Editor: load a mod (see the table in section 1) |
+   | `PreselectMarvinMode` | Starts with Marvin mode on (in game: menu, type `marvin`, close) |
+   | Marvin console | `cheat level` (+5 levels), `cheat full`, `set time 22 0`, `goto waypoint <WP>`, `insert <item/NPC>`, `cheat god`, `goto forward` |
    | `MarvinTeleportWaypoint` | Marvin button: teleport to this waypoint (e.g. `START`) |
    | `MarvinSpawnNpcSymbol` | Marvin button: spawn this NPC next to you (e.g. `VLK_417_Constantino`) |
    | `MarvinGiveItems` | Marvin button: give these items (list below) |

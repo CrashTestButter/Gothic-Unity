@@ -1048,6 +1048,11 @@ namespace Gothic.Core.Models.Config
                  "stairs and planks shone like the day next to the dark walls.")]
         public bool EnableVobWorldLight = true;
 
+        [Tooltip("V1: Textures above the texture array size without enough mips (Mroczne Tajemnice's 1024x1024 ones) are " +
+                 "downscaled with a generated mip chain, and uv scale/mip limit follow what the slice holds - their slices " +
+                 "stayed black/garbage and big textures tiled twice as often.")]
+        public bool EnableTextureArrayMipFix = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

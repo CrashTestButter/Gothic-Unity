@@ -242,6 +242,7 @@ MonoBehaviour:
   EnableSpellMonsterMelee: 1
   EnableDynamicVobLights: 1
   EnableVobWorldLight: 1
+  EnableTextureArrayMipFix: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1

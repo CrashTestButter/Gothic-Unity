@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Gothic.Core.Adapters.UI;
 using Gothic.Core.Creator;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Caches;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
@@ -21,11 +21,10 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.Marvin
 {
     /// <summary>
-    /// Marvin tab with developer cheat buttons. Each button is shown only when its DeveloperConfig entry is set.
+    /// Marvin tab with cheat buttons. Cheats that need a value (waypoint, NPC, items) ask for it on the VirtualKeyboard.
     /// </summary>
     public class MarvinTabHandler : MonoBehaviour
     {
-        [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly GameTimeService _gameTimeService;
@@ -41,6 +40,12 @@ namespace Gothic.VR.Adapters.Marvin
         private const int _learnPointsPerLevel = 10;
         private const int _hitPointsMaxPerLevel = 12;
         private const int _manaMaxPerLevelCheat = 100;
+        private const int _commandMaxLength = 64;
+
+        // Kept between keyboard openings, so a cheat is quickly repeated.
+        private string _lastWaypoint = "START";
+        private string _lastNpcSymbol = string.Empty;
+        private string _lastItems = string.Empty;
 
         private void Start()
         {
@@ -53,29 +58,16 @@ namespace Gothic.VR.Adapters.Marvin
 
         private void CreateButtons()
         {
-            var dev = _configService.Dev;
-            var buttons = new List<(string label, Action onClick)>();
-
-            if (dev.EnableLevel5Cheat)
-                buttons.Add(($"Level +{_levelsPerLevelCheat}", CheatAddLevels));
-
-            if (dev.EnableGuildCheat)
-                buttons.Add(("Guild -> Novice", () => CheatSetGuild("GIL_NOV")));
-
-            if (dev.EnableScavengerGuildCheat)
-                buttons.Add(("Guild -> Scavenger", () => CheatSetGuild("GIL_SCAVENGER")));
-
-            if (dev.EnableTimeSkip)
-                buttons.Add(("Skip Time +30min", SkipTime30Min));
-
-            if (!string.IsNullOrEmpty(dev.MarvinTeleportWaypoint))
-                buttons.Add(($"TP -> {dev.MarvinTeleportWaypoint}", CheatTeleportToWaypoint));
-
-            if (!string.IsNullOrEmpty(dev.MarvinSpawnNpcSymbol))
-                buttons.Add(($"Spawn {dev.MarvinSpawnNpcSymbol}", CheatSpawnNpc));
-
-            if (!string.IsNullOrEmpty(dev.MarvinGiveItems))
-                buttons.Add(("Give items", CheatGiveItems));
+            var buttons = new List<(string label, Action onClick)>
+            {
+                ($"Level +{_levelsPerLevelCheat}", CheatAddLevels),
+                ("Guild -> Novice", () => CheatSetGuild("GIL_NOV")),
+                ("Guild -> Scavenger", () => CheatSetGuild("GIL_SCAVENGER")),
+                ("Skip Time +30min", SkipTime30Min),
+                ("TP -> Waypoint...", AskTeleportWaypoint),
+                ("Spawn NPC...", AskSpawnNpc),
+                ("Give items...", AskGiveItems)
+            };
 
             // Vertically centered column of buttons.
             var totalHeight = buttons.Count * _buttonHeight + (buttons.Count - 1) * _buttonGap;
@@ -156,9 +148,31 @@ namespace Gothic.VR.Adapters.Marvin
             Logger.Log($"[MarvinTabHandler] Time skip -> {next.Hours:D2}:{next.Minutes:D2}", LogCat.Ui);
         }
 
-        private void CheatTeleportToWaypoint()
+        private void AskTeleportWaypoint()
         {
-            var wpName = _configService.Dev.MarvinTeleportWaypoint;
+            VirtualKeyboard.Show(_lastWaypoint, CheatTeleportToWaypoint, null, _commandMaxLength,
+                forceUpperCase: true, showSymbolRow: true);
+        }
+
+        private void AskSpawnNpc()
+        {
+            VirtualKeyboard.Show(_lastNpcSymbol, CheatSpawnNpc, null, _commandMaxLength,
+                forceUpperCase: true, showSymbolRow: true);
+        }
+
+        private void AskGiveItems()
+        {
+            VirtualKeyboard.Show(_lastItems, CheatGiveItems, null, _commandMaxLength,
+                forceUpperCase: true, showSymbolRow: true);
+        }
+
+        /// <param name="wpName">Waypoint name typed on the keyboard, e.g. GRYD_072 or START.</param>
+        private void CheatTeleportToWaypoint(string wpName)
+        {
+            if (string.IsNullOrWhiteSpace(wpName))
+                return;
+
+            _lastWaypoint = wpName;
             var wp = _wayNetService.GetWayNetPoint(wpName);
             if (wp == null)
             {
@@ -170,9 +184,14 @@ namespace Gothic.VR.Adapters.Marvin
             Logger.Log($"[MarvinTabHandler] Teleported to '{wpName}'", LogCat.Ui);
         }
 
-        private void CheatSpawnNpc()
+        /// <param name="symbol">Daedalus NPC instance typed on the keyboard, e.g. SH or PC_THIEF. Spawned 2 m in front
+        /// of the hero.</param>
+        private void CheatSpawnNpc(string symbol)
         {
-            var symbol = _configService.Dev.MarvinSpawnNpcSymbol;
+            if (string.IsNullOrWhiteSpace(symbol))
+                return;
+
+            _lastNpcSymbol = symbol;
             var heroGo = _npcService.GetHeroContainer()?.Go;
             if (heroGo == null)
             {
@@ -185,12 +204,15 @@ namespace Gothic.VR.Adapters.Marvin
                 Logger.Log($"[MarvinTabHandler] Spawned '{symbol}' near player", LogCat.Ui);
         }
 
-        /// <summary>
-        /// DeveloperConfig.MarvinGiveItems, e.g. "ITRU_FIREBOLT, ITPO_MANA_03:5", goes into the hero's inventory.
-        /// </summary>
-        private void CheatGiveItems()
+        /// <param name="items">Typed on the keyboard, comma separated with an optional amount, e.g.
+        /// "ITRU_FIREBOLT, ITPO_MANA_03:5". They go into the hero's inventory.</param>
+        private void CheatGiveItems(string items)
         {
-            foreach (var entry in _configService.Dev.MarvinGiveItems.Split(',', ';', '\n'))
+            if (string.IsNullOrWhiteSpace(items))
+                return;
+
+            _lastItems = items;
+            foreach (var entry in items.Split(',', ';', '\n'))
             {
                 var parts = entry.Trim().Split(':');
                 var itemName = parts[0].Trim().ToUpper();

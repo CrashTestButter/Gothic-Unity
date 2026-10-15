@@ -20,13 +20,6 @@ MonoBehaviour:
   GameControls: 0
   EnableVRDeviceSimulator: 0
   ActivateMarvinMode: 0
-  EnableLevel5Cheat: 0
-  EnableGuildCheat: 0
-  EnableScavengerGuildCheat: 0
-  EnableTimeSkip: 0
-  MarvinTeleportWaypoint: 
-  MarvinSpawnNpcSymbol: 
-  MarvinGiveItems: 
   EnableZSpyLogs: 0
   AllDebugChannels: 0
   ZSpyChannels:

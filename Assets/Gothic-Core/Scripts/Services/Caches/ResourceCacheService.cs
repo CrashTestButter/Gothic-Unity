@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using DirectMusic;
+using Gothic.Core.Domain.Meshes;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Caches;
@@ -93,7 +94,7 @@ namespace Gothic.Core.Services.Caches
                 (s, version) =>
                 {
                     // We do not cache the world itself, but only the loading pointer. As Mesh could exhaust our memory consumption.
-                    var fireWorld = new ZenKit.World(Vfs, s, version);
+                    var fireWorld = LoadWorld(s, version);
 
                     // DeveloperConfig.EnableFireTreeRelativePositions: the roots' children (smoke under a fire's light)
                     // carry the fire world's absolute positions too - zeroing only the roots put every FIRETREE_MEDIUM
@@ -324,8 +325,42 @@ namespace Gothic.Core.Services.Caches
         [CanBeNull]
         public ZenKit.World TryGetWorld([NotNull] string key)
         {
-            return new ZenKit.World(Vfs, $"{GetPreparedKey(key)}.zen");
+            return LoadWorld($"{GetPreparedKey(key)}.zen", null);
         }
+
+        /// <summary>
+        /// DeveloperConfig.EnableZenMaterialCountFix: a world ZenKit can't load is retried with its materials archive
+        /// header fixed - ZenKit skips the material count's first byte when it's a newline (266 materials: Mroczne
+        /// Tajemnice's ANCIENTTEMPLE.ZEN, std::bad_alloc). See ZenWorldArchiveFixDomain.
+        /// </summary>
+        private ZenKit.World LoadWorld(string name, GameVersion? version)
+        {
+            try
+            {
+                return new ZenKit.World(Vfs, name, version);
+            }
+            catch (Exception e) when (IsZenMaterialCountFix())
+            {
+                var node = Vfs.Find(name);
+                if (node == null)
+                    throw;
+
+                var fixedData = ZenWorldArchiveFixDomain.TryFixMaterialCountHeader(node.Buffer.Bytes, out var reason);
+                if (fixedData == null)
+                {
+                    Logger.LogError($"[ResourceCacheService] World '{name}' failed to load ({e.Message}), header " +
+                                    $"fix not applicable: {reason}", LogCat.ZenKit);
+                    throw;
+                }
+
+                Logger.LogWarning($"[ResourceCacheService] World '{name}' failed to load ({e.Message}) - " +
+                                  $"retrying with its materials archive header fixed ({reason})", LogCat.ZenKit);
+                return new ZenKit.World(new Read(fixedData), version);
+            }
+        }
+
+        private static bool IsZenMaterialCountFix() =>
+            ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Config.ConfigService>().Dev.EnableZenMaterialCountFix;
 
         /// <summary>
         /// We need to be careful to cache only Fire.zen files as they're small and used multiple times on a world.
@@ -356,7 +391,7 @@ namespace Gothic.Core.Services.Caches
             }
             else
             {
-                return new ZenKit.World(Vfs, $"{GetPreparedKey(key)}.zen", version);
+                return LoadWorld($"{GetPreparedKey(key)}.zen", version);
             }
         }
 

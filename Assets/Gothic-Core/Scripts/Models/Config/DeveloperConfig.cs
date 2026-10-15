@@ -1074,6 +1074,10 @@ namespace Gothic.Core.Models.Config
                  "Wld_DetectItem handed scripts a dead item and the VM crashed natively (Mroczne Tajemnice's abandoned mine).")]
         public bool EnableVmCacheResetOnLoad = true;
 
+        [Tooltip("V1: A world ZenKit can't load is retried with its materials archive header fixed - ZenKit skips the " +
+                 "material count's first byte when it's a newline (266 materials: Mroczne Tajemnice's ANCIENTTEMPLE.ZEN).")]
+        public bool EnableZenMaterialCountFix = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

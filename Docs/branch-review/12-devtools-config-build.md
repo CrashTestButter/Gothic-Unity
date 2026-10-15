@@ -41,6 +41,8 @@
 - Changelog for the experimental build's Discord channel ([CHANGELOG.md](CHANGELOG.md)).
 - **Marvin teams:** "Friends" is now "Irdo team" (the Irdorath crew including Torlof in one button); "Cheat friends"
   spawns the scripts' test helpers SH and CH (`MarvinCheatFriendsNpcSymbols`).
+- **Fall rescue** goes back to the last spot the hero stood on (`642070e5`) - Mroczne Tajemnice's abandoned mine has
+  its START over the void.
 
 ## Key commits
 

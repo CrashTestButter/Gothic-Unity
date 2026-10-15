@@ -10,9 +10,26 @@ Link), not on Quest/Pico standalone.
 
 ## In testing (not in the build yet)
 
-- Frozen NPCs aren't treated as knocked out: Mroczne Tajemnice's crawlers freeze you with their web, then bite.
 - Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
 - The backpack vacuum takes a dropped rune again.
+- NPC spells can be dodged with a step aside (they follow you only a little).
+- VR hands keep a skin color like the hero's arm, matte; light and time of day tint them only a little.
+- Mroczne Tajemnice: no crash next to the giant skeleton by Fellan's armor in the abandoned mine.
+- A light flick throws a spell weakly, only a real swing throws it hard.
+
+## 2026-10-15: caves and mines like in Gothic, Mroczne Tajemnice textures and crawlers
+
+- Caves, mines and houses are lit like in Gothic: their lightmaps are drawn, torches and fires light the walls, the
+  mines have no sun and no fog, stones, scaffolds and stairs inside are as dark as the walls next to them.
+- A new Immersion setting "Light refresh" (Low/Medium/High): the torch's light follows your hand smoothly.
+- Mroczne Tajemnice: the abandoned mine glows blue/teal instead of being pitch black; Siekacz's tavern, the catapult,
+  roofs and other mod objects have their textures (no more stone patterns and black parts).
+- Mroczne Tajemnice's crawlers cast their web from afar and bite when you're frozen or close, a frozen NPC is no
+  longer treated as knocked out.
+- Falling out of the world (Marvin) brings you back to the last spot you stood on.
+
+**Known:** the abandoned mine's portal to the ancient temple (the Guardians quest) can't be used yet - ZenKit can't
+load `ANCIENTTEMPLE.ZEN` (a native parser error).
 
 ## 2026-10-13 (night): visible NPC spells, sleep on you, save names, menu zoom
 

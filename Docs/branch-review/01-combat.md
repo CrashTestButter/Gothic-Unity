@@ -63,6 +63,11 @@
   from `Humans.mds` (`S_FISTATTACK`) with a short vibration, a punch vibrates harder; `ShowNpcColliders` shows the
   punch volume as a sphere. The fist stays closed over highlighted NPCs and items, near (hand grabber) and far (force
   grabber, its own hover pose).
+- **Frozen isn't down:** `ZS_MagicFreeze` sets `BS_UNCONSCIOUS` like a knockout; like the scripts' `C_NpcIsDown`
+  only knocked out (not frozen) and dead NPCs count as down - monsters kept a frozen victim as target and the next hit
+  no longer kills it at once.
+- **Web crawler melee:** Mroczne Tajemnice's mage crawler casts from afar but uses its melee table (`FAI_MINECRAWLER`)
+  and bites when its target is frozen or within twice its fist range.
 
 ## Key commits
 
@@ -76,6 +81,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 
 2026-10-11/13: `78de091f` knockout fall · `ec35b444` summons act for the hero · `45b6db3d` combo limit · `87665888` VR fists ·
 `fef6b87f` fist sound/haptics · `f71d91ee` fist stays closed on hover
+
+2026-10-15: `99ca5d27` frozen isn't down · `075f9e69` web crawler melee
 
 ## Main files
 
@@ -94,6 +101,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 `EnableDamageTargetMarkers`
 
 2026-10-11/13: `EnableKnockoutFallAnimation`, `EnableSummonActsForMaster`, `EnableNpcComboLimit`, `EnableVrFists`
+
+2026-10-15: `EnableFrozenIsNotDown`, `EnableSpellMonsterMelee`
 
 ## Review notes
 
@@ -122,3 +131,6 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 - G2: a lurker or wolf bites in a normal rhythm, not 4 times a second; humans chain at most their animation's combo.
 - VR: grip + trigger on an empty hand and swing into an NPC (Buster's duel) - fist damage, he fights back with fists.
   Each swing whooshes and vibrates, a punch vibrates harder.
+
+- Mroczne Tajemnice mine: a web crawler casts from afar; once you're frozen or close it runs up and bites (no freeze
+  lock); a frozen NPC isn't killed by one hit.

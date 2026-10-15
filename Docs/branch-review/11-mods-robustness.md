@@ -22,6 +22,15 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 - Mroczne Tajemnice: the missing smithy furnace (fireplace children, [World](07-world-vobs.md)) and stone textures on
   palms/nets (texture array materials, [Rendering](08-rendering-video.md)) are fixed.
 
+**Added 2026-10-15**
+
+- Mroczne Tajemnice: 1024x1024 single mip textures (Siekacz's tavern, catapult, roofs) and the abandoned mine's
+  dynamic lights work ([Rendering](08-rendering-video.md)); the web crawler bites frozen/close targets
+  ([Combat](01-combat.md)).
+- ⚠️ Known: `ANCIENTTEMPLE.ZEN` (the portal from the abandoned mine, the Guardians quest) fails in ZenKit's native
+  world parser (`ZkWorld_load() failed: std::bad_alloc`, reproduced outside Unity; same archive format as the
+  abandoned mine, standard VOB classes) - needs a ZenKit fix.
+
 ## Key commits
 
 `5eb534aa`/`fca4712c` mod loading · `75287b0e` OU.BIN · `803816ee` extended classes · `1107c651` language ·
@@ -29,6 +38,8 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 `bc632361` Ogg · `54f97e9b` Wld_InsertNpc
 
 2026-10-11/13: `5ce0cbcd` fireplace children · `4d39c699` texture array materials
+
+2026-10-15: `23d763df` texture array mips · `25183f71` dynamic VOB lights · `075f9e69` crawler melee
 
 ## Main files
 
@@ -54,3 +65,5 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 - Vanilla G1 and G2 still boot with `ModPath` empty.
 
 - Mroczne Tajemnice: smugglers' beach smithy complete, palms and nets textured.
+
+- Mroczne Tajemnice: Siekacz's tavern and the catapult textured; the abandoned mine lit blue/teal.

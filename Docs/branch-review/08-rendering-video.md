@@ -41,6 +41,26 @@
   `i` got the material of Gothic's sub mesh `i`: palm leaves sampled the opaque array with alpha indices (stone
   textures without alpha on G2 addon palms, fishing nets and Mroczne Tajemnice meshes).
 
+**Added 2026-10-15**
+
+- **Lightmaps:** light mapped polygons (caves, mines, houses - 92% of the Old Mine, 7.7% of G1's world) show Gothic's
+  lightmaps: the world's pages go into one texture array (smaller pages in a corner, uv scaled), u/v come from
+  ZenGin's right/up vectors (checked against G1's world and Old Mine: the other order sampled black atlas gaps), a
+  w = -1 marker in TEXCOORD1 (a mesh without the channel gets TEXCOORD0 there - a positive marker made VOBs sample
+  lightmaps).
+- **Per pixel stationary lights:** torches, fires, pooled lights and the Light spell are summed per pixel in Lit-World
+  - per vertex a torch in the middle of a big cave wall lit nothing.
+- **Indoor worlds** (BSP indoor: Old Mine, Free Mine, Orc Temple, mod caves) have no sun and no fog.
+- **VOB light:** a VOB in a light mapped area takes the average lightmap light of the cells around it (2 m cells
+  sampled at polygon centers while building the world, rings up to 8 m, the world's average in mostly light mapped
+  worlds) through `_VobLightTint`; static lights baked into the lightmaps skip light mapped walls and these VOBs.
+- **Dynamic VOB lights** that are switched on are created (they were skipped) - Mroczne Tajemnice's abandoned mine is
+  lit only by them.
+- **Light refresh** (Immersion): the torch's/Light spell's world light moves every 0.3/0.15/0.075 s.
+- **Mod textures:** textures above 512 without the needed mips (Mroczne Tajemnice's 1024x1024 single mip ones) are
+  downscaled with a generated chain (their slices stayed empty: black/stone patterns); uv scale and mip limit follow
+  the slice. Meshes are cached separately for texture array and single texture use.
+
 **Added 2026-10-13**
 
 - **Rain around the player:** the `Rain` object sat at the world's origin below the player rig's root, which doesn't
@@ -54,6 +74,9 @@
 2026-10-10/11: `9775ab32` stereo cinema · `443afd62` spectator cinema
 
 2026-10-11/13: `87bb86c8` particle controller visuals · `4d39c699` texture array materials
+
+2026-10-15: `b2af4399` lightmaps, per pixel lights, indoor worlds, VOB light · `25183f71` dynamic VOB lights ·
+`23d763df` texture array mips · `d9963450` mesh cache per texture mode · `45ee344c` light refresh
 
 2026-10-13: `3f9923d1` rain follows the player
 
@@ -74,6 +97,9 @@
 2026-10-10/11: —
 
 2026-10-11/13: `EnablePfxControllerVisuals` (needs `EnableParticleEffects`), `EnableTextureArraySubmeshMaterials`
+
+2026-10-15: `EnableWorldLightmaps`, `WorldLightmapBrightness`, `EnableIndoorWorldDarkness`, `EnableVobWorldLight`,
+`EnableDynamicVobLights`, `EnableTextureArrayMipFix`, `EnableMeshCachePerTextureMode`
 
 2026-10-13: `EnableRainFollowsPlayer`
 
@@ -97,3 +123,8 @@
 - G2 addon beach and Mroczne Tajemnice: palms have leaves, fishing nets look like nets.
 
 - Let it rain (Marvin skip time): it rains around you anywhere in the world.
+
+- G1 Old Mine: walls with Gothic's lightmaps, no sun/fog, the torch in the hand lights walls and VOBs, scaffolds and
+  stairs as dark as the walls. G1 world: huts and caves lit, not black under roofs.
+- Mroczne Tajemnice abandoned mine: blue/teal light. Siekacz's tavern, catapult, roofs: textured.
+- Immersion "Light refresh" on High: the torch's light follows the hand smoothly.

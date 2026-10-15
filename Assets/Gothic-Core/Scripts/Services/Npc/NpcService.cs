@@ -7,6 +7,7 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Const;
 using Gothic.Core.Creator;
 using Gothic.Core.Domain.Npc;
+using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Models.Container;
@@ -26,6 +27,7 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
+using Logger = Gothic.Core.Logging.Logger;
 using Object = UnityEngine.Object;
 
 namespace Gothic.Core.Services.Npc
@@ -148,6 +150,22 @@ namespace Gothic.Core.Services.Npc
         public Vector3 GetFreeAreaAtSpawnPoint(Vector3 positionToScan)
         {
             return _initializerDomain.GetFreeAreaAtSpawnPoint(positionToScan);
+        }
+
+        /// <summary>
+        /// Spawns the NPC instance with the given Daedalus symbol name during gameplay.
+        /// </summary>
+        public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
+        {
+            var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
+            if (symbol == null || symbol.Type != DaedalusDataType.Instance)
+            {
+                Logger.LogWarning($"[NpcService] SpawnNpcByName: '{symbolName}' is no Daedalus instance", LogCat.Npc);
+                return false;
+            }
+
+            _initializerDomain.SpawnNpcRuntime(symbol.Index, position, rotation);
+            return true;
         }
 
         public async Task CreateWorldNpcs(LoadingService loading)

@@ -118,6 +118,23 @@ namespace Gothic.Core.Domain.Npc
             _tmpWldInsertNpcData.Add((userDataObject, spawnPoint));
         }
 
+        /// <summary>
+        /// Spawns an NPC during gameplay (not during world loading), e.g. by the Marvin spawn cheat.
+        /// The NPC is lazy loaded like all others: its mesh is created once the culling marks it visible.
+        /// </summary>
+        public GameObject SpawnNpcRuntime(int npcIndex, Vector3 position, Quaternion rotation)
+        {
+            var container = AllocZkInstance(npcIndex);
+
+            // Same placement as a world-load NPC (free area around the spot + culling entry). A mid-game
+            // Wld_InsertNpc spawn needs the same steps; once both exist, they should share one method.
+            var go = InitLazyLoadNpc(container);
+            go.transform.SetPositionAndRotation(GetFreeAreaAtSpawnPoint(position), rotation);
+            _npcMeshCullingService.AddCullingEntry(go);
+
+            return go;
+        }
+
         private NpcContainer AllocZkInstance(INpc vobNpc)
         {
             var symbol = _gameStateService.GothicVm.GetSymbolByName(vobNpc.Name)!;

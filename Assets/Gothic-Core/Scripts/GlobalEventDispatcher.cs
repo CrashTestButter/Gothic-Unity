@@ -2,8 +2,10 @@
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Context;
+using Gothic.Core.Models.UI;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using ZenKit;
 using ZenKit.Vobs;
 
@@ -86,5 +88,15 @@ namespace Gothic.Core
 
         // FIXME - If LockPick in hand is Amount=0, then destroy as Mesh.
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboBroken = new();
+
+        // Text on screen for some seconds (Daedalus PrintScreen() or engine messages like Marvin's "testmode on").
+        public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();
+
+        // Marvin: the list of recently executed commands changed.
+        public static readonly UnityEvent MarvinRecentCommandsChanged = new();
+        // Marvin mode got activated (true) or deactivated (false).
+        public static readonly UnityEvent<bool> MarvinModeChanged = new();
+        // The Gothic-Unity logo in the menu got clicked. VR uses the event data to vibrate the clicking hand.
+        public static readonly UnityEvent<PointerEventData> MarvinLogoPoked = new();
     }
 }

@@ -15,8 +15,10 @@ Marvin is the in-game debug menu (name from Gothic's own marvin mode). Before ad
 - Lives in `Gothic-VR/Scripts/Adapters/Marvin/` (VR only, behind `GOTHIC_HVR_INSTALLED`). Flat mode has no equivalent as of now.
 - `MarvinRootHandler` shows three tabs: **Logs** (`MarvinLogsTabHandler`, UberLogger view with severity/category
   filter), **Marvin** (`MarvinTabHandler`) and **Inspector** (`MarvinInspectorTabHandler`).
-- The whole menu is only active if `DeveloperConfig.ActivateMarvinMode` is set (off in `Production.asset`).
-  There is no runtime gesture to enable it yet.
+- The whole menu is only active while `MarvinService.IsMarvinMode` is true. Every player can toggle it in game
+  (no flag needed): menu open → type `marvin`/`42` or click the Gothic-Unity logo 3 times → menu close
+  (`MarvinService.OnMenuClosed`, event `GlobalEventDispatcher.MarvinModeChanged`).
+  `DeveloperConfig.ActivateMarvinMode` is only a developer shortcut to start with it on (off in `Production.asset`).
 - Inspector flow: "Choose VOB" sets `MarvinService.IsMarvinSelectionMode` and the next hand grab stores the object
   in `MarvinService.MarvinSelectionGO`; "Select Hero" picks the player controller directly. The tab then calls
   `GetComponentsInChildren<IMarvinPropertyCollector>()` on that object and renders what they return.
@@ -25,6 +27,12 @@ Marvin is the in-game debug menu (name from Gothic's own marvin mode). Before ad
   `MarvinProperty<T>(name, getter, setter, min, max)` entries. Supported: `bool`, `int`, `float`.
   Example: `VRPlayerWeaponInteraction.CollectMarvinInspectorProperties`.
 - `MarvinService` (Core) only holds the selection state.
+- **Marvin tab = command console** (like the original F2 console, typed on the `VirtualKeyboard`). Grammar in
+  `MarvinCommandService.BuildCommands()`: `root.Add("goto").Add("waypoint").Add(value).Runs(values => ...)`,
+  `.Describe()`, `.Only(GameVersion...)`. Values: `MarvinClosedSetValue` (waypoints, instances, guilds - lazy, via
+  `MarvinPrefixIndex`) or `MarvinNumberValue`. A node with `Runs()` and further children = optional value.
+  The actions live in `MarvinCheatDomain`. Only commands in the grammar can be typed, so add a command only
+  together with its action. Document new commands in the wiki page `Player/Cheats-and-Marvin-Mode.md`.
 
 ## Marvin or DeveloperConfig?
 

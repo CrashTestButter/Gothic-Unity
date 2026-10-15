@@ -125,10 +125,6 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(useMethod: true, method: nameof(SaveSlotFieldCondition), inverse: true)]
         public string SpawnAtWaypoint = string.Empty;
 
-        [Tooltip("Saving asks for the save's name on an on-screen keyboard in Gothic's font (letters, digits, space, " +
-                 "backspace, OK, cancel; a physical keyboard types too). Off: the name is 'Gothic-Unity - <date>'.")]
-        public bool EnableSaveNameKeyboard = true;
-
         [Separator("Debug")]
         [Tooltip("Ignore frame skipping during loading.")]
         public bool SpeedUpLoading;

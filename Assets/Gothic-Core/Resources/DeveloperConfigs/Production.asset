@@ -33,7 +33,6 @@ MonoBehaviour:
   SaveSlotToLoad: 0
   PreselectWorldToSpawn: 0
   SpawnAtWaypoint: 
-  EnableSaveNameKeyboard: 1
   SpeedUpLoading: 0
   EnableVOBs: 1
   SpawnVOBTypes:

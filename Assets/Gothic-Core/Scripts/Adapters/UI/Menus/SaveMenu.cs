@@ -21,6 +21,8 @@ namespace Gothic.Core.Adapters.UI.Menus
 {
     public class SaveMenu : AbstractMenu
     {
+        private const string EmptySlotText = "---";
+
         private bool _isInitialized;
         private GameObject[] SaveSlots = new GameObject[16];
 
@@ -95,7 +97,7 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var saveSlot = MenuItemCache[$"MENUITEM_{_saveLoadStatus}_SLOT{i}"].go;
 
                 var text = saveSlot.GetComponentInChildren<TMP_Text>();
-                text.text = "---"; // daedalus menu item has text "unknown", but in game it shows as ---
+                text.text = EmptySlotText; // daedalus menu item has text "unknown", but in game it shows as ---
                 SaveSlots[i] = saveSlot;
             }
 
@@ -204,7 +206,8 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var pointerExitEntry = eventTrigger.triggers.Find(x => x.eventID == EventTriggerType.PointerExit);
                 pointerExitEntry.callback.AddListener(_ => OnLoadGameSlotPointerExit());
 
-                saveSlotGo.GetComponentInChildren<TMP_Text>().text = save.Metadata.Title;
+                saveSlotGo.GetComponentInChildren<TMP_Text>().text =
+                    string.IsNullOrWhiteSpace(save.Metadata.Title) ? EmptySlotText : save.Metadata.Title;
             }
         }
 
@@ -260,17 +263,9 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
             else
             {
-                var defaultTitle = $"Gothic-Unity - {DateTime.Now}";
-                // DeveloperConfig.EnableSaveNameKeyboard: name the save on the on-screen keyboard (Gothic asks too).
-                if (!ConfigService.Dev.EnableSaveNameKeyboard)
-                {
-                    SaveToSlot(id, defaultTitle);
-                    return;
-                }
-
+                // Name the save on the on-screen keyboard (Gothic asks too). Empty names save too, as in the original.
                 var currentTitle = _saves[id]?.Metadata?.Title;
-                VirtualKeyboard.Show(currentTitle ?? string.Empty,
-                    title => SaveToSlot(id, string.IsNullOrWhiteSpace(title) ? defaultTitle : title), null);
+                VirtualKeyboard.Show(currentTitle ?? string.Empty, title => SaveToSlot(id, title), null);
             }
         }
 

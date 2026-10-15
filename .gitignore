@@ -105,9 +105,6 @@ ProjectSettings/Packages/com.unity.testtools.codecoverage/Settings.json
 # Ignore paid assets from repository
 Assets/HurricaneVR/
 
-# Ignore local packages
-Packages/com.coplaydev.unity-mcp/
-
 # Do not commit local development settings
 Assets/StreamingAssets/GameSettings.dev.json
 Assets/StreamingAssets/GameSettings.dev.json.meta

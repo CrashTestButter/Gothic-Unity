@@ -63,7 +63,8 @@ namespace Gothic.Core.Adapters.Scenes
                 {
                     // If the Gothic installation directory is not set, show an error message and exit.
                     _invalidInstallationDir.SetActive(true);
-                    throw new ArgumentException($"{preselectedVersion} installation couldn't be found inside >GameSettings.json< file.");
+                    throw new ArgumentException($"{preselectedVersion} installation couldn't be found inside " +
+                                                ">GameSettings.json< file.");
                 }
 
                 return;

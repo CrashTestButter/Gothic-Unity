@@ -54,6 +54,23 @@ namespace Gothic.Core.Services.Caches
         // Kept for TryGetDaedalusVm's loose-file fallback (mods overriding a DAT with one ZenKit can't parse).
         private string _workPath;
 
+        /// <summary>
+        /// Prefabs come from Unity's Resources, not from the Gothic installation - they are needed before Init()
+        /// (the player scene with the game profile menu and its PrintScreen overlay loads before a game is picked).
+        /// </summary>
+        public ResourceCacheService()
+        {
+            _prefab = new(s =>
+            {
+                // Lookup is done in following places:
+                // 1. CONTEXT_NAME/Prefabs/... - overwrites lookup path below, used for specific prefabs, for current context (HVR, Flat, ...)
+                // 2. Prefabs/... - Located inside core module (Gothic-Core), if we don't need special handling.
+                var contextPrefixPath = $"{_contextInteractionService.GetContextName()}/{s}";
+                return new[] { contextPrefixPath, s }.Select(Resources.Load<GameObject>)
+                    .FirstOrDefault(newPrefab => newPrefab != null);
+            });
+        }
+
         public void Init(string root, bool mountModFiles = false, IReadOnlyList<string> allowedModArchives = null)
         {
             var workPath = FindWorkPath(root);
@@ -79,7 +96,8 @@ namespace Gothic.Core.Services.Caches
                 // side by side in Data/ — mounting all of them merges languages together. The mod ini's
                 // [FILES] vdf= list says exactly which ones belong together; restrict to that when present.
                 if (allowedModArchives is { Count: > 0 })
-                    modFiles = modFiles.Where(p => allowedModArchives.Contains(Path.GetFileName(p), StringComparer.OrdinalIgnoreCase));
+                    modFiles = modFiles.Where(p =>
+                        allowedModArchives.Contains(Path.GetFileName(p), StringComparer.OrdinalIgnoreCase));
 
                 modFiles.ToList().ForEach(v => Vfs.MountDisk(v, VfsOverwriteBehavior.All));
             }
@@ -122,16 +140,6 @@ namespace Gothic.Core.Services.Caches
             _morphMesh = new(s => new MorphMesh(Vfs, s).Cache());
             _font = new(s => new Font(Vfs, s).Cache());
             _texture = new(s => new Texture(Vfs, s).Cache());
-            
-            _prefab = new(s =>
-            {
-                // Lookup is done in following places:
-                // 1. CONTEXT_NAME/Prefabs/... - overwrites lookup path below, used for specific prefabs, for current context (HVR, Flat, ...)
-                // 2. Prefabs/... - Located inside core module (Gothic-Core), if we don't need special handling.
-                var contextPrefixPath = $"{_contextInteractionService.GetContextName()}/{s}";
-                return new[] { contextPrefixPath, s }.Select(Resources.Load<GameObject>)
-                    .FirstOrDefault(newPrefab => newPrefab != null);
-            });
         }
 
         [CanBeNull]
@@ -252,7 +260,9 @@ namespace Gothic.Core.Services.Caches
             catch (Exception e)
             {
                 _brokenSegments.Add(key);
-                Logger.LogWarning($"Music segment >{key}< failed to load or download ({e.Message}). Skipping it from now on.", LogCat.Audio);
+                Logger.LogWarning($"Music segment >{key}< failed to load or download ({e.Message}). Skipping it from " +
+                                  "now on.",
+                    LogCat.Audio);
 
                 // DmSegment_download leaves the native segment half-initialized on failure. Its finalizer
                 // later calls DmSegment_release on that same broken state and double-frees, corrupting the
@@ -278,7 +288,8 @@ namespace Gothic.Core.Services.Caches
             // AllowNullInstanceAccess - Ikarus fix.
             // IgnoreConstSpecifier - Ikarus fix. It is overwriting const entries multiple times.
             // TODO - both flags could be removed for non-Ikarus mods.
-            var flags = (byte)(DaedalusExecutionFlags.AllowNullInstanceAccess | DaedalusExecutionFlags.IgnoreConstSpecifier);
+            var flags = (byte)(DaedalusExecutionFlags.AllowNullInstanceAccess |
+                               DaedalusExecutionFlags.IgnoreConstSpecifier);
             var fileName = $"{GetPreparedKey(key)}.dat";
 
             try
@@ -292,7 +303,9 @@ namespace Gothic.Core.Services.Caches
                 // to 7 entries while ZenKit is fixed at 6, failing the whole VM load. The mod installer
                 // still leaves the base-game DAT on disk under _work/, so fall back to that loose copy:
                 // for engine data (fight moves, menus, sfx) the vanilla version is a workable stand-in.
-                Logger.LogWarning($"[ResourceCacheService] DaedalusVm '{fileName}' failed to load from VFS ({e.Message}) — trying loose _work fallback", LogCat.ZenKit);
+                Logger.LogWarning($"[ResourceCacheService] DaedalusVm '{fileName}' failed to load from VFS " +
+                                  $"({e.Message}) — trying loose _work fallback",
+                    LogCat.ZenKit);
 
                 var looseDat = Directory.EnumerateFiles(_workPath, fileName, new EnumerationOptions
                 {
@@ -303,19 +316,25 @@ namespace Gothic.Core.Services.Caches
 
                 if (looseDat == null)
                 {
-                    Logger.LogError($"[ResourceCacheService] No loose '{fileName}' found under '{_workPath}' — VM unavailable", LogCat.ZenKit);
+                    Logger.LogError($"[ResourceCacheService] No loose '{fileName}' found under '{_workPath}' — VM " +
+                                    "unavailable",
+                        LogCat.ZenKit);
                     return null;
                 }
 
                 try
                 {
                     var vm = new DaedalusVm(looseDat, flags);
-                    Logger.LogWarning($"[ResourceCacheService] Loaded '{fileName}' from loose file '{looseDat}' instead", LogCat.ZenKit);
+                    Logger.LogWarning($"[ResourceCacheService] Loaded '{fileName}' from loose file '{looseDat}' " +
+                                      "instead",
+                        LogCat.ZenKit);
                     return vm;
                 }
                 catch (Exception e2)
                 {
-                    Logger.LogError($"[ResourceCacheService] Loose fallback '{looseDat}' also failed to load ({e2.Message}) — VM unavailable", LogCat.ZenKit);
+                    Logger.LogError($"[ResourceCacheService] Loose fallback '{looseDat}' also failed to load " +
+                                    $"({e2.Message}) — VM unavailable",
+                        LogCat.ZenKit);
                     return null;
                 }
             }
@@ -439,6 +458,10 @@ namespace Gothic.Core.Services.Caches
         private GameObject TryGetPrefab(string prefabPath)
         {
             _prefab.TryLoad(prefabPath, out var item);
+
+            if (item == null)
+                Logger.LogError($"Prefab at >{prefabPath}< not found.", LogCat.Loading);
+
             return item;
         }
 

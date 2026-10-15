@@ -108,10 +108,12 @@ namespace Gothic.Core.Domain.StaticCache
                         continue;
                     }
 
-                    var fireWorld = _resourceCacheService.TryGetWorld(fire.VobTree, _contextGameVersionService.Version, true);
+                    var fireWorld = _resourceCacheService.TryGetWorld(fire.VobTree,
+                        _contextGameVersionService.Version, true);
                     if (fireWorld == null)
                     {
-                        Logger.LogWarning($"Fire VobTree >{fire.VobTree}< could not be loaded. Skipping its child VOBs for caching.", LogCat.PreCaching);
+                        Logger.LogWarning($"Fire VobTree >{fire.VobTree}< couldn't be loaded. Skipping its child VOBs.",
+                            LogCat.PreCaching);
                         continue;
                     }
 

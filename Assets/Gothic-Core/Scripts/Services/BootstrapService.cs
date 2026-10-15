@@ -125,9 +125,8 @@ namespace Gothic.Core.Services
             var gothicRootPath = _contextGameVersionService.RootPath;
 
             Logger.Log($"Initializing Gothic installation at: {gothicRootPath}", LogCat.Loading);
-            // Dev.EnableMod only means "use the Editor's ModPath/ModIni override" and is always false
-            // in a build's DeveloperConfig asset — mounting .mod archives (VfsOverwriteBehavior.All)
-            // must instead follow whether a mod is actually active via GameSettings.json in a build.
+            // Mounting .mod archives (VfsOverwriteBehavior.All) must follow whether a mod is actually active
+            // (ModPath or ModIni resolved), not Dev.PreSelectMod, which ignores any other mod source.
             _resourceCacheService.Init(gothicRootPath, _configService.IsModActive, _configService.GothicMod.Vdfs);
 
             _audioService.InitMusic();

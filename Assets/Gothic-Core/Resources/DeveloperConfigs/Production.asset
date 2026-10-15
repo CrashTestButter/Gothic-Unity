@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PreselectGameVersion: 1
   GameVersion: 0
-  EnableMod: 0
-  ModPath: 
+  PreSelectMod: 0
   ModIni: 
+  ModPath: 
   FallbackLanguage: 
   GameControls: 0
   EnableVRDeviceSimulator: 0
-  ActivateMarvinMode: 0
+  PreselectMarvinMode: 0
   EnableZSpyLogs: 0
   AllDebugChannels: 0
   ZSpyChannels:
@@ -236,7 +236,6 @@ MonoBehaviour:
   NpcSpellHoming: 0.2
   EnableHeroSpellStates: 1
   EnableMenuZoom: 1
-  EnableSaveNameKeyboard: 1
   EnableWorldLightmaps: 1
   WorldLightmapBrightness: 1
   EnableIndoorWorldDarkness: 1

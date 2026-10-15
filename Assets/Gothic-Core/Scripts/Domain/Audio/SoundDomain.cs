@@ -48,7 +48,7 @@ namespace Gothic.Core.Domain.Audio
             {
                 // Any audio decode failure (a mod's malformed/unsupported file) degrades to "no audio,
                 // text-length fallback" (see Output.cs) instead of throwing uncaught mid-dialog and
-                // silently killing everything after it in the caller (subtitles included) — that exact
+                // silently killing everything after it in the caller (subtitles included) - that exact
                 // failure shape is what made a New Balance dialogue NPC's lines play with zero audio
                 // AND zero text, since the crash happened before the subtitle lookup ever ran.
                 Logger.LogWarning($"Failed to decode audio clip '{fileName}': {e.Message}", LogCat.Audio);
@@ -66,9 +66,9 @@ namespace Gothic.Core.Domain.Audio
         public SoundModel ConvertWavByteArrayToFloatArray(byte[] fileBytes)
         {
             // Some mods (e.g. New Balance's dubbing) ship Ogg Vorbis with a ".wav" extension slapped
-            // on — sniff real content instead of trusting the name/extension. Vanilla Gothic never
+            // on - sniff real content instead of trusting the name/extension. Vanilla Gothic never
             // ships this, so normal play always takes the RIFF/WAV path below unchanged.
-            if (fileBytes.Length >= 4 && fileBytes[0] == 'O' && fileBytes[1] == 'g' && fileBytes[2] == 'g' && fileBytes[3] == 'S')
+            if (IsOggVorbis(fileBytes))
             {
                 if (!_configService.EffectiveEnableOggAudio)
                 {
@@ -152,6 +152,12 @@ namespace Gothic.Core.Domain.Audio
                 Channels = numChannels,
                 SampleRate = sampleRate
             };
+        }
+
+        private static bool IsOggVorbis(byte[] fileBytes)
+        {
+            return fileBytes.Length >= 4 && fileBytes[0] == 'O' && fileBytes[1] == 'g' && fileBytes[2] == 'g' &&
+                   fileBytes[3] == 'S';
         }
 
         private SoundModel ConvertOggByteArrayToFloatArray(byte[] fileBytes)

@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Gothic.Core.Logging;
 using Gothic.Core.Models.Config;
 using UnityEngine;
 using UnityEngine.Networking;
 using ZenKit;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Domain.Config
 {

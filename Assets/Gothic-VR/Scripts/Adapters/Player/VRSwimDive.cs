@@ -114,7 +114,8 @@ namespace Gothic.VR.Adapters.Player
                 var mds = _resourceCacheService.TryGetModelScript("Humans");
                 if (mds == null)
                 {
-                    Logger.LogError("Humans.mds failed to load or parse. Swimming/diving sounds won't be available.", LogCat.VR);
+                    Logger.LogError("Humans.mds failed to load or parse. Swimming/diving sounds won't be available.",
+                        LogCat.VR);
                     return;
                 }
 
@@ -127,7 +128,8 @@ namespace Gothic.VR.Adapters.Player
                     var sfxName = anim?.SoundEffects.FirstOrDefault()?.Name;
                     if (sfxName == null)
                     {
-                        Logger.LogWarning($"Humans.mds: '{animName}' animation or its sound effect is missing.", LogCat.VR);
+                        Logger.LogWarning($"Humans.mds: '{animName}' animation or its sound effect is missing.",
+                            LogCat.VR);
                         return null;
                     }
                     return _vmCacheService.TryGetSfxData(sfxName);

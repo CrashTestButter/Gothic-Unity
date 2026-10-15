@@ -16,6 +16,8 @@ namespace Gothic.Core.Extensions
                 PrefabType.UiButtonTextured => "Prefabs/UI/ButtonTextured",
                 PrefabType.UiTexture => "Prefabs/UI/Texture",
                 PrefabType.UiThumbnail => "Prefabs/UI/Thumbnail",
+                PrefabType.UiVirtualKeyboard => "Prefabs/UI/VirtualKeyboard",
+                PrefabType.UiPrintScreen => "Prefabs/UI/PrintScreen",
                 
                 PrefabType.UiDebugText => "Prefabs/UI/Debug/Text",
                 PrefabType.UiDebugLogLine => "Prefabs/UI/Debug/LogLine",

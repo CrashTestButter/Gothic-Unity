@@ -2,6 +2,7 @@
 using System.Linq;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
@@ -22,6 +23,7 @@ namespace Gothic.VR.Adapters.Marvin
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly MarvinService _marvinService;
 
         private const float _noFloorSeconds = 2f;
         private const float _floorSearchDistance = 200f;
@@ -36,7 +38,7 @@ namespace Gothic.VR.Adapters.Marvin
 
         private void Update()
         {
-            if (!_configService.Dev.ActivateMarvinMode || !_configService.Dev.EnableMarvinFallRescue)
+            if (!_marvinService.IsMarvinMode || !_configService.Dev.EnableMarvinFallRescue)
                 return;
 
             var player = _contextInteractionService.GetCurrentPlayerController();

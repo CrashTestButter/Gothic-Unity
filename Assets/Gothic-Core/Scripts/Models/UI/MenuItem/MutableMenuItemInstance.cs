@@ -17,7 +17,8 @@ namespace Gothic.Core.Model.UI.MenuItem
         /// as a style/position template (e.g. MENUITEM_GAME_SUB_TITLES) doesn't exist, so callers may
         /// pass a null reference — fall back to default look/position rather than crashing menu init.
         /// </summary>
-        public MutableMenuItemInstance(string menuItemName, [CanBeNull] AbstractMenuItemInstance reference): base(menuItemName)
+        public MutableMenuItemInstance(string menuItemName, [CanBeNull] AbstractMenuItemInstance reference)
+            : base(menuItemName)
         {
             if (reference == null)
                 return;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Gothic.Core.Models.Config
 {
@@ -14,7 +15,7 @@ namespace Gothic.Core.Models.Config
 
         // Mod inis may prefix the world with its subfolder (G2 Renovation: "NewWorld\NEWWORLD.ZEN").
         // Our VFS lookup is flat by file name, so only the name part is meaningful here.
-        public string World => System.IO.Path.GetFileName(_config.GetValueOrDefault("world", "World.zen"));
+        public string World => Path.GetFileName(_config.GetValueOrDefault("world", "World.zen"));
 
         // [FILES] vdf=... lists the exact .mod/.vdf archives this ini wants mounted. Multi-language mod
         // packages (e.g. Dolina Zombie) ship every language's archives side by side in Data/, relying on
@@ -22,6 +23,17 @@ namespace Gothic.Core.Models.Config
         public IReadOnlyList<string> Vdfs => _config.GetValueOrDefault("vdf", "")
             .Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
 
+        // Safety hatch, not a user setting (the in-game music toggle only mutes, see Gothic.ini musicEnabled).
+        // Set unitySkipMusicPlayback=1 for mods whose music crashes dmusic natively, e.g. Gothic II New Balance
+        // (EGE_DAY_Std.sgt segues into a segment with incomplete instruments; no C# try/catch can stop it).
+        // Music is then never initialized for the whole runtime.
+        public bool UnitySkipMusicPlayback =>
+            Convert.ToBoolean(Convert.ToInt16(_config.GetValueOrDefault("unitySkipMusicPlayback", "0")));
+
+
+        // Language used when auto-detection fails. Mods often rename MOBNAME_CRATE (the probe constant), e.g.
+        // G2 Renovation uses 'Skrzynka'. One of: cs, pl, ru, de, en, es, fr, it. Empty = fail the boot.
+        public string UnityFallbackLanguage => _config.GetValueOrDefault("unityFallbackLanguage", string.Empty);
 
 
         public GothicModIniConfig(Dictionary<string, string> config, string iniFilePath)

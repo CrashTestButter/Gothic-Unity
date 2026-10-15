@@ -32,6 +32,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private string _randomDialogAnimationName;
 
+        private static bool _hasLoggedMissingSubtitles;
+
 
         public Output(AnimationAction action, NpcContainer npcContainer) : base(action, npcContainer)
         { }
@@ -51,7 +53,15 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             }
 
             var audioClip = _audioService.CreateAudioClip(OutputName);
-            var block = _gameStateService.Dialogs.CutsceneLibrary.Blocks.Find(x => x.Name == OutputName);
+            // No OU.BIN/CSL found at boot (e.g. a mod without them, see BootstrapDomain.LoadSubtitles).
+            var cutsceneLibrary = _gameStateService.Dialogs.CutsceneLibrary;
+            if (cutsceneLibrary == null && !_hasLoggedMissingSubtitles)
+            {
+                Logger.LogWarning("No cutscene library loaded. Dialogs play without subtitles.", LogCat.Dialog);
+                _hasLoggedMissingSubtitles = true;
+            }
+            // FIXME - CutsceneLibrary.Blocks is uncached and will re-read all elements each time we call it! Cache and reuse!
+            var block = cutsceneLibrary?.Blocks.Find(x => x.Name == OutputName);
 
             if (audioClip == null)
                 Logger.LogWarning($"AudioClip >{OutputName}< not found. Using text-length fallback.", LogCat.Dialog);
@@ -152,7 +162,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 var mds = _resourceCacheService.TryGetModelScript(Props.MdsNameBase);
                 if (mds == null)
                 {
-                    Logger.LogError($"{Props.MdsNameBase}.mds failed to load or parse. Dialog gestures are unavailable.", LogCat.Dialog);
+                    Logger.LogError($"{Props.MdsNameBase}.mds failed to load or parse. Dialog gestures are " +
+                                    "unavailable.",
+                        LogCat.Dialog);
                     return 0;
                 }
 

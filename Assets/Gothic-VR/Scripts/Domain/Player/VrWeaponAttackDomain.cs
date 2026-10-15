@@ -77,8 +77,8 @@ namespace Gothic.VR.Domain.Player
         private AttackWindowStateMachine _stateMachine;
 
         // Vanilla-like timings (seconds), used when a mod's Humans.mds provides no usable attack events.
-        private static readonly (float attackWindowTime, float comboWindowStart, float comboWindowTime) FallbackWindowTimes
-            = (0.4f, 0.5f, 0.4f);
+        private static readonly (float attackWindowTime, float comboWindowStart, float comboWindowTime)
+            _fallbackWindowTimes = (0.4f, 0.5f, 0.4f);
 
         /// <summary>
         /// TRUE, when:
@@ -95,18 +95,20 @@ namespace Gothic.VR.Domain.Player
             // First time grabbing this weapon.
             if (WeaponVobContainer == null)
             {
-                // Resolve everything first. Assign state only afterward, so a failure can't leave us half-initialized.
+                // A mod's Humans.mds can lack the attack animation or its events. Default timings are used then,
+                // so the handler is always fully set up (a null state machine made swinging do nothing).
                 _attackVelocityThreshold = weaponConfig.WeaponVelocityThreshold;
                 _velocityDropPercentage = weaponConfig.WeaponVelocityDropPercentage;
 
                 WeaponVobContainer = vobContainer;
                 var attackAnimation = GetAttackAnimation();
-                var windowTimes = FallbackWindowTimes;
+                var windowTimes = _fallbackWindowTimes;
 
                 if (attackAnimation == null)
                 {
                     // Mods (or a broken Humans.mds parse) can lack the animation. Attacking must still work.
-                    Logger.LogError("Humans.mds attack animation not found. Using default attack window timings.", LogCat.VR);
+                    Logger.LogError("Humans.mds attack animation not found. Using default attack window timings.",
+                        LogCat.VR);
                     _swingSwordSound = null;
                 }
                 else
@@ -115,7 +117,9 @@ namespace Gothic.VR.Domain.Player
                     if (calculated.attackWindowTime > 0f)
                         windowTimes = calculated;
                     else
-                        Logger.LogError($"Attack animation >{attackAnimation.Name}< has unusable events. Using default attack window timings.", LogCat.VR);
+                        Logger.LogError($"Attack animation >{attackAnimation.Name}< has unusable events. Using " +
+                                        "default attack window timings.",
+                            LogCat.VR);
 
                     CalculateAttackSound(attackAnimation);
                 }

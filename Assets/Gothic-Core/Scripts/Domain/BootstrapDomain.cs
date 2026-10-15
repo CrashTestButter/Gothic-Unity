@@ -89,17 +89,21 @@ namespace Gothic.Core.Domain
             // TODO - Potentially re-enable error label on screen to say: We couldn't identify your language.
             // TODO - Add values for Gothic 2
             else if (!TrySetFallbackLanguage())
-                throw new CultureNotFoundException("Language couldn't be identified based on current Gothic installation. Set DeveloperConfig.FallbackLanguage to boot anyway.");
+                throw new CultureNotFoundException("Language couldn't be identified based on current Gothic " +
+                                                   "installation. Set unityFallbackLanguage in the mod's ini " +
+                                                   "(or DeveloperConfig.FallbackLanguage) to boot anyway.");
         }
 
         /// <summary>
         /// Mods frequently rename MOBNAME_CRATE (the auto-detection probe constant), which would
-        /// otherwise hard-fail the boot. DeveloperConfig.FallbackLanguage lets the user pick the
-        /// language manually for such installations.
+        /// otherwise hard-fail the boot. The unityFallbackLanguage entry in the mod's ini (or else
+        /// DeveloperConfig.FallbackLanguage) lets the mod author/user pick the language manually for such installations.
         /// </summary>
         private bool TrySetFallbackLanguage()
         {
-            var fallback = _configService.Dev.FallbackLanguage?.Trim().ToLowerInvariant();
+            var fallback = _configService.GothicMod?.UnityFallbackLanguage?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(fallback))
+                fallback = _configService.Dev.FallbackLanguage?.Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(fallback))
                 return false;
 
@@ -112,12 +116,15 @@ namespace Gothic.Core.Domain
             };
             if (encoding == 0)
             {
-                Logger.LogError($"DeveloperConfig.FallbackLanguage '{fallback}' is not a known language code (cs, pl, ru, de, en, es, fr, it).", LogCat.ZenKit);
+                Logger.LogError($"unityFallbackLanguage '{fallback}' is not a known language code " +
+                                "(cs, pl, ru, de, en, es, fr, it).", LogCat.ZenKit);
                 return false;
             }
 
             var probeValue = _gameStateService.GothicVm.GetSymbolByName("MOBNAME_CRATE")?.GetString(0) ?? "<missing>";
-            Logger.LogWarning($"Language auto-detection failed (MOBNAME_CRATE='{probeValue}') — using DeveloperConfig fallback '{fallback}'.", LogCat.ZenKit);
+            Logger.LogWarning($"Language auto-detection failed (MOBNAME_CRATE='{probeValue}') — using " +
+                              $"mod ini unityFallbackLanguage '{fallback}'.",
+                LogCat.ZenKit);
 
             StringEncodingController.SetEncoding(encoding);
             _localizationService.SetLanguage(fallback, encoding);
@@ -218,7 +225,8 @@ namespace Gothic.Core.Domain
             // VDFS/ is checked first — it holds the mod's OU.BIN extracted from DM_Speech.mod.
             // ZenKit's CutsceneLibrary has no VFS support, so this is the only way to load mod subtitles.
             var cutscenePath = new[] { "VDFS/_WORK", "_work" }
-                .SelectMany(folder => suffixes.Select(s => Path.Combine(rootPath, folder, "DATA", "scripts", "content", "CUTSCENE", $"OU.{s}")))
+                .SelectMany(folder => suffixes.Select(suffix =>
+                    Path.Combine(rootPath, folder, "DATA", "scripts", "content", "CUTSCENE", $"OU.{suffix}")))
                 .FirstOrDefault(File.Exists);
 
             if (cutscenePath == null)

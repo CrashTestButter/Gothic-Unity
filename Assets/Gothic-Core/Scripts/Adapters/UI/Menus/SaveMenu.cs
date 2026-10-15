@@ -6,6 +6,7 @@ using Gothic.Core.Model.UI.Menu;
 using Gothic.Core.Models.Caches;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.World;
 using Reflex.Attributes;
 using TMPro;
@@ -20,6 +21,9 @@ namespace Gothic.Core.Adapters.UI.Menus
 {
     public class SaveMenu : AbstractMenu
     {
+        private const string EmptySlotText = "---";
+        private const int _titleMaxLength = 30;
+
         private bool _isInitialized;
         private GameObject[] SaveSlots = new GameObject[16];
 
@@ -42,6 +46,8 @@ namespace Gothic.Core.Adapters.UI.Menus
         [Inject] private readonly SaveGameService _saveGameService;
         [Inject] private readonly BootstrapService _bootstrapService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly ContextTextInputService _contextTextInputService;
 
         
         /// <summary>
@@ -93,7 +99,7 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var saveSlot = MenuItemCache[$"MENUITEM_{_saveLoadStatus}_SLOT{i}"].go;
 
                 var text = saveSlot.GetComponentInChildren<TMP_Text>();
-                text.text = "---"; // daedalus menu item has text "unknown", but in game it shows as ---
+                text.text = EmptySlotText; // daedalus menu item has text "unknown", but in game it shows as ---
                 SaveSlots[i] = saveSlot;
             }
 
@@ -194,7 +200,8 @@ namespace Gothic.Core.Adapters.UI.Menus
                 }
                 catch (Exception e)
                 {
-                    Logger.LogWarning($"[SaveMenu] Save '{saveGameFolderName}' could not be parsed ({e.Message}) — skipping.", LogCat.Ui);
+                    Logger.LogWarning($"[SaveMenu] Save '{saveGameFolderName}' couldn't be parsed: {e.Message}",
+                        LogCat.Ui);
                     continue;
                 }
                 if (save?.Metadata == null)
@@ -213,7 +220,8 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var pointerExitEntry = eventTrigger.triggers.Find(x => x.eventID == EventTriggerType.PointerExit);
                 pointerExitEntry.callback.AddListener(_ => OnLoadGameSlotPointerExit());
 
-                saveSlotGo.GetComponentInChildren<TMP_Text>().text = save.Metadata.Title;
+                saveSlotGo.GetComponentInChildren<TMP_Text>().text =
+                    string.IsNullOrWhiteSpace(save.Metadata.Title) ? EmptySlotText : save.Metadata.Title;
             }
         }
 
@@ -269,18 +277,22 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
             else
             {
-                var defaultTitle = $"Gothic-Unity - {DateTime.Now}";
-                // DeveloperConfig.EnableSaveNameKeyboard: name the save on the on-screen keyboard (Gothic asks too).
-                if (!ConfigService.Dev.EnableSaveNameKeyboard)
-                {
-                    SaveToSlot(id, defaultTitle);
-                    return;
-                }
-
-                var currentTitle = _saves[id]?.Metadata?.Title;
-                VirtualKeyboard.Show(currentTitle ?? string.Empty,
-                    title => SaveToSlot(id, string.IsNullOrWhiteSpace(title) ? defaultTitle : title), null);
+                // Name the save (Gothic asks too). Empty names save too, as in the original.
+                // The slot shows the typed name, like the original's inline edit.
+                var slotText = SaveSlots[id].GetComponentInChildren<TMP_Text>();
+                var slotTextBefore = slotText.text;
+                var currentTitle = _saves[id]?.Metadata?.Title ?? string.Empty;
+                ShowTypedTitle(slotText, currentTitle);
+                _contextTextInputService.RequestText(currentTitle, _titleMaxLength,
+                    title => SaveToSlot(id, title),
+                    () => slotText.text = slotTextBefore,
+                    title => ShowTypedTitle(slotText, title));
             }
+        }
+
+        private static void ShowTypedTitle(TMP_Text slotText, string title)
+        {
+            slotText.text = title + "_";
         }
 
         private void SaveToSlot(int id, string title)

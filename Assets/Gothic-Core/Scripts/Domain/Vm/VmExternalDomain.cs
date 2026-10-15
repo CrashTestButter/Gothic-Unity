@@ -8,10 +8,12 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Models.UI;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
@@ -1242,7 +1244,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void PrintDebug(string message)
         {
-            if (!_configService.EffectiveEnableZSpyLogs)
+            if (!_enableZSpyLogs)
                 return;
 
             Logger.Log($"[zspy]: {message}", LogCat.ZSpy);
@@ -1258,7 +1260,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void PrintDebugInst(string message)
         {
-            if (!_configService.EffectiveEnableZSpyLogs)
+            if (!_enableZSpyLogs)
                 return;
 
             Logger.Log($"[zspy]: {message}", LogCat.ZSpy);
@@ -1273,6 +1275,15 @@ namespace Gothic.Core.Domain.Vm
                 return;
 
             Logger.Log($"[zspy,{channel}]: {message}", LogCat.ZSpy);
+        }
+
+        /// <summary>
+        /// posX/posY are percent of the screen, -1 centers the text. The return value isn't used by the scripts.
+        /// </summary>
+        public int PrintScreen(string message, int posX, int posY, string font, int timeSec)
+        {
+            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, timeSec));
+            return 0;
         }
 
         #endregion

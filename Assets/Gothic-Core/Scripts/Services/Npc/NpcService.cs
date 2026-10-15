@@ -27,8 +27,8 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
-using Object = UnityEngine.Object;
 using Logger = Gothic.Core.Logging.Logger;
+using Object = UnityEngine.Object;
 
 namespace Gothic.Core.Services.Npc
 {
@@ -169,6 +169,22 @@ namespace Gothic.Core.Services.Npc
             return _initializerDomain.GetFreeAreaAtSpawnPoint(positionToScan);
         }
 
+        /// <summary>
+        /// Spawns the NPC instance with the given Daedalus symbol name during gameplay.
+        /// </summary>
+        public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
+        {
+            var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
+            if (symbol == null || symbol.Type != DaedalusDataType.Instance)
+            {
+                Logger.LogWarning($"[NpcService] SpawnNpcByName: '{symbolName}' is no Daedalus instance", LogCat.Npc);
+                return false;
+            }
+
+            _initializerDomain.SpawnNpcRuntime(symbol.Index, position, rotation);
+            return true;
+        }
+
         public async Task CreateWorldNpcs(LoadingService loading)
         {
             MobRoutines.ClearAndReleaseMemory();
@@ -220,18 +236,6 @@ namespace Gothic.Core.Services.Npc
         public GameObject SpawnNpcRuntime(int npcIndex, Vector3 position, Quaternion rotation, NpcInstance summonedBy = null)
         {
             return _initializerDomain.SpawnNpcRuntime(npcIndex, position, rotation, summonedBy);
-        }
-
-        public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
-        {
-            var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
-            if (symbol == null)
-            {
-                Logger.LogWarning($"[NpcService] SpawnNpcByName: symbol '{symbolName}' not found", LogCat.Npc);
-                return false;
-            }
-            _initializerDomain.SpawnNpcRuntime(symbol.Index, position, rotation);
-            return true;
         }
 
         // FIXME - I think they are overwritten when an NPC is loaded from a SaveGame, as we Initialize them again...

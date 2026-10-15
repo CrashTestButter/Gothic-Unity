@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Adapters.UI;
 using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Services.Caches;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Extensions;
 using MyBox;
 using Reflex.Attributes;
@@ -21,7 +21,7 @@ namespace Gothic.VR.Adapters.Marvin
 {
     public class MarvinLogsTabHandler : MonoBehaviour, ILogger
     {
-        [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly MarvinService _marvinService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
 
 
@@ -55,8 +55,7 @@ namespace Gothic.VR.Adapters.Marvin
         
         private void Start()
         {
-            // TODO - For now, we can only enable MarvinMode via DevConfig. Once it can be activated at runtime via gesture, we should remove this line.
-            if (!_configService.Dev.ActivateMarvinMode)
+            if (!_marvinService.IsMarvinMode)
                 return;
             
             Logger.AddLogger(this);

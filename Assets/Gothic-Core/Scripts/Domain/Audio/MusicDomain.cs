@@ -63,6 +63,9 @@ namespace Gothic.Core.Domain.Audio
         private MusicThemeInstance _currentTheme;
         private DaedalusVm _vm;
 
+        // Set once RenderPcm faulted (see PCMReaderCallback). Read and written on the audio thread only.
+        private bool _isMusicRenderingDisabled;
+
         /// <summary>
         /// Whenever we collide with a musicZoneVobGO, it's entry will be added to the list and the most important theme will be played.
         /// </summary>
@@ -190,7 +193,8 @@ namespace Gothic.Core.Domain.Audio
             var segment = _resourceCacheService.TryGetSegment(theme.File);
             if (segment == null)
             {
-                Logger.LogWarning($"Music theme >{theme.File}< could not be prepared for playback. Safety skip", LogCat.Audio);
+                Logger.LogWarning($"Music theme >{theme.File}< could not be prepared for playback. Safety skip",
+                    LogCat.Audio);
                 return;
             }
 
@@ -441,8 +445,6 @@ namespace Gothic.Core.Domain.Audio
         // time as a raw AccessViolationException with zero managed frames in between. Ordinarily that's
         // an unrecoverable Corrupted State Exception .NET won't let a try/catch see at all; ONLY the
         // Mono runtime backing the Editor/Player may behave differently, hence trying anyway.
-        private bool _renderingDisabledAfterFault;
-
         [HandleProcessCorruptedStateExceptions]
         private void PCMReaderCallback(float[] data)
         {
@@ -450,7 +452,7 @@ namespace Gothic.Core.Domain.Audio
             // calling into it again next buffer (which this callback would otherwise do, regardless of
             // audio volume) risks repeating the crash. Stop touching it entirely, permanently, for the
             // rest of this session; silence is a fine trade-off for "the game keeps running".
-            if (_renderingDisabledAfterFault)
+            if (_isMusicRenderingDisabled)
             {
                 Array.Clear(data, 0, data.Length);
                 return;
@@ -462,10 +464,10 @@ namespace Gothic.Core.Domain.Audio
             }
             catch (Exception e)
             {
-                _renderingDisabledAfterFault = true;
-                Logger.LogError($"RenderPcm threw ({e.GetType().Name}: {e.Message}) — disabling music playback for the rest of this session.", LogCat.Audio);
+                _isMusicRenderingDisabled = true;
+                Logger.LogError($"RenderPcm threw ({e.GetType().Name}: {e.Message}). Music is disabled for the " +
+                                "rest of this session.", LogCat.Audio);
                 Array.Clear(data, 0, data.Length);
-                _audioSourceComp.volume = 0f;
             }
         }
 

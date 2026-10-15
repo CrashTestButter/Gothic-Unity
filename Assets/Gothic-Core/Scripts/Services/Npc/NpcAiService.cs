@@ -12,6 +12,7 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.World;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;

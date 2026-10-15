@@ -3,6 +3,8 @@ using System.Linq;
 using Gothic.Core;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Models.Caches;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Services.Caches;
@@ -13,7 +15,6 @@ using Gothic.VR.Adapters.HVROverrides;
 using Gothic.VR.Adapters.Marvin;
 using Gothic.VR.Adapters.Player;
 using Gothic.VR.Adapters.UI;
-using Gothic.Core.Manager;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
@@ -22,10 +23,10 @@ using HurricaneVR.Framework.Core.UI;
 using HurricaneVRExtensions.Simulator;
 using Reflex.Attributes;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 using UnityEngine.XR.Management;
-using Gothic.Core.Logging;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Services.Context
@@ -40,11 +41,12 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly VRWeaponService _vrWeaponService;
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VideoService _videoService;
+        [Inject] private readonly MarvinService _marvinService;
 
         private const string _contextName = "VR";
 
         private VRPlayerController _playerController;
-        private GameObject _marvinGo;
+        private GameObject _marvinRoot;
 
         public VRContextInteractionService()
         {
@@ -78,17 +80,6 @@ namespace Gothic.VR.Services.Context
                 Gothic.VR.Adapters.Trade.VRTradeCounter.Spawn(session, _playerController.Camera));
             
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
-            // Runtime canvases (the save name keyboard): the UI laser only hits canvases HVRInputModule knows.
-            GlobalEventDispatcher.UiCanvasShown.AddListener(canvas =>
-            {
-                if (canvas != null && HVRInputModule.Instance != null)
-                    HVRInputModule.Instance.AddCanvas(canvas);
-            });
-            GlobalEventDispatcher.UiCanvasHidden.AddListener(canvas =>
-            {
-                if (canvas != null && HVRInputModule.Instance != null)
-                    HVRInputModule.Instance.RemoveCanvas(canvas);
-            });
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>
             {
                 SetRenderDistance(_configService.Gothic.IniVisualRange);
@@ -96,6 +87,8 @@ namespace Gothic.VR.Services.Context
                 ApplyMarvinVisibility();
             });
             GlobalEventDispatcher.PlayerPrefUpdated.AddListener(PlayerPrefsUpdated);
+            GlobalEventDispatcher.MarvinModeChanged.AddListener(OnMarvinModeChanged);
+            GlobalEventDispatcher.MarvinLogoPoked.AddListener(OnMarvinLogoPoked);
         }
 
         public string GetContextName()
@@ -141,9 +134,39 @@ namespace Gothic.VR.Services.Context
             simulatorGO.gameObject.SetActive(isSimulatorEnabled);
 
             // Marvin Mode
-            var marvinGO = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!;
-            _marvinGo = marvinGO.gameObject;
-            _marvinGo.SetActive(developerConfig.ActivateMarvinMode);
+            _marvinRoot = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!.gameObject;
+            ApplyMarvinVisibility();
+
+            // PrintScreen() messages in front of the camera
+            var printScreenGo = _resourceCacheService.TryGetPrefabObject(PrefabType.UiPrintScreen);
+            SceneManager.MoveGameObjectToScene(printScreenGo, activeScene);
+            printScreenGo.GetComponent<VRPrintScreen>().Init(_playerController.Camera);
+        }
+
+        private void OnMarvinModeChanged(bool isActive)
+        {
+            ApplyMarvinVisibility();
+        }
+
+        /// <summary>
+        /// Vibrates the hand whose laser pointer clicked the logo. Only while the pokes count (menu open in game),
+        /// so the main menu doesn't hint at the activation.
+        /// </summary>
+        private void OnMarvinLogoPoked(PointerEventData eventData)
+        {
+            if (!_marvinService.IsActivationInputActive)
+                return;
+
+            var pointer = HVRInputModule.Instance.Pointers.FirstOrDefault(i => i.PointerEventData == eventData);
+            if (pointer == null)
+            {
+                Logger.LogWarning("[VRContextInteractionService] No VR pointer found for the Marvin logo click.",
+                    LogCat.Ui);
+                return;
+            }
+
+            ReflexProjectInstaller.DIContainer.Resolve<VrHapticsService>()
+                .Vibrate(pointer.HandSide, VrHapticsService.VibrationType.Info);
         }
         
         /// <summary>
@@ -175,9 +198,6 @@ namespace Gothic.VR.Services.Context
         }
 
         /// <summary>
-        /// Our Immersion option "Marvin" (Gothic.ini, on by default) hides/shows the Marvin panel - only when
-        /// DeveloperConfig.ActivateMarvinMode allows Marvin at all. The panel can't do it itself: it is inactive then.
-        /// </summary>
         /// <summary>
         /// DeveloperConfig.EnableHudAlwaysOnTop: the hero's bars (on the wrists - the other hand and the world cut
         /// through them) and the menus (texts, background meshes, frames) draw on top of everything, like the dialog
@@ -218,14 +238,18 @@ namespace Gothic.VR.Services.Context
             return root;
         }
 
+        /// <summary>
+        /// Our Immersion option "Marvin" (Gothic.ini, on by default) hides/shows the Marvin panel - only while Marvin
+        /// mode is on (MarvinService.IsMarvinMode). The panel can't do it itself: it is inactive then.
+        /// </summary>
         private void ApplyMarvinVisibility()
         {
-            if (_marvinGo == null || _configService.Gothic == null)
+            if (_marvinRoot == null || _configService.Gothic == null)
                 return;
 
-            var isShown = _configService.Dev.ActivateMarvinMode &&
+            var isShown = _marvinService.IsMarvinMode &&
                           _configService.Gothic.GetInt(VRConstants.IniNames.MarvinPanel, 1) == 1;
-            _marvinGo.SetActive(isShown);
+            _marvinRoot.SetActive(isShown);
             Logger.Log($"[VRContextInteractionService] Marvin panel {(isShown ? "shown" : "hidden")}", LogCat.VR);
         }
 

@@ -49,23 +49,27 @@ namespace Gothic.Core.Models.Config
         public GameVersion GameVersion = GameVersion.Gothic1;
 
         [Separator("Mod")]
-        [Tooltip("Override GameSettings.json ModPath/ModIni for quick in-editor testing.")]
-        public bool EnableMod;
-        [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
-        public string ModPath = string.Empty;
-        [ConditionalField(fieldToCheck: nameof(EnableMod), compareValues: true)]
+        [Tooltip("Pre-select a mod. Editor only - builds use GameSettings.json ModPath/ModIni or GameProfiles.")]
+        public bool PreSelectMod;
+        [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
         [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
         public string ModIni = string.Empty;
+        [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
+        [Tooltip("If Mod is outside Gothic installation, select folder used as the game root " +
+                 "(contains Data/, _work/, system/), e.g. C:\\Gothic Mods\\Mroczne Tajemnice")]
+        public string ModPath = string.Empty;
 
         [Separator("Game Profiles")]
-        [Tooltip("Show a list at start to pick G1/G2/a mod (overrides PreselectGameVersion and EnableMod). " +
+        [Tooltip("Show a list at start to pick G1/G2/a mod (overrides PreselectGameVersion and PreSelectMod). " +
             "Editor only - builds use GameSettings.json EnableGameProfiles/GameProfiles.")]
         public bool EnableGameProfiles;
         [Tooltip("GameVersion: Gothic1 or Gothic2. Empty ModPath = vanilla with GothicGame.ini. " +
             "ModIni = INI filename inside ModPath/system/ (empty = GothicGame.ini).")]
         public List<JsonGameProfile> GameProfiles = new();
 
-        [Tooltip("Language used when auto-detection fails (mods often rename MOBNAME_CRATE, the probe constant — e.g. G2 Renovation uses 'Skrzynka'). One of: cs, pl, ru, de, en, es, fr, it. Empty = fail the boot like before.")]
+        [Tooltip("Language used when auto-detection fails and the mod ini has no unityFallbackLanguage (mods often " +
+            "rename MOBNAME_CRATE, the probe constant - e.g. G2 Renovation uses 'Skrzynka'). One of: cs, pl, ru, de, " +
+            "en, es, fr, it. Empty = fail the boot like before.")]
         public string FallbackLanguage = string.Empty;
 
         public Controls GameControls = Controls.VR;
@@ -74,8 +78,8 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(fieldToCheck: nameof(GameControls), compareValues: Controls.VR)]
         public bool EnableVRDeviceSimulator;
 
-        [Tooltip("Show Marvin Mode menu next to left hand in VR.")]
-        public bool ActivateMarvinMode;
+        [Tooltip("Start with Marvin mode on (shortcut). Without it, Marvin mode can still be activated in game.")]
+        public bool PreselectMarvinMode;
 
         
         /**
@@ -1024,10 +1028,6 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: In the menu the right stick pulls the menu closer (down) or pushes it away (up), 1-8 m - from 5 m the " +
                  "save game list was unreadable. Kept for the session.")]
         public bool EnableMenuZoom = true;
-
-        [Tooltip("V1: Saving asks for the save's name on an on-screen keyboard in Gothic's font (letters, digits, space, " +
-                 "backspace, OK, cancel; a physical keyboard types too). Off: the name is 'Gothic-Unity - <date>'.")]
-        public bool EnableSaveNameKeyboard = true;
 
         [Tooltip("V1: Light mapped world polygons (caves, mines, houses) show Gothic's lightmaps like the engine - before " +
                  "they had only their dim/black vertex light. Static lights then light VOBs and NPCs only.")]

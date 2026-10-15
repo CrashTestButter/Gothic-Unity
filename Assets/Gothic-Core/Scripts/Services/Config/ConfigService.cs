@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Gothic.Core.Domain.Config;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Config;
@@ -53,7 +54,7 @@ namespace Gothic.Core.Services.Config
                 if (SelectedGameProfile != null)
                     return SelectedGameProfile.ModPath;
 #if UNITY_EDITOR
-                return Dev.EnableMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
+                return Dev.PreSelectMod && !Dev.ModPath.IsNullOrEmpty() ? Dev.ModPath : null;
 #else
                 return Root.ModPath;
 #endif
@@ -147,7 +148,7 @@ namespace Gothic.Core.Services.Config
                 if (SelectedGameProfile != null)
                     return SelectedGameProfile.ModIni;
 #if UNITY_EDITOR
-                return Dev.EnableMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
+                return Dev.PreSelectMod && !Dev.ModIni.IsNullOrEmpty() ? Dev.ModIni : null;
 #else
                 return Root.ModIni;
 #endif
@@ -161,22 +162,43 @@ namespace Gothic.Core.Services.Config
         public string EffectiveModIniFileName => EffectiveModIni.IsNullOrEmpty() ? "GothicGame.ini" : EffectiveModIni;
 
         /// <summary>
-        /// Whether a mod is active right now, i.e. whether ModPath resolved to something. This is the
-        /// single source of truth for "is a mod active" — use it instead of Dev.EnableMod directly,
-        /// which only means "use the Editor's ModPath/ModIni override" and is meaningless in a build.
+        /// Whether a mod is active right now, i.e. ModPath (mod in its own game root) or ModIni (mod installed
+        /// into the Gothic folder, selected by its ini) resolved to something. This is the single source of
+        /// truth for "is a mod active" - use it instead of Dev.PreSelectMod directly, which only means
+        /// "use DeveloperConfig's ModPath/ModIni" and ignores any other mod source.
         /// </summary>
-        public bool IsModActive => !EffectiveModPath.IsNullOrEmpty();
+        public bool IsModActive => !EffectiveModPath.IsNullOrEmpty() || !EffectiveModIni.IsNullOrEmpty();
 
         /// <summary>
         /// Folder-safe suffix identifying the active mod, so StaticCacheService keeps a separate cache
         /// per (GameVersion, mod) instead of one shared per GameVersion — switching between vanilla and
         /// several mods (or between mods) would otherwise stomp on each other's cached VOB bounds/texture
-        /// arrays/world chunks, forcing a full recreate every time. Naming uses the resolved ini file,
-        /// e.g. "_mod_GothicGame" or "_mod_DM_E". Empty when running vanilla.
+        /// arrays/world chunks, forcing a full recreate every time. Naming uses the mod folder (only if the mod
+        /// has its own ModPath) and the resolved ini file (several mods use the default GothicGame.ini), e.g.
+        /// "_mod_MroczneTajemnice_GothicGame" or "_mod_DM_E" for a mod inside the Gothic folder.
+        /// Empty when running vanilla.
         /// </summary>
-        public string ModCacheSuffix => IsModActive
-            ? $"_mod_{Path.GetFileNameWithoutExtension(EffectiveModIniFileName)}"
-            : string.Empty;
+        public string ModCacheSuffix
+        {
+            get
+            {
+                if (!IsModActive)
+                    return string.Empty;
+
+                var iniName = ToFolderSafeName(Path.GetFileNameWithoutExtension(EffectiveModIniFileName));
+                if (EffectiveModPath.IsNullOrEmpty())
+                    return $"_mod_{iniName}";
+
+                var folderName = ToFolderSafeName(Path.GetFileName(EffectiveModPath.TrimEnd('/', '\\')));
+                return $"_mod_{folderName}_{iniName}";
+            }
+        }
+
+        private static string ToFolderSafeName(string name)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            return new string(name.Where(c => !char.IsWhiteSpace(c) && !invalidChars.Contains(c)).ToArray());
+        }
 
         /// <summary>
         /// Some mod music compositions embed a native dmusic segue we can't intercept (see

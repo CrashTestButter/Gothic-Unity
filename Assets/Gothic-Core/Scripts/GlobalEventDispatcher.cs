@@ -3,8 +3,10 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Context;
 using Gothic.Core.Models.Doc;
+using Gothic.Core.Models.UI;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using ZenKit;
 using ZenKit.Vobs;
 
@@ -180,9 +182,14 @@ namespace Gothic.Core
 
         // DocModel — document to show; GameObject — item GO to attach the viewer to (may be null in flat mode).
         public static readonly UnityEvent<DocModel, GameObject> DocShow = new();
+        // Text on screen for some seconds (Daedalus PrintScreen() or engine messages like Marvin's "testmode on").
+        public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();
 
-        // A canvas created at runtime (VirtualKeyboard) - VR registers it for the UI laser, and forgets it when hidden.
-        public static readonly UnityEvent<Canvas> UiCanvasShown = new();
-        public static readonly UnityEvent<Canvas> UiCanvasHidden = new();
+        // Marvin: the list of recently executed commands changed.
+        public static readonly UnityEvent MarvinRecentCommandsChanged = new();
+        // Marvin mode got activated (true) or deactivated (false).
+        public static readonly UnityEvent<bool> MarvinModeChanged = new();
+        // The Gothic-Unity logo in the menu got clicked. VR uses the event data to vibrate the clicking hand.
+        public static readonly UnityEvent<PointerEventData> MarvinLogoPoked = new();
     }
 }

@@ -1,351 +1,288 @@
-#if GOTHIC_HVR_INSTALLED
+using System;
+using System.Collections.Generic;
+using Gothic.Core;
 using Gothic.Core.Logging;
-using Gothic.Core.Models.Caches;
-using Gothic.Core.Models.Vm;
-using Gothic.Core.Services.Caches;
-using Gothic.Core.Services.Config;
-using Gothic.Core.Services.Context;
-using Gothic.Core.Services.Npc;
-using Gothic.Core.Services.World;
-using Gothic.Core.Creator;
+using Gothic.Core.Services;
+using Gothic.Core.Services.Marvin;
+using Gothic.VR.Adapters.UI;
+using Gothic.VR.Models.UI;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
-using ZenKit.Daedalus;
 using UnityEngine.UI;
 using Logger = Gothic.Core.Logging.Logger;
-using LogCat = Gothic.Core.Logging.LogCat;
 
 namespace Gothic.VR.Adapters.Marvin
 {
+    /// <summary>
+    /// Marvin tab: build a command line (recent commands, tappable completions, VirtualKeyboard next to the canvas)
+    /// and run it. Layout lives in the prefab; the logic of the commands lives in MarvinCommandService.
+    /// </summary>
     public class MarvinTabHandler : MonoBehaviour
     {
-        [Inject] private readonly ConfigService _configService;
-        [Inject] private readonly GameTimeService _gameTimeService;
-        [Inject] private readonly NpcRoutineService _npcRoutineService;
-        [Inject] private readonly NpcService _npcService;
-        [Inject] private readonly ResourceCacheService _resourceCacheService;
-        [Inject] private readonly WayNetService _wayNetService;
-        [Inject] private readonly ContextInteractionService _contextInteractionService;
-        [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
-        [Inject] private readonly VmCacheService _vmCacheService;
+        [SerializeField] private TMP_Text _commandLine;
+        [SerializeField] private Button _backButton;
+        [SerializeField] private Button _clearButton;
+        [SerializeField] private Button _runButton;
+        [SerializeField] private Button _keyboardButton;
+        [SerializeField] private Button[] _recentButtons;
+        [SerializeField] private Button[] _optionButtons;
+        [SerializeField] private Button _previousPageButton;
+        [SerializeField] private Button _nextPageButton;
+        [SerializeField] private TMP_Text _pageLabel;
+        [SerializeField] private TMP_Text _optionsHint;
+        [SerializeField, Tooltip("Where the keyboard stands (below the canvas; position, rotation, scale).")]
+        private Transform _keyboardAnchor;
 
-        private void Start()
+        [Inject] private readonly MarvinCommandService _marvinCommandService;
+        [Inject] private readonly GameStateService _gameStateService;
+
+        private const int _commandMaxLength = 64;
+        private const string _placeholderColor = "#808080";
+
+        private readonly List<string> _shownOptions = new();
+        private readonly List<string> _shownRecents = new();
+
+        private string _line = string.Empty;
+        private int _page;
+        private VirtualKeyboard _keyboard;
+
+        private void Awake()
         {
-            var placeholder = transform.Find("Text");
-            if (placeholder != null)
-                placeholder.gameObject.SetActive(false);
+            _backButton.onClick.AddListener(Back);
+            _clearButton.onClick.AddListener(Clear);
+            _runButton.onClick.AddListener(Run);
+            _keyboardButton.onClick.AddListener(OpenKeyboard);
+            _previousPageButton.onClick.AddListener(() => ChangePage(-1));
+            _nextPageButton.onClick.AddListener(() => ChangePage(1));
 
-            CreateButtons();
+            for (var i = 0; i < _recentButtons.Length; i++)
+            {
+                var index = i;
+                _recentButtons[i].onClick.AddListener(() => RunRecent(index));
+            }
+
+            for (var i = 0; i < _optionButtons.Length; i++)
+            {
+                var index = i;
+                _optionButtons[i].onClick.AddListener(() => ApplyOption(index));
+            }
         }
 
-        private void CreateButtons()
+        private void OnEnable()
         {
-            var buttons = new System.Collections.Generic.List<(string label, System.Action onClick)>();
+            GlobalEventDispatcher.MarvinRecentCommandsChanged.AddListener(RefreshRecents);
 
-            if (_configService.Dev.EnableLevel5Cheat)
-                buttons.Add(("Level +5", CheatAddLevels));
+            OpenKeyboard();
+            Refresh();
+            RefreshRecents();
+        }
 
-            if (_configService.Dev.EnableGuildCheat)
-                buttons.Add(("Guild → Novice", CheatToNovice));
+        private void OnDisable()
+        {
+            GlobalEventDispatcher.MarvinRecentCommandsChanged.RemoveListener(RefreshRecents);
 
-            if (_configService.Dev.EnableScavengerGuildCheat)
-                buttons.Add(("Guild → Scavenger", CheatToScavenger));
+            // Unity null check: another keyboard (e.g. save name) already replaced ours.
+            if (_keyboard != null)
+                _keyboard.Close();
+            _keyboard = null;
+        }
 
-            if (_configService.Dev.EnableTimeSkip)
-                buttons.Add(("Skip Time +30min", SkipTime30Min));
+        private bool IsReady()
+        {
+            // The Daedalus VM isn't loaded before a game starts - the service can't resolve symbols then.
+            return _gameStateService.GothicVm != null;
+        }
 
-            if (_configService.Dev.EnableMarvinBlink)
-                buttons.Add(("TP +4 m", CheatBlinkForward));
+        private void OpenKeyboard()
+        {
+            if (!IsReady() || _keyboard != null)
+                return;
 
-            if (_configService.Dev.EnableMarvinGodMode)
-                buttons.Add(("God mode", CheatToggleGodMode));
-
-            if (!string.IsNullOrEmpty(_configService.Dev.MarvinTeleportWaypoint))
-                buttons.Add(($"TP → {_configService.Dev.MarvinTeleportWaypoint}", CheatTeleportToWaypoint));
-
-            if (!string.IsNullOrEmpty(_configService.Dev.MarvinSpawnNpcSymbol))
-                buttons.Add(($"Spawn {_configService.Dev.MarvinSpawnNpcSymbol}", CheatSpawnNpc));
-
-            if (!string.IsNullOrEmpty(_configService.Dev.MarvinFriendsNpcSymbols))
-                buttons.Add(("Irdo team", () => CheatSpawnGroup("Irdo team", _configService.Dev.MarvinFriendsNpcSymbols)));
-
-            if (!string.IsNullOrEmpty(_configService.Dev.MarvinCheatFriendsNpcSymbols))
-                buttons.Add(("Cheat friends", () => CheatSpawnGroup("Cheat friends", _configService.Dev.MarvinCheatFriendsNpcSymbols)));
-
-            if (!string.IsNullOrEmpty(_configService.Dev.MarvinGiveItems))
-                buttons.Add(("Give items", CheatGiveItems));
-
-            // More options than fit the panel: a window of them with Up/Down buttons above and below.
-            if (buttons.Count <= _maxVisibleButtons)
+            _keyboard = VirtualKeyboard.Show(new VirtualKeyboardOptions
             {
-                var startY = GetButtonsHeight(buttons.Count) / 2f - _buttonHeight / 2f;
-                for (var i = 0; i < buttons.Count; i++)
+                InitialText = _line,
+                MaxLength = _commandMaxLength,
+                IsForcedUpperCase = true,
+                IsSymbolRowShown = true,
+                IsClosedOnSubmit = false,
+                FollowTarget = _keyboardAnchor,
+                KeyFilter = (text, c) => _marvinCommandService.IsAllowedNextChar(text, c),
+                CanSubmit = text => _marvinCommandService.CanExecute(text),
+                OnTextChanged = OnKeyboardTextChanged,
+                OnSubmit = text =>
                 {
-                    var (label, onClick) = buttons[i];
-                    CreateButton(label, onClick, startY - i * (_buttonHeight + _buttonGap));
-                }
-                return;
-            }
-
-            foreach (var (label, onClick) in buttons)
-            {
-                var go = CreateButton(label, onClick, 0f);
-                if (go != null)
-                    _scrollButtons.Add(go);
-            }
-
-            var windowTop = GetButtonsHeight(_maxVisibleButtons + 2) / 2f - _buttonHeight / 2f;
-            CreateButton("Up", () => ScrollButtons(-1), windowTop);
-            CreateButton("Down", () => ScrollButtons(1), windowTop - (_maxVisibleButtons + 1) * (_buttonHeight + _buttonGap));
-            _firstVisibleButton = 0;
-            LayoutScrollButtons(windowTop - (_buttonHeight + _buttonGap));
-        }
-
-        private const float _buttonHeight = 50f;
-        private const float _buttonGap = 10f;
-        private const int _maxVisibleButtons = 6;
-        private readonly System.Collections.Generic.List<GameObject> _scrollButtons = new();
-        private int _firstVisibleButton;
-        private float _scrollWindowTop;
-
-        private static float GetButtonsHeight(int count)
-        {
-            return count * _buttonHeight + (count - 1) * _buttonGap;
+                    SetLine(text, false);
+                    Run();
+                },
+                OnCancel = () => _keyboard = null
+            });
         }
 
         /// <summary>
-        /// Moves the window of visible options by one.
+        /// Typed chars get auto-completed, deleted ones revert to the last point with a choice. The keyboard gets the
+        /// result in the same frame (its OnTextChanged callback), so the intermediate text is never rendered.
         /// </summary>
-        private void ScrollButtons(int delta)
+        private void OnKeyboardTextChanged(string text)
         {
-            var maxFirst = Mathf.Max(0, _scrollButtons.Count - _maxVisibleButtons);
-            _firstVisibleButton = Mathf.Clamp(_firstVisibleButton + delta, 0, maxFirst);
-            LayoutScrollButtons(_scrollWindowTop);
-        }
+            text ??= string.Empty;
+            var line = text;
+            if (text.Length > _line.Length && text.StartsWith(_line, StringComparison.OrdinalIgnoreCase))
+                line = _marvinCommandService.AutoComplete(text);
+            else if (text.Length < _line.Length)
+                line = _marvinCommandService.RevertToLastBranch(text);
 
-        private void LayoutScrollButtons(float windowTop)
-        {
-            _scrollWindowTop = windowTop;
-            for (var i = 0; i < _scrollButtons.Count; i++)
-            {
-                var slot = i - _firstVisibleButton;
-                var isVisible = slot >= 0 && slot < _maxVisibleButtons;
-                _scrollButtons[i].SetActive(isVisible);
-                if (isVisible && _scrollButtons[i].TryGetComponent<RectTransform>(out var rt))
-                    rt.anchoredPosition = new Vector2(0f, windowTop - slot * (_buttonHeight + _buttonGap));
-            }
-        }
-
-        private const int _manaMaxPerLevelCheat = 100;
-
-        private void CheatAddLevels()
-        {
-            const int levelsToAdd = 5;
-            var hero = _npcService.GetHeroContainer();
-            var oldLevel = hero.Instance.Level;
-            hero.Instance.Level += levelsToAdd;
-            hero.Instance.Lp += levelsToAdd * 10;
-            // HP and mana max up, both filled. Set on the instance too: SyncHeroInstanceToVob() copies the instance
-            // into the vob - vob-only values were reverted at once.
-            var hpMax = hero.Instance.GetAttribute(NpcAttribute.HitPointsMax) + levelsToAdd * 12;
-            var manaMax = hero.Instance.GetAttribute(NpcAttribute.ManaMax) + _manaMaxPerLevelCheat;
-            hero.Instance.SetAttribute(NpcAttribute.HitPointsMax, hpMax);
-            hero.Instance.SetAttribute(NpcAttribute.HitPoints, hpMax);
-            hero.Instance.SetAttribute(NpcAttribute.ManaMax, manaMax);
-            hero.Instance.SetAttribute(NpcAttribute.Mana, manaMax);
-            _npcService.SyncHeroInstanceToVob();
-            Logger.Log($"[MarvinMode] Level cheat: {oldLevel}→{hero.Instance.Level} (+{levelsToAdd * 10} LP, " +
-                       $"HP {hpMax}/{hpMax}, mana {manaMax}/{manaMax})", LogCat.Ui);
-        }
-
-        private void CheatToNovice()
-        {
-            var hero = _npcService.GetHeroContainer();
-            hero.Instance.Guild = (int)VmGothicEnums.Guild.GIL_NOV;
-            Logger.Log("[MarvinMode] Guild cheat: set to GIL_NOV", LogCat.Ui);
-        }
-
-        private void CheatToScavenger()
-        {
-            var hero = _npcService.GetHeroContainer();
-            hero.Instance.Guild = (int)VmGothicEnums.Guild.GIL_SCAVENGER;
-            Logger.Log("[MarvinMode] Guild cheat: set to GIL_SCAVENGER (24)", LogCat.Ui);
-        }
-
-        private void CheatTeleportToWaypoint()
-        {
-            var wpName = _configService.Dev.MarvinTeleportWaypoint;
-            var wp = _wayNetService.GetWayNetPoint(wpName);
-            if (wp == null)
-            {
-                Logger.LogWarning($"[MarvinMode] Teleport WP '{wpName}' not found", LogCat.Ui);
-                return;
-            }
-            _contextInteractionService.TeleportPlayerTo(wp.Position, wp.Rotation);
-            Logger.Log($"[MarvinMode] Teleported to '{wpName}'", LogCat.Ui);
+            SetLine(line, line != text);
         }
 
         /// <summary>
-        /// DeveloperConfig.EnableMarvinGodMode: hits (melee, arrows, spells) and falls don't hurt the hero. Toggles; the
-        /// state shows as a screen message.
+        /// Single source of truth for the command line. Typing on the keyboard already knows the text itself.
+        /// Upper-case like the keyboard (forced), comparisons in the service ignore the case anyway.
         /// </summary>
-        private void CheatToggleGodMode()
+        private void SetLine(string line, bool isKeyboardUpdated)
         {
-            _playerService.IsGodMode = !_playerService.IsGodMode;
-            var state = _playerService.IsGodMode ? "ON" : "OFF";
-            Gothic.Core.GlobalEventDispatcher.ScriptPrintScreen.Invoke($"God mode {state}", 0, 2);
-            Logger.Log($"[MarvinMode] God mode {state}", LogCat.Ui);
+            _line = (line ?? string.Empty).ToUpperInvariant();
+            _page = 0;
+
+            if (isKeyboardUpdated && _keyboard != null)
+                _keyboard.SetText(_line);
+            Refresh();
         }
 
-        private const float _blinkDistance = 4f;
-        private const float _blinkFloorSearchHeight = 3f;
-
-        /// <summary>
-        /// DeveloperConfig.EnableMarvinBlink - like Gothic's Marvin key K: 4 m forward where the hero looks, only
-        /// horizontally (through doors and walls). The floor below the target is searched from a bit above, otherwise
-        /// the height stays. Held items stay in the hands (no TeleportPlayerTo). Falling out: MarvinFallRescue.
-        /// </summary>
-        private void CheatBlinkForward()
+        private void Back()
         {
-            var player = _contextInteractionService.GetCurrentPlayerController();
-            var cam = Camera.main;
-            if (player == null || cam == null)
-                return;
-
-            var forward = cam.transform.forward;
-            forward.y = 0f;
-            if (forward.sqrMagnitude < 0.0001f)
-                forward = player.transform.forward;
-            forward.y = 0f;
-            forward.Normalize();
-
-            var target = player.transform.position + forward * _blinkDistance;
-            if (Physics.Raycast(target + Vector3.up * _blinkFloorSearchHeight, Vector3.down, out var hit,
-                    _blinkFloorSearchHeight * 2f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                target.y = hit.point.y;
-
-            var controller = player.GetComponent<Gothic.VR.Adapters.HVROverrides.VRPlayerController>();
-            if (controller?.Teleporter == null)
-                return;
-            controller.Teleporter.Teleport(target);
-            Logger.Log($"[MarvinMode] Blink {_blinkDistance:F0} m forward to {target}", LogCat.Ui);
+            if (IsReady())
+                SetLine(_marvinCommandService.RemoveLastToken(_line), true);
         }
 
-        private void CheatSpawnNpc()
+        private void Clear()
         {
-            var symbol = _configService.Dev.MarvinSpawnNpcSymbol;
-            var hero = _npcService.GetHeroContainer();
-            if (hero?.Go == null)
-            {
-                Logger.LogWarning($"[MarvinMode] Spawn NPC: hero GO not found", LogCat.Ui);
-                return;
-            }
-            var pos = hero.Go.transform.position + hero.Go.transform.forward * 2f;
-            var rot = hero.Go.transform.rotation;
-            var ok = _npcService.SpawnNpcByName(symbol, pos, rot);
-            if (ok)
-                Logger.Log($"[MarvinMode] Spawned '{symbol}' near player", LogCat.Ui);
+            SetLine(string.Empty, true);
         }
 
-        private const float _friendsDistance = 2.5f;
-        private const float _friendsArcDegrees = 120f;
-
-        /// <summary>
-        /// DeveloperConfig.MarvinFriendsNpcSymbols: all of them at once, on an arc in front of the hero.
-        /// </summary>
-        /// <summary>
-        /// Spawns a group of NPCs in an arc in front of the hero, facing him: "Irdo team" (DeveloperConfig
-        /// MarvinFriendsNpcSymbols - the Irdorath crew) or "Cheat friends" (MarvinCheatFriendsNpcSymbols - SH/CH).
-        /// </summary>
-        private void CheatSpawnGroup(string groupName, string npcSymbols)
+        private void Run()
         {
-            var hero = _npcService.GetHeroContainer();
-            if (hero?.Go == null)
-            {
-                Logger.LogWarning($"[MarvinMode] {groupName}: hero GO not found", LogCat.Ui);
+            if (!IsReady() || !_marvinCommandService.CanExecute(_line))
                 return;
-            }
 
-            var symbols = npcSymbols.Split(',', ';', '\n');
-            var names = new System.Collections.Generic.List<string>();
-            foreach (var entry in symbols)
-            {
-                var name = entry.Trim();
-                if (name.Length > 0)
-                    names.Add(name);
-            }
+            // A failed command keeps the line, so it can be fixed.
+            if (_marvinCommandService.Execute(_line))
+                SetLine(string.Empty, true);
+            else
+                Logger.LogWarning($"[MarvinTabHandler] '{_line}' failed.", LogCat.Ui);
+        }
 
-            var forward = hero.Go.transform.forward;
-            forward.y = 0f;
-            forward = forward.sqrMagnitude > 0.0001f ? forward.normalized : Vector3.forward;
-            for (var i = 0; i < names.Count; i++)
+        private void RunRecent(int index)
+        {
+            if (!IsReady() || index >= _shownRecents.Count)
+                return;
+
+            // Fills the line first, so the keyboard and the command line show what was executed.
+            SetLine(_shownRecents[index], true);
+            Run();
+        }
+
+        private void ApplyOption(int index)
+        {
+            if (!IsReady() || index >= _shownOptions.Count)
+                return;
+
+            SetLine(_marvinCommandService.ApplyOption(_line, _shownOptions[index]), true);
+        }
+
+        private void ChangePage(int direction)
+        {
+            _page = Mathf.Max(0, _page + direction);
+            Refresh();
+        }
+
+        private void RefreshRecents()
+        {
+            _shownRecents.Clear();
+            if (IsReady())
+                _shownRecents.AddRange(_marvinCommandService.RecentCommands);
+
+            for (var i = 0; i < _recentButtons.Length; i++)
             {
-                var angle = names.Count > 1 ? -_friendsArcDegrees / 2f + _friendsArcDegrees * i / (names.Count - 1) : 0f;
-                var direction = Quaternion.Euler(0f, angle, 0f) * forward;
-                var position = hero.Go.transform.position + direction * _friendsDistance;
-                // Facing the hero.
-                var rotation = Quaternion.LookRotation(-direction);
-                if (_npcService.SpawnNpcByName(names[i], position, rotation))
-                    Logger.Log($"[MarvinMode] {groupName}: spawned '{names[i]}'", LogCat.Ui);
+                var isUsed = i < _shownRecents.Count;
+                _recentButtons[i].gameObject.SetActive(isUsed);
+                if (isUsed)
+                    _recentButtons[i].GetComponentInChildren<TMP_Text>(true).text = _shownRecents[i];
             }
         }
 
-        /// <summary>
-        /// DeveloperConfig.MarvinGiveItems: "ITRU_FIREBOLT, ITPO_MANA_03:5" - into the hero's inventory (backpack).
-        /// </summary>
-        private void CheatGiveItems()
+        private void Refresh()
         {
-            foreach (var entry in _configService.Dev.MarvinGiveItems.Split(',', ';', '\n'))
-            {
-                var parts = entry.Trim().Split(':');
-                var itemName = parts[0].Trim().ToUpper();
-                if (itemName.Length == 0)
-                    continue;
-                var amount = parts.Length > 1 && int.TryParse(parts[1].Trim(), out var parsed) ? Mathf.Max(1, parsed) : 1;
+            var isReady = IsReady();
+            var placeholder = isReady ? _marvinCommandService.GetPlaceholder(_line) : null;
+            var total = 0;
 
-                if (_vmCacheService.TryGetItemData(itemName) == null)
+            _shownOptions.Clear();
+            if (isReady)
+            {
+                var count = _optionButtons.Length;
+                _shownOptions.AddRange(_marvinCommandService.GetOptions(_line, _page * count, count, out total));
+
+                // Line got shorter while a later page was shown.
+                if (_shownOptions.Count == 0 && _page > 0 && total > 0)
                 {
-                    Logger.LogWarning($"[MarvinMode] Give items: unknown item '{itemName}'", LogCat.Ui);
-                    continue;
+                    _page = (total - 1) / count;
+                    _shownOptions.AddRange(_marvinCommandService.GetOptions(_line, _page * count, count, out total));
                 }
-                _playerService.AddItem(itemName, amount);
-                Logger.Log($"[MarvinMode] Gave {itemName} x{amount}", LogCat.Ui);
             }
+
+            RefreshCommandLine(placeholder);
+            RefreshOptions(placeholder, total);
+
+            _backButton.interactable = isReady && _line.Length > 0;
+            _clearButton.interactable = isReady && _line.Length > 0;
+            _runButton.interactable = isReady && _marvinCommandService.CanExecute(_line);
+            _keyboardButton.interactable = isReady;
         }
 
-        private void SkipTime30Min()
+        private void RefreshCommandLine(string placeholder)
         {
-            var t = _gameTimeService.GetCurrentTime();
-            var next = t.Add(System.TimeSpan.FromMinutes(30));
-            _gameTimeService.SetTime(next.Hours, next.Minutes);
-            Gothic.Core.GlobalEventDispatcher.GameTimeSkipped.Invoke();
-            _npcRoutineService.RecalculateAllNpcRoutines();
-            Logger.Log($"[MarvinMode] Time skip → {next.Hours:D2}:{next.Minutes:D2}", LogCat.Ui);
-        }
-
-        private GameObject CreateButton(string label, System.Action onClick, float anchoredY)
-        {
-            var go = _resourceCacheService.TryGetPrefabObject(PrefabType.UiDebugButton, parent: gameObject);
-            if (go == null)
+            if (!IsReady())
             {
-                Logger.LogWarning($"[MarvinMode] UiDebugButton prefab not found for: {label}", LogCat.Ui);
-                return null;
+                _commandLine.text = "Load a game first.";
+                return;
             }
 
-            var rt = go.GetComponent<RectTransform>();
-            if (rt != null)
-                rt.anchoredPosition = new Vector2(0f, anchoredY);
+            // The placeholder only stands for a value not typed yet.
+            var isValueStarted = _line.Length > 0 && !_line.EndsWith(" ");
+            if (placeholder == null || isValueStarted)
+            {
+                _commandLine.text = _line + "_";
+                return;
+            }
 
-            var text = go.GetComponentInChildren<TMP_Text>();
-            if (text != null)
-                text.text = label;
+            // <noparse>: the placeholder looks like a rich text tag.
+            _commandLine.text = $"{_line}<color={_placeholderColor}><noparse>{placeholder}</noparse></color>";
+        }
 
-            var button = go.GetComponentInChildren<Button>();
-            if (button != null)
-                button.onClick.AddListener(() => onClick());
-            return go;
+        private void RefreshOptions(string placeholder, int total)
+        {
+            var count = _optionButtons.Length;
+            var pageCount = Mathf.Max(1, (total + count - 1) / count);
+            var isHintShown = placeholder != null && total == 0;
+
+            _optionsHint.gameObject.SetActive(isHintShown);
+            if (isHintShown)
+                _optionsHint.text = _marvinCommandService.CanExecute(_line)
+                    ? $"Run, or type <noparse>{placeholder}</noparse> on the keyboard"
+                    : $"Type <noparse>{placeholder}</noparse> on the keyboard";
+
+            for (var i = 0; i < _optionButtons.Length; i++)
+            {
+                var isUsed = i < _shownOptions.Count;
+                _optionButtons[i].gameObject.SetActive(isUsed);
+                if (isUsed)
+                    _optionButtons[i].GetComponentInChildren<TMP_Text>(true).text = _shownOptions[i];
+            }
+
+            _pageLabel.text = total > 0 ? $"{_page + 1}/{pageCount} ({total})" : string.Empty;
+            _previousPageButton.interactable = _page > 0;
+            _nextPageButton.interactable = _page < pageCount - 1;
         }
     }
 }
-#endif

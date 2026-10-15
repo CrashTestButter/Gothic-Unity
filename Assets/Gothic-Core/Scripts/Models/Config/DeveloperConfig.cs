@@ -1012,6 +1012,11 @@ namespace Gothic.Core.Models.Config
                  "as its PFX and hits on arrival, the others show their cast and hit effects. Off: an invisible instant hit.")]
         public bool EnableNpcSpellFx = true;
 
+        [Tooltip("How much an NPC's flying spell follows its target (0 = flies to where the target was at the cast, 1 = " +
+                 "always hits). At 0.2 a step aside dodges it - fully homing nobody could dodge a crawler's web.")]
+        [Range(0f, 1f)]
+        public float NpcSpellHoming = 0.2f;
+
         [Tooltip("V1: Sleep and freeze spells (also Mroczne Tajemnice's crawler web) work on the hero - can't move for " +
                  "SPL_TIME_SLEEP/FREEZE, damage wakes up, and the caster's scripts see the state (no endless re-casting).")]
         public bool EnableHeroSpellStates = true;

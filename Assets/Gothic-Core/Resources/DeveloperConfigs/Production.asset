@@ -233,6 +233,7 @@ MonoBehaviour:
   EnableRainFollowsPlayer: 1
   EnableFrozenIsNotDown: 1
   EnableNpcSpellFx: 1
+  NpcSpellHoming: 0.2
   EnableHeroSpellStates: 1
   EnableMenuZoom: 1
   EnableSaveNameKeyboard: 1

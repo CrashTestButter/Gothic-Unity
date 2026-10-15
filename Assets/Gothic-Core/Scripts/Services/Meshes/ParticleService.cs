@@ -19,6 +19,7 @@ namespace Gothic.Core.Services.Meshes
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly AudioService _audioService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _npcSpellConfigService;
 
         private const int _maxFxChainDepth = 3;
         private const string _defaultBloodEmitter = "PFX_BLOOD";
@@ -205,6 +206,8 @@ namespace Gothic.Core.Services.Meshes
             flight.Target = target.Go.transform;
             flight.Speed = castKey.EmTrjEaseVel / 100f > 0f ? castKey.EmTrjEaseVel / 100f : _npcSpellDefaultSpeed;
             flight.MaxSeconds = _npcSpellMaxSeconds;
+            // DeveloperConfig.NpcSpellHoming: a step aside dodges it.
+            flight.Homing = _npcSpellConfigService.Dev.NpcSpellHoming;
             flight.OnArrive = () =>
             {
                 onHit?.Invoke();

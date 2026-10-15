@@ -240,6 +240,7 @@ MonoBehaviour:
   WorldLightmapBrightness: 1
   EnableIndoorWorldDarkness: 1
   EnableSpellMonsterMelee: 1
+  EnableDynamicVobLights: 1
   EnableVobWorldLight: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1

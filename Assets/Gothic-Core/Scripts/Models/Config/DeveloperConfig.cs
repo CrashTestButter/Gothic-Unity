@@ -1040,6 +1040,10 @@ namespace Gothic.Core.Models.Config
                  "frozen or right in front of it - it kept freezing the hero again and again (a freeze lock).")]
         public bool EnableSpellMonsterMelee = true;
 
+        [Tooltip("V1: Non-static (dynamic) VOB lights that are switched on shine like the engine's - they were skipped, " +
+                 "Mroczne Tajemnice's abandoned mine (lit only by them) was pitch black.")]
+        public bool EnableDynamicVobLights = true;
+
         [Tooltip("V1: VOBs in light mapped areas (caves, mines, houses) take the lightmap light of the floor below them - " +
                  "stairs and planks shone like the day next to the dark walls.")]
         public bool EnableVobWorldLight = true;

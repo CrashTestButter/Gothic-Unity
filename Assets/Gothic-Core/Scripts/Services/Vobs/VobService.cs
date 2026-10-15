@@ -717,8 +717,11 @@ namespace Gothic.Core.Services.Vobs
                     break;
             }
             
-            // Non-static lights aren't handled so far.
-            if (container.Vob.Type == VirtualObjectType.zCVobLight && !((ILight)container.Vob).LightStatic)
+            // DeveloperConfig.EnableDynamicVobLights: non-static lights shine at runtime like in the engine (switched off
+            // ones stay off). Before they were skipped - Mroczne Tajemnice's abandoned mine is lit only by such lights
+            // (blue/teal AURA lights, no lightmaps, no vertex light) and stayed pitch black.
+            if (container.Vob.Type == VirtualObjectType.zCVobLight && !((ILight)container.Vob).LightStatic &&
+                (!_configService.Dev.EnableDynamicVobLights || !((ILight)container.Vob).On))
             {
                 return;
             }

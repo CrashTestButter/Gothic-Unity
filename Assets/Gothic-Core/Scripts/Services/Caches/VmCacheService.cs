@@ -252,6 +252,19 @@ namespace Gothic.Core.Services.Caches
             return lowerKey.Replace(extension, "");
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableVmCacheResetOnLoad: loading a game creates a new GOTHIC VM - the item, SVM and spell
+        /// instances of the old one are dead there. Wld_DetectItem set the global 'item' to an old item: scripts read
+        /// "C_ITEM.MAINFLAG without an instance set", Npc_CanSeeItem(slf, item) failed its cast and left the VM stack
+        /// broken until it crashed natively ("stack overflow" - Mroczne Tajemnice's giant skeleton in the abandoned mine).
+        /// </summary>
+        public void ResetGothicVmInstances()
+        {
+            _itemDataCache.Clear();
+            _svmDataCache.Clear();
+            _spellDataCache.Clear();
+        }
+
         public void Dispose()
         {
             _itemDataCache.Clear();

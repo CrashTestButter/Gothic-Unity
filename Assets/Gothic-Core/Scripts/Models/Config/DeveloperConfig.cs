@@ -1057,6 +1057,10 @@ namespace Gothic.Core.Models.Config
                  "stayed black/garbage and big textures tiled twice as often.")]
         public bool EnableTextureArrayMipFix = true;
 
+        [Tooltip("V1: Loading a game (a new GOTHIC VM) resets the cached item/SVM/spell instances of the old VM - " +
+                 "Wld_DetectItem handed scripts a dead item and the VM crashed natively (Mroczne Tajemnice's abandoned mine).")]
+        public bool EnableVmCacheResetOnLoad = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

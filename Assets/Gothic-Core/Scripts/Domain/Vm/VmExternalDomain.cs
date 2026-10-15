@@ -141,7 +141,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<NpcInstance>("AI_StopPointAt", AI_StopPointAt);
             vm.RegisterExternal<NpcInstance, NpcInstance>("AI_PointAtNpc", AI_PointAtNpc);
             vm.RegisterExternal<NpcInstance, int>("AI_DropItem", AI_DropItem);
-            vm.RegisterExternal<NpcInstance, ItemInstance>("AI_TakeItem", AI_TakeItem);
+            vm.RegisterExternal<DaedalusInstance, DaedalusInstance>("AI_TakeItem", (n, i) => { if (AsNpc(n, "AI_TakeItem") is { } npc && AsItem(i, "AI_TakeItem") is { } item) AI_TakeItem(npc, item); });
             vm.RegisterExternal<NpcInstance, NpcInstance>("AI_Quicklook", AI_Quicklook);
 
             // Apply Options
@@ -164,8 +164,8 @@ namespace Gothic.Core.Domain.Vm
             // Helper
             vm.RegisterExternal<int, int>("Hlp_Random", Hlp_Random);
             vm.RegisterExternal<int, string, string>("Hlp_StrCmp", Hlp_StrCmp);
-            vm.RegisterExternal<int, ItemInstance, int>("Hlp_IsItem", Hlp_IsItem);
-            vm.RegisterExternal<int, ItemInstance>("Hlp_IsValidItem", Hlp_IsValidItem);
+            vm.RegisterExternal<int, DaedalusInstance, int>("Hlp_IsItem", (i, index) => AsItem(i, "Hlp_IsItem") is { } item ? Hlp_IsItem(item, index) : 0);
+            vm.RegisterExternal<int, DaedalusInstance>("Hlp_IsValidItem", i => AsItem(i, "Hlp_IsValidItem") is { } item ? Hlp_IsValidItem(item) : 0);
             vm.RegisterExternal<int, NpcInstance>("Hlp_IsValidNpc", Hlp_IsValidNpc);
             vm.RegisterExternal<NpcInstance, int>("Hlp_GetNpc", Hlp_GetNpc);
             vm.RegisterExternal<int, DaedalusInstance>("Hlp_GetInstanceID", Hlp_GetInstanceID);
@@ -203,8 +203,8 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<NpcInstance, int, int>("Npc_RemoveInvItems", Npc_RemoveInvItems);
             vm.RegisterExternal<NpcInstance, int, int>("Npc_PercEnable", Npc_PercEnable);
             vm.RegisterExternal<NpcInstance, float>("Npc_SetPercTime", Npc_SetPercTime);
-            vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetPermAttitude", Npc_GetPermAttitude);
-            vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetAttitude", Npc_GetAttitude);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetPermAttitude", (a, b) => AsNpc(a, "Npc_GetPermAttitude") is { } first && AsNpc(b, "Npc_GetPermAttitude") is { } second ? Npc_GetPermAttitude(first, second) : 0);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetAttitude", (a, b) => AsNpc(a, "Npc_GetAttitude") is { } first && AsNpc(b, "Npc_GetAttitude") is { } second ? Npc_GetAttitude(first, second) : 0);
             vm.RegisterExternal<NpcInstance, int>("Npc_SetAttitude", Npc_SetAttitude);
             vm.RegisterExternal<NpcInstance, int>("Npc_SetTempAttitude", Npc_SetTempAttitude);
             vm.RegisterExternal<int, NpcInstance>("Npc_GetBodyState", Npc_GetBodyState);
@@ -222,7 +222,7 @@ namespace Gothic.Core.Domain.Vm
             // PxVm.pxVmRegisterExternal(vmPtr, "Npc_RemoveInvItem", Npc_RemoveInvItem);
             // PxVm.pxVmRegisterExternal(vmPtr, "Npc_RemoveInvItems", Npc_RemoveInvItems);
             vm.RegisterExternal<NpcInstance, int>("EquipItem", EquipItem);
-            vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetDistToNpc", Npc_GetDistToNpc);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetDistToNpc", (a, b) => Npc_GetDistToNpcOrItem(a, b));
             vm.RegisterExternal<int, NpcInstance>("Npc_HasEquippedArmor", Npc_HasEquippedArmor);
             vm.RegisterExternal<ItemInstance, NpcInstance>("Npc_GetEquippedMeleeWeapon", Npc_GetEquippedMeleeWeapon);
             vm.RegisterExternal<int, NpcInstance>("Npc_HasEquippedMeleeWeapon", Npc_HasEquippedMeleeWeapon);
@@ -235,9 +235,9 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, NpcInstance>("Npc_HasRangedWeaponWithAmmo", Npc_HasRangedWeaponWithAmmo);
             vm.RegisterExternal<int, NpcInstance, string>("Npc_GetDistToWP", Npc_GetDistToWP);
             vm.RegisterExternal<NpcInstance, int>("Npc_PercDisable", Npc_PercDisable);
-            vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_CanSeeNpc", Npc_CanSeeNpc);
-            vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_CanSeeNpcFreeLOS", Npc_CanSeeNpcFreeLOS);
-            vm.RegisterExternal<int, NpcInstance, ItemInstance>("Npc_CanSeeItem", Npc_CanSeeItem);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_CanSeeNpc", (a, b) => AsNpc(a, "Npc_CanSeeNpc") is { } first && AsNpc(b, "Npc_CanSeeNpc") is { } second ? Npc_CanSeeNpc(first, second) : 0);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_CanSeeNpcFreeLOS", (a, b) => AsNpc(a, "Npc_CanSeeNpcFreeLOS") is { } first && AsNpc(b, "Npc_CanSeeNpcFreeLOS") is { } second ? Npc_CanSeeNpcFreeLOS(first, second) : 0);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_CanSeeItem", (n, i) => AsNpc(n, "Npc_CanSeeItem") is { } npc && AsItem(i, "Npc_CanSeeItem") is { } item ? Npc_CanSeeItem(npc, item) : 0);
             vm.RegisterExternal<NpcInstance>("Npc_ClearAiQueue", Npc_ClearAiQueue);
             // vm.RegisterExternal<NpcInstance>("Npc_ClearInventory", Npc_ClearInventory);
             vm.RegisterExternal<string, NpcInstance>("Npc_GetNextWp", Npc_GetNextWp);
@@ -256,7 +256,7 @@ namespace Gothic.Core.Domain.Vm
             // G1 uses it too (B_AssessFighter, ZS_AssessMagic, ...).
             vm.RegisterExternal<int, NpcInstance>("Npc_GetActiveSpellCat", Npc_GetActiveSpellCat);
             vm.RegisterExternal<int, NpcInstance>("Npc_IsInCutscene", Npc_IsInCutscene);
-            vm.RegisterExternal<int, ItemInstance, NpcInstance>("Npc_OwnedByNpc", Npc_OwnedByNpc);
+            vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_OwnedByNpc", (i, n) => AsItem(i, "Npc_OwnedByNpc") is { } item && AsNpc(n, "Npc_OwnedByNpc") is { } npc ? Npc_OwnedByNpc(item, npc) : 0);
             vm.RegisterExternal<int, NpcInstance>("Npc_GetTarget", Npc_GetTarget);
             vm.RegisterExternal<int, NpcInstance>("Npc_GetNextTarget", Npc_GetNextTarget);
             vm.RegisterExternal<NpcInstance, NpcInstance>("Npc_SetTarget", Npc_SetTarget);
@@ -271,7 +271,7 @@ namespace Gothic.Core.Domain.Vm
             // G2 externals only.
             if (_contextGameVersionService.IsGothic2())
             {
-                vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetHeightToNpc", Npc_GetHeightToNpc);
+                vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetHeightToNpc", (a, b) => AsNpc(a, "Npc_GetHeightToNpc") is { } first && AsNpc(b, "Npc_GetHeightToNpc") is { } second ? Npc_GetHeightToNpc(first, second) : 0);
                 vm.RegisterExternal<int, NpcInstance>("Npc_IsDrawingSpell", Npc_IsDrawingSpell);
                 vm.RegisterExternal<int, NpcInstance>("Npc_GetActiveSpellIsScroll", Npc_GetActiveSpellIsScroll);
             }
@@ -283,13 +283,13 @@ namespace Gothic.Core.Domain.Vm
             RegisterIfDeclared(vm, "Npc_GetPortalGuild", () => vm.RegisterExternal<int, NpcInstance>("Npc_GetPortalGuild", Npc_GetPortalGuild));
             RegisterIfDeclared(vm, "Npc_IsInPlayersRoom", () => vm.RegisterExternal<int, NpcInstance>("Npc_IsInPlayersRoom", Npc_IsInPlayersRoom));
             RegisterIfDeclared(vm, "Npc_GetDetectedMob", () => vm.RegisterExternal<string, NpcInstance>("Npc_GetDetectedMob", Npc_GetDetectedMob));
-            RegisterIfDeclared(vm, "Npc_IsDetectedMobOwnedByNpc", () => vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_IsDetectedMobOwnedByNpc", Npc_IsDetectedMobOwnedByNpc));
+            RegisterIfDeclared(vm, "Npc_IsDetectedMobOwnedByNpc", () => vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_IsDetectedMobOwnedByNpc", (a, b) => AsNpc(a, "Npc_IsDetectedMobOwnedByNpc") is { } first && AsNpc(b, "Npc_IsDetectedMobOwnedByNpc") is { } second ? Npc_IsDetectedMobOwnedByNpc(first, second) : 0));
             RegisterIfDeclared(vm, "Npc_IsDetectedMobOwnedByGuild", () => vm.RegisterExternal<int, NpcInstance, int>("Npc_IsDetectedMobOwnedByGuild", Npc_IsDetectedMobOwnedByGuild));
             RegisterIfDeclared(vm, "Npc_CanSeeSource", () => vm.RegisterExternal<int, NpcInstance>("Npc_CanSeeSource", Npc_CanSeeSource));
             RegisterIfDeclared(vm, "Snd_IsSourceNpc", () => vm.RegisterExternal<int, NpcInstance>("Snd_IsSourceNpc", Snd_IsSourceNpc));
-            RegisterIfDeclared(vm, "Npc_GetDistToItem", () => vm.RegisterExternal<int, NpcInstance, ItemInstance>("Npc_GetDistToItem", Npc_GetDistToItem));
-            RegisterIfDeclared(vm, "Npc_GetHeightToItem", () => vm.RegisterExternal<int, NpcInstance, ItemInstance>("Npc_GetHeightToItem", Npc_GetHeightToItem));
-            RegisterIfDeclared(vm, "AI_GotoItem", () => vm.RegisterExternal<NpcInstance, ItemInstance>("AI_GotoItem", AI_GotoItem));
+            RegisterIfDeclared(vm, "Npc_GetDistToItem", () => vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetDistToItem", (n, i) => AsNpc(n, "Npc_GetDistToItem") is { } npc && AsItem(i, "Npc_GetDistToItem") is { } item ? Npc_GetDistToItem(npc, item) : int.MaxValue));
+            RegisterIfDeclared(vm, "Npc_GetHeightToItem", () => vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetHeightToItem", (n, i) => AsNpc(n, "Npc_GetHeightToItem") is { } npc && AsItem(i, "Npc_GetHeightToItem") is { } item ? Npc_GetHeightToItem(npc, item) : int.MaxValue));
+            RegisterIfDeclared(vm, "AI_GotoItem", () => vm.RegisterExternal<DaedalusInstance, DaedalusInstance>("AI_GotoItem", (n, i) => { if (AsNpc(n, "AI_GotoItem") is { } npc && AsItem(i, "AI_GotoItem") is { } item) AI_GotoItem(npc, item); }));
             RegisterIfDeclared(vm, "Wld_RemoveNpc", () => vm.RegisterExternal<int>("Wld_RemoveNpc", Wld_RemoveNpc));
 
 
@@ -757,6 +757,42 @@ namespace Gothic.Core.Domain.Vm
             _vobService.DropItemAtPosition(itemInstanceId, npcContainer.Go.transform.position);
         }
 
+        /// <summary>
+        /// Item parameters of externals arrive as whatever instance the VM holds: an item of an old VM or another class
+        /// failed the cast in ZenKit's Pop and the external left the VM stack broken until it crashed natively
+        /// (Mroczne Tajemnice's giant skeleton by Fellan's armor). Taken as DaedalusInstance and converted here.
+        /// </summary>
+        private ItemInstance AsItem(DaedalusInstance instance, string external)
+        {
+            if (instance == null)
+                return null;
+            if (instance is ItemInstance item)
+                return item;
+            var converted = _vmCacheService.TryGetItemData(instance.Index);
+            LogInstanceMismatch(external, instance, "C_ITEM", converted != null);
+            return converted;
+        }
+
+        private NpcInstance AsNpc(DaedalusInstance instance, string external)
+        {
+            if (instance == null)
+                return null;
+            if (instance is NpcInstance npc)
+                return npc;
+            LogInstanceMismatch(external, instance, "C_NPC", false);
+            return null;
+        }
+
+        private readonly System.Collections.Generic.HashSet<string> _loggedInstanceMismatches = new();
+
+        private void LogInstanceMismatch(string external, DaedalusInstance instance, string expected, bool isConverted)
+        {
+            if (!_loggedInstanceMismatches.Add($"{external}:{instance.GetType().Name}"))
+                return;
+            Logger.LogWarning($"[VM] {external}: expected {expected}, got {instance.GetType().Name} (symbol " +
+                              $"{instance.Index}) - {(isConverted ? "converted by its symbol" : "skipped")}", LogCat.ZenKit);
+        }
+
         public void AI_TakeItem(NpcInstance npc, ItemInstance item)
         {
             if (npc == null || item == null) return;
@@ -1015,7 +1051,7 @@ namespace Gothic.Core.Domain.Vm
             if (vm.GetSymbolByName("Npc_HasReadiedWeapon") != null)
                 vm.RegisterExternal<int, NpcInstance>("Npc_HasReadiedWeapon", Npc_HasReadiedWeapon);
             if (vm.GetSymbolByName("Npc_GetGuildAttitude") != null)
-                vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetGuildAttitude", Npc_GetGuildAttitude);
+                vm.RegisterExternal<int, DaedalusInstance, DaedalusInstance>("Npc_GetGuildAttitude", (a, b) => AsNpc(a, "Npc_GetGuildAttitude") is { } first && AsNpc(b, "Npc_GetGuildAttitude") is { } second ? Npc_GetGuildAttitude(first, second) : 0);
             // G2: B_AssessFighter etc.
             if (vm.GetSymbolByName("Npc_IsDrawingWeapon") != null)
                 vm.RegisterExternal<int, NpcInstance>("Npc_IsDrawingWeapon", Npc_IsDrawingWeapon);
@@ -1447,6 +1483,20 @@ namespace Gothic.Core.Domain.Vm
             _npcInventoryService.ExtEquipItem(npc, itemId);
         }
 
+
+        /// <summary>
+        /// The scripts pass items too: G1's B_FetchWeapon checks Npc_GetDistToNpc(self, item) after Wld_DetectItem (the
+        /// engine measures between any two VOBs). Taken as NpcInstance, the item failed the cast and broke the VM stack
+        /// until it crashed natively (Mroczne Tajemnice's giant skeleton fetching a weapon by Fellan's armor).
+        /// </summary>
+        private int Npc_GetDistToNpcOrItem(DaedalusInstance first, DaedalusInstance second)
+        {
+            if (AsNpc(first, nameof(Npc_GetDistToNpc)) is not { } npc)
+                return int.MaxValue;
+            if (second is ItemInstance item)
+                return Npc_GetDistToItem(npc, item);
+            return AsNpc(second, nameof(Npc_GetDistToNpc)) is { } other ? Npc_GetDistToNpc(npc, other) : int.MaxValue;
+        }
 
         public int Npc_GetDistToNpc(NpcInstance npc1, NpcInstance npc2)
         {

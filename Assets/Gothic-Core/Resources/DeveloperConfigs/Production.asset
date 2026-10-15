@@ -244,6 +244,7 @@ MonoBehaviour:
   EnableVobWorldLight: 1
   EnableMeshCachePerTextureMode: 1
   EnableTextureArrayMipFix: 1
+  EnableVmCacheResetOnLoad: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1

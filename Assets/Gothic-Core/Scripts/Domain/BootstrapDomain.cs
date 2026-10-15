@@ -32,6 +32,7 @@ namespace Gothic.Core.Domain
         [Inject] private readonly FontService _fontService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly VmCacheService _vmCacheService;
 
         
         public BootstrapDomain()
@@ -143,6 +144,13 @@ namespace Gothic.Core.Domain
         private void OnLoadGameStart()
         {
             LoadGothicVm();
+
+            // DeveloperConfig.EnableVmCacheResetOnLoad: item/SVM/spell instances of the old VM are dead in the new one.
+            if (_configService.Dev.EnableVmCacheResetOnLoad)
+            {
+                _vmCacheService.ResetGothicVmInstances();
+                Logger.Log("[Bootstrap] VM instance caches reset for the new VM", LogCat.ZenKit);
+            }
 
             if (_configService.Dev.EnableDialogsPerGameVm)
             {

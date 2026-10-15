@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Caches;
+using Gothic.Core.Models.Context;
+using Gothic.Core.Models.UI;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Config;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -13,10 +16,11 @@ namespace Gothic.Core.Adapters.UI
 {
     /// <summary>
     /// An on-screen keyboard in Gothic's font (like SteamVR's) - a panel with the typed text, letters, digits, shift,
-    /// space, backspace, OK and cancel, clicked with the UI laser. It shows in front of the camera; a physical keyboard
-    /// types into it as well (flat mode, Editor).
-    /// Optional: a symbol row (_ - . , : +), forced upper case, a max length and tappable suggestions (e.g. for
-    /// cheat commands like "insert ITPO_MANA_03 5" or "goto pos -1200.5 300 40").
+    /// space, backspace, OK and cancel, clicked with the UI laser. It shows in front of the camera (or at a follow
+    /// target); a physical keyboard types into it as well (flat mode, Editor).
+    /// Optional: a symbol row (_ - . , : +), forced upper case, a max length, tappable suggestions (e.g. for
+    /// cheat commands like "insert ITPO_MANA_03 5" or "goto pos -1200.5 300 40"), a key filter greying out keys
+    /// and a submit condition.
     /// Layout lives in the prefab (PrefabType.UiVirtualKeyboard), the optional rows collapse via layout groups.
     /// </summary>
     public class VirtualKeyboard : MonoBehaviour
@@ -24,6 +28,7 @@ namespace Gothic.Core.Adapters.UI
         public const int DefaultMaxLength = 30;
         private const float _distance = 1.2f;
         private const float _heightBelowEyes = 0.25f;
+        private const float _disabledLabelAlpha = 0.25f;
         private const string _symbols = "_-.,:+";
         // Without the symbol row, the physical keyboard still types these (save names as before).
         private const string _defaultPhysicalSymbols = "-_";
@@ -45,24 +50,43 @@ namespace Gothic.Core.Adapters.UI
         private int _maxLength = DefaultMaxLength;
         private bool _isForcedUpperCase;
         private bool _isSymbolRowShown;
+        private bool _isClosed;
+        private bool _isClosedOnSubmit = true;
+        private bool _isPhysicalKeyboardUsed;
+        private Transform _followTarget;
+        private bool _hasFollowTarget;
         private Action<string> _onSubmit;
         private Action _onCancel;
+        private Action<string> _onTextChanged;
         private Func<string, IReadOnlyList<string>> _suggestionProvider;
+        private Func<string, char, bool> _keyFilter;
+        private Func<string, bool> _canSubmit;
         private VirtualKeyboardKey[] _keys;
+        private TMP_Text _spaceLabel;
         private readonly List<string> _suggestions = new();
 
-        /// <param name="initialText">Text already typed when the keyboard opens.</param>
-        /// <param name="onSubmit">Called with the trimmed text on OK/Enter.</param>
-        /// <param name="onCancel">Called on X/Escape.</param>
-        /// <param name="maxLength">Maximum characters (30 for save names, ~64 for cheat commands).</param>
-        /// <param name="forceUpperCase">Every letter is typed in upper case (Gothic symbols), shift does nothing.
-        /// </param>
-        /// <param name="showSymbolRow">Adds a row with _ - . , : + (and lets the physical keyboard type them).</param>
-        /// <param name="suggestionProvider">Gets the current text after each change and returns suggestions - the
-        /// first ones are shown as buttons between the text and the keys; tapping one replaces the text.</param>
+        public string Text => _text;
+
+        /// <summary>
+        /// Short form of Show(VirtualKeyboardOptions) - see VirtualKeyboardOptions for the parameters.
+        /// </summary>
         public static void Show(string initialText, Action<string> onSubmit, Action onCancel,
             int maxLength = DefaultMaxLength, bool forceUpperCase = false, bool showSymbolRow = false,
             Func<string, IReadOnlyList<string>> suggestionProvider = null)
+        {
+            Show(new VirtualKeyboardOptions
+            {
+                InitialText = initialText,
+                OnSubmit = onSubmit,
+                OnCancel = onCancel,
+                MaxLength = maxLength,
+                IsForcedUpperCase = forceUpperCase,
+                IsSymbolRowShown = showSymbolRow,
+                SuggestionProvider = suggestionProvider
+            });
+        }
+
+        public static VirtualKeyboard Show(VirtualKeyboardOptions options)
         {
             if (_current != null)
                 _current.Close();
@@ -70,23 +94,31 @@ namespace Gothic.Core.Adapters.UI
             var resourceCacheService = ReflexProjectInstaller.DIContainer.Resolve<ResourceCacheService>();
             var go = resourceCacheService.TryGetPrefabObject(PrefabType.UiVirtualKeyboard);
             _current = go.GetComponent<VirtualKeyboard>();
-            _current.Init(initialText ?? string.Empty, onSubmit, onCancel, Mathf.Max(1, maxLength), forceUpperCase,
-                showSymbolRow, suggestionProvider);
+            _current.Init(options);
+            return _current;
         }
 
-        private void Init(string initialText, Action<string> onSubmit, Action onCancel, int maxLength,
-            bool forceUpperCase, bool showSymbolRow, Func<string, IReadOnlyList<string>> suggestionProvider)
+        private void Init(VirtualKeyboardOptions options)
         {
-            _onSubmit = onSubmit;
-            _onCancel = onCancel;
-            _maxLength = maxLength;
-            _isForcedUpperCase = forceUpperCase;
-            _isUpperCase = forceUpperCase;
-            _isSymbolRowShown = showSymbolRow;
-            _suggestionProvider = suggestionProvider;
-            _text = Clamp(ApplyForcedCase(initialText));
+            _onSubmit = options.OnSubmit;
+            _onCancel = options.OnCancel;
+            _onTextChanged = options.OnTextChanged;
+            _maxLength = Mathf.Max(1, options.MaxLength);
+            _isForcedUpperCase = options.IsForcedUpperCase;
+            _isUpperCase = options.IsForcedUpperCase;
+            _isSymbolRowShown = options.IsSymbolRowShown;
+            _suggestionProvider = options.SuggestionProvider;
+            _keyFilter = options.KeyFilter;
+            _canSubmit = options.CanSubmit;
+            _isClosedOnSubmit = options.IsClosedOnSubmit;
+            _followTarget = options.FollowTarget;
+            _hasFollowTarget = _followTarget != null;
+            _text = Clamp(ApplyForcedCase(options.InitialText ?? string.Empty));
 
-            PlaceInFrontOfCamera();
+            if (_hasFollowTarget)
+                FollowTarget();
+            else
+                PlaceInFrontOfCamera();
 
             foreach (var text in GetComponentsInChildren<TMP_Text>(true))
                 GothicText.Apply(text);
@@ -95,6 +127,7 @@ namespace Gothic.Core.Adapters.UI
             _suggestionRow.SetActive(_suggestionProvider != null);
 
             _keys = GetComponentsInChildren<VirtualKeyboardKey>(true);
+            _spaceLabel = _spaceButton.GetComponentInChildren<TMP_Text>(true);
             foreach (var key in _keys)
             {
                 var character = key.Character;
@@ -120,7 +153,10 @@ namespace Gothic.Core.Adapters.UI
             RefreshDisplay();
             GlobalEventDispatcher.UiCanvasShown.Invoke(GetComponent<Canvas>());
 
-            if (Keyboard.current != null)
+            // VR: laser only. The XR Device Simulator holds keys like E/Q, which would be typed otherwise.
+            var configService = ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
+            _isPhysicalKeyboardUsed = configService.Dev.GameControls != Controls.VR;
+            if (_isPhysicalKeyboardUsed && Keyboard.current != null)
                 Keyboard.current.onTextInput += OnPhysicalTextInput;
             Logger.Log("[VirtualKeyboard] Shown", LogCat.Ui);
         }
@@ -138,12 +174,31 @@ namespace Gothic.Core.Adapters.UI
             transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
         }
 
+        /// <summary>
+        /// Replaces the text from outside (forced case and max length apply). Doesn't call OnTextChanged.
+        /// </summary>
+        public void SetText(string text)
+        {
+            _text = Clamp(ApplyForcedCase(text ?? string.Empty));
+            RefreshDisplay();
+        }
+
         private void Type(char character)
         {
             if (_text.Length >= _maxLength)
                 return;
-            _text += char.IsLetter(character) && _isUpperCase ? char.ToUpperInvariant(character) : character;
+            var typed = GetTypedCharacter(character);
+            if (_keyFilter != null && !_keyFilter(_text, typed))
+                return;
+
+            _text += typed;
             RefreshDisplay();
+            _onTextChanged?.Invoke(_text);
+        }
+
+        private char GetTypedCharacter(char character)
+        {
+            return char.IsLetter(character) && _isUpperCase ? char.ToUpperInvariant(character) : character;
         }
 
         private void ToggleCase()
@@ -152,6 +207,7 @@ namespace Gothic.Core.Adapters.UI
                 return;
             _isUpperCase = !_isUpperCase;
             RefreshKeyLabels();
+            RefreshKeyStates();
         }
 
         private void RefreshKeyLabels()
@@ -160,7 +216,7 @@ namespace Gothic.Core.Adapters.UI
             {
                 var character = key.Character;
                 if (char.IsLetter(character) && key.Label != null)
-                    key.Label.text = (_isUpperCase ? char.ToUpperInvariant(character) : character).ToString();
+                    key.Label.text = GetTypedCharacter(character).ToString();
             }
         }
 
@@ -170,6 +226,7 @@ namespace Gothic.Core.Adapters.UI
                 return;
             _text = _text.Substring(0, _text.Length - 1);
             RefreshDisplay();
+            _onTextChanged?.Invoke(_text);
         }
 
         private void ApplySuggestion(int index)
@@ -178,12 +235,46 @@ namespace Gothic.Core.Adapters.UI
                 return;
             _text = Clamp(ApplyForcedCase(_suggestions[index]));
             RefreshDisplay();
+            _onTextChanged?.Invoke(_text);
         }
 
         private void RefreshDisplay()
         {
             _display.text = _text + "_";
+            RefreshKeyStates();
             RefreshSuggestions();
+        }
+
+        private void RefreshKeyStates()
+        {
+            foreach (var key in _keys)
+                SetKeyInteractable(key.Button, key.Label, IsKeyAllowed(key.Character));
+
+            SetKeyInteractable(_spaceButton, _spaceLabel, IsKeyAllowed(' '));
+            _backspaceButton.interactable = _text.Length > 0;
+            _submitButton.interactable = IsSubmitAllowed();
+        }
+
+        private bool IsKeyAllowed(char character)
+        {
+            return _keyFilter == null || _keyFilter(_text, GetTypedCharacter(character));
+        }
+
+        private bool IsSubmitAllowed()
+        {
+            return _canSubmit == null || _canSubmit(_text);
+        }
+
+        private static void SetKeyInteractable(Button button, TMP_Text label, bool isInteractable)
+        {
+            button.interactable = isInteractable;
+            // A TMP label doesn't follow the Button tint.
+            if (label == null)
+                return;
+
+            var color = label.color;
+            color.a = isInteractable ? 1f : _disabledLabelAlpha;
+            label.color = color;
         }
 
         private void RefreshSuggestions()
@@ -223,10 +314,14 @@ namespace Gothic.Core.Adapters.UI
 
         private void Submit()
         {
+            if (!IsSubmitAllowed())
+                return;
+
             var text = _text.Trim();
             var onSubmit = _onSubmit;
             Logger.Log($"[VirtualKeyboard] Submitted '{text}'", LogCat.Ui);
-            Close();
+            if (_isClosedOnSubmit)
+                Close();
             onSubmit?.Invoke(text);
         }
 
@@ -241,7 +336,7 @@ namespace Gothic.Core.Adapters.UI
         private void Update()
         {
             var keyboard = Keyboard.current;
-            if (keyboard == null)
+            if (!_isPhysicalKeyboardUsed || keyboard == null)
                 return;
             if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
                 Submit();
@@ -249,6 +344,27 @@ namespace Gothic.Core.Adapters.UI
                 Cancel();
             else if (keyboard.backspaceKey.wasPressedThisFrame)
                 Backspace();
+        }
+
+        private void LateUpdate()
+        {
+            if (!_hasFollowTarget || _isClosed)
+                return;
+
+            // Unity null check: the anchor is destroyed (e.g. the hand/canvas it belonged to).
+            if (_followTarget == null)
+                Close();
+            else
+                FollowTarget();
+        }
+
+        /// <summary>
+        /// The anchor's world scale too: a hand menu canvas is much smaller than the keyboard's own scale.
+        /// </summary>
+        private void FollowTarget()
+        {
+            transform.SetPositionAndRotation(_followTarget.position, _followTarget.rotation);
+            transform.localScale = _followTarget.lossyScale;
         }
 
         private void OnPhysicalTextInput(char character)
@@ -259,8 +375,13 @@ namespace Gothic.Core.Adapters.UI
             if (_text.Length >= _maxLength)
                 return;
 
-            _text += _isForcedUpperCase ? char.ToUpperInvariant(character) : character;
+            var typed = _isForcedUpperCase ? char.ToUpperInvariant(character) : character;
+            if (_keyFilter != null && !_keyFilter(_text, typed))
+                return;
+
+            _text += typed;
             RefreshDisplay();
+            _onTextChanged?.Invoke(_text);
         }
 
         private string ApplyForcedCase(string text)
@@ -273,8 +394,12 @@ namespace Gothic.Core.Adapters.UI
             return text.Length > _maxLength ? text.Substring(0, _maxLength) : text;
         }
 
-        private void Close()
+        public void Close()
         {
+            if (_isClosed)
+                return;
+            _isClosed = true;
+
             if (Keyboard.current != null)
                 Keyboard.current.onTextInput -= OnPhysicalTextInput;
             GlobalEventDispatcher.UiCanvasHidden.Invoke(GetComponent<Canvas>());
@@ -282,7 +407,10 @@ namespace Gothic.Core.Adapters.UI
                 _current = null;
             _onSubmit = null;
             _onCancel = null;
+            _onTextChanged = null;
             _suggestionProvider = null;
+            _keyFilter = null;
+            _canSubmit = null;
             Destroy(gameObject);
         }
 

@@ -90,5 +90,8 @@ namespace Gothic.Core
         // A canvas created at runtime (VirtualKeyboard) - VR registers it for the UI laser, and forgets it when hidden.
         public static readonly UnityEvent<Canvas> UiCanvasShown = new();
         public static readonly UnityEvent<Canvas> UiCanvasHidden = new();
+
+        // Marvin: the list of recently executed commands changed.
+        public static readonly UnityEvent MarvinRecentCommandsChanged = new();
     }
 }

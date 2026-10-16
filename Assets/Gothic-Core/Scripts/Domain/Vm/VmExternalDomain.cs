@@ -359,7 +359,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void AI_StandUpQuick(NpcInstance npc)
         {
-            _npcAiService.ExtAiStandUp(npc);
+            _npcAiService.ExtAiStandUpQuick(npc);
         }
 
         public void AI_SetWalkMode(NpcInstance npc, int walkMode)

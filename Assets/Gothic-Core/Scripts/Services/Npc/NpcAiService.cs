@@ -256,19 +256,31 @@ namespace Gothic.Core.Services.Npc
             // * Ist der Nsc in einem Animationsstate, wird die passende Rücktransition abgespielt (e.g. item states).
             var container = npc.GetUserData();
             // Reset immediately (not via queue) so Daedalus C_BodyStateContains checks in the same ZS_*_Loop tick see BsStand.
+            // A seated NPC still sits during the back transition below.
             container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
 
-            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand), only AI_StandUpQuick pops.
-            // E.g. ZS_Talk with a seated NPC that can't see the hero - he got yanked up inside the bench before.
-            // Not when the script already queued the back transition (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
+            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand) - unless one is already
+            // running or queued (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
+            var props = container.Props;
             var mob = container.PrefabProps?.CurrentInteractable;
-            if (mob != null && container.Props.CurrentInteractableStateId >= 0 &&
-                !container.Props.AnimationQueue.OfType<UseMob>().Any())
+            var isBackTransitionPending = props.CurrentAction is UseMob { IsStopUsingMob: true } ||
+                                          props.AnimationQueue.OfType<UseMob>().Any(u => u.IsStopUsingMob);
+            if (mob != null && props.CurrentInteractableStateId >= 0 && !isBackTransitionPending)
             {
-                container.Props.AnimationQueue.Enqueue(new UseMob(
+                props.AnimationQueue.Enqueue(new UseMob(
                     new AnimationAction(mob.Props.GetVisualScheme(), -1), container));
             }
 
+            props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
+        }
+
+        /// <summary>
+        /// G1 docs: like AI_StandUp, but pops out of a mob without its back transitions.
+        /// </summary>
+        public void ExtAiStandUpQuick(NpcInstance npc)
+        {
+            var container = npc.GetUserData();
+            container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
             container.Props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
         }
 

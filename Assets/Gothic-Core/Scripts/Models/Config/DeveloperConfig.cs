@@ -1025,6 +1025,10 @@ namespace Gothic.Core.Models.Config
                  "SPL_TIME_SLEEP/FREEZE, damage wakes up, and the caster's scripts see the state (no endless re-casting).")]
         public bool EnableHeroSpellStates = true;
 
+        [Tooltip("V1: Dialog subtitles (OU.BIN/OU.CSL) packed in a mod's VDF/.mod are read from the archives - no manual " +
+                 "VDFS extraction to VDFS/_WORK/DATA/scripts/content/CUTSCENE needed.")]
+        public bool EnableSubtitlesFromVfs = true;
+
         [Tooltip("V1: In the menu the right stick pulls the menu closer (down) or pushes it away (up), 1-8 m - from 5 m the " +
                  "save game list was unreadable. Kept for the session.")]
         public bool EnableMenuZoom = true;

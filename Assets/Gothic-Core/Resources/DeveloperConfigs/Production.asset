@@ -235,6 +235,7 @@ MonoBehaviour:
   EnableNpcSpellFx: 1
   NpcSpellHoming: 0.2
   EnableHeroSpellStates: 1
+  EnableSubtitlesFromVfs: 1
   EnableMenuZoom: 1
   EnableWorldLightmaps: 1
   WorldLightmapBrightness: 1

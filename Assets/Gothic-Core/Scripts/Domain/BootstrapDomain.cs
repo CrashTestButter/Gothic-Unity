@@ -222,12 +222,20 @@ namespace Gothic.Core.Domain
             var rootPath = _contextGameVersionService.RootPath;
             var suffixes = new[] { _contextGameVersionService.CutsceneFileSuffix, "BIN", "CSL" };
 
-            // VDFS/ is checked first — it holds the mod's OU.BIN extracted from DM_Speech.mod.
-            // ZenKit's CutsceneLibrary has no VFS support, so this is the only way to load mod subtitles.
-            var cutscenePath = new[] { "VDFS/_WORK", "_work" }
-                .SelectMany(folder => suffixes.Select(suffix =>
-                    Path.Combine(rootPath, folder, "DATA", "scripts", "content", "CUTSCENE", $"OU.{suffix}")))
+            // VDFS/ is checked first — it holds the mod's OU.BIN extracted from DM_Speech.mod by hand.
+            // ZenKit's CutsceneLibrary has no VFS support, so it needs a file on disk.
+            string GetDiskPath(string folder) => suffixes
+                .Select(s => Path.Combine(rootPath, folder, "DATA", "scripts", "content", "CUTSCENE", $"OU.{s}"))
                 .FirstOrDefault(File.Exists);
+
+            var cutscenePath = GetDiskPath("VDFS/_WORK");
+            // DeveloperConfig.EnableSubtitlesFromVfs: a mod's OU.BIN packed in its VDF/.mod (New Balance, Dolina Zombie)
+            // is written to a temporary file - no manual VDFS extraction needed any more.
+            if (cutscenePath == null && _configService.Dev.EnableSubtitlesFromVfs && _configService.IsModActive)
+                cutscenePath = ExtractSubtitlesFromVfs(suffixes);
+            cutscenePath ??= GetDiskPath("_work");
+            if (cutscenePath == null && _configService.Dev.EnableSubtitlesFromVfs)
+                cutscenePath = ExtractSubtitlesFromVfs(suffixes);
 
             if (cutscenePath == null)
             {
@@ -237,6 +245,36 @@ namespace Gothic.Core.Domain
 
             Logger.Log($"Loading CutsceneLibrary from: {cutscenePath}", LogCat.Dialog);
             _gameStateService.Dialogs.CutsceneLibrary = new(cutscenePath);
+        }
+
+        /// <summary>
+        /// The mounted archives' OU.BIN/OU.CSL (the mod's wins, VfsOverwriteBehavior.All) as a temporary file. Null if
+        /// no archive has one.
+        /// </summary>
+        private string ExtractSubtitlesFromVfs(string[] suffixes)
+        {
+            foreach (var suffix in suffixes.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var fileName = $"OU.{suffix}";
+                var bytes = _resourceCacheService.Vfs.Find(fileName)?.Buffer.Bytes;
+                if (bytes == null || bytes.Length == 0)
+                    continue;
+
+                try
+                {
+                    var path = Path.Combine(UnityEngine.Application.temporaryCachePath, fileName);
+                    File.WriteAllBytes(path, bytes);
+                    Logger.Log($"Subtitles {fileName} read from the archives ({bytes.Length / 1024} KB) -> {path}",
+                        LogCat.Dialog);
+                    return path;
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError($"Subtitles {fileName} from the archives couldn't be written: {e.Message}",
+                        LogCat.Dialog);
+                }
+            }
+            return null;
         }
 
         private void LoadVideos()

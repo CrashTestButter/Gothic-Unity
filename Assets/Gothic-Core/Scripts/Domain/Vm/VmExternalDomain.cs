@@ -40,6 +40,7 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly NpcInventoryService _npcInventoryService;
         [Inject] private readonly GameTimeService _gameTimeService;
         [Inject] private readonly StoryService _storyService;
+        [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
@@ -736,7 +737,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void Snd_Play(string soundName)
         {
-            GlobalEventDispatcher.ScriptSoundPlay.Invoke(soundName);
+            _audioService.PlaySound2D(soundName);
         }
 
         public void PrintDebug(string message)

@@ -31,13 +31,11 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
-        [Inject] private readonly AudioService _audioService;
         [Inject] private readonly MarvinService _marvinService;
 
         private const string _contextName = "VR";
 
         private VRPlayerController _playerController;
-        private VRScriptSound _scriptSound;
         private GameObject _marvinRoot;
 
         public VRContextInteractionService()
@@ -46,7 +44,6 @@ namespace Gothic.VR.Services.Context
 
             _vrWeaponService.Init();
 
-            GlobalEventDispatcher.ScriptSoundPlay.AddListener(soundName => GetScriptSound().PlaySound(soundName));
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>
             {
@@ -61,17 +58,6 @@ namespace Gothic.VR.Services.Context
         public string GetContextName()
         {
             return _contextName;
-        }
-
-        /// <summary>
-        /// The sound source lives in the current scene - after a scene change Unity destroyed it, then a new one is
-        /// created.
-        /// </summary>
-        private VRScriptSound GetScriptSound()
-        {
-            if (_scriptSound == null)
-                _scriptSound = VRScriptSound.Create(_audioService);
-            return _scriptSound;
         }
 
         private void OnLoadingSceneLoaded()

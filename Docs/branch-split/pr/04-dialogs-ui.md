@@ -106,8 +106,8 @@ scripts / OpenGothic.
   - `UseMob` "set BS_SIT again when re-used while seated" (`8e6b8f44`) only works with slice 05's
     `IsAlreadySittingOnSameMob()` - 05 should add it with its flag dropped.
 - **Deviations from the source (maintainability):**
-  - `VRScreenMessages`: no static `_instance` any more. `VRContextInteractionService` (DI singleton) owns it and
-    recreates it after a scene change; `ShowMessage`/`PlaySound` are instance methods.
+  - `VRScreenMessages`: no static `_instance` any more. Its text part is `VRPrintScreen`; `Snd_Play` is Core
+    (`AudioService.PlaySound2D` + `ScriptSound` adapter in `Bootstrap.unity`, mixer group `SoundEffects`).
   - Dropped debug logs: `StatusMenu` talent count per open, `StatusBarAdapter` "bound after N frames" per NPC,
     `VRUiOnTop` hand material count. Removed unused usings, wrapped lines >120, removed "previously..." history comments.
   - `DrawWeapon` dialog close logs with `LogCat.Dialog` / `Log` (was `LogCat.Fight` / `LogWarning`).
@@ -137,7 +137,7 @@ changed and committed on its own; the status shows what's done.
 |---|---|---|---|
 | 1 | On-top UI built in C# | `VRUiOnTop` on the `Menu-Dialog`/`Menu-Subtitles` prefabs with serialized settings, material assets instead of `Shader.Find` + runtime materials (drop the `GraphicsSettings` entry), no per-frame sprite asset re-wrap, no runtime `CanvasGroup` | done: `VRUiOnTop` on `Menu-Dialog/DialogUI`, `Menu-Subtitles` (12 m, `CanvasGroup` on `Items`) and `PrintScreen`; `UiOnTop-Background`/`-Text` material assets, runtime copies only carry the runtime Gothic texture (cached per source material); hover re-wrap via TMP `TEXT_CHANGED_EVENT`; PrintScreen respects `EnableDialogAlwaysOnTop`; shader moved to `Gothic-VR/Shaders` |
 | 2 | Static state in `VRUiOnTop` | Hands-on-top + caches move to a VR-scope service; no static ctor subscription, no `FindObjectsByType` per dialog | done: `VRUiOnTopService` (VR scene scope) + `VRHandsOnTop` on `HVR - Player`/`PlayerController` (serialized hand renderers) swapping `sharedMaterial` to the `VRHands-OnTop` asset (queue 3950); no static hand state, no `renderer.materials` copies. Material/font caches stay static in `VRUiOnTop` (bounded, decided) |
-| 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | open |
+| 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | done: `ScriptSound` adapter (root GO in `Bootstrap.unity`, 2D `AudioSource` -> `SoundEffects` mixer group) hands its source to `AudioService`; `Snd_Play` calls `AudioService.PlaySound2D`; `ScriptSoundPlay` event and `VRScriptSound` removed, Flat mode plays it too |
 | 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | open |
 | 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | open |
 | 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | open |

@@ -76,11 +76,6 @@ namespace Gothic.Core
         /// Vector3      - at which position
         /// </summary>
         public static readonly UnityEvent<NpcContainer, NpcContainer, Vector3> FightHit = new();
-
-        /// <summary>
-        /// Daedalus Snd_Play - a non-positional (2D) sound like "LogEntry".
-        /// </summary>
-        public static readonly UnityEvent<string> ScriptSoundPlay = new();
         
 
         // LockPicking events

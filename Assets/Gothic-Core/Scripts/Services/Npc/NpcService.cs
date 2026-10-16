@@ -260,7 +260,8 @@ namespace Gothic.Core.Services.Npc
 
         public void ExtNpcChangeAttribute(NpcInstance npc, int attributeId, int value)
         {
-            var vob = npc.GetUserData().Vob;
+            var container = npc.GetUserData();
+            var vob = container.Vob;
             var newValue = vob.GetAttribute(attributeId) + value;
 
             // Clamp paired attributes (HP/HP_MAX, Mana/Mana_MAX): max is at attributeId+1 by G1 convention.
@@ -274,10 +275,29 @@ namespace Gothic.Core.Services.Npc
                     newValue = Mathf.Clamp(newValue, 0, max);
             }
 
-            vob.SetAttribute(attributeId, newValue);
-            // Keep the instance in sync: scripts read hero.attribute[] from it, and
-            // SyncHeroInstanceToVob() (status menu) copies it back to the vob.
-            npc.SetAttribute((NpcAttribute)attributeId, newValue);
+            SetAttribute(container, (NpcAttribute)attributeId, newValue);
+        }
+
+        /// <summary>
+        /// The engine keeps these values in one place (oCNpc), we have two: scripts read the instance, C# the vob.
+        /// Every C# write goes through these setters, so both stay equal.
+        /// </summary>
+        public void SetAttribute(NpcContainer npc, NpcAttribute attribute, int value)
+        {
+            npc.Vob.SetAttribute((int)attribute, value);
+            npc.Instance.SetAttribute(attribute, value);
+        }
+
+        public void SetLevel(NpcContainer npc, int level)
+        {
+            npc.Vob.Level = level;
+            npc.Instance.Level = level;
+        }
+
+        public void SetLp(NpcContainer npc, int lp)
+        {
+            npc.Vob.Lp = lp;
+            npc.Instance.Lp = lp;
         }
 
         public NpcContainer GetHeroContainer()
@@ -287,12 +307,8 @@ namespace Gothic.Core.Services.Npc
         }
 
         /// <summary>
-        /// Daedalus writes some hero values directly on the instance (e.g. hero.lp -= cost; hero.attribute[x] += y in
-        /// B_RaiseAttribute at teachers / G2 permanent potions, level-up HP), bypassing our externals. Copy them to
-        /// the vob before showing them.
-        /// Safe only because every C# write of an attribute writes the instance too (ExtNpcChangeAttribute, fight
-        /// damage) - the engine has one store. A subset sync isn't enough: G1 elixirs change STR/HP_MAX via
-        /// Npc_ChangeAttribute, G2 permanent potions the same attributes directly.
+        /// Daedalus writes hero values directly on the instance (hero.lp, hero.attribute[] at teachers, permanent
+        /// potions). Copies them to the vob - safe because C# writes both stores (SetAttribute/SetLevel/SetLp).
         /// </summary>
         public void SyncHeroInstanceToVob()
         {

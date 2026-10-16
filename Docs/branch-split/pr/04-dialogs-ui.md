@@ -121,9 +121,9 @@ scripts / OpenGothic.
   ZenKit instance and the vob. `SyncHeroInstanceToVob()` copies instance -> vob for values scripts write directly
   (`B_RaiseAttribute` at teachers, G2 permanent potions, level-up HP, `hero.lp`). Syncing only a subset of attributes
   isn't correct: G1 elixirs change STR/HP_MAX via `Npc_ChangeAttribute` (vob), G2 permanent potions change the same
-  attributes directly (instance). So every C# attribute write also writes the instance:
-  `NpcService.ExtNpcChangeAttribute` and `FightService.OnHitUpdateHealth`. Both lines are identical to the source branch
-  (`cd88a122`, slice 08, and FightService's dual write, slice 08/09) - trivial integration conflicts. Note:
+  attributes directly (instance). So every C# write goes through `NpcService.SetAttribute`/`SetLevel`/`SetLp`, which
+  write both stores (`ExtNpcChangeAttribute`, `FightService.OnHitUpdateHealth`, Marvin cheats). Slices 08/09 add their
+  own dual writes (`cd88a122`, FightService) - they must use these setters when integrated. Note:
   `ExtNpcChangeAttribute` still sets an absolute value on `main` (slice 01 fixes it to a delta, `3c6f6df0`); instance and
   vob stay consistent either way.
 - Known limitations: `VRUiOnTop` keeps static caches (on-top material and sprite asset copies) -
@@ -138,7 +138,7 @@ changed and committed on its own; the status shows what's done.
 | 1 | On-top UI built in C# | `VRUiOnTop` on the `Menu-Dialog`/`Menu-Subtitles` prefabs with serialized settings, material assets instead of `Shader.Find` + runtime materials (drop the `GraphicsSettings` entry), no per-frame sprite asset re-wrap, no runtime `CanvasGroup` | done: `VRUiOnTop` on `Menu-Dialog/DialogUI`, `Menu-Subtitles` (12 m, `CanvasGroup` on `Items`) and `PrintScreen`; `UiOnTop-Background`/`-Text` material assets, runtime copies only carry the runtime Gothic texture (cached per source material); hover re-wrap via TMP `TEXT_CHANGED_EVENT`; PrintScreen respects `EnableDialogAlwaysOnTop`; shader moved to `Gothic-VR/Shaders` |
 | 2 | Static state in `VRUiOnTop` | Hands-on-top + caches move to a VR-scope service; no static ctor subscription, no `FindObjectsByType` per dialog | done: `VRUiOnTopService` (VR scene scope) + `VRHandsOnTop` on `HVR - Player`/`PlayerController` (serialized hand renderers) swapping `sharedMaterial` to the `VRHands-OnTop` asset (queue 3950); no static hand state, no `renderer.materials` copies. Material/font caches stay static in `VRUiOnTop` (bounded, decided) |
 | 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | done: `ScriptSound` adapter (root GO in `Bootstrap.unity`, 2D `AudioSource` -> `SoundEffects` mixer group) hands its source to `AudioService`; `Snd_Play` calls `AudioService.PlaySound2D`; `ScriptSoundPlay` event and `VRScriptSound` removed, Flat mode plays it too |
-| 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | open |
+| 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | done: `NpcService.SetAttribute`/`SetLevel`/`SetLp` are the only C# writers (`ExtNpcChangeAttribute`, `FightService`, `MarvinCheatDomain`); `SyncHeroInstanceToVob` doc shortened. Follow-up (not here): one store as single source of truth, needs save/load work |
 | 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | open |
 | 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | open |
 | 7 | `AI_StandUp` comment contradiction | Fix stale `StandUp.cs` comment, guard `UseMob(-1)` also against `CurrentAction` | open |

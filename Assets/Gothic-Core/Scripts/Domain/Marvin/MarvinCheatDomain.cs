@@ -38,33 +38,28 @@ namespace Gothic.Core.Domain.Marvin
         public bool Full()
         {
             var hero = _npcService.GetHeroContainer();
-            SetHeroAttribute(hero, NpcAttribute.HitPoints, GetHeroAttribute(hero, NpcAttribute.HitPointsMax));
-            SetHeroAttribute(hero, NpcAttribute.Mana, GetHeroAttribute(hero, NpcAttribute.ManaMax));
+            _npcService.SetAttribute(hero, NpcAttribute.HitPoints, GetHeroAttribute(hero, NpcAttribute.HitPointsMax));
+            _npcService.SetAttribute(hero, NpcAttribute.Mana, GetHeroAttribute(hero, NpcAttribute.ManaMax));
 
             Logger.Log("[MarvinCheatDomain] Full: hero healed", LogCat.Ui);
             return true;
         }
 
-        /// <summary>
-        /// Writes instance and vob for each value it changes: scripts read the instance, the game (status menu,
-        /// fights) the vob. Like every C# attribute write - NpcService.SyncHeroInstanceToVob() (status menu) copies
-        /// the instance over the vob.
-        /// </summary>
         public bool AddLevels()
         {
             var hero = _npcService.GetHeroContainer();
             var oldLevel = hero.Vob.Level;
 
-            hero.Vob.Level = hero.Instance.Level = oldLevel + _levelsPerLevelCheat;
-            hero.Vob.Lp = hero.Instance.Lp = hero.Vob.Lp + _levelsPerLevelCheat * _learnPointsPerLevel;
+            _npcService.SetLevel(hero, oldLevel + _levelsPerLevelCheat);
+            _npcService.SetLp(hero, hero.Vob.Lp + _levelsPerLevelCheat * _learnPointsPerLevel);
 
             var hpMax = GetHeroAttribute(hero, NpcAttribute.HitPointsMax)
                         + _levelsPerLevelCheat * _hitPointsMaxPerLevel;
             var manaMax = GetHeroAttribute(hero, NpcAttribute.ManaMax) + _manaMaxPerLevelCheat;
-            SetHeroAttribute(hero, NpcAttribute.HitPointsMax, hpMax);
-            SetHeroAttribute(hero, NpcAttribute.HitPoints, hpMax);
-            SetHeroAttribute(hero, NpcAttribute.ManaMax, manaMax);
-            SetHeroAttribute(hero, NpcAttribute.Mana, manaMax);
+            _npcService.SetAttribute(hero, NpcAttribute.HitPointsMax, hpMax);
+            _npcService.SetAttribute(hero, NpcAttribute.HitPoints, hpMax);
+            _npcService.SetAttribute(hero, NpcAttribute.ManaMax, manaMax);
+            _npcService.SetAttribute(hero, NpcAttribute.Mana, manaMax);
 
             Logger.Log($"[MarvinCheatDomain] Level: {oldLevel}->{hero.Vob.Level} (LP {hero.Vob.Lp}, " +
                        $"HP {hpMax}/{hpMax}, mana {manaMax}/{manaMax})", LogCat.Ui);
@@ -156,12 +151,6 @@ namespace Gothic.Core.Domain.Marvin
         private static int GetHeroAttribute(NpcContainer hero, NpcAttribute attribute)
         {
             return hero.Vob.GetAttribute((int)attribute);
-        }
-
-        private static void SetHeroAttribute(NpcContainer hero, NpcAttribute attribute, int value)
-        {
-            hero.Vob.SetAttribute((int)attribute, value);
-            hero.Instance.SetAttribute(attribute, value);
         }
     }
 }

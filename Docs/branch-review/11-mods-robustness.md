@@ -33,6 +33,9 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
   `ZkWorld_load()` died with `std::bad_alloc`. A world ZenKit can't load is retried with that header as `END\0` (the
   `0xB020` chunk and the `MeshAndBsp` blob shrink by one byte) - `ZenWorldArchiveFixDomain`. Normal worlds don't pay
   anything (only after a failed load).
+- **Subtitles from the archives:** ZenKit's `CutsceneLibrary` has no VFS support; when no extracted `OU.BIN`/`OU.CSL`
+  is on disk, the mounted archives' copy (the mod's wins) is written to Unity's temporary cache and loaded from there -
+  extracting `OU.BIN` from `DM_Speech.mod` with VDFS by hand isn't needed anymore.
   ⚠️ This is a workaround on our side - the bug should be raised and fixed in ZenKit too (it hits any binary archive
   whose payload starts with `0x0A`, e.g. meshes with 10/266/522 materials). Issue/PR draft with repro and the suggested
   one-line fix: [zenkit-issue-material-count.md](zenkit-issue-material-count.md). Once ZenKit is fixed, the fallback
@@ -53,7 +56,7 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 2026-10-15: `23d763df` texture array mips · `25183f71` dynamic VOB lights · `075f9e69` crawler melee · `4dcdfff6`
 items as NPC parameters
 
-2026-10-16: `af632900` ZEN material count header
+2026-10-16: `af632900` ZEN material count header · `f4989135` subtitles from the archives
 
 ## Main files
 
@@ -70,7 +73,7 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 
 2026-10-15: `EnableVmCacheResetOnLoad`
 
-2026-10-16: `EnableZenMaterialCountFix`
+2026-10-16: `EnableZenMaterialCountFix`, `EnableSubtitlesFromVfs`
 
 ## Review notes
 
@@ -89,3 +92,4 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 - Mroczne Tajemnice: Siekacz's tavern and the catapult textured; the abandoned mine lit blue/teal.
 - Mroczne Tajemnice abandoned mine: let the giant skeleton by Fellan's armor pick up the sword - no crash.
 - Mroczne Tajemnice abandoned mine: the portal takes you to the ancient temple (log: "header fixed").
+- A mod without an extracted `OU.BIN` under `VDFS/`: subtitles show (log: "Subtitles OU.BIN read from the archives").

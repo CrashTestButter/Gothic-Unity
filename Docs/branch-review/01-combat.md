@@ -69,6 +69,13 @@
 - **Web crawler melee:** Mroczne Tajemnice's mage crawler casts from afar but uses its melee table (`FAI_MINECRAWLER`)
   and bites when its target is frozen or within twice its fist range.
 
+**Added 2026-10-16**
+
+- **The winner knows it won:** G1's `ZS_Unconscious` ends with `if (Npc_IsPlayer(self))
+  other.aivar[AIV_HASDEFEATEDSC] = TRUE`; the hero runs no Daedalus states, so the NPC who knocked him out (or
+  executed him) gets it set in C#. Dialogs after a lost duel check it - Mroczne Tajemnice's Sheer'Ghar
+  (`Info_Sheer_After`) had nothing to say after beating the hero.
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
@@ -83,6 +90,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 `fef6b87f` fist sound/haptics · `f71d91ee` fist stays closed on hover
 
 2026-10-15: `99ca5d27` frozen isn't down · `075f9e69` web crawler melee
+
+2026-10-16: `b53d87e7` AIV_HASDEFEATEDSC for the NPC who beats the hero
 
 ## Main files
 
@@ -103,6 +112,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 2026-10-11/13: `EnableKnockoutFallAnimation`, `EnableSummonActsForMaster`, `EnableNpcComboLimit`, `EnableVrFists`
 
 2026-10-15: `EnableFrozenIsNotDown`, `EnableSpellMonsterMelee`
+
+2026-10-16: `EnableHeroDefeatedAivar`
 
 ## Review notes
 
@@ -134,3 +145,4 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 
 - Mroczne Tajemnice mine: a web crawler casts from afar; once you're frozen or close it runs up and bites (no freeze
   lock); a frozen NPC isn't killed by one hit.
+- Mroczne Tajemnice: lose Sheer'Ghar's duel - after standing up he has the "honor" dialog (log: `AIV_HASDEFEATEDSC`).

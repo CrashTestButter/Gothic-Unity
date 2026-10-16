@@ -10,10 +10,14 @@ Link), not on Quest/Pico standalone.
 
 ## In testing (not in the build yet)
 
-- Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
-- An NPC who beats you in a duel knows it won - Mroczne Tajemnice's Sheer'Ghar talks about honor afterwards.
+
+## 2026-10-16 (late): Sheer'Ghar's duel, mod subtitles without VDFS
+
+- An NPC who beats you in a duel knows it won - Mroczne Tajemnice's Sheer'Ghar talks about honor afterwards and the
+  Seven Steps path goes on.
+- Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
 
 ## 2026-10-16 (night): main merged - Marvin console, Marvin mode for everyone
 

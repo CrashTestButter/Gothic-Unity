@@ -2,8 +2,10 @@
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Context;
+using Gothic.Core.Models.UI;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.EventSystems;
 using ZenKit;
 using ZenKit.Vobs;
 
@@ -76,14 +78,6 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer, NpcContainer, Vector3> FightHit = new();
 
         /// <summary>
-        /// Daedalus PrintScreen/AI_PrintScreen ("New log entry", "1 item received", ...).
-        /// string - text
-        /// int - posY in percent of the screen (-1 = centered)
-        /// int - seconds to show
-        /// </summary>
-        public static readonly UnityEvent<string, int, int> ScriptPrintScreen = new();
-
-        /// <summary>
         /// Daedalus Snd_Play - a non-positional (2D) sound like "LogEntry".
         /// </summary>
         public static readonly UnityEvent<string> ScriptSoundPlay = new();
@@ -99,5 +93,16 @@ namespace Gothic.Core
 
         // FIXME - If LockPick in hand is Amount=0, then destroy as Mesh.
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboBroken = new();
+
+        // Text on screen for some seconds (Daedalus PrintScreen()/AI_PrintScreen()/Print() or engine messages like
+        // Marvin's "testmode on").
+        public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();
+
+        // Marvin: the list of recently executed commands changed.
+        public static readonly UnityEvent MarvinRecentCommandsChanged = new();
+        // Marvin mode got activated (true) or deactivated (false).
+        public static readonly UnityEvent<bool> MarvinModeChanged = new();
+        // The Gothic-Unity logo in the menu got clicked. VR uses the event data to vibrate the clicking hand.
+        public static readonly UnityEvent<PointerEventData> MarvinLogoPoked = new();
     }
 }

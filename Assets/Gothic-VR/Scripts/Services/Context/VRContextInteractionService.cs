@@ -3,6 +3,7 @@ using System.Linq;
 using Gothic.Core;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Caches;
 using Gothic.Core.Models.Config;
@@ -17,9 +18,11 @@ using HurricaneVR.Framework.Core.UI;
 using HurricaneVRExtensions.Simulator;
 using Reflex.Attributes;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 using UnityEngine.XR.Management;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Services.Context
 {
@@ -29,11 +32,13 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
         [Inject] private readonly AudioService _audioService;
+        [Inject] private readonly MarvinService _marvinService;
 
         private const string _contextName = "VR";
 
         private VRPlayerController _playerController;
-        private VRScreenMessages _screenMessages;
+        private VRScriptSound _scriptSound;
+        private GameObject _marvinRoot;
 
         public VRContextInteractionService()
         {
@@ -41,9 +46,7 @@ namespace Gothic.VR.Services.Context
 
             _vrWeaponService.Init();
 
-            GlobalEventDispatcher.ScriptPrintScreen.AddListener((message, _, seconds) =>
-                GetScreenMessages().ShowMessage(message, seconds));
-            GlobalEventDispatcher.ScriptSoundPlay.AddListener(soundName => GetScreenMessages().PlaySound(soundName));
+            GlobalEventDispatcher.ScriptSoundPlay.AddListener(soundName => GetScriptSound().PlaySound(soundName));
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>
             {
@@ -51,6 +54,8 @@ namespace Gothic.VR.Services.Context
                 _playerController.SetNormalControls();
             });
             GlobalEventDispatcher.PlayerPrefUpdated.AddListener(PlayerPrefsUpdated);
+            GlobalEventDispatcher.MarvinModeChanged.AddListener(OnMarvinModeChanged);
+            GlobalEventDispatcher.MarvinLogoPoked.AddListener(OnMarvinLogoPoked);
         }
 
         public string GetContextName()
@@ -59,13 +64,14 @@ namespace Gothic.VR.Services.Context
         }
 
         /// <summary>
-        /// The HUD lives in the current scene - after a scene change Unity destroyed it, then a new one is created.
+        /// The sound source lives in the current scene - after a scene change Unity destroyed it, then a new one is
+        /// created.
         /// </summary>
-        private VRScreenMessages GetScreenMessages()
+        private VRScriptSound GetScriptSound()
         {
-            if (_screenMessages == null)
-                _screenMessages = VRScreenMessages.Create(_audioService);
-            return _screenMessages;
+            if (_scriptSound == null)
+                _scriptSound = VRScriptSound.Create(_audioService);
+            return _scriptSound;
         }
 
         private void OnLoadingSceneLoaded()
@@ -103,8 +109,39 @@ namespace Gothic.VR.Services.Context
             simulatorGO.gameObject.SetActive(developerConfig.EnableVRDeviceSimulator);
 
             // Marvin Mode
-            var marvinGO = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!;
-            marvinGO.gameObject.SetActive(developerConfig.ActivateMarvinMode);
+            _marvinRoot = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!.gameObject;
+            _marvinRoot.SetActive(_marvinService.IsMarvinMode);
+
+            // PrintScreen() messages in front of the camera
+            var printScreenGo = _resourceCacheService.TryGetPrefabObject(PrefabType.UiPrintScreen);
+            SceneManager.MoveGameObjectToScene(printScreenGo, activeScene);
+            printScreenGo.GetComponent<VRPrintScreen>().Init(_playerController.Camera);
+        }
+
+        private void OnMarvinModeChanged(bool isActive)
+        {
+            _marvinRoot.SetActive(isActive);
+        }
+
+        /// <summary>
+        /// Vibrates the hand whose laser pointer clicked the logo. Only while the pokes count (menu open in game),
+        /// so the main menu doesn't hint at the activation.
+        /// </summary>
+        private void OnMarvinLogoPoked(PointerEventData eventData)
+        {
+            if (!_marvinService.IsActivationInputActive)
+                return;
+
+            var pointer = HVRInputModule.Instance.Pointers.FirstOrDefault(i => i.PointerEventData == eventData);
+            if (pointer == null)
+            {
+                Logger.LogWarning("[VRContextInteractionService] No VR pointer found for the Marvin logo click.",
+                    LogCat.Ui);
+                return;
+            }
+
+            ReflexProjectInstaller.DIContainer.Resolve<VrHapticsService>()
+                .Vibrate(pointer.HandSide, VrHapticsService.VibrationType.Info);
         }
         
         private void PlayerPrefsUpdated(string key, object value)

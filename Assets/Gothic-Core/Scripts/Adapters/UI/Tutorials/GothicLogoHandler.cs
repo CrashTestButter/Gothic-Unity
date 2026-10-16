@@ -1,9 +1,11 @@
+using Gothic.Core.Manager;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Gothic.Core.Adapters.UI
 {
-    public class GothicLogoHandler : MonoBehaviour
+    public class GothicLogoHandler : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField]
         private GameObject _tutorialHandler;
@@ -24,39 +26,50 @@ namespace Gothic.Core.Adapters.UI
         private void Start()
         {
             _originalColor = _targetImage.color;
-            
+
             // Create a material instance to avoid affecting other UI elements
             if (_targetImage.material == null)
                 _materialInstance = new Material(Shader.Find("UI/Default"));
             else
                 _materialInstance = new Material(_targetImage.material);
-            
+
             _targetImage.material = _materialInstance;
         }
 
-        
+
         private void Update()
         {
             // Calculate brightness based on sine wave
-            var brightness = Mathf.Lerp(_minBrightness, _maxBrightness, 
+            var brightness = Mathf.Lerp(_minBrightness, _maxBrightness,
                 (Mathf.Sin(Time.time * _pulsationSpeed) + 1) * 0.5f);
-            
+
             // Apply brightness to color
             var newColor = _originalColor * brightness;
             newColor.a = _originalColor.a; // Preserve original alpha
-            
+
             _targetImage.color = newColor;
         }
 
-        
-        public void OnClick()
+
+        /// <summary>
+        /// Counts as a poke for the Marvin mode activation and toggles the tutorial.
+        /// The click completing the Marvin pokes doesn't toggle the tutorial, otherwise it would stay open
+        /// (open, close, open).
+        /// </summary>
+        public void OnPointerClick(PointerEventData eventData)
         {
+            GlobalEventDispatcher.MarvinLogoPoked.Invoke(eventData);
+
             if (_tutorialHandler == null)
                 return;
-            
+
+            var marvinService = ReflexProjectInstaller.DIContainer.Resolve<MarvinService>();
+            if (marvinService.IsLogoPokeComplete)
+                return;
+
             _tutorialHandler.gameObject.SetActive(!_tutorialHandler.gameObject.activeSelf);
         }
-        
+
         private void OnDestroy()
         {
             // Clean up material instance

@@ -7,6 +7,7 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Const;
 using Gothic.Core.Creator;
 using Gothic.Core.Domain.Npc;
+using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Models.Container;
@@ -26,6 +27,7 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
+using Logger = Gothic.Core.Logging.Logger;
 using Object = UnityEngine.Object;
 
 namespace Gothic.Core.Services.Npc
@@ -150,6 +152,22 @@ namespace Gothic.Core.Services.Npc
             return _initializerDomain.GetFreeAreaAtSpawnPoint(positionToScan);
         }
 
+        /// <summary>
+        /// Spawns the NPC instance with the given Daedalus symbol name during gameplay.
+        /// </summary>
+        public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
+        {
+            var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
+            if (symbol == null || symbol.Type != DaedalusDataType.Instance)
+            {
+                Logger.LogWarning($"[NpcService] SpawnNpcByName: '{symbolName}' is no Daedalus instance", LogCat.Npc);
+                return false;
+            }
+
+            _initializerDomain.SpawnNpcRuntime(symbol.Index, position, rotation);
+            return true;
+        }
+
         public async Task CreateWorldNpcs(LoadingService loading)
         {
             MobRoutines.ClearAndReleaseMemory();
@@ -243,11 +261,23 @@ namespace Gothic.Core.Services.Npc
         public void ExtNpcChangeAttribute(NpcInstance npc, int attributeId, int value)
         {
             var vob = npc.GetUserData().Vob;
+            var newValue = vob.GetAttribute(attributeId) + value;
 
-            vob.Attributes[attributeId] = value;
+            // Clamp paired attributes (HP/HP_MAX, Mana/Mana_MAX): max is at attributeId+1 by G1 convention.
+            // Only those two! Strength (4) is followed by Dexterity (5), which isn't its max - clamping it there made
+            // e.g. an amulet's +10 strength do nothing while the -10 on unequip still applied.
+            var isPairedWithMax = attributeId == (int)NpcAttribute.HitPoints || attributeId == (int)NpcAttribute.Mana;
+            if (isPairedWithMax && attributeId + 1 < vob.Attributes.Count)
+            {
+                var max = vob.GetAttribute(attributeId + 1);
+                if (max > 0)
+                    newValue = Mathf.Clamp(newValue, 0, max);
+            }
+
+            vob.SetAttribute(attributeId, newValue);
             // Keep the instance in sync: scripts read hero.attribute[] from it, and
             // SyncHeroInstanceToVob() (status menu) copies it back to the vob.
-            npc.SetAttribute((NpcAttribute)attributeId, value);
+            npc.SetAttribute((NpcAttribute)attributeId, newValue);
         }
 
         public NpcContainer GetHeroContainer()

@@ -6,10 +6,12 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Models.UI;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
@@ -40,6 +42,7 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly StoryService _storyService;
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
         // (optional) Some messages from Daedalus are quite spammy. Ignore them.
         private static readonly string[] _spammyMessages = new[]
@@ -57,6 +60,7 @@ namespace Gothic.Core.Domain.Vm
         private const float _printScreenLogInterval = 10f;
         private const int _maxPrintScreenLogTimes = 256;
         private readonly Dictionary<string, float> _printScreenLogTimes = new();
+        private const string _printFont = "FONT_OLD_10_WHITE.TGA";
 
         public VmExternalDomain()
         {
@@ -207,7 +211,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, NpcInstance>("Npc_RefuseTalk", Npc_RefuseTalk);
 
             // G2 externals only.
-            if (_configService.Dev.GameVersion == GameVersion.Gothic2)
+            if (_contextGameVersionService.IsGothic2())
             {
                 vm.RegisterExternal<int, NpcInstance, NpcInstance>("Npc_GetHeightToNpc", Npc_GetHeightToNpc);
             }
@@ -684,14 +688,14 @@ namespace Gothic.Core.Domain.Vm
                 {
                     vm.RegisterExternal<int, string, int, int, string, int>(name, (msg, posX, posY, font, seconds) =>
                     {
-                        PrintScreen(msg, posY, seconds);
+                        PrintScreen(msg, posX, posY, font, seconds);
                         return 1;
                     });
                 }
                 else
                 {
                     vm.RegisterExternal<string, int, int, string, int>(name,
-                        (msg, posX, posY, font, seconds) => PrintScreen(msg, posY, seconds));
+                        (msg, posX, posY, font, seconds) => PrintScreen(msg, posX, posY, font, seconds));
                 }
             }
             catch (Exception e)
@@ -701,7 +705,10 @@ namespace Gothic.Core.Domain.Vm
             }
         }
 
-        private void PrintScreen(string message, int posY, int seconds)
+        /// <summary>
+        /// posX/posY are percent of the screen, -1 centers the text.
+        /// </summary>
+        private void PrintScreen(string message, int posX, int posY, string font, int seconds)
         {
             if (string.IsNullOrWhiteSpace(message))
                 return;
@@ -716,15 +723,15 @@ namespace Gothic.Core.Domain.Vm
                 _printScreenLogTimes[message] = Time.time;
                 Logger.Log($"[PrintScreen] {message}", LogCat.Dialog);
             }
-            GlobalEventDispatcher.ScriptPrintScreen.Invoke(message, posY, seconds);
+            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, seconds));
         }
 
         /// <summary>
-        /// Engine messages like PLAYER_MOB_MISSING_ITEM's "missing item" text. -1 = default position, 3 s.
+        /// Engine messages like PLAYER_MOB_MISSING_ITEM's "missing item" text. Centered, 3 s.
         /// </summary>
         public void Print(string message)
         {
-            PrintScreen(message, -1, 3);
+            PrintScreen(message, PrintScreenMessage.Centered, PrintScreenMessage.Centered, _printFont, 3);
         }
 
         public void Snd_Play(string soundName)
@@ -734,7 +741,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void PrintDebug(string message)
         {
-            if (!_configService.Dev.EnableZSpyLogs)
+            if (!_enableZSpyLogs)
                 return;
 
             Logger.Log($"[zspy]: {message}", LogCat.ZSpy);
@@ -750,7 +757,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void PrintDebugInst(string message)
         {
-            if (!_configService.Dev.EnableZSpyLogs)
+            if (!_enableZSpyLogs)
                 return;
 
             Logger.Log($"[zspy]: {message}", LogCat.ZSpy);

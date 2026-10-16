@@ -1,0 +1,130 @@
+# 04 Dialogs, subtitles, HUD
+
+Branch: `split/04-dialogs-ui` (worktree `GU-split-04-dialogs-ui`), based on `origin/main` (`e91bc09c`).
+Commits: `86f0b3ca` (dialogs/HUD), `b12cfd07` (status menu, health bars), `89bdbd56` (seated NPCs talk),
+`ad2bf213` (review fixes), `018a7a2f` (`Print` external), `ddecc3b0` (attribute consistency).
+Compile check: `RESULT: OK` (Core, VR, Flat, G1, G2, Lab, PlayMode tests, VR editor).
+
+## What
+
+**Dialogs**
+- The hero isn't frozen during dialogs. A dialog only starts within `DialogMaxDistance` (5 m) of the NPC. While
+  somebody talks, the hero is held inside that bubble (skip the line first). With the choices shown, walking away
+  ends the dialog.
+- An NPC that draws its weapon during the dialog closes it.
+- Important dialogs are checked in their `nr` order like the engine (Baal Cadar's sleep spell before NoTalk).
+- G2/mod SVM lines that ZenKit's `C_SVM` doesn't know (e.g. the hero's `$MISSINGITEM`) play via `SVM_<voice>_<key>`.
+
+**Never cut by walls**
+- Dialog box and NPC subtitles are drawn on top of walls, benches and the NPC (`VRUiOnTop` + new shader
+  `Gothic/UI OnTop`). VR hands render above the box while a dialog is open, so you can see them pointing.
+- On-top subtitles farther than 12 m are hidden (ambient smalltalk through camp walls).
+- Subtitles disappear when the speaker is killed/knocked out mid-line, plus a 10 s+ fallback.
+
+**HUD**
+- `PrintScreen`/`AI_PrintScreen` ("New log entry", "1 item received") are shown as a small HUD in front of the head,
+  `Snd_Play` plays 2D sounds ("LogEntry"). Repeated texts extend their line instead of adding one (G2 scripts print
+  every AI tick with some heroes).
+- `Print(msg)` (engine messages like PLAYER_MOB_MISSING_ITEM's "missing item" text, from `85344e0a`) shows in the
+  same HUD (default position, 3 s). Registered with PrintScreen behind `EnableScreenMessages`.
+
+**Status menu, health bars**
+- Health bars follow damage/healing live, NPC health bars are visible at all, the player's health bar is visible and
+  follows the current hero after a save is loaded.
+- Status menu: correct protection rows (edge/point/fire/magic), talent rows match the talent index, only the NPC's
+  talents, G2 weapon percentages from `hitchance[]`. Opening it syncs values Daedalus wrote directly on the hero.
+- `Npc_SetTalentValue/Skill` keep the other half of the talent, `Npc_GetTalentSkill` is registered and returns the
+  stored skill (was a stub returning 0 - Mroczne Tajemnice teachers reset ranks to "Nowy").
+- Chapter screen waits for its jingle.
+- Hero attributes stay consistent between the ZenKit instance (what scripts read/write directly) and the vob (what
+  C# reads): `Npc_ChangeAttribute` and fight damage now write both, so the status menu's instance -> vob sync can't
+  undo damage or potion effects.
+
+**Project settings**
+- `TagManager`: tags `Subtitle` and `Title` registered (UI prefabs on `main` already use them).
+- `GraphicsSettings`: `Gothic/UI OnTop` always included in builds (loaded via `Shader.Find`).
+
+**Seated NPCs**
+- `AI_StartState(ZS_Talk, 0)` keeps a seated NPC seated (engine behavior), `AI_StandUp` plays the bench's back
+  transitions, a seated NPC sees in the direction its body faces.
+- Grabbing an NPC to talk releases it immediately - HVR's grab pushed seated NPCs out of the bench.
+- `AnimationSystem.IsPlaying` matches alias names (stand-up transitions were skipped).
+- Highlighted NPCs no longer glow (focus brightness 2.5 for NPCs).
+
+## Why
+On `main` the hero is locked in place during dialogs, dialog boxes and subtitles disappear inside walls and NPC
+bodies, script HUD messages are dropped, health bars never move, and the status menu shows shifted talents and wrong
+protection values. Seated NPCs pop up inside their bench when talked to. All engine-parity parts follow the original
+scripts / OpenGothic.
+
+## Config
+- Kept flags (VR design / escape hatch), new separator "Dialogs & HUD": `EnableDialogFreeMovement`,
+  `DialogMaxDistance`, `EnableDialogAlwaysOnTop`, `EnableScreenMessages`. `Production.asset`: all on, 5 m (as source).
+- Dropped flags (fix always on): `EnableImportantInfoOrder`, `EnableMobSeatFix` (only the seated-dialog parts in this
+  slice; slice 05 drops it for its own parts too).
+- Not ported: `HideHealthBar` (attributed to slice 20). It's a property with an `internal set` nobody calls - always
+  false. Recommend slice 20 drops it.
+
+## How to test (VR, ~10-15 min)
+1. G1/G2: talk to an NPC, walk around while he answers (you're held inside ~5 m), skip the line, walk away while the
+   choices are shown - the dialog ends. Start a dialog from 6 m+ - nothing happens until you come closer.
+2. Talk to an NPC standing next to a wall/bench: the dialog box and subtitles stay visible, your hands are visible
+   over the box. Listen to ambient chatter behind a hut wall from far away - no floating subtitles.
+3. Kill/knock out an NPC (Marvin cheats) mid-line - his subtitle disappears.
+4. Get a quest log entry / receive an item in a dialog: "New log entry" HUD text + sound.
+5. Talk to a seated NPC (G1 Old Camp bench): he talks seated or stands up with an animation, never pops up.
+6. Hit an NPC/monster: its health bar shrinks; heal yourself: your bar grows. Open the status menu: talents start at
+   1H in row 1, protection values match the armor. G2: weapon percentages.
+7. Chapter change: the chapter screen stays until the jingle ends.
+8. Take damage, drink a health potion (and in G1 a strength elixir, in G2 learn strength at a teacher), then open the
+   status menu: HP and attributes must not jump (no healed damage, no lost potion/teacher points). Close and reopen it:
+   same values.
+
+## Review notes
+- Source commits (primary 04): `ee8210fd` (only whitespace/HideSubtitles parts), `67dd2739`, `d5d7abb2`, `f3968086`,
+  `de16ce21`, `59661daf`, `3bc6ca69`, `ae923da4`, `b1d68e70` (print/sound part), `d109a6aa`, `8e6b8f44`, `cd10002c`,
+  `be5105d6`, `2d308ea2`, `bf3703ca`, `7d95812a`, `ee4dbc2a`. Secondary: `377057fd` (CurrentDialogNpc, close on draw),
+  `c1a4c1ad` (dialog free movement part), `bac73b4d` (PrintScreen lag part), `c257ae7b` (Npc_GetTalentSkill
+  registration), `7c3afb78` (UI tags; GothicUI was already always-included on main).
+- **Shared with other slices (expect trivial integration conflicts):**
+  - `NpcService.SyncHeroInstanceToVob()` (null-safe) is used by the status menu. Slice 03 no longer adds a blanket
+    sync, so 04's copy is the one to keep.
+  - `NpcService.GetHeroContainer()` null-safety is also slice 01 (`08d95db5`) - identical line. Needed here because the
+    player's health bar polls it in menus.
+  - `DialogService`: slice 05 later replaces `npcContainer.Go` with `GetDialogGo(npcContainer)` (MOBSI anchor) in
+    `ShowDialog`, `IsHeroInDialogRange` and `KeepPlayerWithin`. Slice 16 adds the trade hooks.
+- **Left for other slices:**
+  - `AI_OutputSVM_Overlay` (external, `DialogService.ExtAiOutputSvmOverlay`, `Output`/`OutputSvm` `Bool0` handling,
+    `_audioPlaySeconds` protected) -> 09; it's combat chatter and needs 09's GoToNpc.
+  - `Output.cs` block/text-length fallback and null block guard (merge-resolution lines of `8080a6c9`) -> 01.
+  - `NpcDialogStopDistance` (GoToNpc stop distance) -> 09/11, GoToNpc was reworked there.
+  - Dialog invulnerability in `FightService` (`e5dfc6ce`) -> 09.
+  - `ScriptRemovedInvItems` event, `VRSocket.IsPlayerSocket` public, `VRWeaponService` held-item removal,
+    `EnableScriptRemovesHeldItems` -> 14.
+  - Seated-NPC block in `ExtNpcClearAiQueue` (`8e6b8f44`): on `main` clearing the queue doesn't stop animations, so it's
+    not needed yet. Slice 09/10 must re-add it when they port the expanded `ExtNpcClearAiQueue`.
+  - `UseMob` "set BS_SIT again when re-used while seated" (`8e6b8f44`) only works with slice 05's
+    `IsAlreadySittingOnSameMob()` - 05 should add it with its flag dropped.
+- **Deviations from the source (maintainability):**
+  - `VRScreenMessages`: no static `_instance` any more. `VRContextInteractionService` (DI singleton) owns it and
+    recreates it after a scene change; `ShowMessage`/`PlaySound` are instance methods.
+  - Dropped debug logs: `StatusMenu` talent count per open, `StatusBarAdapter` "bound after N frames" per NPC,
+    `VRUiOnTop` hand material count. Removed unused usings, wrapped lines >120, removed "previously..." history comments.
+  - `DrawWeapon` dialog close logs with `LogCat.Dialog` / `Log` (was `LogCat.Fight` / `LogWarning`).
+  - `StatusMenu` uses `ContextGameVersionService.IsGothic2()` directly (exists on `main`).
+  - Review fixes (`ad2bf213`): player health bar no longer disabled at start (in the source it was behind
+    `HideHealthBar`, always false); `SyncHeroInstanceToVob` and the status menu skip without a hero; `VRUiOnTop`
+    shares on-top materials per (texture, color, queue) instead of one per graphic per dialog, checks sprite asset
+    copies in a `HashSet`, and resets the hands' render queue on `LoadingSceneLoaded` (scene change mid-dialog);
+    PrintScreen log throttle has a named interval and a capped dictionary.
+- **Attribute consistency (`ddecc3b0`), why this way:** the engine keeps attributes in one place (oCNpc); we have the
+  ZenKit instance and the vob. `SyncHeroInstanceToVob()` copies instance -> vob for values scripts write directly
+  (`B_RaiseAttribute` at teachers, G2 permanent potions, level-up HP, `hero.lp`). Syncing only a subset of attributes
+  isn't correct: G1 elixirs change STR/HP_MAX via `Npc_ChangeAttribute` (vob), G2 permanent potions change the same
+  attributes directly (instance). So every C# attribute write also writes the instance:
+  `NpcService.ExtNpcChangeAttribute` and `FightService.OnHitUpdateHealth`. Both lines are identical to the source branch
+  (`cd88a122`, slice 08, and FightService's dual write, slice 08/09) - trivial integration conflicts. Note:
+  `ExtNpcChangeAttribute` still sets an absolute value on `main` (slice 01 fixes it to a delta, `3c6f6df0`); instance and
+  vob stay consistent either way.
+- Known limitations: `VRUiOnTop` keeps static caches (shader, materials, sprite asset copies, hand materials) -
+  deliberate, shared across all dialog boxes. `GothicUIOnTop.shader` contains a long line copied from Unity's UI shader.

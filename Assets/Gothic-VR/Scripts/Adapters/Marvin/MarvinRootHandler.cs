@@ -1,6 +1,5 @@
 using Gothic.Core.Adapters.UI;
-using Gothic.Core.Services.Config;
-using Gothic.Core;
+using Gothic.Core.Manager;
 using Reflex.Attributes;
 using UnityEngine;
 
@@ -8,7 +7,7 @@ namespace Gothic.VR.Adapters.Marvin
 {
     public class MarvinRootHandler : MonoBehaviour
     {
-        [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly MarvinService _marvinService;
 
         [SerializeField] ToggleButton _toggleButtonLogs;
         [SerializeField] ToggleButton _toggleButtonMarvin;
@@ -22,7 +21,7 @@ namespace Gothic.VR.Adapters.Marvin
         {
             ResetTabs();
 
-            if (!_configService.Dev.ActivateMarvinMode)
+            if (!_marvinService.IsMarvinMode)
                 gameObject.SetActive(false);
         }
 

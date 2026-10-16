@@ -103,6 +103,14 @@ namespace Gothic.Core.Adapters.UI.Menus
         private void CreateRootElements()
         {
             var backPic = TextureService.GetMaterial(MenuInstance.BackPic);
+            if (backPic.mainTexture == null)
+            {
+                // Some mod menus (e.g. New Balance's MENU_MAIN under Union) define no backPic.
+                // The fallback's pixel size also drives the pixel-ratio math below, i.e. item spacing.
+                // The 1024x1024 SaveLoad material packs items ~2x tighter than the 2048x2048 main background.
+                backPic = TextureService.MainMenuSaveLoadBackgroundMaterial;
+            }
+
             SetupBackground(backPic);
             SetupCanvasSize(backPic);
             ComputePixelRatios(backPic);

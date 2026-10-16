@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PreselectGameVersion: 1
   GameVersion: 0
+  PreSelectMod: 0
   ModIni: 
+  ModPath: 
   GameControls: 0
   EnableVRDeviceSimulator: 0
-  ActivateMarvinMode: 0
+  PreselectMarvinMode: 0
   EnableZSpyLogs: 0
   AllDebugChannels: 0
   ZSpyChannels:

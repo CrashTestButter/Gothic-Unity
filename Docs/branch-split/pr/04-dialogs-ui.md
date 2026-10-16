@@ -42,7 +42,7 @@ Compile check: `RESULT: OK` (Core, VR, Flat, G1, G2, Lab, PlayMode tests, VR edi
 
 **Project settings**
 - `TagManager`: tags `Subtitle` and `Title` registered (UI prefabs on `main` already use them).
-- `GraphicsSettings`: `Gothic/UI OnTop` always included in builds (loaded via `Shader.Find`).
+- `GraphicsSettings`: unchanged. `Gothic/UI OnTop` (in `Gothic-VR/Shaders`) reaches builds via the `UiOnTop-*` material assets.
 
 **Seated NPCs**
 - `AI_StartState(ZS_Talk, 0)` keeps a seated NPC seated (engine behavior), `AI_StandUp` plays the bench's back
@@ -128,3 +128,21 @@ scripts / OpenGothic.
   vob stay consistent either way.
 - Known limitations: `VRUiOnTop` keeps static caches (shader, materials, sprite asset copies, hand materials) -
   deliberate, shared across all dialog boxes. `GothicUIOnTop.shader` contains a long line copied from Unity's UI shader.
+
+## Design review follow-up (2026-10-16)
+A design review of the branch (Core/VR slice, UI in prefabs vs C#, AI slop) found the items below. Each one is
+changed and committed on its own; the status shows what's done.
+
+| # | Item | Planned change | Status |
+|---|---|---|---|
+| 1 | On-top UI built in C# | `VRUiOnTop` on the `Menu-Dialog`/`Menu-Subtitles` prefabs with serialized settings, material assets instead of `Shader.Find` + runtime materials (drop the `GraphicsSettings` entry), no per-frame sprite asset re-wrap, no runtime `CanvasGroup` | done: `VRUiOnTop` on `Menu-Dialog/DialogUI`, `Menu-Subtitles` (12 m, `CanvasGroup` on `Items`) and `PrintScreen`; `UiOnTop-Background`/`-Text` material assets, runtime copies only carry the runtime Gothic texture (cached per source material); hover re-wrap via TMP `TEXT_CHANGED_EVENT`; PrintScreen respects `EnableDialogAlwaysOnTop`; shader moved to `Gothic-VR/Shaders` |
+| 2 | Static state in `VRUiOnTop` | Hands-on-top + caches move to a VR-scope service; no static ctor subscription, no `FindObjectsByType` per dialog | open |
+| 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | open |
+| 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | open |
+| 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | open |
+| 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | open |
+| 7 | `AI_StandUp` comment contradiction | Fix stale `StandUp.cs` comment, guard `UseMob(-1)` also against `CurrentAction` | open |
+| 8 | Flags | `Snd_Play`/`Print`/`PrintScreen` always registered, `EnableScreenMessages` gates only the HUD | open |
+| 9 | Dialog range vs. clamp | Context service measures and clamps with the same transform, null guard | open |
+| 10 | Logic in UI adapters | Talent percent into a service, `StatusBarAdapter` event-driven instead of per-frame polling | open |
+| 11 | Small cleanups | `NpcContainer.IsUsingMob`, `VRFocus` cached NPC check + constant, history/anecdote comments, regions, shader location/header | open |

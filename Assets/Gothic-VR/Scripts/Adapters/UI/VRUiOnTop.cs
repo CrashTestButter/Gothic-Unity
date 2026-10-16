@@ -9,29 +9,31 @@ using UnityEngine.UI;
 namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
-    /// Draws a world space UI (dialog box, NPC subtitles) on top of walls, furniture and NPC bodies.
+    /// Draws a world space UI (dialog box, NPC subtitles, PrintScreen) on top of walls, furniture and NPC bodies.
     ///
-    /// - Material values can't do it: the Canvas overrides unity_GUIZTestMode per draw, and the dialog background
-    ///   (URP Unlit) has no depth test parameter. All graphics get the "Gothic/UI OnTop" shader (ZTest Always).
-    /// - Gothic's bitmap fonts are TMP sprite assets (TMP_SubMeshUI with the asset's material, re-assigned on every
-    ///   text change). Labels get an on-top copy of their sprite asset. UIEvents swaps sprite assets on hover
-    ///   (highlight font) - LateUpdate wraps those again. The copy keeps the original name, as the highlight font is
-    ///   looked up by name.
-    /// - Queues: after all transparents (Gothic alpha materials are sorted back to front and one closer to the camera
-    ///   would cover the UI), text after its background.
+    /// - The Canvas overrides unity_GUIZTestMode per draw, so graphics get copies of the on-top material assets
+    ///   ("Gothic/UI OnTop", ZTest Always). Copies only carry the Gothic texture, which is loaded at runtime.
+    /// - Gothic's bitmap fonts are runtime TMP sprite assets. Texts get an on-top copy of their sprite asset; texts
+    ///   whose sprite asset is swapped later (hover highlight) are wrapped again when TMP regenerates them.
     /// </summary>
     public class VRUiOnTop : MonoBehaviour
     {
-        private const int _backgroundRenderQueue = 3900;
-        private const int _textRenderQueue = 3901;
         private const int _handsRenderQueue = 3950;
 
-        // Resolved on first use - Shader.Find isn't allowed in a MonoBehaviour's (static) field initializers.
-        private static Shader _onTopShader;
+        [Tooltip("On-top copy for images. Its render queue has to be after all transparents.")]
+        [SerializeField] private Material _backgroundMaterial;
+        [Tooltip("On-top copy for Gothic font sprites. Render queue after _backgroundMaterial.")]
+        [SerializeField] private Material _textMaterial;
+        [Tooltip("0 = always visible. Otherwise hidden when farther away from the camera (meters).")]
+        [SerializeField] private float _maxVisibleDistance;
+        [Tooltip("Hidden by _maxVisibleDistance. Only needed if _maxVisibleDistance > 0.")]
+        [SerializeField] private CanvasGroup _canvasGroup;
+
+        // Shared by all on-top UIs: dialog options and PrintScreen lines are cloned at runtime.
+        private static readonly Dictionary<Material, Material> _onTopMaterials = new();
+        private static readonly HashSet<Material> _onTopMaterialCopies = new();
         private static readonly Dictionary<TMP_SpriteAsset, TMP_SpriteAsset> _onTopSpriteAssets = new();
         private static readonly HashSet<TMP_SpriteAsset> _onTopSpriteAssetCopies = new();
-        // Shared by all graphics with the same look - dialog options are cloned on every ShowDialog.
-        private static readonly Dictionary<(Texture texture, Color color, int queue), Material> _onTopMaterials = new();
         private static readonly List<(Material material, int queue)> _handMaterials = new();
         private static bool _areHandsOnTop;
 
@@ -42,39 +44,25 @@ namespace Gothic.VR.Adapters.UI
         }
 
         private readonly HashSet<Graphic> _patchedGraphics = new();
-        private readonly List<TMP_Text> _texts = new();
-        private CanvasGroup _canvasGroup;
+        private bool _isApplied;
+        private Transform _cameraTransform;
 
         /// <summary>
-        /// 0 = always visible. Otherwise hidden when farther away from the camera - on-top NPC subtitles of ambient
-        /// smalltalk showed up through every wall of a camp as tiny pixels.
-        /// </summary>
-        public float MaxVisibleDistance;
-
-
-        /// <summary>
-        /// Patches all not yet patched graphics below this GameObject (new dialog options are cloned later on).
+        /// Patches all not yet patched graphics below this GameObject. Call it again after cloning new elements.
         /// </summary>
         public void Apply()
         {
+            _isApplied = true;
             foreach (var graphic in GetComponentsInChildren<Graphic>(true))
             {
                 if (!_patchedGraphics.Add(graphic))
                     continue;
 
                 if (graphic is TMP_Text text)
-                {
-                    _texts.Add(text);
                     WrapSpriteAsset(text);
-                    continue;
-                }
-
-                // Its material comes from the (patched) sprite asset.
-                if (graphic is TMP_SubMeshUI)
-                    continue;
-
-                var original = graphic.material;
-                graphic.material = CreateOnTopMaterial(graphic.mainTexture, original.color, _backgroundRenderQueue);
+                // Its material comes from the (wrapped) sprite asset.
+                else if (graphic is not TMP_SubMeshUI)
+                    graphic.material = GetOnTopMaterial(graphic.material);
             }
         }
 
@@ -115,30 +103,45 @@ namespace Gothic.VR.Adapters.UI
             _handMaterials.Clear();
         }
 
-        private void LateUpdate()
+        private void OnEnable()
         {
-            UpdateDistanceVisibility();
-
-            foreach (var text in _texts)
-            {
-                if (text != null)
-                    WrapSpriteAsset(text);
-            }
+            TMPro_EventManager.TEXT_CHANGED_EVENT.Add(OnTextChanged);
         }
 
-        private void UpdateDistanceVisibility()
+        private void OnDisable()
         {
-            if (MaxVisibleDistance <= 0f || Camera.main == null)
+            TMPro_EventManager.TEXT_CHANGED_EVENT.Remove(OnTextChanged);
+        }
+
+        private void Update()
+        {
+            if (_maxVisibleDistance <= 0f || _canvasGroup == null)
                 return;
 
-            if (_canvasGroup == null && !TryGetComponent(out _canvasGroup))
-                _canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            if (_cameraTransform == null)
+            {
+                var mainCamera = Camera.main;
+                if (mainCamera == null)
+                    return;
+                _cameraTransform = mainCamera.transform;
+            }
 
-            var isNear = Vector3.Distance(Camera.main.transform.position, transform.position) <= MaxVisibleDistance;
+            var sqrDistance = (_cameraTransform.position - transform.position).sqrMagnitude;
+            var isNear = sqrDistance <= _maxVisibleDistance * _maxVisibleDistance;
             _canvasGroup.alpha = isNear ? 1f : 0f;
+            _canvasGroup.blocksRaycasts = isNear;
         }
 
-        private static void WrapSpriteAsset(TMP_Text text)
+        /// <summary>
+        /// UIEvents swaps the sprite asset on hover (highlight font) - wrap the new one too.
+        /// </summary>
+        private void OnTextChanged(Object changed)
+        {
+            if (_isApplied && changed is TMP_Text text && text.transform.IsChildOf(transform))
+                WrapSpriteAsset(text);
+        }
+
+        private void WrapSpriteAsset(TMP_Text text)
         {
             // No own sprite asset (e.g. NPC subtitle lines): TMP falls back to the default one - wrap that.
             var source = text.spriteAsset != null ? text.spriteAsset : TMP_Settings.defaultSpriteAsset;
@@ -149,7 +152,7 @@ namespace Gothic.VR.Adapters.UI
             {
                 onTop = Instantiate(source);
                 onTop.name = source.name; // UIEventsService finds the highlight font by name (..._hi.fnt).
-                onTop.material = CreateOnTopMaterial(source.material.mainTexture, Color.white, _textRenderQueue);
+                onTop.material = CreateCopy(_textMaterial, source.material);
                 onTop.UpdateLookupTables();
                 _onTopSpriteAssets[source] = onTop;
                 _onTopSpriteAssetCopies.Add(onTop);
@@ -158,23 +161,27 @@ namespace Gothic.VR.Adapters.UI
             text.spriteAsset = onTop;
         }
 
-        private static Material CreateOnTopMaterial(Texture texture, Color color, int renderQueue)
+        private Material GetOnTopMaterial(Material source)
         {
-            var key = (texture, color, renderQueue);
-            if (_onTopMaterials.TryGetValue(key, out var material) && material != null)
-                return material;
+            if (_onTopMaterialCopies.Contains(source))
+                return source;
 
-            if (_onTopShader == null)
-                _onTopShader = Shader.Find("Gothic/UI OnTop");
-
-            material = new Material(_onTopShader)
+            if (!_onTopMaterials.TryGetValue(source, out var onTop) || onTop == null)
             {
-                mainTexture = texture,
-                color = color,
-                renderQueue = renderQueue
+                onTop = CreateCopy(_backgroundMaterial, source);
+                _onTopMaterials[source] = onTop;
+                _onTopMaterialCopies.Add(onTop);
+            }
+            return onTop;
+        }
+
+        private static Material CreateCopy(Material onTopAsset, Material source)
+        {
+            return new Material(onTopAsset)
+            {
+                mainTexture = source.mainTexture,
+                color = source.color
             };
-            _onTopMaterials[key] = material;
-            return material;
         }
     }
 }

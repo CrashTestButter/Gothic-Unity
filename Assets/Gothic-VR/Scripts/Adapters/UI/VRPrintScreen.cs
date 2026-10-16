@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Gothic.Core;
 using Gothic.Core.Adapters.UI;
 using Gothic.Core.Models.UI;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.UI;
 using Reflex.Attributes;
 using TMPro;
@@ -29,21 +30,24 @@ namespace Gothic.VR.Adapters.UI
         [Tooltip("Speed of the rotation catching up with the head. Higher values follow quicker.")]
         [SerializeField] private float _rotationSpeed = 6f;
         [SerializeField] private float _minSeconds = 1f;
+        [SerializeField] private VRUiOnTop _onTop;
 
         [Inject] private readonly FontService _fontService;
+        [Inject] private readonly ConfigService _configService;
 
         private readonly List<(TMP_Text Text, float HideAt)> _activeMessages = new();
         private readonly Stack<TMP_Text> _pool = new();
 
         private Transform _cameraTransform;
         private Vector3 _moveVelocity;
-        private VRUiOnTop _onTop;
 
         public void Init(Transform cameraTransform)
         {
             _cameraTransform = cameraTransform;
             _screen.gameObject.SetActive(false);
-            _onTop = gameObject.AddComponent<VRUiOnTop>();
+            // New lines are clones of the template - VRUiOnTop wraps their fonts when they're generated.
+            if (_configService.Dev.EnableDialogAlwaysOnTop)
+                _onTop.Apply();
 
             GlobalEventDispatcher.PrintScreen.AddListener(OnPrintScreen);
         }
@@ -81,12 +85,9 @@ namespace Gothic.VR.Adapters.UI
                 FollowCamera(true);
             }
 
-            var isNewText = _pool.Count == 0;
-            var text = isNewText ? Instantiate(_messageTemplate, _screen, false) : _pool.Pop();
+            var text = _pool.Count > 0 ? _pool.Pop() : Instantiate(_messageTemplate, _screen, false);
             SetupText(text, message);
             text.gameObject.SetActive(true);
-            if (isNewText)
-                _onTop.Apply();
 
             _activeMessages.Add((text, hideAt));
         }

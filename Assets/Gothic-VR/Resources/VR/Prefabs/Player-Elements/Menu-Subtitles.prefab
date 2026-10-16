@@ -150,6 +150,7 @@ GameObject:
   - component: {fileID: 5024555999594245466}
   - component: {fileID: 4341180457087582329}
   - component: {fileID: 1188917273777714123}
+  - component: {fileID: 3067079491667738900}
   m_Layer: 5
   m_Name: Items
   m_TagString: Untagged
@@ -274,6 +275,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 383b7c9b1aac41f49b7f65488b62def4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!225 &3067079491667738900
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2782839599571649433}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 0
+  m_BlocksRaycasts: 0
+  m_IgnoreParentGroups: 0
 --- !u!1 &3300875102667087504
 GameObject:
   m_ObjectHideFlags: 0
@@ -572,6 +585,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7369722077890996068}
   - component: {fileID: 840386729682481267}
+  - component: {fileID: 5553119450724191054}
   m_Layer: 5
   m_Name: Menu-Subtitles
   m_TagString: Untagged
@@ -610,3 +624,20 @@ MonoBehaviour:
   _isHero: 0
   _dialogNpcNameText: {fileID: 3465958681122799452}
   _dialogText: {fileID: 5338074538308429778}
+  _onTop: {fileID: 5553119450724191054}
+--- !u!114 &5553119450724191054
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7339275886835513150}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b02e7af663f2ba4083705e7617061ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Adapters.UI.VRUiOnTop
+  _backgroundMaterial: {fileID: 2100000, guid: 48439b88586731342a3aa9860552fb48, type: 2}
+  _textMaterial: {fileID: 2100000, guid: c4170a11c4f4d85439112ebdae034112, type: 2}
+  _maxVisibleDistance: 12
+  _canvasGroup: {fileID: 3067079491667738900}

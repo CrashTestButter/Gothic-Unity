@@ -27,6 +27,7 @@ namespace Gothic.VR.Adapters.UI
         [SerializeField] private GameObject _dialogRoot;
         [SerializeField] private List<GameObject> _dialogItems;
         [SerializeField] private UIEvents _uiEventsHandler;
+        [SerializeField] private VRUiOnTop _onTop;
 
         [NonSerialized]
         public List<string> CurrentDialogOptionTexts;
@@ -74,13 +75,10 @@ namespace Gothic.VR.Adapters.UI
             hoverElements.AddRange(_dialogItems.Select(i => i.GetComponentInChildren<TMP_Text>().gameObject).ToList());
             _uiEventsHandler.SetElementsToHover(hoverElements, true);
 
-            // Walls, benches or the NPC's own body cut through the dialog box - see VRUiOnTop.
-            // Runs on every ShowDialog: options are cloned later on.
+            // On every ShowDialog: FillDialog clones new options.
             if (_configService.Dev.EnableDialogAlwaysOnTop)
             {
-                if (!_dialogRoot.TryGetComponent<VRUiOnTop>(out var onTop))
-                    onTop = _dialogRoot.AddComponent<VRUiOnTop>();
-                onTop.Apply();
+                _onTop.Apply();
                 VRUiOnTop.SetHandsOnTop(true);
             }
 

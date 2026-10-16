@@ -1,6 +1,6 @@
 // Copy of TextMeshPro/Sprite (UI vertex color * texture, stencil, clip rect, VR stereo) with a hardcoded
 // ZTest Always: the Canvas overrides unity_GUIZTestMode per draw, so material values can't lift UI above the world.
-// Used by VRDialog for its backgrounds and Gothic bitmap-font sprites.
+// Used by VRUiOnTop (materials UiOnTop-Background/-Text) for UI backgrounds and Gothic bitmap-font sprites.
 Shader "Gothic/UI OnTop"
 {
 	Properties

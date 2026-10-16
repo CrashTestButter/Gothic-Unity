@@ -9,6 +9,7 @@ using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Extensions;
 using JetBrains.Annotations;
@@ -31,6 +32,7 @@ namespace Gothic.Core.Services.Npc
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
         [Inject] private readonly WayNetService _wayNetService;
         [Inject] private readonly VobService _vobService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
         private const float _fpLookupDistance = 7f; // meter
         private static readonly int _raycastLayersToUse = 1 << Constants.DefaultLayer;
@@ -203,6 +205,18 @@ namespace Gothic.Core.Services.Npc
         public int ExtNpcGetTalentValue(NpcInstance npc, int skillId)
         {
             return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Value ?? 0;
+        }
+
+        /// <summary>
+        /// Percentage shown in the status menu. G2 keeps the weapon talents' percentages in C_NPC.hitchance[]
+        /// (B_AddFightSkill), G1 in the talent value (Npc_SetTalentValue).
+        /// </summary>
+        public int GetTalentPercent(NpcContainer npc, int talentIndex)
+        {
+            if (_contextGameVersionService.IsGothic2() && talentIndex <= (int)NpcTalent.Crossbow)
+                return npc.Instance.GetHitChance((NpcTalent)talentIndex);
+
+            return npc.Vob.GetTalent(talentIndex).Value;
         }
 
         public VmGothicEnums.Attitude GetPersonAttitude(NpcContainer self, NpcContainer other)

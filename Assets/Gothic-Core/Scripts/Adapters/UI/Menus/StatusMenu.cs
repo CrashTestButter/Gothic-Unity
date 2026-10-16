@@ -2,15 +2,12 @@ using System;
 using System.Linq;
 using Gothic.Core.Logging;
 using Gothic.Core.Model.UI.Menu;
-using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
-using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vm;
 using MyBox;
 using Reflex.Attributes;
 using TMPro;
-using ZenKit.Daedalus;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Adapters.UI.Menus
@@ -42,7 +39,7 @@ namespace Gothic.Core.Adapters.UI.Menus
 
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly NpcService _npcService;
-        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly NpcHelperService _npcHelperService;
 
         private void Awake()
         {
@@ -122,22 +119,8 @@ namespace Gothic.Core.Adapters.UI.Menus
                 SetItemText(keySkill, skillFormatted);
                 // Optional: e.g. G1 shows hit chance / failure chance, mods often comment it out for some rows.
                 if (MenuItemCache.ContainsKey(keyDescription))
-                    SetItemText(keyDescription, $"{GetTalentPercent(hero, i, talent.Value)}%");
+                    SetItemText(keyDescription, $"{_npcHelperService.GetTalentPercent(hero, i)}%");
             });
-        }
-
-        /// <summary>
-        /// G2 keeps the weapon percentages (1H, 2H, bow, crossbow = talents 1-4) in C_NPC.hitchance[]
-        /// (B_AddFightSkill), not in the talent value. G1 and G1 mods (e.g. Mroczne Tajemnice) use the talent value
-        /// (Npc_SetTalentValue).
-        /// </summary>
-        private int GetTalentPercent(NpcContainer hero, int talentIndex, int talentValue)
-        {
-            const int lastWeaponTalent = 4;
-            if (_contextGameVersionService.IsGothic2() && talentIndex <= lastWeaponTalent)
-                return hero.Instance.GetHitChance((NpcTalent)talentIndex);
-
-            return talentValue;
         }
 
         /// <summary>

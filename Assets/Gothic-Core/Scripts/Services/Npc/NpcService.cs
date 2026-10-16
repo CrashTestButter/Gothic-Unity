@@ -286,6 +286,7 @@ namespace Gothic.Core.Services.Npc
         {
             npc.Vob.SetAttribute((int)attribute, value);
             npc.Instance.SetAttribute(attribute, value);
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(npc, attribute);
         }
 
         public void SetLevel(NpcContainer npc, int level)
@@ -302,7 +303,7 @@ namespace Gothic.Core.Services.Npc
 
         public NpcContainer GetHeroContainer()
         {
-            // Hero doesn't exist yet in menus / during boot. Callers (e.g. StatusBarAdapter.Update) poll until it does.
+            // Hero doesn't exist yet in menus / during boot (e.g. the player's health bar asks for it there).
             return (_gameStateService.GothicVm?.GlobalHero as NpcInstance)?.GetUserData();
         }
 
@@ -322,6 +323,9 @@ namespace Gothic.Core.Services.Npc
             hero.Vob.Lp = hero.Instance.Lp;
             for (var i = 0; i < Enum.GetNames(typeof(NpcAttribute)).Length; i++)
                 hero.Vob.SetAttribute(i, hero.Instance.GetAttribute((NpcAttribute)i));
+
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(hero, NpcAttribute.HitPoints);
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(hero, NpcAttribute.HitPointsMax);
         }
 
         public GameObject GetHeroGameObject()

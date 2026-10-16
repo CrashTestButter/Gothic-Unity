@@ -96,7 +96,7 @@ scripts / OpenGothic.
   - `NpcService.SyncHeroInstanceToVob()` (null-safe) is used by the status menu. Slice 03 no longer adds a blanket
     sync, so 04's copy is the one to keep.
   - `NpcService.GetHeroContainer()` null-safety is also slice 01 (`08d95db5`) - identical line. Needed here because the
-    player's health bar polls it in menus.
+    player's health bar asks for it in menus.
   - `DialogService`: slice 05 later replaces `npcContainer.Go` with `GetDialogGo(npcContainer)` (MOBSI anchor) in
     `ShowDialog`, `IsHeroInDialogRange` and `KeepPlayerWithin`. Slice 16 adds the trade hooks.
 - **Left for other slices:**
@@ -150,5 +150,5 @@ changed and committed on its own; the status shows what's done.
 | 7 | `AI_StandUp` comment contradiction | Fix stale `StandUp.cs` comment, guard `UseMob(-1)` also against `CurrentAction` | done: regression fixed - `AI_StandUpQuick` shared `ExtAiStandUp` and played the back transitions too; now `ExtAiStandUpQuick` pops. Back transition skipped when a stop `UseMob` runs or is queued (`UseMob.IsStopUsingMob` public). `StandUp.cs` comment fixed |
 | 8 | Flags | `Snd_Play`/`Print`/`PrintScreen` always registered, `EnableScreenMessages` gates only the HUD | done: externals always registered (no `DefaultExternal` spam when off), `EnableScreenMessages` checked per message (live toggle, Marvin messages unaffected), `Snd_Play` unflagged; tooltips one sentence each. All four flags kept (earlier decision) |
 | 9 | Dialog range vs. clamp | Context service measures and clamps with the same transform, null guard | done: same transform already (`hero.Go` is the tagged `PlayerController` with the `CharacterController`, checked in `HVR - Player`). Range check now horizontal like the clamp, `_playerController` null guard, interface doc without "dialog bubble" |
-| 10 | Logic in UI adapters | Talent percent into a service, `StatusBarAdapter` event-driven instead of per-frame polling | open |
+| 10 | Logic in UI adapters | Talent percent into a service, `StatusBarAdapter` event-driven instead of per-frame polling | done: `NpcHelperService.GetTalentPercent` (G2 `hitchance[]` up to `NpcTalent.Crossbow`); new `GlobalEventDispatcher.NpcAttributeChanged` raised by `NpcService.SetAttribute` + after `SyncHeroInstanceToVob`; health bars subscribe while enabled (refresh on enable, player bar also on `WorldSceneLoaded`), no `Update` polling; `FightService` no longer pushes to the bar directly |
 | 11 | Small cleanups | `NpcContainer.IsUsingMob`, `VRFocus` cached NPC check + constant, history/anecdote comments, regions, shader location/header | open |

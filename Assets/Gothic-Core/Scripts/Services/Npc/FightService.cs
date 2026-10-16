@@ -1,4 +1,3 @@
-using Gothic.Core.Adapters.UI.StatusBars;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
@@ -81,18 +80,8 @@ namespace Gothic.Core.Services.Npc
 
             Logger.Log($"[FightService.OnHitUpdateHealth] {target.Instance.GetName(NpcNameSlot.Slot0)} HP after: {hitPoints}/{maxHP}", LogCat.Npc);
 
+            // Health bars follow via GlobalEventDispatcher.NpcAttributeChanged.
             _npcService.SetAttribute(target, NpcAttribute.HitPoints, hitPoints);
-
-            var statusBar = target.Go.GetComponentInChildren<StatusBarAdapter>(true);
-            if (statusBar != null)
-            {
-                Logger.Log($"[FightService.OnHitUpdateHealth] Updating HP bar for {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
-                statusBar.SetFillAmount(hitPoints, maxHP);
-            }
-            else
-            {
-                Logger.LogWarning($"[FightService.OnHitUpdateHealth] No StatusBar found for {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
-            }
 
             return hitPoints <= 0;
         }

@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using ZenKit;
+using ZenKit.Daedalus;
 using ZenKit.Vobs;
 
 namespace Gothic.Core
@@ -69,6 +70,11 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer> FightWindowCombo = new();
 
         public static readonly UnityEvent<NpcContainer, NpcContainer> SetHeroAsTarget = new();
+
+        /// <summary>
+        /// An attribute was written via NpcService.SetAttribute or synced from the instance (SyncHeroInstanceToVob).
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer, NpcAttribute> NpcAttributeChanged = new();
 
         /// <summary>
         /// NpcContainer - who attacks

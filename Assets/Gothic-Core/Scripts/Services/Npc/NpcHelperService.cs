@@ -272,8 +272,7 @@ namespace Gothic.Core.Services.Npc
         /// fov = 50 - OpenGothic assumes 100 fov for NPCs
         /// fov = 30 - We reuse this for Focus angle during AI_Attack()
         /// </summary>
-        public bool CanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f,
-            bool isFacingBackwards = false)
+        public bool CanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f)
         {
             var selfContainer = self.GetUserData();
             var otherContainer = other.GetUserData();
@@ -307,7 +306,11 @@ namespace Gothic.Core.Services.Npc
                 0f,
                 otherGroundPosition.z - selfGroundPosition.z
             ).normalized;
-            var selfForward = isFacingBackwards ? -selfRoot.forward : selfRoot.forward;
+            // UseMob aligns the root with the mob slot, but sit transitions turn the body around - look the way it does.
+            // (BsSit is already set while walking to the mob, the state id only once seated.)
+            var isSeated = selfContainer.Props.BodyState == VmGothicEnums.BodyState.BsSit &&
+                           selfContainer.Props.CurrentInteractableStateId >= 0;
+            var selfForward = isSeated ? -selfRoot.forward : selfRoot.forward;
             var selfForwardHorizontal = new Vector3(selfForward.x, 0f, selfForward.z).normalized;
             var angleToTarget = Vector3.Angle(selfForwardHorizontal, directionToTarget);
             var inFov = angleToTarget <= fov;

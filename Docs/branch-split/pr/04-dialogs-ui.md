@@ -47,7 +47,7 @@ Compile check: `RESULT: OK` (Core, VR, Flat, G1, G2, Lab, PlayMode tests, VR edi
 
 **Seated NPCs**
 - `AI_StartState(ZS_Talk, 0)` keeps a seated NPC seated (engine behavior), `AI_StandUp` plays the bench's back
-  transitions, a seated NPC sees in the direction its body faces.
+  transitions, a seated NPC (`BS_SIT` mobs only) sees in the direction its body faces.
 - Grabbing an NPC to talk releases it immediately - HVR's grab pushed seated NPCs out of the bench.
 - `AnimationSystem.IsPlaying` matches alias names (stand-up transitions were skipped).
 - Highlighted NPCs no longer glow (focus brightness 2.5 for NPCs).
@@ -75,7 +75,9 @@ scripts / OpenGothic.
    over the box. Listen to ambient chatter behind a hut wall from far away - no floating subtitles.
 3. Kill/knock out an NPC (Marvin cheats) mid-line - his subtitle disappears.
 4. Get a quest log entry / receive an item in a dialog: "New log entry" HUD text + sound.
-5. Talk to a seated NPC (G1 Old Camp bench): he talks seated or stands up with an animation, never pops up.
+5. Talk to a seated NPC (G1 Old Camp bench): he talks seated or stands up with an animation, never pops up. Also walk
+   up to an NPC on a chair/throne from the front - he notices you (sit transitions are assumed to turn the body
+   around like on benches). An NPC at an anvil/cauldron notices you from the front too.
 6. Hit an NPC/monster: its health bar shrinks; heal yourself: your bar grows. Open the status menu: talents start at
    1H in row 1, protection values match the armor. G2: weapon percentages.
 7. Chapter change: the chapter screen stays until the jingle ends.
@@ -143,7 +145,7 @@ changed and committed on its own; the status shows what's done.
 | 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | done: `ScriptSound` adapter (root GO in `Bootstrap.unity`, 2D `AudioSource` -> `SoundEffects` mixer group) hands its source to `AudioService`; `Snd_Play` calls `AudioService.PlaySound2D`; `ScriptSoundPlay` event and `VRScriptSound` removed, Flat mode plays it too |
 | 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | done: `NpcService.SetAttribute`/`SetLevel`/`SetLp` are the only C# writers (`ExtNpcChangeAttribute`, `FightService`, `MarvinCheatDomain`); `SyncHeroInstanceToVob` doc shortened. Follow-up (not here): one store as single source of truth, needs save/load work |
 | 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | done: watcher handle stopped in `StopDialog` and before a restart; `DialogModel.IsChoosing` + `ExitInfo`. Behavior fix: walking away only chooses END (main choices with `nr` 999 or `DIALOG_ENDE`, its info function runs) - sub-choices and choices without END hold the hero (before: any shown choices ended the dialog, skipping forced decisions) |
-| 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | open |
+| 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | done: `NpcHelperService.CanSeeNpc` flips only for `BS_SIT` + seated (state id >= 0), anvils/cauldrons/beds keep the root direction; no extra parameter, `ExtNpcCanSeeNpc` is back to the `main` one-liner. To verify in playtest: chairs/thrones turn the body like benches |
 | 7 | `AI_StandUp` comment contradiction | Fix stale `StandUp.cs` comment, guard `UseMob(-1)` also against `CurrentAction` | open |
 | 8 | Flags | `Snd_Play`/`Print`/`PrintScreen` always registered, `EnableScreenMessages` gates only the HUD | open |
 | 9 | Dialog range vs. clamp | Context service measures and clamps with the same transform, null guard | open |

@@ -131,14 +131,7 @@ namespace Gothic.Core.Services.Npc
         /// </summary>
         public bool ExtNpcCanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f)
         {
-            // A seated NPC's root faces its mob slot direction (into the bench) while the sit animation turned his
-            // body around - his field of view pointed away from the hero in front of him (B_AssessTalk: stand up for
-            // every talk). Look the way the body does.
-            var selfContainer = self?.GetUserData();
-            var isSeated = selfContainer?.PrefabProps?.CurrentInteractable != null &&
-                           selfContainer.Props.CurrentInteractableStateId >= 0;
-
-            return _npcHelperService.CanSeeNpc(self, other, freeLOS, fov, isSeated);
+            return _npcHelperService.CanSeeNpc(self, other, freeLOS, fov);
         }
 
         public void ExtNpcClearAiQueue(NpcInstance npc)

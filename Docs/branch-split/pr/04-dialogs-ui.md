@@ -27,7 +27,8 @@ Compile check: `RESULT: OK` (Core, VR, Flat, G1, G2, Lab, PlayMode tests, VR edi
   `Snd_Play` plays 2D sounds ("LogEntry"). Repeated texts extend their line instead of adding one (G2 scripts print
   every AI tick with some heroes).
 - `Print(msg)` (engine messages like PLAYER_MOB_MISSING_ITEM's "missing item" text, from `85344e0a`) shows in the
-  same HUD (default position, 3 s). Registered with PrintScreen behind `EnableScreenMessages`.
+  same HUD (default position, 3 s). Always registered; `EnableScreenMessages` only hides the HUD
+  (`Snd_Play` always plays).
 
 **Status menu, health bars**
 - Health bars follow damage/healing live, NPC health bars are visible at all, the player's health bar is visible and
@@ -147,7 +148,7 @@ changed and committed on its own; the status shows what's done.
 | 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | done: watcher handle stopped in `StopDialog` and before a restart; `DialogModel.IsChoosing` + `ExitInfo`. Behavior fix: walking away only chooses END (main choices with `nr` 999 or `DIALOG_ENDE`, its info function runs) - sub-choices and choices without END hold the hero (before: any shown choices ended the dialog, skipping forced decisions) |
 | 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | done: `NpcHelperService.CanSeeNpc` flips only for `BS_SIT` + seated (state id >= 0), anvils/cauldrons/beds keep the root direction; no extra parameter, `ExtNpcCanSeeNpc` is back to the `main` one-liner. To verify in playtest: chairs/thrones turn the body like benches |
 | 7 | `AI_StandUp` comment contradiction | Fix stale `StandUp.cs` comment, guard `UseMob(-1)` also against `CurrentAction` | done: regression fixed - `AI_StandUpQuick` shared `ExtAiStandUp` and played the back transitions too; now `ExtAiStandUpQuick` pops. Back transition skipped when a stop `UseMob` runs or is queued (`UseMob.IsStopUsingMob` public). `StandUp.cs` comment fixed |
-| 8 | Flags | `Snd_Play`/`Print`/`PrintScreen` always registered, `EnableScreenMessages` gates only the HUD | open |
+| 8 | Flags | `Snd_Play`/`Print`/`PrintScreen` always registered, `EnableScreenMessages` gates only the HUD | done: externals always registered (no `DefaultExternal` spam when off), `EnableScreenMessages` checked per message (live toggle, Marvin messages unaffected), `Snd_Play` unflagged; tooltips one sentence each. All four flags kept (earlier decision) |
 | 9 | Dialog range vs. clamp | Context service measures and clamps with the same transform, null guard | open |
 | 10 | Logic in UI adapters | Talent percent into a service, `StatusBarAdapter` event-driven instead of per-frame polling | open |
 | 11 | Small cleanups | `NpcContainer.IsUsingMob`, `VRFocus` cached NPC check + constant, history/anecdote comments, regions, shader location/header | open |

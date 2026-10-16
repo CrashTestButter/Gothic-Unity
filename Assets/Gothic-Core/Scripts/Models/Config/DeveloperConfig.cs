@@ -165,18 +165,13 @@ namespace Gothic.Core.Models.Config
         public bool ShowNamesOnHoveredVOBs = true;
 
         [Separator("Dialogs & HUD")]
-        [Tooltip("The hero isn't frozen during dialogs. A dialog doesn't start farther than DialogMaxDistance " +
-                 "from the NPC (come closer). While somebody talks, the hero can't leave this range (skip the line " +
-                 "first); with the choices shown, walking away ends the dialog.")]
+        [Tooltip("The hero can move during dialogs (inside DialogMaxDistance); walking away chooses END if offered.")]
         public bool EnableDialogFreeMovement = true;
-        [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
+        [Tooltip("Meters between hero and NPC for starting and keeping a dialog (EnableDialogFreeMovement).")]
         public float DialogMaxDistance = 5f;
-        [Tooltip("The dialog box and NPC subtitles are never cut by walls/benches/the NPC (ignore depth). VR hands " +
-                 "render after transparents during a dialog, so they stay visible above it for pointing.")]
+        [Tooltip("Dialog box, subtitles and screen messages are drawn over walls and NPCs.")]
         public bool EnableDialogAlwaysOnTop = true;
-        [Tooltip("PrintScreen/AI_PrintScreen (\"New log entry\", \"1 item received\", ...) shown as a HUD in front " +
-                 "of the VR head + Snd_Play 2D sounds (\"LogEntry\"). Read at VM start - restart the game after " +
-                 "toggling.")]
+        [Tooltip("Shows the scripts' PrintScreen/Print messages as a HUD.")]
         public bool EnableScreenMessages = true;
 
         [Separator("Debug")]

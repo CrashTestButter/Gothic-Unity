@@ -223,16 +223,12 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, string>("PrintDebugCh", PrintDebugCh);
             vm.RegisterExternal<string>("PrintDebugInst", PrintDebugInst);
             vm.RegisterExternal<int, string>("PrintDebugInstCh", PrintDebugInstCh);
-            if (_configService.Dev.EnableScreenMessages)
-            {
-                RegisterPrintScreen(vm, "PrintScreen");
-                RegisterPrintScreen(vm, "AI_PrintScreen");
-                vm.RegisterExternal<string>("Print", Print);
-            }
+            RegisterPrintScreen(vm, "PrintScreen");
+            RegisterPrintScreen(vm, "AI_PrintScreen");
+            vm.RegisterExternal<string>("Print", Print);
 
             // Sound
-            if (_configService.Dev.EnableScreenMessages)
-                vm.RegisterExternal<string>("Snd_Play", Snd_Play);
+            vm.RegisterExternal<string>("Snd_Play", Snd_Play);
 
             // Day Routine
             vm.RegisterExternal<NpcInstance, int, int, int, int, int, string>("TA_MIN", TA_MIN);
@@ -724,7 +720,9 @@ namespace Gothic.Core.Domain.Vm
                 _printScreenLogTimes[message] = Time.time;
                 Logger.Log($"[PrintScreen] {message}", LogCat.Dialog);
             }
-            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, seconds));
+
+            if (_configService.Dev.EnableScreenMessages)
+                GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, seconds));
         }
 
         /// <summary>

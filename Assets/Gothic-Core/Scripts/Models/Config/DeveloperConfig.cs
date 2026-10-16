@@ -1086,6 +1086,10 @@ namespace Gothic.Core.Models.Config
                  "Tajemnice's dragon (B_KillNpc(self)) vanished instead of turning into Algirion.")]
         public bool EnableHlpGetNpcVariables = true;
 
+        [Tooltip("V1: The NPC who knocks the hero out gets AIV_HASDEFEATEDSC like G1's ZS_Unconscious sets it - Mroczne " +
+                 "Tajemnice's Sheer'Ghar won the duel and had nothing to say afterwards.")]
+        public bool EnableHeroDefeatedAivar = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

@@ -250,6 +250,7 @@ MonoBehaviour:
   EnableZenMaterialCountFix: 1
   EnableLevelChangeSpawnFallback: 1
   EnableHlpGetNpcVariables: 1
+  EnableHeroDefeatedAivar: 1
   EnableThrowRuneOneHand: 1
   EnableNpcComboLimit: 1
   EnableVrFists: 1

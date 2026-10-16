@@ -294,7 +294,7 @@ namespace Gothic.Core.Services.Npc
                 else if (isHero)
                 {
                     Logger.LogWarning("[FightService] Hero knocked out!", LogCat.Fight);
-                    OnHeroKnockedOut(target);
+                    OnHeroKnockedOut(target, attacker);
                 }
                 else if (IsHuman(target) && IsKnockedOutNotKilled(GetCreditedAttacker(attacker), target))
                 {
@@ -792,9 +792,10 @@ namespace Gothic.Core.Services.Npc
             BroadcastDownPerception(npc, attacker, VmGothicEnums.PerceptionType.AssessDefeat);
         }
 
-        private void OnHeroKnockedOut(NpcContainer hero)
+        private void OnHeroKnockedOut(NpcContainer hero, NpcContainer attacker)
         {
             hero.Props.BodyState = VmGothicEnums.BodyState.BsUnconscious;
+            SetHasDefeatedHero(attacker);
             hero.Vob.SetAttribute((int)NpcAttribute.HitPoints, 1);
             hero.Instance.SetAttribute(NpcAttribute.HitPoints, 1);
             // DeveloperConfig.EnableKnockoutTurning: knocked out the hero can't walk, but can turn with the stick -
@@ -835,6 +836,26 @@ namespace Gothic.Core.Services.Npc
             _unityMonoService.StartCoroutine(KnockoutRecovery(hero));
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableHeroDefeatedAivar: G1's ZS_Unconscious ends with "if (Npc_IsPlayer(self))
+        /// other.aivar[AIV_HASDEFEATEDSC] = TRUE" - the hero runs no Daedalus states, so the NPC who knocked him out
+        /// never knew it won. Dialogs after a lost duel check it (Mroczne Tajemnice's Sheer'Ghar: Info_Sheer_After).
+        /// </summary>
+        private void SetHasDefeatedHero(NpcContainer attacker)
+        {
+            if (!_configService.Dev.EnableHeroDefeatedAivar || attacker?.Instance == null ||
+                (attacker.PrefabProps != null && attacker.PrefabProps.IsHero()))
+                return;
+
+            var aivSymbol = _gameStateService.GothicVm.GetSymbolByName("AIV_HASDEFEATEDSC");
+            if (aivSymbol == null)
+                return;
+
+            attacker.Instance.SetAiVar(aivSymbol.GetInt(0), 1);
+            Logger.Log($"[FightService] {attacker.Instance.GetName(NpcNameSlot.Slot0)} defeated the hero - " +
+                       $"AIV_HASDEFEATEDSC ({aivSymbol.GetInt(0)}) = TRUE", LogCat.Fight);
+        }
+
         private void OnFinishingMove(NpcContainer attacker, NpcContainer target)
         {
             var isHero = target.PrefabProps != null && target.PrefabProps.IsHero();
@@ -843,7 +864,7 @@ namespace Gothic.Core.Services.Npc
                 // No respawn system yet — treat as extended knockout so the player can reload.
                 Logger.LogWarning("[FightService.FinishingMove] Hero executed — extended knockout (no respawn yet)", LogCat.Fight);
                 if (target.Props.BodyState != VmGothicEnums.BodyState.BsUnconscious)
-                    OnHeroKnockedOut(target);
+                    OnHeroKnockedOut(target, attacker);
                 return;
             }
 

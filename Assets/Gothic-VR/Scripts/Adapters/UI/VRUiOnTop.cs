@@ -1,7 +1,5 @@
 #if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
-using Gothic.Core;
-using HurricaneVR.Framework.Core.Grabbers;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,8 +16,6 @@ namespace Gothic.VR.Adapters.UI
     /// </summary>
     public class VRUiOnTop : MonoBehaviour
     {
-        private const int _handsRenderQueue = 3950;
-
         [Tooltip("On-top copy for images. Its render queue has to be after all transparents.")]
         [SerializeField] private Material _backgroundMaterial;
         [Tooltip("On-top copy for Gothic font sprites. Render queue after _backgroundMaterial.")]
@@ -34,14 +30,6 @@ namespace Gothic.VR.Adapters.UI
         private static readonly HashSet<Material> _onTopMaterialCopies = new();
         private static readonly Dictionary<TMP_SpriteAsset, TMP_SpriteAsset> _onTopSpriteAssets = new();
         private static readonly HashSet<TMP_SpriteAsset> _onTopSpriteAssetCopies = new();
-        private static readonly List<(Material material, int queue)> _handMaterials = new();
-        private static bool _areHandsOnTop;
-
-        static VRUiOnTop()
-        {
-            // A scene change in the middle of a dialog never calls EndDialog - put the hands back.
-            GlobalEventDispatcher.LoadingSceneLoaded.AddListener(() => SetHandsOnTop(false));
-        }
 
         private readonly HashSet<Graphic> _patchedGraphics = new();
         private bool _isApplied;
@@ -64,43 +52,6 @@ namespace Gothic.VR.Adapters.UI
                 else if (graphic is not TMP_SubMeshUI)
                     graphic.material = GetOnTopMaterial(graphic.material);
             }
-        }
-
-        /// <summary>
-        /// VR hands above on-top UI, so we see them when pointing at a dialog option. Only while a dialog is open -
-        /// otherwise they covered letters/documents held in front of them.
-        /// </summary>
-        public static void SetHandsOnTop(bool onTop)
-        {
-            if (_areHandsOnTop == onTop)
-                return;
-            _areHandsOnTop = onTop;
-
-            if (onTop)
-            {
-                _handMaterials.Clear();
-                var hands = FindObjectsByType<HVRHandGrabber>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-                foreach (var hand in hands)
-                {
-                    var handModel = hand.HandModel != null ? hand.HandModel : hand.transform;
-                    foreach (var handRenderer in handModel.GetComponentsInChildren<Renderer>(true))
-                    {
-                        foreach (var material in handRenderer.materials)
-                        {
-                            _handMaterials.Add((material, material.renderQueue));
-                            material.renderQueue = _handsRenderQueue;
-                        }
-                    }
-                }
-                return;
-            }
-
-            foreach (var (material, queue) in _handMaterials)
-            {
-                if (material != null)
-                    material.renderQueue = queue;
-            }
-            _handMaterials.Clear();
         }
 
         private void OnEnable()

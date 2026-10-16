@@ -126,7 +126,7 @@ scripts / OpenGothic.
   (`cd88a122`, slice 08, and FightService's dual write, slice 08/09) - trivial integration conflicts. Note:
   `ExtNpcChangeAttribute` still sets an absolute value on `main` (slice 01 fixes it to a delta, `3c6f6df0`); instance and
   vob stay consistent either way.
-- Known limitations: `VRUiOnTop` keeps static caches (shader, materials, sprite asset copies, hand materials) -
+- Known limitations: `VRUiOnTop` keeps static caches (on-top material and sprite asset copies) -
   deliberate, shared across all dialog boxes. `GothicUIOnTop.shader` contains a long line copied from Unity's UI shader.
 
 ## Design review follow-up (2026-10-16)
@@ -136,7 +136,7 @@ changed and committed on its own; the status shows what's done.
 | # | Item | Planned change | Status |
 |---|---|---|---|
 | 1 | On-top UI built in C# | `VRUiOnTop` on the `Menu-Dialog`/`Menu-Subtitles` prefabs with serialized settings, material assets instead of `Shader.Find` + runtime materials (drop the `GraphicsSettings` entry), no per-frame sprite asset re-wrap, no runtime `CanvasGroup` | done: `VRUiOnTop` on `Menu-Dialog/DialogUI`, `Menu-Subtitles` (12 m, `CanvasGroup` on `Items`) and `PrintScreen`; `UiOnTop-Background`/`-Text` material assets, runtime copies only carry the runtime Gothic texture (cached per source material); hover re-wrap via TMP `TEXT_CHANGED_EVENT`; PrintScreen respects `EnableDialogAlwaysOnTop`; shader moved to `Gothic-VR/Shaders` |
-| 2 | Static state in `VRUiOnTop` | Hands-on-top + caches move to a VR-scope service; no static ctor subscription, no `FindObjectsByType` per dialog | open |
+| 2 | Static state in `VRUiOnTop` | Hands-on-top + caches move to a VR-scope service; no static ctor subscription, no `FindObjectsByType` per dialog | done: `VRUiOnTopService` (VR scene scope) + `VRHandsOnTop` on `HVR - Player`/`PlayerController` (serialized hand renderers) swapping `sharedMaterial` to the `VRHands-OnTop` asset (queue 3950); no static hand state, no `renderer.materials` copies. Material/font caches stay static in `VRUiOnTop` (bounded, decided) |
 | 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | open |
 | 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | open |
 | 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | open |

@@ -9,8 +9,9 @@ Compile check: `RESULT: OK` (Core, VR, Flat, G1, G2, Lab, PlayMode tests, VR edi
 
 **Dialogs**
 - The hero isn't frozen during dialogs. A dialog only starts within `DialogMaxDistance` (5 m) of the NPC. While
-  somebody talks, the hero is held inside that bubble (skip the line first). With the choices shown, walking away
-  ends the dialog.
+  somebody talks, the hero is held inside that bubble (skip the line first). With the main choices shown, walking
+  away chooses their END entry (`nr` 999 / `DIALOG_ENDE`, its script runs). Sub-choices (`Info_AddChoice`) and choices
+  without END hold the hero like in Gothic, where they can't be left.
 - An NPC that draws its weapon during the dialog closes it.
 - Important dialogs are checked in their `nr` order like the engine (Baal Cadar's sleep spell before NoTalk).
 - G2/mod SVM lines that ZenKit's `C_SVM` doesn't know (e.g. the hero's `$MISSINGITEM`) play via `SVM_<voice>_<key>`.
@@ -67,7 +68,9 @@ scripts / OpenGothic.
 
 ## How to test (VR, ~10-15 min)
 1. G1/G2: talk to an NPC, walk around while he answers (you're held inside ~5 m), skip the line, walk away while the
-   choices are shown - the dialog ends. Start a dialog from 6 m+ - nothing happens until you come closer.
+   main choices are shown - END is chosen (farewell, if any) and the dialog ends. In a sub-choice (e.g. a quest
+   decision with `Info_AddChoice`) you're held at the edge until you choose. Start a dialog from 6 m+ - nothing
+   happens until you come closer.
 2. Talk to an NPC standing next to a wall/bench: the dialog box and subtitles stay visible, your hands are visible
    over the box. Listen to ambient chatter behind a hut wall from far away - no floating subtitles.
 3. Kill/knock out an NPC (Marvin cheats) mid-line - his subtitle disappears.
@@ -139,7 +142,7 @@ changed and committed on its own; the status shows what's done.
 | 2 | Static state in `VRUiOnTop` | Hands-on-top + caches move to a VR-scope service; no static ctor subscription, no `FindObjectsByType` per dialog | done: `VRUiOnTopService` (VR scene scope) + `VRHandsOnTop` on `HVR - Player`/`PlayerController` (serialized hand renderers) swapping `sharedMaterial` to the `VRHands-OnTop` asset (queue 3950); no static hand state, no `renderer.materials` copies. Material/font caches stay static in `VRUiOnTop` (bounded, decided) |
 | 3 | `Snd_Play` VR-only | `AudioService.PlaySound2D` in Core with one persistent 2D source, delete `VRScriptSound` | done: `ScriptSound` adapter (root GO in `Bootstrap.unity`, 2D `AudioSource` -> `SoundEffects` mixer group) hands its source to `AudioService`; `Snd_Play` calls `AudioService.PlaySound2D`; `ScriptSoundPlay` event and `VRScriptSound` removed, Flat mode plays it too |
 | 4 | Instance/vob dual writes | One owner `NpcService.SetAttribute` (+ level/LP) used by `ExtNpcChangeAttribute`, `FightService`, Marvin | done: `NpcService.SetAttribute`/`SetLevel`/`SetLp` are the only C# writers (`ExtNpcChangeAttribute`, `FightService`, `MarvinCheatDomain`); `SyncHeroInstanceToVob` doc shortened. Follow-up (not here): one store as single source of truth, needs save/load work |
-| 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | open |
+| 5 | Dialog watcher coroutine | Keep the coroutine handle, stop it in `StopDialog`; `IsChoosing` into `DialogModel` | done: watcher handle stopped in `StopDialog` and before a restart; `DialogModel.IsChoosing` + `ExitInfo`. Behavior fix: walking away only chooses END (main choices with `nr` 999 or `DIALOG_ENDE`, its info function runs) - sub-choices and choices without END hold the hero (before: any shown choices ended the dialog, skipping forced decisions) |
 | 6 | Seated "sees backwards" for all mobs | Limit to sitting mobs (or face by body) | open |
 | 7 | `AI_StandUp` comment contradiction | Fix stale `StandUp.cs` comment, guard `UseMob(-1)` also against `CurrentAction` | open |
 | 8 | Flags | `Snd_Play`/`Print`/`PrintScreen` always registered, `EnableScreenMessages` gates only the HUD | open |

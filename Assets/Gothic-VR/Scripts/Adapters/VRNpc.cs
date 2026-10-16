@@ -57,10 +57,9 @@ namespace Gothic.VR.Adapters
                 _npcAiService.ExecutePerception(VmGothicEnums.PerceptionType.AssessTalk, _npcData.Props, _npcData.Instance, null, (NpcInstance)_gameStateService.GothicVm.GlobalHero);
             }
 
-            // Talking/skipping is a "click" - don't keep holding the NPC. While held, HVR drives its rigidbody
-            // (kinematic velocity errors) and turned physics back on: seated NPCs got pushed up out of the bench.
+            // Talking is a click, not a grab: release (HVR's grab turns physics on) and keep a seated NPC kinematic.
             grabber.ForceRelease();
-            if (_npcData.PrefabProps.CurrentInteractable != null && _npcData.Props.CurrentInteractableStateId >= 0)
+            if (_npcData.IsUsingMob())
                 _physicsService.DisablePhysicsForNpc(_npcData.PrefabProps);
         }
     }

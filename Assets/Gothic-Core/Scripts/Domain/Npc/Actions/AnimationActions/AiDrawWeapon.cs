@@ -25,7 +25,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         public override void Start()
         {
-            // An NPC that draws its weapon (e.g. the hero insulted it) doesn't keep the dialog box open.
+            // An NPC that draws its weapon doesn't keep the dialog box open.
             if (GameStateService.Dialogs.IsInDialog && GameStateService.Dialogs.CurrentDialogNpc == NpcContainer)
             {
                 Logger.Log($"[DrawWeapon] {NpcInstance.GetName(NpcNameSlot.Slot0)} drew a weapon during the dialog " +

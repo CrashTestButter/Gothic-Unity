@@ -58,6 +58,8 @@ namespace Gothic.Core.Const
         public static readonly int ShaderPropertyFocusBrightness = Shader.PropertyToID("_FocusBrightness");
         public static readonly float ShaderPropertyFocusBrightnessDefault = 1f;
         public static readonly float ShaderPropertyFocusBrightnessValue = 10f;
+        // NPC textures are brighter than item textures.
+        public static readonly float ShaderPropertyFocusBrightnessNpcValue = 2.5f;
 
         // Item is a "ghost" in hand. i.e. no collision.
         public static readonly int ShaderPropertyTransparency = Shader.PropertyToID("_Alpha");

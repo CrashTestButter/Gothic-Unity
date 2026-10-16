@@ -179,8 +179,7 @@ namespace Gothic.Core.Manager
         /// </summary>
         private bool TryGetImportant(NpcContainer npcContainer, out InfoInstance item)
         {
-            // The engine checks them by nr (lowest first). E.g. Baal Cadar: SleepSpell nr 1 before NoTalk nr 2 -
-            // otherwise he walked up for the sleep spell, then offered NoTalk, forever.
+            // Like the engine: lowest nr first.
             foreach (var dialog in npcContainer.Props.Dialogs.OrderBy(d => d.Nr))
             {
                 // Dialog is not important.

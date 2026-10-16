@@ -16,7 +16,6 @@ namespace Gothic.VR.Adapters.UI
     /// virtual screen inside the comfortable field of view. The screen follows the head smoothly (damped) and is only
     /// active while messages are visible. Message texts are pooled copies of the inactive template.
     /// The same text again only extends its line - like the engine, where a repeated PrintScreen draws over itself.
-    /// Scripts can print every AI tick (G2 with PC_Rockefeller) - a new line per call made the game lag.
     /// Drawn on top of the world (VRUiOnTop), so walls and NPCs don't cut through it.
     /// </summary>
     public class VRPrintScreen : MonoBehaviour

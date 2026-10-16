@@ -710,8 +710,7 @@ namespace Gothic.Core.Domain.Vm
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
-            // Some scripts print every AI tick (G2 with PC_Rockefeller: "Stimme: 14", "KEIN HERO!", ...) - log a text
-            // only once per interval.
+            // Scripts may print every AI tick - log a text once per interval.
             if (!_printScreenLogTimes.TryGetValue(message, out var lastLog) ||
                 Time.time - lastLog > _printScreenLogInterval)
             {

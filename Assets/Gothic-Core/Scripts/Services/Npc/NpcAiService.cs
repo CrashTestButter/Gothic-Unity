@@ -262,13 +262,12 @@ namespace Gothic.Core.Services.Npc
             // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand) - unless one is already
             // running or queued (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
             var props = container.Props;
-            var mob = container.PrefabProps?.CurrentInteractable;
             var isBackTransitionPending = props.CurrentAction is UseMob { IsStopUsingMob: true } ||
                                           props.AnimationQueue.OfType<UseMob>().Any(u => u.IsStopUsingMob);
-            if (mob != null && props.CurrentInteractableStateId >= 0 && !isBackTransitionPending)
+            if (container.IsUsingMob() && !isBackTransitionPending)
             {
-                props.AnimationQueue.Enqueue(new UseMob(
-                    new AnimationAction(mob.Props.GetVisualScheme(), -1), container));
+                var scheme = container.PrefabProps.CurrentInteractable.Props.GetVisualScheme();
+                props.AnimationQueue.Enqueue(new UseMob(new AnimationAction(scheme, -1), container));
             }
 
             props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));

@@ -154,7 +154,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             else
             {
                 PrefabProps.NpcSound.Stop();
-                // Killed/knocked out while talking - the line stopped, so does its subtitle.
+                // The line stopped - so does its subtitle.
                 PrefabProps.NpcSubtitles?.HideSubtitles();
                 PrefabProps.AnimationSystem.StopAnimation(_randomDialogAnimationName);
             }

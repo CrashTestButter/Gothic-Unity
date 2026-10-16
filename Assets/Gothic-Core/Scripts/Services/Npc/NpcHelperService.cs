@@ -195,9 +195,7 @@ namespace Gothic.Core.Services.Npc
 
         public int ExtNpcGetTalentSkill(NpcInstance npc, int skillId)
         {
-            // Was a stub returning 0 - every script asking for a talent level got "none". E.g. Mroczne Tajemnice's
-            // teachers (B_GiveprocentSkill) then reset a master's 1H rank to "Nowy". Same storage as
-            // Npc_SetTalentSkill.
+            // Same storage as Npc_SetTalentSkill.
             // FIXME - skill levels should also drive the fight overlays (like OpenGothic does).
             return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Skill ?? 0;
         }
@@ -322,8 +320,7 @@ namespace Gothic.Core.Services.Npc
             ).normalized;
             // UseMob aligns the root with the mob slot, but sit transitions turn the body around - look the way it does.
             // (BsSit is already set while walking to the mob, the state id only once seated.)
-            var isSeated = selfContainer.Props.BodyState == VmGothicEnums.BodyState.BsSit &&
-                           selfContainer.Props.CurrentInteractableStateId >= 0;
+            var isSeated = selfContainer.Props.BodyState == VmGothicEnums.BodyState.BsSit && selfContainer.IsUsingMob();
             var selfForward = isSeated ? -selfRoot.forward : selfRoot.forward;
             var selfForwardHorizontal = new Vector3(selfForward.x, 0f, selfForward.z).normalized;
             var angleToTarget = Vector3.Angle(selfForwardHorizontal, directionToTarget);

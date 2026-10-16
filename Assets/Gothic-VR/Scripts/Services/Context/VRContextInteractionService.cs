@@ -199,7 +199,7 @@ namespace Gothic.VR.Services.Context
 
         public void KeepPlayerWithin(Vector3 center, float radius)
         {
-            var controller = _playerController.CharacterController;
+            var controller = _playerController != null ? _playerController.CharacterController : null;
             if (controller == null)
                 return;
 

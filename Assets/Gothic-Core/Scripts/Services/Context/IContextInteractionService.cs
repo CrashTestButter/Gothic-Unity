@@ -17,7 +17,7 @@ namespace Gothic.Core.Services.Context
         void TeleportPlayerTo(Vector3 position, Quaternion rotation = default);
 
         /// <summary>
-        /// Pushes the player back onto the circle around center when they walked out of it (dialog bubble).
+        /// Pushes the player back horizontally onto the circle around center when they walked out of it.
         /// </summary>
         void KeepPlayerWithin(Vector3 center, float radius);
         void InitUIInteraction();

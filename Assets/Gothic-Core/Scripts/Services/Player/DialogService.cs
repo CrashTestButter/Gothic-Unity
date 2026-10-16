@@ -363,8 +363,10 @@ namespace Gothic.Core.Manager
             if (hero?.Go == null || npcContainer.Go == null)
                 return true;
 
-            var distance = Vector3.Distance(hero.Go.transform.position, npcContainer.Go.transform.position);
-            return distance <= _configService.Dev.DialogMaxDistance;
+            // Horizontal like KeepPlayerWithin - a height difference (ramp, upper floor) mustn't count.
+            var offset = hero.Go.transform.position - npcContainer.Go.transform.position;
+            offset.y = 0f;
+            return offset.magnitude <= _configService.Dev.DialogMaxDistance;
         }
 
         /// <summary>

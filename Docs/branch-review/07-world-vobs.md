@@ -84,6 +84,14 @@
   two miners spawned next to each other hacked at the same vein. A mob whose slots (`ZS_*`) are all used by other NPCs
   (seated, or walking there with `UseMob`) is skipped, the nearest free slot is taken; the mob is reserved as soon as
   it's chosen and released when no slot is left.
+- **World points per world:** free points (START, `FP_*`) and waypoints were never cleared between worlds
+  (`GameStateService.Reset` is never called) and registered with `TryAdd` - the first world's won. A new game after
+  loading an Old Mine save started at the mine's START, which lies in the Old Camp in the main world. They're cleared
+  in `BootstrapService.LoadWorld` before every world; a new game also clears a spawn position/level change left from
+  a load or portal. `[Spawn]` logs tell where the hero was placed and why.
+- **NPCs wait for the world's VOBs:** VOBs are created in the background after the world is entered
+  (`InitVobCoroutine`); an NPC on a scaffold snapped to the ground below or fell through it. It stays kinematic until
+  the VOB creation queue is empty (max 10 s), then snaps to the ground.
 
 ## Key commits
 
@@ -101,7 +109,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 
 2026-10-16: `e276d797` level change arrival fallback
 
-2026-10-17: `39fbe01c` animation combinations (miners dig) · `63ce6bfa` occupied mobs
+2026-10-17: `39fbe01c` animation combinations (miners dig) · `63ce6bfa` occupied mobs · `f11dc5c6` world points
+reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs
 
 ## Main files
 
@@ -126,7 +135,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 
 2026-10-16: `EnableLevelChangeSpawnFallback`
 
-2026-10-17: `EnableAnimationCombines`, `EnableMobOccupancy`
+2026-10-17: `EnableAnimationCombines`, `EnableMobOccupancy`, `EnableWorldPointsReset`, `EnableNewGameSpawnReset`,
+`EnableNpcWaitsForWorldVobs`
 
 ## Review notes
 
@@ -158,3 +168,5 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 - Mroczne Tajemnice: from the ancient temple back through the portal - you arrive next to the mine's portal; G1/G2
   level changes (Old Mine, Irdorath) still arrive at their spots.
 - G1 Old Mine: miners dig with pickaxe sounds and ore splinters, each at its own vein; benches still seat two.
+- Load an Old Mine save, then New game: you start next to Diego (log `[Spawn] World start 'START'`). Load a save in
+  the Old Mine: miners stay on their scaffolds.

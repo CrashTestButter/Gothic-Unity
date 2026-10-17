@@ -13,6 +13,12 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-17 (late): new game at the start, NPCs on scaffolds
+
+- A new game after loading a save from another world (Old Mine, Mroczne Tajemnice's temple) starts next to Diego again,
+  not in the middle of the Old Camp.
+- After loading, NPCs on scaffolds (Old Mine miners) stay on them instead of falling down.
+
 ## 2026-10-17 (evening): miners dig
 
 - Miners in the mines dig: the pickaxe hits with a sound and ore splinters fly (they stood frozen in front of the vein).

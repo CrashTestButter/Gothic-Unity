@@ -13,6 +13,17 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-17: items, chests and loot are saved
+
+- Taken items stay taken after loading (a beer in the backpack was lying in the world again), also eaten right from
+  the ground. Dropped items, NPC drops and arrows lie where they were, stacks keep what's left.
+- Chests keep what you took out and what you put in.
+- A looted NPC stays looted.
+- Saving puts what your hands hold into the backpack.
+- All of it per world: a mushroom eaten in the Old Mine is still gone after going out and in again.
+
+**Known:** an item from the world moved by hand (not through the backpack) is back at its old spot after loading.
+
 ## 2026-10-16 (late): Sheer'Ghar's duel, mod subtitles without VDFS
 
 - An NPC who beats you in a duel knows it won - Mroczne Tajemnice's Sheer'Ghar talks about honor afterwards and the

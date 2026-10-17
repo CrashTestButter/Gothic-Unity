@@ -29,6 +29,25 @@
 - **Every visited world keeps its NPCs** (position, HP, dead, spawned ones) in the save and when leaving it - also in a
   game started new.
 
+**Added 2026-10-17**
+
+- **Items and chests** (`WorldItemSaveDomain`): a world is built from its world file on load (`WORLD.SAV` isn't read),
+  so taken items lay there again. Each world's items and chests are captured against the world file's
+  (`WorldItemBaseline`, key `INSTANCE|x|y|z` in cm, numbered duplicates): taken/eaten/moved items and changed stacks
+  (`RemovedItems`), items lying elsewhere incl. NPC drops and arrows (`AddedItems`, position + rotation + amount),
+  chests with other contents or lock (`Containers`). Saved as `UnityCustomSave.ItemsByWorld`, applied in `ChangeWorld`
+  before the world's objects are created; worlds not visited since a load are carried forward. Item positions are
+  synced from their bodies on save and before a level change.
+- Eating from the ground (`VRMouth`) removes the item from the world's list (it only destroyed the GameObject), and
+  the physics chest updates its contents when a hand takes an item out or puts one in (it listened to the socket's
+  own grab only, so nothing ever left it).
+- **NPC inventories** are part of the NPC snapshot and replace INIT's items when the NPC comes into view - a looted
+  NPC stays looted. Inventories are cleared in the packed storage (`ClearPackedInventory`; `ExtNpcClearInventory` only
+  clears the world file's item list - the hero's INIT items were doubled).
+- **Saving puts held items into the backpack** (`IContextInteractionService.StoreHeldItemsInBackpack`).
+- ⚠️ Known: a world item moved by hand and dropped (not through the backpack) is saved at its old spot - the position
+  sync doesn't see the move yet (a `[SaveGame] ... moved` log line is there to find out why).
+
 ## Key commits
 
 `dbb7d674`/`2eb4388e` system + data classes · `c41cf7a0` gated by flag · `f9fef67a`/`6f8b5707`/`da641097`/`9d2f1897`/
@@ -38,6 +57,8 @@
 2026-10-10/11: `868cc590` mover/trigger state · `d8666bdb` registry after an in-game reload
 
 2026-10-11/13: `45c99bab` mover pose after children · `dbba8c19` code master state · `8ed9824a` spawned NPCs · `6e70e3fa` world revisit state
+
+2026-10-17: `59717dc5` items and chests · `17b1667b` NPC inventories · `070b6aa1` held items into the backpack
 
 ## Main files
 
@@ -51,6 +72,9 @@
 2026-10-10/11: `EnableLogicVobSaveState`
 
 2026-10-11/13: `EnableSpawnedNpcSaves`, `EnableWorldRevisitState`
+
+2026-10-17: `EnableWorldItemSaveState`, `EnableNpcInventorySaveState`, `EnableSaveStoresHeldItems` (all need
+`EnableSaveLoadSystem`)
 
 ## Review notes
 
@@ -71,3 +95,6 @@
 - G2 Irdorath: hit one bridge target, save, load, hit the other - the bridge comes down.
 - Spawn NPCs with Marvin, save, load - they're back where they were.
 - G2: kill NPCs in Khorinis, go to the Valley of Mines and back - they stay dead.
+- Take a beer, eat a berry from the ground, take two beers from a chest, put an apple on a table, shoot arrows into a
+  wall; save, load - all as left. Loot a dead NPC, save, load - still empty, its dropped weapon lies next to it.
+- Eat a mushroom in the Old Mine, save, load, leave and enter again - still gone.

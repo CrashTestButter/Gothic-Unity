@@ -1,6 +1,7 @@
 // Copy of TextMeshPro/Sprite (UI vertex color * texture, stencil, clip rect, VR stereo) with a hardcoded
 // ZTest Always: the Canvas overrides unity_GUIZTestMode per draw, so material values can't lift UI above the world.
-// Used by VRUiOnTop (materials UiOnTop-Background/-Text) for UI backgrounds and Gothic bitmap-font sprites.
+// Used by VRUiOnTop (materials UiOnTop-Background/-Text/-Mesh) for UI backgrounds, Gothic bitmap-font sprites and
+// menu pictures (MeshRenderers).
 Shader "Gothic/UI OnTop"
 {
 	Properties
@@ -19,6 +20,10 @@ Shader "Gothic/UI OnTop"
 		_ClipRect           ("Clip Rect", vector) = (-32767, -32767, 32767, 32767)
 
 		[Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
+
+		// Alpha blending by default. VRUiOnTop copies the blending of Gothic/UI menu pictures (opaque or transparent).
+		[Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 5
+		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
 	}
 
 	SubShader
@@ -45,7 +50,7 @@ Shader "Gothic/UI OnTop"
 		Lighting Off
 		ZWrite Off
 		ZTest Always
-		Blend SrcAlpha OneMinusSrcAlpha
+		Blend [_SrcBlend] [_DstBlend]
 		ColorMask [_ColorMask]
 
 		Pass

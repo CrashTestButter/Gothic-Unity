@@ -99,6 +99,12 @@ namespace Gothic.Core
         // Marvin's "testmode on").
         public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();
 
+        // Game menu (MenuHandler): a (sub)menu got opened - also when switching between submenus. GameObject is the
+        // opened submenu.
+        public static readonly UnityEvent<GameObject> MenuOpened = new();
+        // Game menu (MenuHandler) got closed completely.
+        public static readonly UnityEvent MenuClosed = new();
+
         // Marvin: the list of recently executed commands changed.
         public static readonly UnityEvent MarvinRecentCommandsChanged = new();
         // Marvin mode got activated (true) or deactivated (false).

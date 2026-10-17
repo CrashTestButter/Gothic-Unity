@@ -19,6 +19,9 @@ Compile check: `RESULT: OK` (Core, VR, Flat, G1, G2, Lab, PlayMode tests, VR edi
 **Never cut by walls**
 - Dialog box and NPC subtitles are drawn on top of walls, benches and the NPC (`VRUiOnTop` + new shader
   `Gothic/UI OnTop`). VR hands render above the box while a dialog is open, so you can see them pointing.
+- The game menu (main/status/quest log and submenus) is drawn on top of the world too - its Gothic pictures
+  (MeshRenderers) get on-top copies layered by render queue. Hands render above it while the menu is open
+  (`MenuOpened`/`MenuClosed` events; overlapping dialog + menu keep the hands on top until both are closed).
 - On-top subtitles farther than 12 m are hidden (ambient smalltalk through camp walls).
 - Subtitles disappear when the speaker is killed/knocked out mid-line, plus a 10 s+ fallback.
 
@@ -74,6 +77,9 @@ scripts / OpenGothic.
    happens until you come closer.
 2. Talk to an NPC standing next to a wall/bench: the dialog box and subtitles stay visible, your hands are visible
    over the box. Listen to ambient chatter behind a hut wall from far away - no floating subtitles.
+   Stand close to a wall facing it and open the menu: main, status and quest log menus (incl. save/load thumbnail,
+   settings, quest log arrows, Gothic logo tutorial) stay fully visible, hands too. Open the menu during a dialog and
+   close it again: hands stay above the dialog box.
 3. Kill/knock out an NPC (Marvin cheats) mid-line - his subtitle disappears.
 4. Get a quest log entry / receive an item in a dialog: "New log entry" HUD text + sound.
 5. Talk to a seated NPC (G1 Old Camp bench): he talks seated or stands up with an animation, never pops up. Also walk

@@ -58,7 +58,7 @@ namespace Gothic.VR.Adapters.UI
         public void EndDialog()
         {
             gameObject.SetActive(false); // Disable whole Dialog menu (Audio, UI, Billboard)
-            _uiOnTopService.SetHandsOnTop(false);
+            _uiOnTopService.SetHandsOnTop(this, false);
             _dialogRoot.SetParent(SceneManager.GetSceneByName(Constants.ScenePlayer).GetRootGameObjects()[0], worldPositionStays: true);
         }
 
@@ -78,7 +78,7 @@ namespace Gothic.VR.Adapters.UI
 
             // On every ShowDialog: FillDialog clones new options.
             _onTop.Apply();
-            _uiOnTopService.SetHandsOnTop(true);
+            _uiOnTopService.SetHandsOnTop(this, true);
 
             StartCoroutine(ShowDialogWithDelay());
         }

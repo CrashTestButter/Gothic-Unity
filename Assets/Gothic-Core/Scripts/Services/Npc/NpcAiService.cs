@@ -347,7 +347,11 @@ namespace Gothic.Core.Services.Npc
             var endFunction = 0;
             if (stopCurrentState && isScriptCall && _configService.Dev.EnableQueuedStateEnd)
             {
-                endFunction = container.Props.StateEnd;
+                // Called from the state's own _End (ZS_Attack_End: "$NeverTryThatAgain" + AI_StartState) or after it:
+                // the state already ended - its _End ran a second time and the NPC said everything twice.
+                var hasStateEnded = container.Props.CurrentLoopState is NpcProperties.LoopState.End or
+                    NpcProperties.LoopState.AfterEnd;
+                endFunction = hasStateEnded ? 0 : container.Props.StateEnd;
                 container.Props.StateEnd = 0;
                 container.Props.CurrentWayPoint = null;
 

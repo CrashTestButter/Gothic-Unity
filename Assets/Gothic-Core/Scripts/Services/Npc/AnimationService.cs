@@ -52,6 +52,7 @@ namespace Gothic.Core.Services.Npc
         private Dictionary<string, AnimationSkeleton> _skeletons = new();
 
         [Inject] private readonly ResourceCacheService _resourceCacheService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
 
 
         public AnimationService()
@@ -226,6 +227,22 @@ namespace Gothic.Core.Services.Npc
                 }
             }
 
+            // DeveloperConfig.EnableAnimationCombines: aniComb lookup - the name stands for numbered variants of one
+            // animation (c_Ore_S1_1..3), the engine picks one by the angle to a target. Mobs have no target: the middle
+            // one. The ore vein's S1 (t_Ore_S0_2_S1, s_Ore_S1) only exists like this - miners stood at it frozen.
+            IAnimationCombine animCombine = null;
+            if (anim == null && _configService.Dev.EnableAnimationCombines)
+            {
+                animCombine = mds.AnimationCombines.FirstOrDefault(i => i.Name.EqualsIgnoreCase(animName));
+                if (animCombine != null)
+                {
+                    var variantName = $"{animCombine.Model}{(Math.Max(1, animCombine.LastFrame) + 1) / 2}";
+                    anim = mds.Animations.FirstOrDefault(i => i.Name.EqualsIgnoreCase(variantName));
+                    if (anim == null)
+                        animCombine = null;
+                }
+            }
+
             // Nothing found
             if (anim == null)
             {
@@ -254,7 +271,7 @@ namespace Gothic.Core.Services.Npc
             var bakedKey = GetCombinedAnimationKey(mdsName, anim.Name);
             _bakedSourceTracks.TryGetValue(bakedKey, out var bakedSource);
 
-            track = CreateTrack(modelAnimation, skeleton, anim, animAlias, bakedSource);
+            track = CreateTrack(modelAnimation, skeleton, anim, animAlias, bakedSource, animCombine);
             SetClipMovementSpeed(track, modelAnimation, skeleton);
 
             if (bakedSource == null)
@@ -265,6 +282,34 @@ namespace Gothic.Core.Services.Npc
             mdsTracks.Add(animName, track);
 
             return track;
+        }
+
+        /// <summary>
+        /// Own lists: tracks sharing baked data share the variant's (empty) event lists too.
+        /// </summary>
+        private static void AddCombineEvents(AnimationTrack track, int frame,
+            (int Frame, string Sfx, string Pfx, string PfxSlot) combineEvent)
+        {
+            track.SoundEffects = new List<IEventSoundEffect>(track.SoundEffects)
+            {
+                new CachedEventSoundEffect
+                {
+                    Frame = frame,
+                    Name = combineEvent.Sfx,
+                    Range = _defaultSoundRange,
+                    EmptySlot = true
+                }
+            };
+            track.ParticleEffects = new List<IEventParticleEffect>(track.ParticleEffects)
+            {
+                new CachedEventParticleEffect
+                {
+                    Frame = frame,
+                    Index = 1,
+                    Name = combineEvent.Pfx,
+                    Position = combineEvent.PfxSlot
+                }
+            };
         }
 
         /// <summary>
@@ -289,22 +334,38 @@ namespace Gothic.Core.Services.Npc
             return mdsTracks;
         }
 
+        // DeveloperConfig.EnableAnimationCombines: events of aniComb blocks - ZenKit doesn't expose them
+        // (IAnimationCombine has no event lists). From G1/G2's HUMANS.MDS: s_Ore_S1 { *eventPFX (25 1 "pickore"
+        // "ZS_RIGHTHAND") *eventSFX (25 "pickore" EMPTY_SLOT) } - the pickaxe hits with sound and ore splinters. The
+        // frame counts from the variant's first frame.
+        private static readonly Dictionary<string, (int Frame, string Sfx, string Pfx, string PfxSlot)> _combineEvents =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                { "s_Ore_S1", (25, "PICKORE", "PICKORE", "ZS_RIGHTHAND") }
+            };
+
+        // ZenKit's default range of an eventSFX without one (cm).
+        private const float _defaultSoundRange = 1000f;
+
         private AnimationTrack CreateTrack(IModelAnimation modelAnimation,
-            AnimationSkeleton skeleton, IAnimation anim, IAnimationAlias animAlias, AnimationTrack bakedSource)
+            AnimationSkeleton skeleton, IAnimation anim, IAnimationAlias animAlias, AnimationTrack bakedSource,
+            IAnimationCombine animCombine = null)
         {
             var isAlias = animAlias != null;
+            var isCombine = animCombine != null;
             var track = new AnimationTrack
             {
-                TrackType = isAlias ? AnimationTrack.Type.Alias : AnimationTrack.Type.Animation,
+                // A combination behaves like an alias: its own name, layer, next, blending and flags.
+                TrackType = isAlias || isCombine ? AnimationTrack.Type.Alias : AnimationTrack.Type.Animation,
                 Name = anim.Name,
-                AliasName = isAlias ? animAlias.Name : null,
+                AliasName = isAlias ? animAlias.Name : isCombine ? animCombine.Name : null,
 
                 // Alias entries overwrite layer/next/blend/flags/direction of the aliased animation.
-                Layer = isAlias ? animAlias.Layer : anim.Layer,
-                NextAni = isAlias ? animAlias.Next : anim.Next,
-                BlendIn = isAlias ? animAlias.BlendIn : anim.BlendIn,
-                BlendOut = isAlias ? animAlias.BlendOut : anim.BlendOut,
-                Flags = isAlias ? animAlias.Flags : anim.Flags,
+                Layer = isAlias ? animAlias.Layer : isCombine ? animCombine.Layer : anim.Layer,
+                NextAni = isAlias ? animAlias.Next : isCombine ? animCombine.Next : anim.Next,
+                BlendIn = isAlias ? animAlias.BlendIn : isCombine ? animCombine.BlendIn : anim.BlendIn,
+                BlendOut = isAlias ? animAlias.BlendOut : isCombine ? animCombine.BlendOut : anim.BlendOut,
+                Flags = isAlias ? animAlias.Flags : isCombine ? animCombine.Flags : anim.Flags,
                 Direction = isAlias ? animAlias.Direction : anim.Direction,
 
                 FirstFrame = anim.FirstFrame,
@@ -323,6 +384,9 @@ namespace Gothic.Core.Services.Npc
                 ParticleEffectsStop = bakedSource?.ParticleEffectsStop ??
                                       anim.ParticleEffectsStop.Select(i => i.Cache()).ToList()
             };
+
+            if (isCombine && _combineEvents.TryGetValue(animCombine.Name, out var combineEvent))
+                AddCombineEvents(track, anim.FirstFrame + combineEvent.Frame, combineEvent);
 
             // Looping if this == next. If an alias is used, we expect the same alias being selected.
             track.IsLooping = track.DisplayName.EqualsIgnoreCase(track.NextAni);

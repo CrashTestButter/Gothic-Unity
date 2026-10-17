@@ -54,6 +54,8 @@ namespace Gothic.Core.Adapters.UI.Menus
             if (Keyboard.current != null)
                 Keyboard.current.onTextInput -= _marvinService.OnTextTyped;
             _marvinService.OnMenuClosed();
+
+            GlobalEventDispatcher.MenuClosed.Invoke();
         }
 
         private void InitializeMenus()
@@ -160,6 +162,8 @@ namespace Gothic.Core.Adapters.UI.Menus
 
             CloseAllMenus();
             _menuList[menuName].SetActive(true);
+
+            GlobalEventDispatcher.MenuOpened.Invoke(_menuList[menuName]);
         }
 
         private void CloseAllMenus()

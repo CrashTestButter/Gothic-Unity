@@ -34,16 +34,22 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly MarvinService _marvinService;
 
         private const string _contextName = "VR";
+        // Meters per second the player is pulled back when they ended up beyond KeepPlayerWithin's radius.
+        private const float _keepWithinPullBackSpeed = 1f;
+        // Share of the normal speed left at KeepPlayerWithin's radius for walking back in or sideways.
+        private const float _keepWithinMinSpeed = 0.25f;
 
         private VRPlayerController _playerController;
         private GameObject _marvinRoot;
+        private int _keepWithinLastFrame = -1;
+        private Vector3 _keepWithinLastPosition;
 
         public VRContextInteractionService()
         {
             this.Inject();
 
             _vrWeaponService.Init();
-            
+
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
             GlobalEventDispatcher.GothicInisInitialized.AddListener(() =>
             {
@@ -99,9 +105,7 @@ namespace Gothic.VR.Services.Context
             _marvinRoot.SetActive(_marvinService.IsMarvinMode);
 
             // PrintScreen() messages in front of the camera
-            var printScreenGo = _resourceCacheService.TryGetPrefabObject(PrefabType.UiPrintScreen);
-            SceneManager.MoveGameObjectToScene(printScreenGo, activeScene);
-            printScreenGo.GetComponent<VRPrintScreen>().Init(_playerController.Camera);
+            activeScene.GetComponentInChildren<VRPrintScreen>(true)!.Init();
         }
 
         private void OnMarvinModeChanged(bool isActive)
@@ -195,6 +199,59 @@ namespace Gothic.VR.Services.Context
             
             // Changing the rotation inside HVRTeleporter didn't work for y-axis. Therefore, setting it now.
             _playerController.transform.rotation = rotation;
+        }
+
+        public void KeepPlayerWithin(Vector3 center, float softRadius, float radius)
+        {
+            var controller = _playerController != null ? _playerController.CharacterController : null;
+            if (controller == null)
+                return;
+
+            // The frame's movement is read from the position of the previous call. After a gap (new dialog, a frame
+            // without a call) there is nothing to compare against.
+            var position = _playerController.transform.position;
+            var frameMovement = _keepWithinLastFrame == Time.frameCount - 1
+                ? position - _keepWithinLastPosition
+                : Vector3.zero;
+            _keepWithinLastFrame = Time.frameCount;
+            _keepWithinLastPosition = position;
+
+            // Falling or on a ladder: a sideways push would fight gravity/the climbing hands.
+            if (!_playerController.IsGrounded || _playerController.IsClimbing)
+                return;
+
+            var offset = position - center;
+            offset.y = 0f;
+            var distance = offset.magnitude;
+            if (distance <= softRadius || distance < Mathf.Epsilon)
+                return;
+
+            var outward = offset / distance;
+
+            // All movement slows down the farther out the player is: full speed at softRadius, down to the minimum at
+            // radius, so walking back in speeds up steadily. Only walking further outward goes down to a full stop.
+            var speed = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(softRadius, radius, distance));
+            var movingSpeed = Mathf.Max(speed, _keepWithinMinSpeed);
+
+            frameMovement.y = 0f;
+            var radialStep = Vector3.Dot(frameMovement, outward);
+            var sidewaysMovement = frameMovement - outward * radialStep;
+            var radialSpeed = radialStep > 0f ? speed : movingSpeed;
+
+            var correction = -outward * (radialStep * (1f - radialSpeed)) - sidewaysMovement * (1f - movingSpeed);
+            var heldDistance = distance - radialStep * (1f - radialSpeed);
+
+            // Still beyond the edge after that (pushed by an NPC, room-scale step): drift back instead of snapping,
+            // which made the camera bounce.
+            var overshoot = heldDistance - radius;
+            if (overshoot > 0f)
+                correction -= outward * Mathf.Min(overshoot, _keepWithinPullBackSpeed * Time.deltaTime);
+
+            if (correction == Vector3.zero)
+                return;
+
+            controller.Move(correction);
+            _keepWithinLastPosition = _playerController.transform.position;
         }
 
         public void InitUIInteraction()

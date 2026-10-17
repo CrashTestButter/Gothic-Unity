@@ -11,7 +11,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         public override void Start()
         {
-            // G1 documentation: while using a Mobsi, AI_StandUp pops the NPC to standing without back-transitions.
+            // Ends the mob usage. After AI_StandUp's back transitions the NPC already stands; AI_StandUpQuick pops.
             if (PrefabProps.CurrentInteractable != null)
             {
                 PrefabProps.CurrentInteractable = null;

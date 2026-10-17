@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using ZenKit;
+using ZenKit.Daedalus;
 using ZenKit.Vobs;
 
 namespace Gothic.Core
@@ -71,6 +72,11 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer, NpcContainer> SetHeroAsTarget = new();
 
         /// <summary>
+        /// An attribute was written via NpcService.SetAttribute or synced from the instance (SyncHeroInstanceToVob).
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer, NpcAttribute> NpcAttributeChanged = new();
+
+        /// <summary>
         /// NpcContainer - who attacks
         /// NpcContainer - who got hit
         /// Vector3      - at which position
@@ -89,8 +95,15 @@ namespace Gothic.Core
         // FIXME - If LockPick in hand is Amount=0, then destroy as Mesh.
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboBroken = new();
 
-        // Text on screen for some seconds (Daedalus PrintScreen() or engine messages like Marvin's "testmode on").
+        // Text on screen for some seconds (Daedalus PrintScreen()/AI_PrintScreen()/Print() or engine messages like
+        // Marvin's "testmode on").
         public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();
+
+        // Game menu (MenuHandler): a (sub)menu got opened - also when switching between submenus. GameObject is the
+        // opened submenu.
+        public static readonly UnityEvent<GameObject> MenuOpened = new();
+        // Game menu (MenuHandler) got closed completely.
+        public static readonly UnityEvent MenuClosed = new();
 
         // Marvin: the list of recently executed commands changed.
         public static readonly UnityEvent MarvinRecentCommandsChanged = new();

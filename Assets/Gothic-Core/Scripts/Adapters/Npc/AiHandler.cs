@@ -339,8 +339,18 @@ namespace Gothic.Core.Adapters.Npc
                 // Whenever we change routine, we reset some data to "start" from scratch as if the NPC got spawned.
                 Vob.CurrentStateValid = false;
                 Properties.AnimationQueue.Clear();
-                Properties.CurrentAction = new None(new AnimationAction(), NpcData);
                 Properties.CurrentLoopState = NpcProperties.LoopState.None; // i.e. call StartNextState() next frame
+
+                // AI_StartState keeps a seated NPC seated (B_AssessTalk: AI_StartState(ZS_Talk, 0)). A running
+                // sit-down transition finishes first, like in the engine.
+                if (NpcData.IsUsingMob() || Properties.CurrentAction is UseMob)
+                {
+                    if (Properties.CurrentAction is not UseMob)
+                        Properties.CurrentAction = new None(new AnimationAction(), NpcData);
+                    return;
+                }
+
+                Properties.CurrentAction = new None(new AnimationAction(), NpcData);
                 Properties.BodyState = VmGothicEnums.BodyState.BsStand;
 
                 PrefabProps.AnimationSystem.StopAllAnimations();

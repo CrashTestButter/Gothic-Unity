@@ -9,6 +9,7 @@ using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Extensions;
 using JetBrains.Annotations;
@@ -31,6 +32,7 @@ namespace Gothic.Core.Services.Npc
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
         [Inject] private readonly WayNetService _wayNetService;
         [Inject] private readonly VobService _vobService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
         private const float _fpLookupDistance = 7f; // meter
         private static readonly int _raycastLayersToUse = 1 << Constants.DefaultLayer;
@@ -193,15 +195,26 @@ namespace Gothic.Core.Services.Npc
 
         public int ExtNpcGetTalentSkill(NpcInstance npc, int skillId)
         {
-            var props = GetProperties(npc);
-
-            // FIXME - this is related to overlays for the npc's
-            return 0;
+            // Same storage as Npc_SetTalentSkill.
+            // FIXME - skill levels should also drive the fight overlays (like OpenGothic does).
+            return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Skill ?? 0;
         }
 
         public int ExtNpcGetTalentValue(NpcInstance npc, int skillId)
         {
-            return GetContainer(npc).Vob.GetTalent(skillId).Value;
+            return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Value ?? 0;
+        }
+
+        /// <summary>
+        /// Percentage shown in the status menu. G2 keeps the weapon talents' percentages in C_NPC.hitchance[]
+        /// (B_AddFightSkill), G1 in the talent value (Npc_SetTalentValue).
+        /// </summary>
+        public int GetTalentPercent(NpcContainer npc, int talentIndex)
+        {
+            if (_contextGameVersionService.IsGothic2() && talentIndex <= (int)NpcTalent.Crossbow)
+                return npc.Instance.GetHitChance((NpcTalent)talentIndex);
+
+            return npc.Vob.GetTalent(talentIndex).Value;
         }
 
         public VmGothicEnums.Attitude GetPersonAttitude(NpcContainer self, NpcContainer other)
@@ -305,7 +318,11 @@ namespace Gothic.Core.Services.Npc
                 0f,
                 otherGroundPosition.z - selfGroundPosition.z
             ).normalized;
-            var selfForwardHorizontal = new Vector3(selfRoot.forward.x, 0f, selfRoot.forward.z).normalized;
+            // UseMob aligns the root with the mob slot, but sit transitions turn the body around - look the way it does.
+            // (BsSit is already set while walking to the mob, the state id only once seated.)
+            var isSeated = selfContainer.Props.BodyState == VmGothicEnums.BodyState.BsSit && selfContainer.IsUsingMob();
+            var selfForward = isSeated ? -selfRoot.forward : selfRoot.forward;
+            var selfForwardHorizontal = new Vector3(selfForward.x, 0f, selfForward.z).normalized;
             var angleToTarget = Vector3.Angle(selfForwardHorizontal, directionToTarget);
             var inFov = angleToTarget <= fov;
 

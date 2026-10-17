@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Gothic.Core.Extensions;
@@ -20,6 +21,7 @@ using ZenKit;
 using ZenKit.Daedalus;
 using Logger = Gothic.Core.Logging.Logger;
 using Random = UnityEngine.Random;
+using Time = UnityEngine.Time;
 
 namespace Gothic.Core.Domain.Vm
 {
@@ -38,6 +40,7 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly NpcInventoryService _npcInventoryService;
         [Inject] private readonly GameTimeService _gameTimeService;
         [Inject] private readonly StoryService _storyService;
+        [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
@@ -54,6 +57,11 @@ namespace Gothic.Core.Domain.Vm
         private bool _zSpyInstantLogging;
         private bool _ignoreSpammyMessages;
 
+        // PrintScreen text -> Time.time of its last log line. Capped: a script can print ever-changing texts.
+        private const float _printScreenLogInterval = 10f;
+        private const int _maxPrintScreenLogTimes = 256;
+        private readonly Dictionary<string, float> _printScreenLogTimes = new();
+        private const string _printFont = "FONT_OLD_10_WHITE.TGA";
 
         public VmExternalDomain()
         {
@@ -184,7 +192,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<NpcInstance>("Npc_ClearAiQueue", Npc_ClearAiQueue);
             // vm.RegisterExternal<NpcInstance>("Npc_ClearInventory", Npc_ClearInventory);
             vm.RegisterExternal<string, NpcInstance>("Npc_GetNextWp", Npc_GetNextWp);
-            // vm.RegisterExternal<int, NpcInstance, int>("Npc_GetTalentSkill", Npc_GetTalentSkill);
+            vm.RegisterExternal<int, NpcInstance, int>("Npc_GetTalentSkill", Npc_GetTalentSkill);
             vm.RegisterExternal<int, NpcInstance, int>("Npc_GetTalentValue", Npc_GetTalentValue);
             vm.RegisterExternal<int, NpcInstance, int>("Npc_KnowsInfo", Npc_KnowsInfo);
             vm.RegisterExternal<int, NpcInstance, int>("Npc_CheckInfo", Npc_CheckInfo);
@@ -215,9 +223,12 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<int, string>("PrintDebugCh", PrintDebugCh);
             vm.RegisterExternal<string>("PrintDebugInst", PrintDebugInst);
             vm.RegisterExternal<int, string>("PrintDebugInstCh", PrintDebugInstCh);
-            vm.RegisterExternal<int, string, int, int, string, int>("PrintScreen", PrintScreen);
+            RegisterPrintScreen(vm, "PrintScreen");
+            RegisterPrintScreen(vm, "AI_PrintScreen");
+            vm.RegisterExternal<string>("Print", Print);
 
             // Sound
+            vm.RegisterExternal<string>("Snd_Play", Snd_Play);
 
             // Day Routine
             vm.RegisterExternal<NpcInstance, int, int, int, int, int, string>("TA_MIN", TA_MIN);
@@ -344,7 +355,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void AI_StandUpQuick(NpcInstance npc)
         {
-            _npcAiService.ExtAiStandUp(npc);
+            _npcAiService.ExtAiStandUpQuick(npc);
         }
 
         public void AI_SetWalkMode(NpcInstance npc, int walkMode)
@@ -656,6 +667,75 @@ namespace Gothic.Core.Domain.Vm
 
         #region Print
 
+        /// <summary>
+        /// Real signature in G1 + G2 is (msg, posX, posY, font, seconds) - the externals.d of the MDKs is outdated.
+        /// Some script versions declare a return value, some don't. It has to match the DAT symbol, otherwise the
+        /// VM stack breaks - so we register based on the symbol.
+        /// AI_PrintScreen is shown immediately instead of being queued in the NPC's AI.
+        /// </summary>
+        private void RegisterPrintScreen(DaedalusVm vm, string name)
+        {
+            var symbol = vm.GetSymbolByName(name);
+            if (symbol == null)
+                return;
+
+            try
+            {
+                if (symbol.HasReturn)
+                {
+                    vm.RegisterExternal<int, string, int, int, string, int>(name, (msg, posX, posY, font, seconds) =>
+                    {
+                        PrintScreen(msg, posX, posY, font, seconds);
+                        return 1;
+                    });
+                }
+                else
+                {
+                    vm.RegisterExternal<string, int, int, string, int>(name,
+                        (msg, posX, posY, font, seconds) => PrintScreen(msg, posX, posY, font, seconds));
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning($"{name} has an unexpected signature in this game/mod - not registered. {e.Message}",
+                    LogCat.ZenKit);
+            }
+        }
+
+        /// <summary>
+        /// posX/posY are percent of the screen, -1 centers the text.
+        /// </summary>
+        private void PrintScreen(string message, int posX, int posY, string font, int seconds)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            // Scripts may print every AI tick - log a text once per interval.
+            if (!_printScreenLogTimes.TryGetValue(message, out var lastLog) ||
+                Time.time - lastLog > _printScreenLogInterval)
+            {
+                if (_printScreenLogTimes.Count >= _maxPrintScreenLogTimes)
+                    _printScreenLogTimes.Clear();
+                _printScreenLogTimes[message] = Time.time;
+                Logger.Log($"[PrintScreen] {message}", LogCat.Dialog);
+            }
+
+            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, seconds));
+        }
+
+        /// <summary>
+        /// Engine messages like PLAYER_MOB_MISSING_ITEM's "missing item" text. Centered, 3 s.
+        /// </summary>
+        public void Print(string message)
+        {
+            PrintScreen(message, PrintScreenMessage.Centered, PrintScreenMessage.Centered, _printFont, 3);
+        }
+
+        public void Snd_Play(string soundName)
+        {
+            _audioService.PlaySound2D(soundName);
+        }
+
         public void PrintDebug(string message)
         {
             if (!_enableZSpyLogs)
@@ -689,15 +769,6 @@ namespace Gothic.Core.Domain.Vm
                 return;
 
             Logger.Log($"[zspy,{channel}]: {message}", LogCat.ZSpy);
-        }
-
-        /// <summary>
-        /// posX/posY are percent of the screen, -1 centers the text. The return value isn't used by the scripts.
-        /// </summary>
-        public int PrintScreen(string message, int posX, int posY, string font, int timeSec)
-        {
-            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, timeSec));
-            return 0;
         }
 
         #endregion

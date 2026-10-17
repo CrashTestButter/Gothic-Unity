@@ -205,25 +205,25 @@ namespace Gothic.Core.Services.Npc
         public void ExtNpcSetTalentValue(NpcInstance npc, VmGothicEnums.Talent talent, int level)
         {
             var vob = npc.GetUserData()!.Vob;
-
+            var existing = vob.GetTalent((int)talent);
             vob.SetTalent((int)talent, new Talent
             {
-                Type =  (int)talent,
-                Skill = 0,
+                Type  = (int)talent,
+                Skill = existing?.Skill ?? 0,
                 Value = level
             });
         }
-        
+
         // FIXME - In OpenGothic it adds MDS overlays based on skill level.
         public void ExtNpcSetTalentSkill(NpcInstance npc, VmGothicEnums.Talent talent, int skillValue)
         {
             var vob = npc.GetUserData()!.Vob;
-
+            var existing = vob.GetTalent((int)talent);
             vob.SetTalent((int)talent, new Talent
             {
-                Type =  (int)talent,
+                Type  = (int)talent,
                 Skill = skillValue,
-                Value = 0
+                Value = existing?.Value ?? 0
             });
         }
 
@@ -260,7 +260,8 @@ namespace Gothic.Core.Services.Npc
 
         public void ExtNpcChangeAttribute(NpcInstance npc, int attributeId, int value)
         {
-            var vob = npc.GetUserData().Vob;
+            var container = npc.GetUserData();
+            var vob = container.Vob;
             var newValue = vob.GetAttribute(attributeId) + value;
 
             // Clamp paired attributes (HP/HP_MAX, Mana/Mana_MAX): max is at attributeId+1 by G1 convention.
@@ -274,13 +275,57 @@ namespace Gothic.Core.Services.Npc
                     newValue = Mathf.Clamp(newValue, 0, max);
             }
 
-            vob.SetAttribute(attributeId, newValue);
+            SetAttribute(container, (NpcAttribute)attributeId, newValue);
+        }
+
+        /// <summary>
+        /// The engine keeps these values in one place (oCNpc), we have two: scripts read the instance, C# the vob.
+        /// Every C# write goes through these setters, so both stay equal.
+        /// </summary>
+        public void SetAttribute(NpcContainer npc, NpcAttribute attribute, int value)
+        {
+            npc.Vob.SetAttribute((int)attribute, value);
+            npc.Instance.SetAttribute(attribute, value);
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(npc, attribute);
+        }
+
+        public void SetLevel(NpcContainer npc, int level)
+        {
+            npc.Vob.Level = level;
+            npc.Instance.Level = level;
+        }
+
+        public void SetLp(NpcContainer npc, int lp)
+        {
+            npc.Vob.Lp = lp;
+            npc.Instance.Lp = lp;
         }
 
         public NpcContainer GetHeroContainer()
         {
-            // Hero doesn't exist yet in menus / during boot. Callers (e.g. StatusBarAdapter.Update) poll until it does.
+            // Hero doesn't exist yet in menus / during boot (e.g. the player's health bar asks for it there).
             return (_gameStateService.GothicVm?.GlobalHero as NpcInstance)?.GetUserData();
+        }
+
+        /// <summary>
+        /// Daedalus writes hero values directly on the instance (hero.lp, hero.attribute[] at teachers, permanent
+        /// potions). Copies them to the vob - safe because C# writes both stores (SetAttribute/SetLevel/SetLp).
+        /// </summary>
+        public void SyncHeroInstanceToVob()
+        {
+            var hero = GetHeroContainer();
+            if (hero == null)
+                return;
+
+            hero.Vob.Level = hero.Instance.Level;
+            hero.Vob.Xp = hero.Instance.Exp;
+            hero.Vob.XpNextLevel = hero.Instance.ExpNext;
+            hero.Vob.Lp = hero.Instance.Lp;
+            for (var i = 0; i < Enum.GetNames(typeof(NpcAttribute)).Length; i++)
+                hero.Vob.SetAttribute(i, hero.Instance.GetAttribute((NpcAttribute)i));
+
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(hero, NpcAttribute.HitPoints);
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(hero, NpcAttribute.HitPointsMax);
         }
 
         public GameObject GetHeroGameObject()

@@ -148,11 +148,14 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             if (_isHeroSpeaking)
             {
                 _npcService.GetHeroGameObject().GetComponent<AudioSource>().Stop();
+                _npcService.GetHeroContainer().PrefabProps.NpcSubtitles?.HideSubtitles();
             }
             // NPC
             else
             {
                 PrefabProps.NpcSound.Stop();
+                // The line stopped - so does its subtitle.
+                PrefabProps.NpcSubtitles?.HideSubtitles();
                 PrefabProps.AnimationSystem.StopAnimation(_randomDialogAnimationName);
             }
         }

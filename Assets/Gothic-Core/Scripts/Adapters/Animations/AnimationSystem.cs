@@ -817,7 +817,8 @@ namespace Gothic.Core.Adapters.Animations
         {
             foreach (var trackInstance in _trackInstances)
             {
-                if (trackInstance.Track.Name.EqualsIgnoreCase(animationName))
+                // Aliases (e.g. t_Bench_S1_2_S0 = t_Bench_S0_2_S1 reversed) are requested by their alias name.
+                if (trackInstance.Track.MatchesName(animationName))
                     return true;
             }
 

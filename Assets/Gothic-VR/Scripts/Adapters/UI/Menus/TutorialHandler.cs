@@ -30,6 +30,11 @@ namespace Gothic.VR.Adapters.UI.Menus
             {
                 image.material = backPic;
             }
+
+            // Shown in the menu, which is drawn on top of the world: lift the new materials as well.
+            var onTop = GetComponentInParent<VRUiOnTop>();
+            if (onTop != null)
+                onTop.Apply();
         }
     }
 }

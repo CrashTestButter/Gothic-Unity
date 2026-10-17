@@ -256,6 +256,29 @@ namespace Gothic.Core.Services.Npc
             // * Ist der Nsc in einem Animationsstate, wird die passende Rücktransition abgespielt (e.g. item states).
             var container = npc.GetUserData();
             // Reset immediately (not via queue) so Daedalus C_BodyStateContains checks in the same ZS_*_Loop tick see BsStand.
+            // A seated NPC still sits during the back transition below.
+            container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
+
+            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand) - unless one is already
+            // running or queued (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
+            var props = container.Props;
+            var isBackTransitionPending = props.CurrentAction is UseMob { IsStopUsingMob: true } ||
+                                          props.AnimationQueue.OfType<UseMob>().Any(u => u.IsStopUsingMob);
+            if (container.IsUsingMob() && !isBackTransitionPending)
+            {
+                var scheme = container.PrefabProps.CurrentInteractable.Props.GetVisualScheme();
+                props.AnimationQueue.Enqueue(new UseMob(new AnimationAction(scheme, -1), container));
+            }
+
+            props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
+        }
+
+        /// <summary>
+        /// G1 docs: like AI_StandUp, but pops out of a mob without its back transitions.
+        /// </summary>
+        public void ExtAiStandUpQuick(NpcInstance npc)
+        {
+            var container = npc.GetUserData();
             container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
             container.Props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
         }

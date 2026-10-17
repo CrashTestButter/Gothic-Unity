@@ -21,6 +21,9 @@ namespace Gothic.Core.Adapters.UI.Menus
 {
     public class SaveMenu : AbstractMenu
     {
+        private const string EmptySlotText = "---";
+        private const int _titleMaxLength = 30;
+
         private bool _isInitialized;
         private GameObject[] SaveSlots = new GameObject[16];
 
@@ -44,6 +47,7 @@ namespace Gothic.Core.Adapters.UI.Menus
         [Inject] private readonly BootstrapService _bootstrapService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly ContextTextInputService _contextTextInputService;
 
         
         /// <summary>
@@ -95,7 +99,7 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var saveSlot = MenuItemCache[$"MENUITEM_{_saveLoadStatus}_SLOT{i}"].go;
 
                 var text = saveSlot.GetComponentInChildren<TMP_Text>();
-                text.text = "---"; // daedalus menu item has text "unknown", but in game it shows as ---
+                text.text = EmptySlotText; // daedalus menu item has text "unknown", but in game it shows as ---
                 SaveSlots[i] = saveSlot;
             }
 
@@ -162,10 +166,35 @@ namespace Gothic.Core.Adapters.UI.Menus
                 }
 
                 // G1 save games start with ID 1
-                var folderSaveId = int.Parse(saveGameFolderName.Remove(0, "savegame".Length));
+                if (!int.TryParse(saveGameFolderName.Remove(0, "savegame".Length), out var folderSaveId))
+                    continue;
 
-                // Load metadata
-                var save = _saveGameService.GetSaveGame((SaveGameService.SlotId)folderSaveId);
+                // Our menu prefab shows 15 slots (G1 layout); G2 installations can hold savegame16-20.
+                // Skip out-of-range folders instead of crashing the whole menu init on the array access.
+                // FIXME - Add proper 20 slots for G2 in GameObjects. (Why are they 16 for G1? Maybe 15 with missing 0 index?)
+                if (folderSaveId < 1 || folderSaveId >= SaveSlots.Length || SaveSlots[folderSaveId] == null)
+                {
+                    Logger.LogWarning($"[SaveMenu] Save folder '{saveGameFolderName}' has no UI slot for G2. Skipping for now.",
+                        LogCat.Ui);
+                    continue;
+                }
+
+                // Load metadata. A save written by another engine/mod version can fail parsing - skip it instead of
+                // aborting the whole menu.
+                SaveGame save;
+                try
+                {
+                    save = _saveGameService.GetSaveGame((SaveGameService.SlotId)folderSaveId);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogWarning($"[SaveMenu] Save '{saveGameFolderName}' couldn't be parsed: {e.Message}",
+                        LogCat.Ui);
+                    continue;
+                }
+                if (save?.Metadata == null)
+                    continue;
+
                 _saves[folderSaveId] = save;
 
                 // Set metadata to slot
@@ -179,7 +208,8 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var pointerExitEntry = eventTrigger.triggers.Find(x => x.eventID == EventTriggerType.PointerExit);
                 pointerExitEntry.callback.AddListener(_ => OnLoadGameSlotPointerExit());
 
-                saveSlotGo.GetComponentInChildren<TMP_Text>().text = save.Metadata.Title;
+                saveSlotGo.GetComponentInChildren<TMP_Text>().text =
+                    string.IsNullOrWhiteSpace(save.Metadata.Title) ? EmptySlotText : save.Metadata.Title;
             }
         }
 
@@ -235,9 +265,28 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
             else
             {
-                _saveGameService.SaveCurrentGame((SaveGameService.SlotId)id, $"Gothic-Unity - {DateTime.Now}");
-                FillSaveGameEntries();
+                // Name the save (Gothic asks too). Empty names save too, as in the original.
+                // The slot shows the typed name, like the original's inline edit.
+                var slotText = SaveSlots[id].GetComponentInChildren<TMP_Text>();
+                var slotTextBefore = slotText.text;
+                var currentTitle = _saves[id]?.Metadata?.Title ?? string.Empty;
+                ShowTypedTitle(slotText, currentTitle);
+                _contextTextInputService.RequestText(currentTitle, _titleMaxLength,
+                    title => SaveToSlot(id, title),
+                    () => slotText.text = slotTextBefore,
+                    title => ShowTypedTitle(slotText, title));
             }
+        }
+
+        private static void ShowTypedTitle(TMP_Text slotText, string title)
+        {
+            slotText.text = title + "_";
+        }
+
+        private void SaveToSlot(int id, string title)
+        {
+            _saveGameService.SaveCurrentGame((SaveGameService.SlotId)id, title);
+            FillSaveGameEntries();
         }
     }
 }

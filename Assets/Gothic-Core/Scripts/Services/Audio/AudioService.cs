@@ -20,6 +20,8 @@ namespace Gothic.Core.Manager
         private readonly MusicDomain _musicDomain = new MusicDomain().Inject();
         private readonly SoundDomain _soundDomain = new SoundDomain().Inject();
 
+        private AudioSource _scriptSoundSource;
+
         public SoundEffectInstance InvOpen => _vmCacheService.TryGetSfxData("INV_OPEN").GetFirstSound();
         public SoundEffectInstance InvClose => _vmCacheService.TryGetSfxData("INV_CLOSE").GetFirstSound();
         
@@ -34,7 +36,10 @@ namespace Gothic.Core.Manager
 
         public void InitMusic()
         {
-            _musicDomain.Init();
+            // Skipping Init() leaves _themes empty, so every Play*/Zone* call below safely no-ops and
+            // dmusic's native engine is never touched (see GothicModIniConfig.UnitySkipMusicPlayback).
+            if (!_configService.GothicMod.UnitySkipMusicPlayback)
+                _musicDomain.Init();
 
             GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(OnMainMenuLoaded);
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
@@ -77,6 +82,24 @@ namespace Gothic.Core.Manager
         //
         // Sound
         //
+
+        public void SetScriptSoundSource(AudioSource audioSource)
+        {
+            _scriptSoundSource = audioSource;
+        }
+
+        /// <summary>
+        /// Non-positional sound, e.g. Daedalus Snd_Play("LogEntry").
+        /// </summary>
+        public void PlaySound2D(string soundName)
+        {
+            if (_scriptSoundSource == null)
+                return;
+
+            var clip = GetRandomSoundClip(soundName);
+            if (clip != null)
+                _scriptSoundSource.PlayOneShot(clip);
+        }
 
         [CanBeNull]
         public AudioClip CreateAudioClip(SoundEffectInstance soundEffectInstance)

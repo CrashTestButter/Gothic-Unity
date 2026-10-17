@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   PreselectGameVersion: 1
   GameVersion: 0
+  PreSelectMod: 0
   ModIni: 
+  ModPath: 
   GameControls: 0
   EnableVRDeviceSimulator: 0
-  ActivateMarvinMode: 0
+  PreselectMarvinMode: 0
   EnableZSpyLogs: 0
   AllDebugChannels: 0
   ZSpyChannels:
@@ -51,7 +53,7 @@ MonoBehaviour:
   EnableMobsiDialogs: 1
   EnableDigSpots: 1
   DigSpotsRequireTool: 0
-  PlayerInventoryAddition: 
+  PlayerInventoryAddition:
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0
   EnableNpcs: 1
@@ -64,6 +66,7 @@ MonoBehaviour:
     Value: 
   EnableNpcEyeBlinking: 0
   EnableNpcLooting: 1
+  EnableDialogFreeMovement: 1
   ShowNpcColliders: 0
   ShowFreePoints: 0
   ShowWayPoints: 0

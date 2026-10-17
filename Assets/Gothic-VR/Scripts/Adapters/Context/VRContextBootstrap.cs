@@ -17,6 +17,7 @@ namespace Gothic.VR.Adapters.Context
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly ContextMenuService _contextMenuService;
         [Inject] private readonly ContextDialogService _contextDialogService;
+        [Inject] private readonly ContextTextInputService _contextTextInputService;
 
         protected override void RegisterControlModule(Controls controls)
         {
@@ -31,6 +32,7 @@ namespace Gothic.VR.Adapters.Context
             _contextInteractionService.SetImpl(new VRContextInteractionService());
             _contextMenuService.SetImpl(new VRContextMenuService().Inject());
             _contextDialogService.SetImpl(new VRContextDialogService().Inject());
+            _contextTextInputService.SetImpl(new VRContextTextInputService());
 #else
             throw new System.ArgumentException(
                 "VR context is set, but compiler directive >GOTHIC_HVR_INSTALLED< isn't set. Did you set up Hurricane VR properly?");

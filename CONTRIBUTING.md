@@ -59,5 +59,13 @@ To assist consistent development styles, we:
 1. set up an .editorconfig file which is automatically used by Rider and VS22+
 2. wrote an exhaustive example at our docs: [Coding Style Guide](https://github.com/Gothic-Unity-Project/Gothic-Unity/wiki/Coding-Style-Guide)
 
+### Be Open About AI Usage
+
+We use AI agents ourselves (see [AI_USE.md](AI_USE.md)), so we're fine with AI-assisted contributions.
+We just want to know about them.
+
+In your pull request, tell us how much AI helped.
+Because ultimately: You own your your pull request. Therefore review your code and test your submissions.
+
 ### License
 By contributing, you agree that your contributions will be licensed under its GPL-3.0 License.

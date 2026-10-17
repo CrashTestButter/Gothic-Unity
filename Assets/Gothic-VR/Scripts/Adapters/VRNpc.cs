@@ -56,6 +56,11 @@ namespace Gothic.VR.Adapters
                 _gameStateService.Dialogs.WasPlayerInitiated = true;
                 _npcAiService.ExecutePerception(VmGothicEnums.PerceptionType.AssessTalk, _npcData.Props, _npcData.Instance, null, (NpcInstance)_gameStateService.GothicVm.GlobalHero);
             }
+
+            // Talking is a click, not a grab: release (HVR's grab turns physics on) and keep a seated NPC kinematic.
+            grabber.ForceRelease();
+            if (_npcData.IsUsingMob())
+                _physicsService.DisablePhysicsForNpc(_npcData.PrefabProps);
         }
     }
 }

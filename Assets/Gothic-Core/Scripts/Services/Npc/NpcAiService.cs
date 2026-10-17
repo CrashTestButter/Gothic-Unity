@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Gothic.Core.Adapters.Properties;
 using Gothic.Core.Domain.Npc.Actions;
@@ -6,9 +7,11 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
+using Logger = Gothic.Core.Logging.Logger;
 using Vector3 = UnityEngine.Vector3;
 
 namespace Gothic.Core.Services.Npc
@@ -64,9 +67,25 @@ namespace Gothic.Core.Services.Npc
 
             // The finally block ensures a throwing perception function doesn't leave the globals
             // polluted for every subsequent script call of all NPCs.
+            //
+            // We also catch here: an uncaught exception thrown from inside a Daedalus external
+            // (invoked by the native VM while executing this perception function) unwinds back
+            // through the native VM's own call frames instead of returning normally. Repeated
+            // occurrences (e.g. one broken external firing every perception tick for every NPC)
+            // have been observed to corrupt the VM's internal stack ("Internal Exception: stack
+            // overflow" / "illegal access ... OTHER" / "tried to pop_instance but frame does not
+            // contain an instance"), eventually crashing the whole process natively. Catching here
+            // won't undo damage already done to the VM by an external further down the call chain,
+            // but it stops this specific call from cascading further and gives a clear, attributable
+            // log instead of an anonymous NullReferenceException.
             try
             {
                 _gameStateService.GothicVm.Call(perceptionFunction);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"Perception '{type}' (self={self?.GetName(NpcNameSlot.Slot0)}) threw: {e.Message}",
+                    LogCat.Ai);
             }
             finally
             {
@@ -219,6 +238,8 @@ namespace Gothic.Core.Services.Npc
 
         public void ExtAiContinueRoutine(NpcInstance npc)
         {
+            if (npc == null || npc.GetUserData() == null)
+                return;
             npc.GetUserData().Props.AnimationQueue.Enqueue(new ContinueRoutine(new AnimationAction(), npc.GetUserData()));
         }
 
@@ -235,6 +256,29 @@ namespace Gothic.Core.Services.Npc
             // * Ist der Nsc in einem Animationsstate, wird die passende Rücktransition abgespielt (e.g. item states).
             var container = npc.GetUserData();
             // Reset immediately (not via queue) so Daedalus C_BodyStateContains checks in the same ZS_*_Loop tick see BsStand.
+            // A seated NPC still sits during the back transition below.
+            container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
+
+            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand) - unless one is already
+            // running or queued (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
+            var props = container.Props;
+            var isBackTransitionPending = props.CurrentAction is UseMob { IsStopUsingMob: true } ||
+                                          props.AnimationQueue.OfType<UseMob>().Any(u => u.IsStopUsingMob);
+            if (container.IsUsingMob() && !isBackTransitionPending)
+            {
+                var scheme = container.PrefabProps.CurrentInteractable.Props.GetVisualScheme();
+                props.AnimationQueue.Enqueue(new UseMob(new AnimationAction(scheme, -1), container));
+            }
+
+            props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
+        }
+
+        /// <summary>
+        /// G1 docs: like AI_StandUp, but pops out of a mob without its back transitions.
+        /// </summary>
+        public void ExtAiStandUpQuick(NpcInstance npc)
+        {
+            var container = npc.GetUserData();
             container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
             container.Props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
         }
@@ -388,7 +432,10 @@ namespace Gothic.Core.Services.Npc
 
         public bool ExtNpcIsPlayer(NpcInstance npc)
         {
-            return npc.Index == _gameStateService.GothicVm.GlobalHero!.Index;
+            // NpcService.CacheHero() calls Vm.InitInstance(heroInstance) BEFORE assigning Vm.GlobalHero.
+            // A (mod) script calling Npc_IsPlayer during that window finds no hero yet - nobody is the player then.
+            var globalHero = _gameStateService.GothicVm.GlobalHero;
+            return globalHero != null && npc.Index == globalHero.Index;
         }
 
         public ItemInstance ExtGetEquippedArmor(NpcInstance npc)

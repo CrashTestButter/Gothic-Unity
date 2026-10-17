@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Gothic.Core.Logging;
 using Gothic.Core.Model.UI.Menu;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Npc;
@@ -7,6 +8,7 @@ using Gothic.Core.Services.Vm;
 using MyBox;
 using Reflex.Attributes;
 using TMPro;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Adapters.UI.Menus
 {
@@ -30,12 +32,19 @@ namespace Gothic.Core.Adapters.UI.Menus
         private static readonly int[] _attrCurrentIndex = { 4, 5, 2, 0 };
         private static readonly int[] _attrMaxIndex     = {-1,-1, 3, 1 };
 
-        // Armor slot → DamageType index: 1=Blunt, 2=Point(projectiles), 3=Fire, 4=Magic
-        // DamageType values: Blunt=1, Point=3, Fire=4, Magic=6
-        private static readonly int[] _armorProtIndex = { 1, 3, 4, 6 };
+        // Protection array indices (G1 Content/_intern/Constants.d, PROT_* = DAM_INDEX_*; ZenKit DamageType):
+        //   0=BARRIER, 1=BLUNT, 2=EDGE, 3=FIRE, 4=FLY, 5=MAGIC, 6=POINT, 7=FALL
+        //   (Don't mix up with the DAM_* bit flags: DAM_XXX = 1 << DAM_INDEX_XXX.)
+        // Armor rows (G1 System/Menu/Menu_Status.d, MENU_ITEM_ARMOR_{n}_TITLE):
+        //   1 "vor Waffen"     → EDGE(2)  (scripts always set EDGE and BLUNT to the same value on armors/amulets)
+        //   2 "vor Geschossen" → POINT(6)
+        //   3 "vor Feuer"      → FIRE(3)
+        //   4 "vor Magie"      → MAGIC(5)
+        private static readonly int[] _armorProtIndex = { 2, 6, 3, 5 };
 
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly NpcService _npcService;
+        [Inject] private readonly NpcHelperService _npcHelperService;
 
         private void Awake()
         {
@@ -44,8 +53,10 @@ namespace Gothic.Core.Adapters.UI.Menus
 
         private void OnEnable()
         {
-            if (_npcService == null)
+            // No hero yet (menus/boot) - nothing to show.
+            if (_npcService?.GetHeroContainer() == null)
                 return;
+            _npcService.SyncHeroInstanceToVob();
             UpdateData();
         }
 
@@ -82,12 +93,15 @@ namespace Gothic.Core.Adapters.UI.Menus
 
             var talentTitles = _vmService.TalentTitles;
             var talentSkills = _vmService.TalentSkills;
+            var talentCount = Math.Min(talentTitles.Count, vob.TalentCount);
 
-            Enumerable.Range(0, talentTitles.Count).ForEach(i =>
+            // Talent 0 doesn't exist (TXT_TALENTS[0] = ""), NPC_TALENT_1H = 1 is shown in MENU_ITEM_TALENT_1_*.
+            // Menu row number == talent index.
+            Enumerable.Range(1, Math.Max(0, talentCount - 1)).ForEach(i =>
             {
-                var keyTitle = string.Format(_itemTalentTitlePattern, i + 1);
-                var keySkill = string.Format(_itemTalentSkillPattern, i + 1);
-                var keyDescription = string.Format(_itemTalentDescriptionPattern, i + 1);
+                var keyTitle = string.Format(_itemTalentTitlePattern, i);
+                var keySkill = string.Format(_itemTalentSkillPattern, i);
+                var keyDescription = string.Format(_itemTalentDescriptionPattern, i);
 
                 if (!MenuItemCache.ContainsKey(keyTitle))
                     return;
@@ -106,12 +120,33 @@ namespace Gothic.Core.Adapters.UI.Menus
                     skillFormatted = parts[partIndex];
                 }
 
-                MenuItemCache[keyTitle].go.GetComponentInChildren<TMP_Text>().text = talentTitles[i];
-                MenuItemCache[keySkill].go.GetComponentInChildren<TMP_Text>().text = skillFormatted;
-
-                if (MenuItemCache.TryGetValue(keyDescription, out var descItem))
-                    descItem.go.GetComponentInChildren<TMP_Text>().text = $"{talent.Value}%";
+                SetItemText(keyTitle, talentTitles[i]);
+                SetItemText(keySkill, skillFormatted);
+                // Optional: e.g. G1 shows hit chance / failure chance, mods often comment it out for some rows.
+                if (MenuItemCache.ContainsKey(keyDescription))
+                    SetItemText(keyDescription, $"{_npcHelperService.GetTalentPercent(hero, i)}%");
             });
+        }
+
+        /// <summary>
+        /// A missing menu item or text component must not abort filling all the remaining rows.
+        /// </summary>
+        private void SetItemText(string key, string text)
+        {
+            if (!MenuItemCache.TryGetValue(key, out var item) || item.go == null)
+            {
+                Logger.LogWarning($"[StatusMenu] Menu item '{key}' not found.", LogCat.Ui);
+                return;
+            }
+
+            var textComp = item.go.GetComponentInChildren<TMP_Text>(true);
+            if (textComp == null)
+            {
+                Logger.LogWarning($"[StatusMenu] Menu item '{key}' has no text component.", LogCat.Ui);
+                return;
+            }
+
+            textComp.text = text;
         }
 
         protected override void Undefined(string itemName, string commandName) { }

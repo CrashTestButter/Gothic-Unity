@@ -48,9 +48,12 @@ namespace Gothic.VR.Adapters
         private bool _isHovered;
         private Renderer _cachedObjectRenderer;
         private bool _mobActivated;
+        private bool _isNpc;
 
         private void Awake()
         {
+            _isNpc = GetComponent<VRNpc>() != null;
+
             // DEBUG - Use this to enable brightening up all rendered objects if you want to check the attack window.
             {
                 // GlobalEventDispatcher.FightWindowInitial.AddListener(_ => OnHoverEnter(1f));
@@ -104,7 +107,9 @@ namespace Gothic.VR.Adapters
 
         public void OnHoverEnter(HVRGrabberBase _, HVRGrabbable __)
         {
-            OnHoverEnter(Constants.ShaderPropertyFocusBrightnessValue);
+            OnHoverEnter(_isNpc
+                ? Constants.ShaderPropertyFocusBrightnessNpcValue
+                : Constants.ShaderPropertyFocusBrightnessValue);
         }
 
         public void OnHoverEnter(float shaderPropertyFocusBrightnessValue)

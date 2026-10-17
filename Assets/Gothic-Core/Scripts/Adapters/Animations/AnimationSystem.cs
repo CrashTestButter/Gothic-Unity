@@ -687,13 +687,19 @@ namespace Gothic.Core.Adapters.Animations
                         AttackAnimation = trackInstance.AnimationName;
                         break;
                     case EventType.OptimalFrame:
-                        AttackOptFrame = eventTag.Slots.Item1.Split(' ').Where(s => !string.IsNullOrEmpty(s)).Select(i => Convert.ToInt32(i)).ToList();
+                        // ZenKit stores numeric frame params in .Frames. .Slots holds string params like bone names.
+                        AttackOptFrame = eventTag.Frames;
                         break;
                     case EventType.HitEnd:
-                        AttackHitEnd = eventTag.Slots.Item1.Split(' ').Where(s => !string.IsNullOrEmpty(s)).Select(i => Convert.ToInt32(i)).ToList();
+                        AttackHitEnd = eventTag.Frames;
                         break;
                     case EventType.ComboWindow:
-                        AttackWindowFrames = eventTag.Slots.Item1.Split(' ').Where(s => !string.IsNullOrEmpty(s)).Select(i => Convert.ToInt32(i)).ToList();
+                        AttackWindowFrames = eventTag.Frames;
+                        if (AttackWindowFrames.Count == 0)
+                        {
+                            Logger.LogWarning($"DEF_WINDOW on >{trackInstance.AnimationName}< has no frame params - " +
+                                              "combo window will never open.", LogCat.Animation);
+                        }
                         break;
                     // Unused. @see: https://gothic-modding-community.github.io/gmc/zengin/anims/events/#def_dir
                     case EventType.HitDirection:
@@ -781,7 +787,8 @@ namespace Gothic.Core.Adapters.Animations
         {
             foreach (var trackInstance in _trackInstances)
             {
-                if (trackInstance.Track.Name.EqualsIgnoreCase(animationName))
+                // Aliases (e.g. t_Bench_S1_2_S0 = t_Bench_S0_2_S1 reversed) are requested by their alias name.
+                if (trackInstance.Track.MatchesName(animationName))
                     return true;
             }
 

@@ -13,7 +13,6 @@ namespace Gothic.Core.Models.Caches
         UiTexture,
         UiThumbnail,
         UiVirtualKeyboard,
-        UiPrintScreen,
         
         UiDebugText,
         UiDebugLogLine,

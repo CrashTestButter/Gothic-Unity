@@ -18,6 +18,7 @@ namespace Gothic.Core.Services.Context
 
         /// <summary>
         /// Pushes the player back horizontally onto the circle around center when they walked out of it.
+        /// Does nothing while the player is airborne or climbing.
         /// </summary>
         void KeepPlayerWithin(Vector3 center, float radius);
         void InitUIInteraction();

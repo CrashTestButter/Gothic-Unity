@@ -39,6 +39,10 @@ namespace Gothic.Core.Manager
         private const string _exitDescriptionSymbol = "DIALOG_ENDE";
         // Pushed back a little inside the bubble's edge, so the hero isn't held right at the stop distance.
         private const float _bubbleEdgeMargin = 0.2f;
+        // The hero can't be held inside (falling, climbing, teleported, blocked by a wall) - the dialog ends after
+        // being outside this long, or at once when this far beyond the bubble's edge.
+        private const float _bubbleGiveUpSeconds = 1f;
+        private const float _bubbleGiveUpOvershoot = 2f;
 
         private Coroutine _bubbleWatcher;
 
@@ -359,39 +363,64 @@ namespace Gothic.Core.Manager
 
         private bool IsHeroInDialogRange(NpcContainer npcContainer)
         {
+            return IsHeroInDialogRange(npcContainer, out _);
+        }
+
+        /// <summary>
+        /// The bubble is a cylinder: horizontal distance like KeepPlayerWithin (a ramp mustn't count), plus a height cap
+        /// (upper floor, cliff, ladder).
+        /// </summary>
+        private bool IsHeroInDialogRange(NpcContainer npcContainer, out float horizontalDistance)
+        {
+            horizontalDistance = 0f;
             var hero = _npcService.GetHeroContainer();
             if (hero?.Go == null || npcContainer.Go == null)
                 return true;
 
-            // Horizontal like KeepPlayerWithin - a height difference (ramp, upper floor) mustn't count.
             var offset = hero.Go.transform.position - npcContainer.Go.transform.position;
+            var heightDifference = Mathf.Abs(offset.y);
             offset.y = 0f;
-            return offset.magnitude <= Constants.DialogMaxDistance;
+            horizontalDistance = offset.magnitude;
+
+            return horizontalDistance <= Constants.DialogMaxDistance &&
+                   heightDifference <= Constants.DialogMaxHeightDifference;
         }
 
         /// <summary>
         /// DeveloperConfig.EnableDialogFreeMovement: the hero walks freely inside the dialog bubble. Walking out of it
         /// chooses END if the shown choices offer it. Otherwise (somebody talks, sub-choices, no END) the bubble's
-        /// edge holds the hero back.
+        /// edge holds the hero back. If that doesn't work (falling, climbing, teleported, blocked), the dialog ends.
         /// </summary>
         private IEnumerator WatchDialogBubble(NpcContainer npcContainer)
         {
             var dialogs = _gameStateService.Dialogs;
+            var outsideSeconds = 0f;
             while (dialogs.IsInDialog && dialogs.CurrentDialogNpc == npcContainer)
             {
-                if (!IsHeroInDialogRange(npcContainer))
+                if (IsHeroInDialogRange(npcContainer, out var horizontalDistance))
                 {
-                    if (dialogs.IsChoosing && dialogs.ExitInfo != null)
+                    outsideSeconds = 0f;
+                }
+                else if (dialogs.IsChoosing && dialogs.ExitInfo != null)
+                {
+                    Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero walked away - " +
+                               "choosing END", LogCat.Dialog);
+                    MainSelectionClicked(npcContainer, dialogs.ExitInfo);
+                }
+                else
+                {
+                    outsideSeconds += Time.deltaTime;
+                    var overshoot = horizontalDistance - Constants.DialogMaxDistance;
+                    if (outsideSeconds > _bubbleGiveUpSeconds || overshoot > _bubbleGiveUpOvershoot)
                     {
-                        Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero walked away - " +
-                                   "choosing END", LogCat.Dialog);
-                        MainSelectionClicked(npcContainer, dialogs.ExitInfo);
+                        Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero can't be " +
+                                   "held inside the dialog range - closing the dialog", LogCat.Dialog);
+                        StopDialog(npcContainer);
+                        yield break;
                     }
-                    else
-                    {
-                        _contextInteractionService.KeepPlayerWithin(npcContainer.Go.transform.position,
-                            Constants.DialogMaxDistance - _bubbleEdgeMargin);
-                    }
+
+                    _contextInteractionService.KeepPlayerWithin(npcContainer.Go.transform.position,
+                        Constants.DialogMaxDistance - _bubbleEdgeMargin);
                 }
                 yield return null;
             }

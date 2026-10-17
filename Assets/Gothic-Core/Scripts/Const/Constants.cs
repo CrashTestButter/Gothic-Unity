@@ -145,6 +145,8 @@ namespace Gothic.Core.Const
 
         // Meters between hero and NPC for starting and keeping a dialog (DeveloperConfig.EnableDialogFreeMovement).
         public const float DialogMaxDistance = 5f;
+        // Max height difference (floor, cliff, ladder) between hero and NPC for starting and keeping a dialog.
+        public const float DialogMaxHeightDifference = 3f;
         
 
         public const string SlotRightHand	= "ZS_RIGHTHAND";

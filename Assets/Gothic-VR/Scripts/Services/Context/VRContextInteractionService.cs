@@ -203,6 +203,10 @@ namespace Gothic.VR.Services.Context
             if (controller == null)
                 return;
 
+            // Falling or on a ladder: a sideways push would fight gravity/the climbing hands.
+            if (!_playerController.IsGrounded || _playerController.IsClimbing)
+                return;
+
             var position = _playerController.transform.position;
             var offset = position - center;
             offset.y = 0f;

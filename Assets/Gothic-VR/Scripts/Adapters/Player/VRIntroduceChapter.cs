@@ -25,6 +25,13 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly TextureService _textureService;
         [Inject] private readonly AudioService _audioService;
 
+        private Material _chapterMaterial;
+
+        private void OnDestroy()
+        {
+            Destroy(_chapterMaterial);
+        }
+
         public void DisplayIntroduction(string chapter, string text, string texture, string wav, int time)
         {
             gameObject.SetActive(true);
@@ -43,9 +50,11 @@ namespace Gothic.VR.Adapters.Player
 
         private void ShowChapterCanvas(string chapter, string text, string texture)
         {
-            // Set texture for cover
-            _chapterImage.material = _textureService.GetEmptyMaterial(MaterialExtension.BlendMode.Opaque);
-            _textureService.SetTexture(texture, _chapterImage.material);
+            // Set texture for cover. One material for all chapters - only the texture changes.
+            if (_chapterMaterial == null)
+                _chapterMaterial = _textureService.GetEmptyMaterial(MaterialExtension.BlendMode.Opaque);
+            _textureService.SetTexture(texture, _chapterMaterial);
+            _chapterImage.material = _chapterMaterial;
 
             _chapterTitle.text = chapter;
             _chapterSubtitle.text = text;

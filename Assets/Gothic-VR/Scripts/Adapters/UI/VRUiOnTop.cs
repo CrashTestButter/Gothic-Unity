@@ -220,6 +220,27 @@ namespace Gothic.VR.Adapters.UI
             return material != null && material.shader == _backgroundMaterial.shader;
         }
 
+        /// <summary>
+        /// Drops on-top copies whose source material got destroyed (e.g. with its scene) and destroys the copies too.
+        /// Copies of living sources stay: persistent UIs (dialog, menu) still use them.
+        /// </summary>
+        public static void ReleaseDeadMaterials()
+        {
+            var deadKeys = new List<(Material, Material, int)>();
+            foreach (var (key, onTop) in _onTopMaterials)
+            {
+                if (key.Item1 != null && onTop != null)
+                    continue;
+
+                deadKeys.Add(key);
+                if (onTop != null)
+                    Destroy(onTop);
+            }
+
+            foreach (var key in deadKeys)
+                _onTopMaterials.Remove(key);
+        }
+
         private static Material GetOnTopMaterial(Material source, Material onTopAsset, int renderQueue)
         {
             var key = (source, onTopAsset, renderQueue);

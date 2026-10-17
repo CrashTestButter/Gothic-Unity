@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Gothic.Core;
 using Gothic.VR.Adapters.Player;
+using Gothic.VR.Adapters.UI;
 
 namespace Gothic.VR.Services
 {
@@ -27,6 +28,7 @@ namespace Gothic.VR.Services
             {
                 _handsOnTopRequesters.Clear();
                 UpdateHands();
+                VRUiOnTop.ReleaseDeadMaterials();
             });
         }
 

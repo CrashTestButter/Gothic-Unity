@@ -43,6 +43,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly MeshService _meshService;
+        [Inject] private readonly Gothic.Core.Services.Vobs.VobService _vobService;
+        [Inject] private readonly Gothic.Core.Services.World.SaveGameService _saveGameService;
 
         
         // Do not eat them twice during destroy time.
@@ -265,6 +267,16 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (isHeld)
                 grabbable.ForceRelease();
 #endif
+
+            // DeveloperConfig.EnableWorldItemSaveState: eaten, it leaves the world's item list too - destroying only the
+            // GameObject left it there and a berry eaten right from the ground was back after loading.
+            var container = go.GetComponent<VobLoader>()?.Container;
+            if (_configService.Dev.EnableWorldItemSaveState && container != null)
+            {
+                _saveGameService.UntrackLooseItem(container);
+                _vobService.RemoveWorldItem(container);
+                yield break;
+            }
 
             Destroy(go);
         }

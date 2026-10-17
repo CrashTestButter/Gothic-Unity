@@ -38,6 +38,35 @@ namespace Gothic.Core.Services.World
     }
 
     /// <summary>
+    /// DeveloperConfig.EnableWorldItemSaveState: what a world's items and chests differ from its world file (.zen) - the
+    /// world is built from the .zen on load and this is applied on top.
+    /// </summary>
+    public class WorldItemsSaveEntry
+    {
+        // WorldItemSaveDomain keys (instance|x|y|z in cm) of world file items that are gone (taken) or moved.
+        public List<string> RemovedItems = new();
+        // Items lying in the world that the world file doesn't have there (dropped, NPC drops, arrows, moved items).
+        public List<WorldItemSaveEntry> AddedItems = new();
+        // Chests whose contents or lock changed.
+        public List<ContainerSaveEntry> Containers = new();
+    }
+
+    public class WorldItemSaveEntry
+    {
+        public string Instance;         // Daedalus symbol name, e.g. "ITFO_BEER"
+        public int Amount;
+        public float[] Position;        // [x, y, z] in ZenKit units (cm)
+        public float[] Rotation;        // Unity quaternion [x, y, z, w]
+    }
+
+    public class ContainerSaveEntry
+    {
+        public string Key;              // WorldItemSaveDomain key (name|x|y|z in cm)
+        public string Contents;         // "ITMI_GOLD:20,ITFO_APPLE:2"
+        public bool IsLocked;
+    }
+
+    /// <summary>
     /// A mover's or trigger's runtime state (LogicVobSaveState). Only changed ones are saved.
     /// </summary>
     public class LogicVobSaveEntry
@@ -59,7 +88,7 @@ namespace Gothic.Core.Services.World
 
     public class UnityCustomSave
     {
-        public int Version = 3;
+        public int Version = 4;
         public string WorldName;
 
         // Hero transform
@@ -100,5 +129,9 @@ namespace Gothic.Core.Services.World
 
         // Movers and triggers per world (upper case world file name). Null in older saves.
         public Dictionary<string, List<LogicVobSaveEntry>> LogicVobsByWorld;
+
+        // Items and chests per world (upper case world file name), only what differs from the world file. Null in older
+        // saves.
+        public Dictionary<string, WorldItemsSaveEntry> ItemsByWorld;
     }
 }

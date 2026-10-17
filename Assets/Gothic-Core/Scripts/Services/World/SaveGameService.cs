@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Gothic.Core.Const;
+using Gothic.Core.Domain.Vobs;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Proxy;
@@ -99,6 +100,13 @@ namespace Gothic.Core.Services.World
         // loaded save, stored when leaving a world. Coming back rebuilds the world's NPCs from it.
         private readonly Dictionary<string, Dictionary<string, NpcSaveEntry>> _worldNpcStates = new();
 
+        // DeveloperConfig.EnableWorldItemSaveState: items/chests of every world (upper case world name) as the loaded save
+        // has them - applied when a world is built, carried forward for worlds not visited this session.
+        private readonly Dictionary<string, WorldItemsSaveEntry> _worldItemStates = new();
+
+        private bool IsWorldItemSaveState =>
+            _configService.Dev.EnableSaveLoadSystem && _configService.Dev.EnableWorldItemSaveState;
+
         /// <summary>
         /// The world being entered was visited before in this game (session or loaded save) - its NPCs are rebuilt from
         /// the init snapshot plus their stored state, also in a game started new.
@@ -151,6 +159,17 @@ namespace Gothic.Core.Services.World
         {
             if (container?.Vob == null) return;
             _looseWorldItems.Remove(container.Vob);
+        }
+
+        /// <summary>
+        /// The item went into a chest - it isn't lying in the world anymore (the chest's contents have it).
+        /// </summary>
+        public void RemoveItemFromWorld(VobContainer container)
+        {
+            if (container?.Vob == null || !_worlds.ContainsKey(CurrentWorldName))
+                return;
+            _looseWorldItems.Remove(container.Vob);
+            CurrentWorldData.Vobs.Remove(container.Vob);
         }
 
         /// <summary>
@@ -221,6 +240,7 @@ namespace Gothic.Core.Services.World
             LogicVobSaveState.Clear();
             _spawnedNpcsByWorld.Clear();
             _worldNpcStates.Clear();
+            _worldItemStates.Clear();
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
             _npcSnapshots.Clear();
@@ -310,9 +330,24 @@ namespace Gothic.Core.Services.World
                     worldVobs.Add(vob);
             }
 
+            // DeveloperConfig.EnableWorldItemSaveState: the world file's items/chests as baseline, then the saved state.
+            WorldItemBaseline itemBaseline = null;
+            if (IsWorldItemSaveState)
+            {
+                itemBaseline = WorldItemSaveDomain.CreateBaseline(worldVobs);
+                if (_worldItemStates.TryGetValue(CurrentWorldName.ToUpperInvariant(), out var itemState))
+                {
+                    WorldItemSaveDomain.Apply(worldVobs, itemBaseline, itemState, out var removed, out var added,
+                        out var containers);
+                    Logger.Log($"[SaveGame] Items of '{CurrentWorldName}': {removed} taken/moved, {added} dropped, " +
+                               $"{containers} chest(s) changed", LogCat.Loading);
+                }
+            }
+
             _worlds[CurrentWorldName] = new WorldContainer
             {
                 OriginalWorld = originalWorld,
+                ItemBaseline = itemBaseline,
                 SaveGameWorld = null, // Set lazily in SaveCurrentGame when writing WORLD.SAV
 
                 Mesh = (Mesh)originalWorld.Mesh, // Do not cache or memory consumption will be way too high
@@ -367,6 +402,8 @@ namespace Gothic.Core.Services.World
         {
             // A trade isn't saved: the reserved offers go back to their owners first.
             ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Trade.TradeService>().Cancel();
+
+            SyncWorldItemPositions();
 
             var saveGame = new SaveGame(_contextGameVersionService.Version);
             saveGame.Metadata.Title = title;
@@ -607,12 +644,63 @@ namespace Gothic.Core.Services.World
             data.SpawnedNpcsByWorld = _configService.Dev.EnableSpawnedNpcSaves
                 ? _spawnedNpcsByWorld.ToDictionary(w => w.Key, w => w.Value)
                 : null;
+            data.ItemsByWorld = IsWorldItemSaveState ? CaptureWorldItemStates() : null;
 
             var json = JsonConvert.SerializeObject(data, Formatting.Indented);
             var savePath = GetUnityCustomSavePath(saveGameId);
             Directory.CreateDirectory(Path.GetDirectoryName(savePath));
             File.WriteAllText(savePath, json);
             Logger.Log($"SaveUnityCustomData: level={data.HeroLevel} hp={data.HeroAttributes[0]}/{data.HeroAttributes[1]} inv={data.HeroInventory?.Count ?? 0} npcs={data.Npcs.Count} attitudes={data.GuildAttitudes?.Length ?? 0}", LogCat.Loading);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableWorldItemSaveState: the current world's items take their GameObjects' place (dropped,
+        /// thrown, pushed around) - on save and before another world is loaded, whose GameObjects are gone then.
+        /// The item's body (Rigidbody) is what falls and gets carried; it sits at its loader without an offset.
+        /// </summary>
+        public void SyncWorldItemPositions()
+        {
+            if (!IsWorldItemSaveState || string.IsNullOrEmpty(CurrentWorldName))
+                return;
+
+            var synced = 0;
+            foreach (var container in _multiTypeCacheService.VobCache)
+            {
+                if (container?.Vob is not IItem || container.Go == null)
+                    continue;
+
+                var body = container.Go.GetComponentInChildren<Rigidbody>(true);
+                var itemTransform = body != null ? body.transform : container.Go.transform;
+                var position = itemTransform.position.ToZkVector();
+                if (System.Numerics.Vector3.Distance(position, container.Vob.Position) > 10f)
+                    Logger.Log($"[SaveGame] {container.Vob.Name} moved {container.Vob.Position} -> {position}",
+                        LogCat.Loading);
+                container.Vob.Position = position;
+                container.Vob.Rotation = itemTransform.rotation.ToZkMatrix();
+                synced++;
+            }
+            Logger.Log($"[SaveGame] {synced} item position(s) of '{CurrentWorldName}' synced", LogCat.Loading);
+        }
+
+        /// <summary>
+        /// Items/chests of every world visited this session against their world files, plus the loaded save's state of
+        /// worlds not visited since.
+        /// </summary>
+        private Dictionary<string, WorldItemsSaveEntry> CaptureWorldItemStates()
+        {
+            var states = new Dictionary<string, WorldItemsSaveEntry>(_worldItemStates);
+            foreach (var (worldName, container) in _worlds)
+            {
+                if (container.ItemBaseline == null)
+                    continue;
+
+                var state = WorldItemSaveDomain.Capture(container.Vobs, container.ItemBaseline);
+                states[worldName.ToUpperInvariant()] = state;
+                Logger.Log($"[SaveGame] Items of '{worldName}': {state.RemovedItems.Count} taken/moved, " +
+                           $"{state.AddedItems.Count} lying elsewhere, {state.Containers.Count} chest(s) changed",
+                    LogCat.Loading);
+            }
+            return states;
         }
 
         /// <summary>
@@ -744,6 +832,7 @@ namespace Gothic.Core.Services.World
         private void LoadUnityCustomData(SlotId saveGameId)
         {
             var path = GetUnityCustomSavePath(saveGameId);
+            _worldItemStates.Clear();
             if (!File.Exists(path))
             {
                 LogicVobSaveState.Clear();
@@ -765,6 +854,11 @@ namespace Gothic.Core.Services.World
             if (_configService.Dev.EnableSpawnedNpcSaves && unitySave?.SpawnedNpcsByWorld != null)
                 foreach (var (world, entries) in unitySave.SpawnedNpcsByWorld)
                     _spawnedNpcsByWorld[world.ToUpperInvariant()] = entries;
+
+            // DeveloperConfig.EnableWorldItemSaveState: items/chests of every world, applied when a world is built.
+            if (IsWorldItemSaveState && unitySave?.ItemsByWorld != null)
+                foreach (var (world, entry) in unitySave.ItemsByWorld)
+                    _worldItemStates[world.ToUpperInvariant()] = entry;
 
             // DeveloperConfig.EnableLogicVobSaveState: movers/triggers of every world; the saved world's become pending.
             LogicVobSaveState.Import(_configService.Dev.EnableLogicVobSaveState ? unitySave?.LogicVobsByWorld : null);

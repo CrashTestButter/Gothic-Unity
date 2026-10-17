@@ -193,6 +193,7 @@ namespace Gothic.Core.Services
                 // Only clear _pendingNpcInit (world-specific) — keep _pendingNpcRestore alive so dirty
                 // NPCs modified in other worlds are restored when we revisit those worlds this session.
                 _saveGameService.ClearPendingNpcInit();
+                _saveGameService.SyncWorldItemPositions();
                 _saveGameService.StoreLogicVobStates();
                 _saveGameService.StoreSpawnedNpcs();
                 _saveGameService.StoreWorldNpcStates();

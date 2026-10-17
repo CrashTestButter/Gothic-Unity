@@ -233,6 +233,10 @@ namespace Gothic.Core.Models.Config
                  "on load and when coming back to a world - before every mover was closed again after loading.")]
         public bool EnableLogicVobSaveState = true;
 
+        [Tooltip("V1: Items lying in a world (taken, dropped, NPC drops, arrows, moved) and chest contents/locks are saved " +
+                 "as the difference to the world file - a beer taken before saving lay in the world again after loading.")]
+        public bool EnableWorldItemSaveState = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

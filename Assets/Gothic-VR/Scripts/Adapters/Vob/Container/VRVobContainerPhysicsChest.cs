@@ -54,9 +54,6 @@ namespace Gothic.VR.Adapters.Vob.Container
         private bool _onOpenedHandled;
         private bool _onClosedHandled;
 
-        // Items grabbed out of this chest during the session.
-        // Tracked so Contents is updated before WORLD.SAV is written.
-        private readonly HashSet<string> _takenItemNames = new(StringComparer.OrdinalIgnoreCase);
         
         
         [Serializable]
@@ -308,25 +305,83 @@ namespace Gothic.VR.Adapters.Vob.Container
                 socket.AudioGrabbedFallback = grabAudio;
                 socket.AudioReleasedFallback = releaseAudio;
                 socket.Grabbed.AddListener(OnSocketGrabbed);
+                socket.Released.AddListener(OnSocketReleased);
             }
         }
 
+        /// <summary>
+        /// Something is put into a chest socket (back, or from the backpack/world): it's in the chest's contents now,
+        /// not lying in the world. Sockets grabbing items as the chest fills don't count - registered after that.
+        /// </summary>
         private void OnSocketGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
         {
-            if (grabber is HVRSocket) return; // item moved between sockets, not taken by hand
-            var vobLoader = grabbable.GetComponentInParent<VobLoader>();
-            if (vobLoader?.Container == null) return;
-            _takenItemNames.Add(vobLoader.Container.Vob.Name);
-            UpdateContentsString();
+            var container = grabbable.GetComponentInParent<VobLoader>()?.Container;
+            if (container?.Vob is not IItem item)
+                return;
+
+            ChangeContents(GetInstanceName(item), Math.Max(1, item.Amount));
+            _saveGameService.RemoveItemFromWorld(container);
         }
-        
-        private void UpdateContentsString()
+
+        /// <summary>
+        /// A socket lets go of an item. Taken out when it isn't socketed a frame later (a hand holds it) - not when it
+        /// only moves to another socket of this chest (Grabbed adds it again).
+        /// Before, only HVR's socket grab was listened to (its grabber is the socket itself) and nothing ever left the
+        /// contents: two beers taken out were in the backpack and still in the chest after loading.
+        /// </summary>
+        private void OnSocketReleased(HVRGrabberBase grabber, HVRGrabbable grabbable)
         {
-            if (_vobContainer == null) return;
-            var remaining = ParseContent(_vobContainer.Contents)
-                .Where(i => !_takenItemNames.Contains(i.Name))
-                .ToList();
-            _vobContainer.Contents = string.Join(",", remaining.Select(i => $"{i.Name}:{i.Amount}"));
+            var container = grabbable.GetComponentInParent<VobLoader>()?.Container;
+            if (container?.Vob is not IItem item)
+                return;
+
+            StartCoroutine(RemoveFromContentsIfTaken(grabbable, GetInstanceName(item), Math.Max(1, item.Amount)));
+        }
+
+        private IEnumerator RemoveFromContentsIfTaken(HVRGrabbable grabbable, string itemName, int amount)
+        {
+            yield return null;
+            if (grabbable == null || grabbable.IsSocketed)
+                yield break;
+
+            ChangeContents(itemName, -amount);
+        }
+
+        /// <summary>
+        /// IContainer.Contents is what a save stores for this chest (DeveloperConfig.EnableWorldItemSaveState).
+        /// </summary>
+        private void ChangeContents(string itemName, int amountChange)
+        {
+            if (_vobContainer == null || string.IsNullOrEmpty(itemName))
+                return;
+
+            var items = string.IsNullOrEmpty(_vobContainer.Contents)
+                ? new List<ContentItem>()
+                : ParseContent(_vobContainer.Contents);
+            var index = items.FindIndex(i => i.Name.Equals(itemName, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                if (amountChange > 0)
+                    items.Add(new ContentItem { Name = itemName, Amount = amountChange });
+            }
+            else
+            {
+                var entry = items[index];
+                entry.Amount += amountChange;
+                if (entry.Amount > 0)
+                    items[index] = entry;
+                else
+                    items.RemoveAt(index);
+            }
+
+            _vobContainer.Contents = string.Join(",", items.Select(i => $"{i.Name}:{i.Amount}"));
+            Logger.Log($"[VRVobContainerPhysicsChest] {itemName} {(amountChange > 0 ? "+" : "")}{amountChange} -> " +
+                       $"'{_vobContainer.Contents}'", LogCat.VR);
+        }
+
+        private static string GetInstanceName(IItem item)
+        {
+            return !string.IsNullOrEmpty(item.Instance) ? item.Instance : item.Name;
         }
 
         /// <summary>

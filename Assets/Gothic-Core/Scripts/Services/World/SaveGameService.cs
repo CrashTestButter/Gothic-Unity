@@ -532,8 +532,11 @@ namespace Gothic.Core.Services.World
             foreach (var (vob, looseItem) in _looseWorldItems)
             {
                 if (looseItem.Go == null) continue;
-                vob.Position = looseItem.Go.transform.position.ToZkVector();
-                vob.Rotation = looseItem.Go.transform.rotation.ToZkMatrix();
+                // DeveloperConfig.EnableWorldItemSaveState: the item's body, not its loader - a world item moved by
+                // hand is tracked here too (every hand grab), and the loader's spot put it back where it was.
+                var itemTransform = IsWorldItemSaveState ? GetItemTransform(looseItem) : looseItem.Go.transform;
+                vob.Position = itemTransform.position.ToZkVector();
+                vob.Rotation = itemTransform.rotation.ToZkMatrix();
             }
 
             _npcMeshCullingService.UpdateVobPositionOfVisibleNpcs();
@@ -689,8 +692,7 @@ namespace Gothic.Core.Services.World
                 if (container?.Vob is not IItem || container.Go == null)
                     continue;
 
-                var body = container.Go.GetComponentInChildren<Rigidbody>(true);
-                var itemTransform = body != null ? body.transform : container.Go.transform;
+                var itemTransform = GetItemTransform(container);
                 var position = itemTransform.position.ToZkVector();
                 if (System.Numerics.Vector3.Distance(position, container.Vob.Position) > 10f)
                     Logger.Log($"[SaveGame] {container.Vob.Name} moved {container.Vob.Position} -> {position}",
@@ -700,6 +702,15 @@ namespace Gothic.Core.Services.World
                 synced++;
             }
             Logger.Log($"[SaveGame] {synced} item position(s) of '{CurrentWorldName}' synced", LogCat.Loading);
+        }
+
+        /// <summary>
+        /// The item's body (Rigidbody) is what falls and gets carried; it sits at its loader without an offset.
+        /// </summary>
+        private static Transform GetItemTransform(VobContainer container)
+        {
+            var body = container.Go.GetComponentInChildren<Rigidbody>(true);
+            return body != null ? body.transform : container.Go.transform;
         }
 
         /// <summary>

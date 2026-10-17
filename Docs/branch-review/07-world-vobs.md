@@ -92,6 +92,12 @@
 - **NPCs wait for the world's VOBs:** VOBs are created in the background after the world is entered
   (`InitVobCoroutine`); an NPC on a scaffold snapped to the ground below or fell through it. It stays kinematic until
   the VOB creation queue is empty (max 10 s), then snaps to the ground.
+- **Dig spots are treasure X marks only** (`f59f1737`): every mob used with a melee tool counted (MT's anvil with the
+  sledgehammer, G2's `Goldhacken`/`Stomp`) - their mob dialog was skipped, `SMITHERY_S1` left the hero's
+  `AIV_INVINCIBLE` set (all NPCs ignored him) and one anvil took the renderers of three anvils nested below it: its
+  bounds covered the whole Old Camp. Dig spots are `B_SCGetTreasure` with the VOB's own renderers now.
+- **Mob dialogs next to their own mob** (`598e1bd0`): the dialog anchor had the same nested renderers and landed
+  hundreds of meters away - `main`'s range check didn't start the smithing dialog.
 
 ## Key commits
 
@@ -110,7 +116,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 2026-10-16: `e276d797` level change arrival fallback
 
 2026-10-17: `39fbe01c` animation combinations (miners dig) · `63ce6bfa` occupied mobs · `f11dc5c6` world points
-reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs
+reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs · `f59f1737` dig spots treasure only ·
+`598e1bd0` mob dialog anchor
 
 ## Main files
 
@@ -136,7 +143,7 @@ reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs
 2026-10-16: `EnableLevelChangeSpawnFallback`
 
 2026-10-17: `EnableAnimationCombines`, `EnableMobOccupancy`, `EnableWorldPointsReset`, `EnableNewGameSpawnReset`,
-`EnableNpcWaitsForWorldVobs`
+`EnableNpcWaitsForWorldVobs`, `EnableDigSpotTreasureOnly`, `EnableMobDialogOwnBounds`
 
 ## Review notes
 
@@ -170,3 +177,5 @@ reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs
 - G1 Old Mine: miners dig with pickaxe sounds and ore splinters, each at its own vein; benches still seat two.
 - Load an Old Mine save, then New game: you start next to Diego (log `[Spawn] World start 'START'`). Load a save in
   the Old Mine: miners stay on their scaffolds.
+- Mroczne Tajemnice Old Camp: touch an anvil with the sledgehammer in the backpack - the smithing dialog opens next
+  to it; fight with a sword near the smithy - no `[VRDigSpot] Hit` in the log.

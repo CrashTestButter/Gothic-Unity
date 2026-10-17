@@ -71,6 +71,14 @@
   fight back. The `_End` is passed to `StartState` and called when the queue reaches it (`AiHandler.CallStateEnd`,
   with the old state's other/victim); a talking NPC (dialog lines queued) keeps its queue so the lines come first,
   like the engine's AI message - the fight or the dragon's change follow. Elsewhere the queue is still cleared at once.
+- **Knockouts are the engine's state change** (`0a7f3944`): `FightService` starts `ZS_Unconscious` through
+  `ExtAiStartState(..., isScriptCall: false)` - no old `_End` (`ZS_ProclaimAndPunish_End` queued weapon draws and new
+  states on the lying NPC, `ZS_Unconscious` never started), no waiting for dialog lines. A knocked out NPC gets no
+  perception but `PERC_ASSESSMAGIC` until he stands up (what `ZS_Unconscious` enables), also in the frames before the
+  state starts.
+- **A state's `_End` runs once** (`fe43a81b`): `ZS_Attack_End` says `$NeverTryThatAgain` and calls
+  `AI_StartState(..., 1, ...)` - that took the running `ZS_Attack_End` as the old state's `_End` and ran it again. A
+  state in its End/AfterEnd phase passes no `_End` on.
 
 ## Key commits
 
@@ -87,7 +95,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 
 2026-10-16: `63eddacb` Hlp_GetNpc resolves instance variables
 
-2026-10-17: `18de3228` AI_StartState runs the old state's _End after a dialog's lines
+2026-10-17: `18de3228` AI_StartState runs the old state's _End after a dialog's lines · `0a7f3944` knocked out NPCs
+stay down · `fe43a81b` a state's _End runs once
 
 ## Main files
 
@@ -109,7 +118,7 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 
 2026-10-16: `EnableHlpGetNpcVariables`
 
-2026-10-17: `EnableQueuedStateEnd`
+2026-10-17: `EnableQueuedStateEnd`, `EnableDownedNpcPerceptions`
 
 ## Review notes
 
@@ -137,3 +146,5 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 - Mroczne Tajemnice ancient temple: finish the Black Dragon's talk - it teleports away and Algirion appears.
 - A dialog that ends in a fight (G1 MT Rost): the NPC finishes its lines, then attacks (log `ZS_TALK_END (state ended
   by AI_StartState)`); afterwards other NPCs talk to you and fight back.
+- Knock out a gate guard: he lies until he stands up (`Start new routine >ZS_UNCONSCIOUS<`), no reaction to drawn
+  weapons or fights meanwhile. Get beaten by a guard: "$NeverTryThatAgain" once, then he searches you.

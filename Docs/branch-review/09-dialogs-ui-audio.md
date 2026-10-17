@@ -49,6 +49,14 @@
   suggests its old name, a physical keyboard types too. VR registers runtime canvases for the UI laser through
   `GlobalEventDispatcher.UiCanvasShown/Hidden`.
 - **Menu zoom:** the right stick pulls the VR menu closer (down) or pushes it away (up), 1-8 m, kept for the session.
+  Removed with the 2026-10-17 merge: `main`'s menu is 1.5 m away.
+
+**Merged from `main` 2026-10-17** (`45661ade`, PR #398, details in [merge-2026-10-17.md](merge-2026-10-17.md)):
+`main`'s dialog bubble (soft hold, END on walking away), on-top UI configured in prefabs (`VRUiOnTop` +
+`VRUiOnTopService`), `VRFollowCamera`, `VRPrintScreen` and `Snd_Play` through `AudioService` replace the branch's
+versions - `VRScreenMessages` and `VRMenuBillboard` are gone. Kept on top: the mob dialog anchor, the dialog range by
+body size, polling HP bars and `VRUiOnTop.CopyTo` for the hero's bars and the chapter screen (the bar fill gets a sprite
+of its material's texture - `main`'s shader samples the Canvas texture, the fill came out white).
 
 ## Key commits
 
@@ -77,6 +85,9 @@
 
 2026-10-11/13: `EnableMusicZonesByPosition`, `EnableDialogsPerGameVm`, `EnableSaveNameKeyboard` (removed 2026-10-16: `main`'s keyboard), `EnableMenuZoom`
 
+Removed with the 2026-10-17 merge (`main` has them always on or replaced): `EnableDialogFreeMovement`,
+`DialogMaxDistance`, `EnableDialogAlwaysOnTop`, `EnableScreenMessages`, `EnableMenuZoom`.
+
 ## Review notes
 
 - ⚠️ **`VRScreenMessages` and `VRCinema` use static `_instance` singletons** instead of DI. They should be
@@ -95,4 +106,5 @@
 - G2: walk into and out of the pirate camp several times - the music changes, no crash; at night night themes.
 - G2 anvil: "Forge a sword" shows the weapon names (also after loading a save).
 - Save the game: the keyboard shows, type a name, OK - the slot shows the name; X saves nothing.
-- In the menu push the right stick up/down - the menu moves away/closer; reopen it - same distance.
+- After the merge: the hero's HP/mana bars on the wrist have their colors and stay above the other hand; PrintScreen
+  texts and the chapter screen follow the head; Diego on the bench talks seated.

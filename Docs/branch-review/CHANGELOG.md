@@ -13,6 +13,17 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-17 (midnight): main merged, knocked out NPCs, anvils
+
+- `main`'s new dialogs and UI are in (see [the merge notes](merge-2026-10-17.md)): walking away from a dialog slows
+  you down at the edge and ends it; the dialog box, subtitles, menu and screen messages are drawn over walls and
+  follow your head turns; the menu is 1.5 m in front of you instead of 5 m (the stick zoom is gone with it).
+- A knocked out NPC stays down until he stands up - before he drew his weapon, fled or joined fights while lying.
+- The NPC who beats you says "Try that again and you'll regret it" once, not twice, then takes your ore.
+- Mroczne Tajemnice's anvils open their smithing dialog again (with the sledgehammer in the backpack). Swinging a
+  sword anywhere in the Old Camp no longer "hit" an anvil and made you invisible to every NPC: guards ran up, said
+  their line and stood still, nobody cared about drawn weapons.
+
 ## 2026-10-17 (night): dialogs that end in a fight, items moved by hand
 
 - An NPC who attacks you at the end of a dialog says all its lines first (and you yours), then attacks - the dragon

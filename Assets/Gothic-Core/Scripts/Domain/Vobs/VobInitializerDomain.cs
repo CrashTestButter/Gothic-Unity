@@ -175,33 +175,46 @@ namespace Gothic.Core.Domain.Vobs
                     // This value is always true when a new game/world is loaded. (Compared with G1 save game.)
                     ((TriggerList)vob).SendOnTrigger = true;
 
-                    CreateTriggerVobGo<TriggerListHandler>($"TriggerList_{vob.Name}", parent).Init((ITriggerList)vob);
-                    return;
+                    var triggerList = CreateTriggerVobGo<TriggerListHandler>($"TriggerList_{vob.Name}", parent);
+                    triggerList.Init((ITriggerList)vob);
+                    go = triggerList.gameObject;
+                    break;
                 case VirtualObjectType.oCTriggerScript:
                     go = CreateTriggerScript((ITriggerScript)vob, parent);
-                    return;
+                    break;
                 case VirtualObjectType.zCCodeMaster:
-                    CreateTriggerVobGo<CodeMasterHandler>($"CodeMaster_{vob.Name}", parent).Init((ICodeMaster)vob);
-                    return;
+                    var codeMaster = CreateTriggerVobGo<CodeMasterHandler>($"CodeMaster_{vob.Name}", parent);
+                    codeMaster.Init((ICodeMaster)vob);
+                    go = codeMaster.gameObject;
+                    break;
                 case VirtualObjectType.zCTrigger:
-                    CreateTriggerZoneGo<TriggerZoneHandler>($"TriggerZone_{vob.Name}", vob, parent).Init((ITrigger)vob);
-                    return;
+                    var triggerZone = CreateTriggerZoneGo<TriggerZoneHandler>($"TriggerZone_{vob.Name}", vob, parent);
+                    triggerZone.Init((ITrigger)vob);
+                    go = triggerZone.gameObject;
+                    break;
                 case VirtualObjectType.zCTriggerUntouch:
-                    CreateTriggerZoneGo<TriggerUntouchHandler>($"TriggerUntouch_{vob.Name}", vob, parent)
-                        .Init((ITriggerUntouch)vob);
-                    return;
+                    var triggerUntouch =
+                        CreateTriggerZoneGo<TriggerUntouchHandler>($"TriggerUntouch_{vob.Name}", vob, parent);
+                    triggerUntouch.Init((ITriggerUntouch)vob);
+                    go = triggerUntouch.gameObject;
+                    break;
                 case VirtualObjectType.zCTriggerWorldStart:
-                    CreateTriggerVobGo<TriggerWorldStartHandler>($"TriggerWorldStart_{vob.Name}", parent)
-                        .Init((ITriggerWorldStart)vob);
-                    return;
+                    var triggerWorldStart =
+                        CreateTriggerVobGo<TriggerWorldStartHandler>($"TriggerWorldStart_{vob.Name}", parent);
+                    triggerWorldStart.Init((ITriggerWorldStart)vob);
+                    go = triggerWorldStart.gameObject;
+                    break;
                 case VirtualObjectType.zCMoverController:
-                    CreateTriggerVobGo<MoverControllerHandler>($"MoverController_{vob.Name}", parent)
-                        .Init((IMoverController)vob);
-                    return;
+                    var moverController =
+                        CreateTriggerVobGo<MoverControllerHandler>($"MoverController_{vob.Name}", parent);
+                    moverController.Init((IMoverController)vob);
+                    go = moverController.gameObject;
+                    break;
                 case VirtualObjectType.zCMessageFilter:
-                    CreateTriggerVobGo<MessageFilterHandler>($"MessageFilter_{vob.Name}", parent)
-                        .Init((IMessageFilter)vob);
-                    return;
+                    var messageFilter = CreateTriggerVobGo<MessageFilterHandler>($"MessageFilter_{vob.Name}", parent);
+                    messageFilter.Init((IMessageFilter)vob);
+                    go = messageFilter.gameObject;
+                    break;
                 case VirtualObjectType.zCVobScreenFX:
                 case VirtualObjectType.oCCSTrigger:
                 case VirtualObjectType.zCVobLensFlare:
@@ -722,6 +735,8 @@ namespace Gothic.Core.Domain.Vobs
             var min = vob.BoundingBox.Min.ToUnityVector();
             var max = vob.BoundingBox.Max.ToUnityVector();
             handler.transform.position = (min + max) / 2f;
+            // The bounding box is a world-space AABB, but the loader above may be rotated.
+            handler.transform.rotation = Quaternion.identity;
             handler.transform.localScale = Vector3.Max(max - min, Vector3.one * 0.01f);
             handler.gameObject.AddComponent<BoxCollider>().isTrigger = true;
 
@@ -735,6 +750,8 @@ namespace Gothic.Core.Domain.Vobs
             var min = vob.BoundingBox.Min.ToUnityVector();
             var max = vob.BoundingBox.Max.ToUnityVector();
             vobObj.transform.position = (min + max) / 2f;
+            // The bounding box is a world-space AABB, but the loader above may be rotated.
+            vobObj.transform.rotation = Quaternion.identity;
 
             vobObj.transform.localScale = max - min;
             
@@ -797,7 +814,7 @@ namespace Gothic.Core.Domain.Vobs
         /// </summary>
         private void EnsureOwnVobLoader(IVirtualObject vob, GameObject go)
         {
-            if (vob is not (IInteractiveObject or IItem))
+            if (vob is not (IInteractiveObject or IItem) && !IsNamedVobType(vob.Type))
                 return;
 
             var loader = go.GetComponentInParent<VobLoader>();
@@ -805,8 +822,19 @@ namespace Gothic.Core.Domain.Vobs
                 return;
 
             AddOwnVobLoader(vob, go);
+            // Movers and triggers are looked up by name (Wld_SendTrigger, chained targets), child VOBs included.
+            if (IsNamedVobType(vob.Type))
+                _gameStateService.RegisterNamedVob(go.GetComponent<VobLoader>().Container);
             Logger.Log($"[ChildVob] '{vob.Name}' ({vob.Type}) under '{loader?.Container?.Vob?.Name}' got its own " +
                        "VobLoader.", LogCat.Vob);
+        }
+
+        private static bool IsNamedVobType(VirtualObjectType type)
+        {
+            return type is VirtualObjectType.zCMover or VirtualObjectType.oCTriggerScript
+                or VirtualObjectType.zCTriggerList or VirtualObjectType.zCCodeMaster
+                or VirtualObjectType.zCTrigger or VirtualObjectType.zCMoverController
+                or VirtualObjectType.zCMessageFilter;
         }
 
         private static void AddOwnVobLoader(IVirtualObject vob, GameObject go)

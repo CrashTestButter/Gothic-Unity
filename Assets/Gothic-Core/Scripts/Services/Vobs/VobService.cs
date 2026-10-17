@@ -532,46 +532,15 @@ namespace Gothic.Core.Services.Vobs
                     break;
 
                 case VirtualObjectType.zCMover:
-                    var moverName = container.Vob.Name;
-                    if (!string.IsNullOrEmpty(moverName))
-                    {
-                        var moverKey = moverName.ToUpper();
-                        if (!_gameStateService.VobsMover.TryGetValue(moverKey, out var moverList))
-                            _gameStateService.VobsMover[moverKey] = moverList = new();
-                        moverList.Add(container);
-                    }
-                    break;
-
                 case VirtualObjectType.oCTriggerScript:
-                    // Vob.Name may be empty; GO name = "{GetVisualName()} (Loader)" which matches mob.Target.
-                    var triggerName = container.Go.name.Replace(" (Loader)", "");
-                    RegisterTriggerVob(_gameStateService.VobsTriggerScript, triggerName, container);
-                    break;
                 case VirtualObjectType.zCTriggerList:
-                    RegisterTriggerVob(_gameStateService.VobsTriggerList, container.Vob.Name, container);
-                    break;
                 case VirtualObjectType.zCCodeMaster:
-                    RegisterTriggerVob(_gameStateService.VobsCodeMaster, container.Vob.Name, container);
-                    break;
                 case VirtualObjectType.zCTrigger:
-                    RegisterTriggerVob(_gameStateService.VobsTrigger, container.Vob.Name, container);
-                    break;
                 case VirtualObjectType.zCMoverController:
-                    RegisterTriggerVob(_gameStateService.VobsMoverController, container.Vob.Name, container);
-                    break;
                 case VirtualObjectType.zCMessageFilter:
-                    RegisterTriggerVob(_gameStateService.VobsMessageFilter, container.Vob.Name, container);
+                    _gameStateService.RegisterNamedVob(container);
                     break;
             }
-        }
-
-        private void RegisterTriggerVob(Dictionary<string, VobContainer> registry, string name, VobContainer container)
-        {
-            if (string.IsNullOrEmpty(name))
-                return;
-
-            registry[name.ToUpper()] = container;
-            Logger.Log($"[VobService] Registered {container.Vob.Type}: '{name}'", LogCat.Vob);
         }
 
         /// <summary>
@@ -582,6 +551,9 @@ namespace Gothic.Core.Services.Vobs
         /// </summary>
         public void DispatchTrigger(string name, string senderName = "")
         {
+            if (string.IsNullOrEmpty(name))
+                return;
+
             // Gothic's engine routes trigger messages through an event manager queue (with optional
             // fireDelay), so a script re-triggering itself is a common timer pattern - it re-fires on
             // a later tick. We dispatch synchronously instead, which turns such a cycle into infinite
@@ -610,12 +582,12 @@ namespace Gothic.Core.Services.Vobs
         {
             if (TryGetMovers(name, out var movers))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' -> mover(s) (Toggle)", LogCat.Vob);
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> mover(s) (OnTrigger)", LogCat.Vob);
                 foreach (var mover in movers)
                 {
                     if (mover?.Go == null || !mover.Go)
                         continue;
-                    mover.Go.GetComponentInChildren<MoverAdapter>()?.Toggle();
+                    mover.Go.GetComponentInChildren<MoverAdapter>()?.OnTrigger();
                 }
                 return;
             }
@@ -672,20 +644,23 @@ namespace Gothic.Core.Services.Vobs
         }
 
         /// <summary>
-        /// Fires an untrigger event to the named VOB: movers close, a CodeMaster can reset its sequence, a
-        /// MessageFilter runs its OnUntrigger action.
+        /// Fires an untrigger event to the named VOB: trigger-controlled movers close, a CodeMaster can reset its
+        /// sequence, a MessageFilter runs its OnUntrigger action.
         /// senderName: VOB that sent the untrigger (for CodeMaster slave matching).
         /// </summary>
         public void DispatchUntrigger(string name, string senderName = "")
         {
+            if (string.IsNullOrEmpty(name))
+                return;
+
             if (TryGetMovers(name, out var movers))
             {
-                Logger.Log($"[VobService] DispatchUntrigger '{name}' -> mover(s) (Close)", LogCat.Vob);
+                Logger.Log($"[VobService] DispatchUntrigger '{name}' -> mover(s) (OnUntrigger)", LogCat.Vob);
                 foreach (var mover in movers)
                 {
                     if (mover?.Go == null || !mover.Go)
                         continue;
-                    mover.Go.GetComponentInChildren<MoverAdapter>()?.Close();
+                    mover.Go.GetComponentInChildren<MoverAdapter>()?.OnUntrigger();
                 }
                 return;
             }
@@ -721,6 +696,12 @@ namespace Gothic.Core.Services.Vobs
         /// </summary>
         public bool TryGetMovers(string name, out List<VobContainer> containers)
         {
+            if (string.IsNullOrEmpty(name))
+            {
+                containers = null;
+                return false;
+            }
+
             var start = 0;
             while (start < name.Length && !char.IsLetterOrDigit(name[start]))
                 start++;

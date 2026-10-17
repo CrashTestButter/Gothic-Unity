@@ -171,16 +171,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                 {
                     GlobalEventDispatcher.LockPickComboFinished.Invoke(_lockPick, _lockable, (int)_handSide);
 
-                    // Reactivate rotation
-                    _hvrPhysicsDoor.Unlock();
-
-                    // Get the door's forward direction in world space
-                    var pushDirection = _hvrPhysicsDoor.transform.forward;
-                    var pushForce = 10f;
-
-                    // Apply force in the door's forward direction
-                    _hvrPhysicsDoor.GetComponent<Rigidbody>().AddForce(pushDirection * pushForce, ForceMode.Impulse);
-                    gameObject.SetActive(false);
+                    UnlockAndPushOpen();
 
                     return DoorLockStatus.Unlocked;
                 }
@@ -236,9 +227,18 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
             // LockPickComboFinished also gives the success vibration (VrHapticsService).
             PlaySound(_vmService.PickLockSuccessSoundName, _vmService.DoorLockSoundName);
             GlobalEventDispatcher.LockPickComboFinished.Invoke(vobLoader.Container, _lockable, (int)hand);
+            UnlockAndPushOpen();
+        }
+
+        private void UnlockAndPushOpen()
+        {
+            // Reactivate rotation
             _hvrPhysicsDoor.Unlock();
-            _hvrPhysicsDoor.GetComponent<Rigidbody>()
-                .AddForce(_hvrPhysicsDoor.transform.forward * 10f, ForceMode.Impulse);
+
+            // Apply force in the door's forward direction (world space)
+            var pushDirection = _hvrPhysicsDoor.transform.forward;
+            var pushForce = 10f;
+            _hvrPhysicsDoor.GetComponent<Rigidbody>().AddForce(pushDirection * pushForce, ForceMode.Impulse);
             gameObject.SetActive(false);
         }
 

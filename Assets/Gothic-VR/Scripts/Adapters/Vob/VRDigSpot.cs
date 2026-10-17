@@ -5,8 +5,8 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
-using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Vm;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
@@ -37,13 +37,16 @@ namespace Gothic.VR.Adapters.Vob
         private const string _stateOneSuffix = "_S1";
 
         [Inject] private readonly ConfigService _configService;
-        [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly VmService _vmService;
 
         private IInteractiveObject _mob;
         private Renderer[] _renderers;
         private HVRHandGrabber[] _hands;
         private int _hits;
         private float _lastHitTime = float.NegativeInfinity;
+        private HVRGrabbable _lastWeapon;
+        private bool? _isLastWeaponAllowed;
+        private Collider[] _lastWeaponColliders;
 
         private void Awake()
         {
@@ -74,14 +77,20 @@ namespace Gothic.VR.Adapters.Vob
             foreach (var hand in _hands)
             {
                 var weapon = hand != null ? hand.GrabbedTarget : null;
-                if (weapon == null || !IsAllowedTool(weapon))
+                if (weapon == null)
                     continue;
+
+                CacheWeapon(weapon);
 
                 var rb = weapon.Rigidbody;
                 if (rb == null || rb.linearVelocity.magnitude < _minSwingSpeed)
                     continue;
 
-                if (!IntersectsWeapon(weapon, spotBounds))
+                if (!IntersectsWeapon(spotBounds))
+                    continue;
+
+                // Cheapest checks first: the tool lookup only runs for a fast weapon touching the spot.
+                if (!IsAllowedTool(weapon))
                     continue;
 
                 RegisterHit(weapon);
@@ -89,7 +98,23 @@ namespace Gothic.VR.Adapters.Vob
             }
         }
 
+        private void CacheWeapon(HVRGrabbable weapon)
+        {
+            if (weapon == _lastWeapon)
+                return;
+
+            _lastWeapon = weapon;
+            _isLastWeaponAllowed = null;
+            _lastWeaponColliders = weapon.GetComponentsInChildren<Collider>();
+        }
+
         private bool IsAllowedTool(HVRGrabbable weapon)
+        {
+            _isLastWeaponAllowed ??= CheckAllowedTool(weapon);
+            return _isLastWeaponAllowed.Value;
+        }
+
+        private bool CheckAllowedTool(HVRGrabbable weapon)
         {
             var container = weapon.GetComponentInParent<VobLoader>()?.Container;
             var item = container?.GetItemInstance();
@@ -129,11 +154,11 @@ namespace Gothic.VR.Adapters.Vob
             return hasBounds;
         }
 
-        private static bool IntersectsWeapon(HVRGrabbable weapon, Bounds spotBounds)
+        private bool IntersectsWeapon(Bounds spotBounds)
         {
-            foreach (var weaponCollider in weapon.GetComponentsInChildren<Collider>())
+            foreach (var weaponCollider in _lastWeaponColliders)
             {
-                if (weaponCollider.enabled && spotBounds.Intersects(weaponCollider.bounds))
+                if (weaponCollider != null && weaponCollider.enabled && spotBounds.Intersects(weaponCollider.bounds))
                     return true;
             }
 
@@ -159,30 +184,11 @@ namespace Gothic.VR.Adapters.Vob
         /// </summary>
         private void Dig()
         {
-            var vm = _gameStateService.GothicVm;
             var functionName = _mob.OnStateChangeFunction + _stateOneSuffix;
-            var symbol = vm.GetSymbolByName(functionName);
-            if (symbol == null)
-            {
-                Logger.LogWarning($"[VRDigSpot] '{functionName}' not found in the scripts.", LogCat.VR);
-                return;
-            }
-
-            var oldSelf = vm.GlobalSelf;
-            vm.GlobalSelf = vm.GlobalHero;
-            try
-            {
-                vm.Call(symbol.Index);
+            if (_vmService.CallAsHero(functionName, LogCat.VR))
                 Logger.Log($"[VRDigSpot] Called '{functionName}'", LogCat.VR);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError($"[VRDigSpot] '{functionName}' failed: {e.Message}", LogCat.VR);
-            }
-            finally
-            {
-                vm.GlobalSelf = oldSelf;
-            }
+            else
+                Logger.LogWarning($"[VRDigSpot] '{functionName}' not found in the scripts or failed.", LogCat.VR);
         }
     }
 }

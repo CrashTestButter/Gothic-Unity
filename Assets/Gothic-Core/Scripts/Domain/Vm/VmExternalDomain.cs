@@ -42,10 +42,10 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly StoryService _storyService;
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VobService _vobService;
-
-        private readonly HashSet<string> _externalsCalledWithoutNpc = new();
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+
+        private readonly HashSet<string> _externalsCalledWithoutNpc = new();
 
         // (optional) Some messages from Daedalus are quite spammy. Ignore them.
         private static readonly string[] _spammyMessages = new[]

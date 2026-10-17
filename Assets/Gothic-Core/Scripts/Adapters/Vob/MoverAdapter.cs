@@ -17,7 +17,8 @@ namespace Gothic.Core.Adapters.Vob
     /// Drives zCMover movement along its ZenKit keyframes (gates, drawbridges, lifts), segment by segment.
     /// Open() moves to the last keyframe, Close() back to the first one, Toggle() switches between both.
     /// Triggered by mobs (wheels, levers) via VRPlayerService.HandleMobGrab and by the trigger system
-    /// (VobService.DispatchTrigger). When it arrives, it opens/closes its chained target mover(s) as well.
+    /// (VobService.DispatchTrigger). When it arrives, it opens/closes its chained target mover(s) as well,
+    /// or sends a trigger event if the target isn't a mover.
     /// Timing follows OpenGothic (common/world/triggers/movetrigger.cpp).
     /// </summary>
     public class MoverAdapter : MonoBehaviour
@@ -93,6 +94,36 @@ namespace Gothic.Core.Adapters.Vob
             }
 
             return Mathf.Max(1f, milliseconds) / 1000f;
+        }
+
+        /// <summary>
+        /// Trigger event, behaves per zCMover behavior (OpenGothic MoveTrigger::onTrigger).
+        /// SingleKeys movers ignore it - they are driven by goto messages only (GoToKey*).
+        /// Loop movers toggle only; continuous looping isn't implemented.
+        /// </summary>
+        public void OnTrigger()
+        {
+            switch (_mover.Behavior)
+            {
+                case MoverBehavior.TriggerControl:
+                case MoverBehavior.OpenTime:
+                    Open();
+                    break;
+                case MoverBehavior.SingleKeys:
+                    break;
+                default: // Toggle, Loop
+                    Toggle();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Untrigger event: only trigger-controlled movers close again (OpenGothic MoveTrigger::onUntrigger).
+        /// </summary>
+        public void OnUntrigger()
+        {
+            if (_mover.Behavior == MoverBehavior.TriggerControl)
+                Close();
         }
 
         public void Toggle()
@@ -227,8 +258,9 @@ namespace Gothic.Core.Adapters.Vob
 
             if (!_vobService.TryGetMovers(_chainTarget, out var containers))
             {
-                Logger.LogWarning($"[MoverAdapter] {_mover.Name}: chained target '{_chainTarget}' not found",
-                    LogCat.Vob);
+                // Target isn't a mover (trigger list, script, ...): OpenGothic sends it a trigger event whenever
+                // a move ends (MoveTrigger::postProcessTrigger), for opening and closing alike.
+                _vobService.DispatchTrigger(_chainTarget, _mover.Name);
                 return;
             }
 
@@ -249,7 +281,8 @@ namespace Gothic.Core.Adapters.Vob
         }
 
         /// <summary>
-        /// Moves keyframe by keyframe from fromIdx to toIdx (step +1 or -1, cyclic), each segment with its own duration.
+        /// Moves keyframe by keyframe from fromIdx to toIdx (step +1 or -1, cyclic), each segment with its own
+        /// duration.
         /// </summary>
         private IEnumerator MoveTo(int fromIdx, int toIdx, int step, string sfxStart, string sfxEnd, Action onDone)
         {

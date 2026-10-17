@@ -19,7 +19,10 @@ namespace Gothic.Core.Adapters.Vob
         [Inject] private readonly VobService _vobService;
 
         private ICodeMaster _codeMaster;
-        private readonly HashSet<string> _triggeredSlaves = new();
+        // Slaves is a native marshal which allocates a new list on every access. Read once.
+        private List<string> _slaves;
+        private HashSet<string> _distinctSlaves;
+        private readonly HashSet<string> _triggeredSlaves = new(StringComparer.OrdinalIgnoreCase);
         private int _nextExpectedIndex;
 
         private void Awake() => this.Inject();
@@ -27,14 +30,13 @@ namespace Gothic.Core.Adapters.Vob
         public void Init(ICodeMaster codeMaster)
         {
             _codeMaster = codeMaster;
+            _slaves = codeMaster.Slaves;
+            _distinctSlaves = new HashSet<string>(_slaves, StringComparer.OrdinalIgnoreCase);
         }
 
         public void ReceiveTrigger(string senderName)
         {
-            var slaves = _codeMaster.Slaves;
-            var slaveIndex = slaves.FindIndex(s => string.Equals(s, senderName, StringComparison.OrdinalIgnoreCase));
-
-            if (slaveIndex < 0)
+            if (!_distinctSlaves.Contains(senderName))
             {
                 Logger.LogWarning($"[CodeMaster] '{_codeMaster.Name}': trigger from unknown slave '{senderName}'",
                     LogCat.Vob);
@@ -43,10 +45,12 @@ namespace Gothic.Core.Adapters.Vob
 
             if (_codeMaster.Ordered)
             {
-                if (slaveIndex != _nextExpectedIndex)
+                // Index based (not name lookup), as a slave name can appear multiple times in the sequence.
+                if (_nextExpectedIndex >= _slaves.Count ||
+                    !string.Equals(_slaves[_nextExpectedIndex], senderName, StringComparison.OrdinalIgnoreCase))
                 {
-                    Logger.Log($"[CodeMaster] '{_codeMaster.Name}': wrong order - got slave[{slaveIndex}] " +
-                               $"'{senderName}', expected [{_nextExpectedIndex}]", LogCat.Vob);
+                    Logger.Log($"[CodeMaster] '{_codeMaster.Name}': wrong order - got '{senderName}', " +
+                               $"expected [{_nextExpectedIndex}]", LogCat.Vob);
                     if (_codeMaster.FirstFalseIsFailure)
                         FireFailure();
                     Reset();
@@ -54,12 +58,17 @@ namespace Gothic.Core.Adapters.Vob
                 }
                 _nextExpectedIndex++;
             }
+            else
+            {
+                _triggeredSlaves.Add(senderName);
+            }
 
-            _triggeredSlaves.Add(senderName.ToUpper());
+            var triggeredCount = _codeMaster.Ordered ? _nextExpectedIndex : _triggeredSlaves.Count;
+            var requiredCount = _codeMaster.Ordered ? _slaves.Count : _distinctSlaves.Count;
             Logger.Log($"[CodeMaster] '{_codeMaster.Name}': slave '{senderName}' OK " +
-                       $"({_triggeredSlaves.Count}/{slaves.Count})", LogCat.Vob);
+                       $"({triggeredCount}/{requiredCount})", LogCat.Vob);
 
-            if (_triggeredSlaves.Count >= slaves.Count)
+            if (triggeredCount >= requiredCount)
             {
                 Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered -> '{_codeMaster.Target}'",
                     LogCat.Vob);

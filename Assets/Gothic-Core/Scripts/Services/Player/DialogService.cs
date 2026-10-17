@@ -348,6 +348,7 @@ namespace Gothic.Core.Manager
                 Object.Destroy(MobDialogAnchor);
 
             MobDialogAnchor = anchor;
+            _isHeroQueueRunning = false;
             _npcService.GetHeroContainer()?.Props.AnimationQueue.Clear();
         }
 
@@ -408,6 +409,11 @@ namespace Gothic.Core.Manager
         private IEnumerator RunHeroQueue(NpcContainer hero)
         {
             _isHeroQueueRunning = true;
+
+            // StartCoroutine runs synchronously until the first yield. Wait a frame, so AI_ProcessInfos(hero) called
+            // from inside "[onStateFunc]_S1" (GlobalSelf still swapped to the hero) doesn't re-enter here.
+            yield return null;
+
             try
             {
                 var queue = hero.Props.AnimationQueue;
@@ -426,7 +432,7 @@ namespace Gothic.Core.Manager
             }
             finally
             {
-                // Also when the coroutine is stopped (scene change) - otherwise the hero queue never runs again.
+                // Unity does not dispose stopped coroutines (scene change) - PrepareMobDialog resets the flag again.
                 _isHeroQueueRunning = false;
             }
         }

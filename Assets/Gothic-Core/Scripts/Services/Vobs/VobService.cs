@@ -520,16 +520,65 @@ namespace Gothic.Core.Services.Vobs
             return container;
         }
         
+        /// <summary>
+        /// DeveloperConfig.EnableMobOccupancy (with user): like the engine, a mob whose slots (ZS_*) are all used by
+        /// other NPCs isn't free - two miners spawned next to each other hacked at the same ore vein. A bench with two
+        /// slots takes two.
+        /// </summary>
         [CanBeNull]
-        public VobContainer GetFreeInteractableWithin10M(Vector3 position, string visualScheme)
+        public VobContainer GetFreeInteractableWithin10M(Vector3 position, string visualScheme,
+            NpcContainer user = null)
         {
             if (!_gameStateService.VobsInteractable.TryGetValue(visualScheme.ToUpper(), out var vobs))
                 return null;
-            
-            return vobs
+
+            var candidates = vobs
                 .Where(pair => Vector3.Distance(pair.Vob.Position.ToUnityVector(), position) < _interactableLookupDistance)
-                .OrderBy(pair => Vector3.Distance(pair.Vob.Position.ToUnityVector(), position))
-                .FirstOrDefault();
+                .OrderBy(pair => Vector3.Distance(pair.Vob.Position.ToUnityVector(), position));
+
+            if (user == null || !_configService.Dev.EnableMobOccupancy)
+                return candidates.FirstOrDefault();
+
+            foreach (var mob in candidates)
+            {
+                if (GetOtherMobUsers(mob, user).Count() < GetSlotCount(mob))
+                    return mob;
+            }
+
+            Logger.Log($"[VobService] No free '{visualScheme}' within {_interactableLookupDistance} m for " +
+                       $"{user.Instance?.GetName(ZenKit.Daedalus.NpcNameSlot.Slot0)}", LogCat.Vob);
+            return null;
+        }
+
+        /// <summary>
+        /// Other NPCs using this mob (in one of its states) or walking to it - a reservation left by an interrupted
+        /// walk doesn't block it.
+        /// </summary>
+        public IEnumerable<NpcContainer> GetOtherMobUsers(VobContainer mob, NpcContainer user)
+        {
+            return _multiTypeCacheService.NpcCache.Where(i =>
+                i != null && i != user && i.PrefabProps != null && i.PrefabProps.CurrentInteractable == mob &&
+                (i.Props.CurrentInteractableStateId >= 0 ||
+                 i.Props.CurrentAction is Gothic.Core.Domain.Npc.Actions.AnimationActions.UseMob));
+        }
+
+        private int GetSlotCount(VobContainer mob)
+        {
+            var slots = GetSlots(mob.Go);
+            // Not loaded yet or no slot objects: one user, like a mob with a single position.
+            return slots.Count > 0 ? slots.Count : 1;
+        }
+
+        private List<GameObject> GetSlots([CanBeNull] GameObject go)
+        {
+            if (go == null || go.transform.childCount == 0 || go.transform.GetChild(0).childCount == 0)
+                return new List<GameObject>();
+
+            // We need to move into next elements starting from VobLoader root.
+            var zm = go.transform.GetChild(0).GetChild(0);
+            return zm.gameObject.GetAllDirectChildren()
+                .Where(i => i.name.ContainsIgnoreCase("ZS"))
+                .ToList();
         }
         public void ExtWldInsertItem(int itemInstance, string spawnPoint)
         {
@@ -675,6 +724,23 @@ namespace Gothic.Core.Services.Vobs
             var container = CreateContainerWithLoader(vob);
             _vobMeshCullingService.AddCullingEntry(container);
             _saveGameService.CurrentWorldData.Vobs.Add(container.Vob);
+        }
+
+        /// <summary>
+        /// The nearest slot not taken by another NPC (DeveloperConfig.EnableMobOccupancy).
+        /// </summary>
+        [CanBeNull]
+        public GameObject GetNearestFreeSlot(VobContainer mob, Vector3 position, NpcContainer user)
+        {
+            var taken = GetOtherMobUsers(mob, user)
+                .Select(i => i.PrefabProps.CurrentInteractableSlot)
+                .Where(i => i != null)
+                .ToHashSet();
+
+            return GetSlots(mob.Go)
+                .Where(i => !taken.Contains(i))
+                .OrderBy(i => Vector3.Distance(i.transform.position, position))
+                .FirstOrDefault();
         }
 
         [CanBeNull]

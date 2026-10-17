@@ -68,6 +68,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 IsFinishedFlag = true;
                 return;
             }
+
+            // DeveloperConfig.EnableMobOccupancy: taken right away - the walk (StartNow) can start frames later and
+            // another NPC must not pick the same mob meanwhile.
+            if (ConfigService.Dev.EnableMobOccupancy)
+                PrefabProps.CurrentInteractable = container;
             
             if (container.Go.GetComponent<VobLoader>().IsLoaded)
                 StartNow();
@@ -98,6 +103,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
             if (slot == null)
             {
+                // The reservation from Start (DeveloperConfig.EnableMobOccupancy) goes - no free slot.
+                if (Props.CurrentInteractableStateId == -1 && PrefabProps.CurrentInteractable == _mobContainer)
+                    PrefabProps.CurrentInteractable = null;
                 IsFinishedFlag = true;
                 return;
             }
@@ -203,7 +211,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private VobContainer GetNearestMob()
         {
             var pos = NpcGo.transform.position;
-            return VobService.GetFreeInteractableWithin10M(pos, Action.String0);
+            return VobService.GetFreeInteractableWithin10M(pos, Action.String0, NpcContainer);
         }
 
         [CanBeNull]
@@ -213,7 +221,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return null;
 
             var pos = NpcGo.transform.position;
-            var slot = VobService.GetNearestSlot(_mobContainer.Go, pos);
+            var slot = ConfigService.Dev.EnableMobOccupancy
+                ? VobService.GetNearestFreeSlot(_mobContainer, pos, NpcContainer)
+                : VobService.GetNearestSlot(_mobContainer.Go, pos);
 
             return slot;
         }

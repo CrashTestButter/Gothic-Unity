@@ -105,7 +105,7 @@ namespace Gothic.VR.Services.Context
             _marvinRoot.SetActive(_marvinService.IsMarvinMode);
 
             // PrintScreen() messages in front of the camera
-            activeScene.GetComponentInChildren<VRPrintScreen>(true)!.Init(_playerController.Camera);
+            activeScene.GetComponentInChildren<VRPrintScreen>(true)!.Init();
         }
 
         private void OnMarvinModeChanged(bool isActive)

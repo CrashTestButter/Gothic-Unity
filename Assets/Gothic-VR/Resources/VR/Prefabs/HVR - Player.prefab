@@ -3024,11 +3024,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 7349826874247373105}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1de9e644d5549c5b383c8accd135cff, type: 3}
+  m_Script: {fileID: 11500000, guid: 17ad3bb58e664d64697123bf06fe8acb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _positionOffset: {x: 0, y: 1.6, z: 5}
-  _positionSmoothTime: 0.3
+  _distance: 5
+  _moveSmoothTime: 0.3
+  _rotationSpeed: 6
 --- !u!114 &7124583920175634411
 MonoBehaviour:
   m_ObjectHideFlags: 0

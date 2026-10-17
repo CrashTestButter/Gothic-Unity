@@ -13,7 +13,7 @@ namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
     /// Shows PrintScreen() messages in front of the VR camera. Gothic's screen positions (percent) are mapped onto a
-    /// virtual screen inside the comfortable field of view. The screen follows the head smoothly (damped) and is only
+    /// virtual screen inside the comfortable field of view. The screen follows the head (VRFollowCamera) and is only
     /// active while messages are visible. Message texts are pooled copies of the inactive template.
     /// The same text again only extends its line - like the engine, where a repeated PrintScreen draws over itself.
     /// Drawn on top of the world (VRUiOnTop), so walls and NPCs don't cut through it.
@@ -22,27 +22,19 @@ namespace Gothic.VR.Adapters.UI
     {
         [SerializeField] private RectTransform _screen;
         [SerializeField] private TMP_Text _messageTemplate;
-        [Tooltip("Distance of the virtual screen in front of the camera in meters.")]
-        [SerializeField] private float _distance = 1.5f;
-        [Tooltip("Seconds the screen needs to catch up with head movement. Higher values feel more floaty.")]
-        [SerializeField] private float _moveSmoothTime = 0.25f;
-        [Tooltip("Speed of the rotation catching up with the head. Higher values follow quicker.")]
-        [SerializeField] private float _rotationSpeed = 6f;
         [SerializeField] private float _minSeconds = 1f;
         [SerializeField] private VRUiOnTop _onTop;
+        [SerializeField] private VRFollowCamera _followCamera;
 
         [Inject] private readonly FontService _fontService;
 
         private readonly List<(TMP_Text Text, float HideAt)> _activeMessages = new();
         private readonly Stack<TMP_Text> _pool = new();
 
-        private Transform _cameraTransform;
-        private Vector3 _moveVelocity;
-
-        public void Init(Transform cameraTransform)
+        public void Init()
         {
-            _cameraTransform = cameraTransform;
             _screen.gameObject.SetActive(false);
+            _followCamera.enabled = false;
             // New lines are clones of the template - VRUiOnTop wraps their fonts when they're generated.
             _onTop.Apply();
 
@@ -60,7 +52,6 @@ namespace Gothic.VR.Adapters.UI
                 return;
 
             HideExpiredMessages();
-            FollowCamera(false);
         }
 
         private void OnPrintScreen(PrintScreenMessage message)
@@ -78,8 +69,7 @@ namespace Gothic.VR.Adapters.UI
             if (_activeMessages.Count == 0)
             {
                 _screen.gameObject.SetActive(true);
-                // Start directly in front of us. Otherwise, the screen flies in from its last position.
-                FollowCamera(true);
+                _followCamera.enabled = true;
             }
 
             var text = _pool.Count > 0 ? _pool.Pop() : Instantiate(_messageTemplate, _screen, false);
@@ -126,28 +116,10 @@ namespace Gothic.VR.Adapters.UI
             }
 
             if (_activeMessages.Count == 0)
-                _screen.gameObject.SetActive(false);
-        }
-
-        /// <summary>
-        /// Damped movement towards the spot in front of the camera. Feels less stiff than parenting it to the head.
-        /// </summary>
-        private void FollowCamera(bool isImmediate)
-        {
-            var targetPosition = _cameraTransform.position + _cameraTransform.forward * _distance;
-            var targetRotation = Quaternion.LookRotation(_cameraTransform.forward, _cameraTransform.up);
-
-            if (isImmediate)
             {
-                _moveVelocity = Vector3.zero;
-                transform.SetPositionAndRotation(targetPosition, targetRotation);
-                return;
+                _screen.gameObject.SetActive(false);
+                _followCamera.enabled = false;
             }
-
-            var pos = Vector3.SmoothDamp(transform.position, targetPosition, ref _moveVelocity, _moveSmoothTime);
-            var rotationLerp = 1f - Mathf.Exp(-_rotationSpeed * Time.deltaTime);
-            var rot = Quaternion.Slerp(transform.rotation, targetRotation, rotationLerp);
-            transform.SetPositionAndRotation(pos, rot);
         }
     }
 }

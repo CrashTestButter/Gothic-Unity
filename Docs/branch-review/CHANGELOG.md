@@ -13,6 +13,13 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-17 (night): dialogs that end in a fight, items moved by hand
+
+- An NPC who attacks you at the end of a dialog says all its lines first (and you yours), then attacks - the dragon
+  turns into Algirion after the talk too. After such a dialog everybody talked to you and fought you again; before
+  you stayed "invincible": nobody talked to you and attacked NPCs didn't fight back.
+- Items from the world moved by hand (an arrow in the ground put aside) are saved where they lie.
+
 ## 2026-10-17 (late): new game at the start, NPCs on scaffolds
 
 - A new game after loading a save from another world (Old Mine, Mroczne Tajemnice's temple) starts next to Diego again,
@@ -33,8 +40,6 @@ Link), not on Quest/Pico standalone.
 - A looted NPC stays looted.
 - Saving puts what your hands hold into the backpack.
 - All of it per world: a mushroom eaten in the Old Mine is still gone after going out and in again.
-
-**Known:** an item from the world moved by hand (not through the backpack) is back at its old spot after loading.
 
 ## 2026-10-16 (late): Sheer'Ghar's duel, mod subtitles without VDFS
 

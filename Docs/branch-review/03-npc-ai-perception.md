@@ -63,6 +63,15 @@
   `B_KillNpc(self)` and then `Wld_InsertNpc(NON_2013_ALGIRION)`: the null NPC threw in `Npc_ChangeAttribute`, the
   function stopped before the insert and the dragon only vanished. `Npc_ChangeAttribute` without an NPC now warns.
 
+**Added 2026-10-17**
+
+- **`AI_StartState(..., 1, ...)` ends the old state:** `ExtAiStartState` zeroed the current state's `_End` and cleared
+  the queue right away, so the `_End` never ran. A dialog ending in a fight (`AI_StartState(self, ZS_Attack, 1, "")`)
+  skipped `ZS_Talk_End` - the hero kept the dialog's `AIV_INVINCIBLE`, nobody talked to him and attacked NPCs didn't
+  fight back. The `_End` is passed to `StartState` and called when the queue reaches it (`AiHandler.CallStateEnd`,
+  with the old state's other/victim); a talking NPC (dialog lines queued) keeps its queue so the lines come first,
+  like the engine's AI message - the fight or the dragon's change follow. Elsewhere the queue is still cleared at once.
+
 ## Key commits
 
 `b459f4f7` passive perc broadcast, ASSESSBODY, MURDER/DEFEAT · `00f95e72` hero perceptions (sneak, rooms, usemob) ·
@@ -77,6 +86,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 2026-10-13: `d522e413` guides sense the hero · `857bd827` NPC attitudes towards NPCs, guides fight
 
 2026-10-16: `63eddacb` Hlp_GetNpc resolves instance variables
+
+2026-10-17: `18de3228` AI_StartState runs the old state's _End after a dialog's lines
 
 ## Main files
 
@@ -97,6 +108,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 2026-10-13: `EnableEscortSensesHero`, `EnablePersonalAttitudeOnlyForHero`, `EnableHitStopsWalking`
 
 2026-10-16: `EnableHlpGetNpcVariables`
+
+2026-10-17: `EnableQueuedStateEnd`
 
 ## Review notes
 
@@ -122,3 +135,5 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 
 - G1/MT: Baal Parvez attacks a lurker that comes within ~10 m by himself ("$DIEMONSTER").
 - Mroczne Tajemnice ancient temple: finish the Black Dragon's talk - it teleports away and Algirion appears.
+- A dialog that ends in a fight (G1 MT Rost): the NPC finishes its lines, then attacks (log `ZS_TALK_END (state ended
+  by AI_StartState)`); afterwards other NPCs talk to you and fight back.

@@ -45,8 +45,9 @@
   NPC stays looted. Inventories are cleared in the packed storage (`ClearPackedInventory`; `ExtNpcClearInventory` only
   clears the world file's item list - the hero's INIT items were doubled).
 - **Saving puts held items into the backpack** (`IContextInteractionService.StoreHeldItemsInBackpack`).
-- ⚠️ Known: a world item moved by hand and dropped (not through the backpack) is saved at its old spot - the position
-  sync doesn't see the move yet (a `[SaveGame] ... moved` log line is there to find out why).
+- Items moved by hand are saved where they lie (`e80c5767`): every hand grab adds the item to the loose items, whose
+  save-time sync took the loader's spot (the original) - both syncs take the item's body (Rigidbody) now. A
+  `[SaveGame] ... moved` line logs each moved item.
 
 ## Key commits
 
@@ -58,7 +59,8 @@
 
 2026-10-11/13: `45c99bab` mover pose after children · `dbba8c19` code master state · `8ed9824a` spawned NPCs · `6e70e3fa` world revisit state
 
-2026-10-17: `59717dc5` items and chests · `17b1667b` NPC inventories · `070b6aa1` held items into the backpack
+2026-10-17: `59717dc5` items and chests · `17b1667b` NPC inventories · `070b6aa1` held items into the backpack ·
+`e80c5767` items moved by hand
 
 ## Main files
 

@@ -406,6 +406,10 @@ namespace Gothic.Core.Services.World
             // A trade isn't saved: the reserved offers go back to their owners first.
             ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Trade.TradeService>().Cancel();
 
+            // DeveloperConfig.EnableSaveStoresHeldItems: what the hands hold is the hero's - into the backpack before
+            // saving, it would be neither in the inventory nor lying in the world.
+            if (_configService.Dev.EnableSaveStoresHeldItems)
+                ReflexProjectInstaller.DIContainer.Resolve<ContextInteractionService>().StoreHeldItemsInBackpack();
             SyncWorldItemPositions();
 
             var saveGame = new SaveGame(_contextGameVersionService.Version);

@@ -20,6 +20,11 @@ namespace Gothic.Core.Services.Context
         void TeleportPlayerTo(Vector3 position, Quaternion rotation = default);
 
         /// <summary>
+        /// What the hands hold goes into the hero's inventory (teleport, saving).
+        /// </summary>
+        void StoreHeldItemsInBackpack();
+
+        /// <summary>
         /// Pushes the player back onto the circle around center when they walked out of it (dialog bubble).
         /// </summary>
         void KeepPlayerWithin(Vector3 center, float radius);

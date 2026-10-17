@@ -240,6 +240,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: NPC inventories are saved and restored - a looted NPC got everything back from INIT after loading.")]
         public bool EnableNpcInventorySaveState = true;
 
+        [Tooltip("V1: Saving puts what the hands hold into the backpack first - it was neither in the inventory nor in " +
+                 "the world.")]
+        public bool EnableSaveStoresHeldItems = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

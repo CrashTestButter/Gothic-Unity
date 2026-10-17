@@ -321,7 +321,7 @@ namespace Gothic.VR.Services.Context
         /// Like putting the held items into the backpack (see VRItemUser.Equip): release, add to the inventory, remove
         /// the world item.
         /// </summary>
-        private void StoreHeldItemsInBackpack()
+        public void StoreHeldItemsInBackpack()
         {
             // A rune held with both hands is one item - stored once.
             var stored = new System.Collections.Generic.HashSet<Object>();

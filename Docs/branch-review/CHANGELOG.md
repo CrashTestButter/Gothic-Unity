@@ -13,6 +13,12 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-17 (evening): miners dig
+
+- Miners in the mines dig: the pickaxe hits with a sound and ore splinters fly (they stood frozen in front of the vein).
+- Miners spawned next to each other spread to different ore veins instead of hacking at the same one; NPCs don't
+  share a mob anymore unless it has room for more (a bench with two seats).
+
 ## 2026-10-17: items, chests and loot are saved
 
 - Taken items stay taken after loading (a beer in the backpack was lying in the world again), also eaten right from

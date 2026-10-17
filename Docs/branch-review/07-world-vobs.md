@@ -73,6 +73,18 @@
   weighted triple so it's the same floor - instead of a null reference and a stalled loading screen. The engine would
   use START, which in that mine is over the void.
 
+**Added 2026-10-17**
+
+- **Animation combinations** (`aniComb`): a combination names numbered variants of one animation (the engine picks
+  one by the angle to a target). The ore vein's S1 (`t_Ore_S0_2_S1`, `s_Ore_S1`, `t_Ore_S1_2_S0` -> `c_Ore_*_1..3`)
+  exists only like this - miners stood frozen in S0. `AnimationService.GetTrack` plays the middle variant with the
+  combination's layer, next and flags (like an alias). ZenKit doesn't expose a combination's events; `s_Ore_S1`'s
+  pickaxe hit from `HUMANS.MDS` (`*eventSFX`/`*eventPFX` `pickore` at frame 25, `ZS_RIGHTHAND`) is added in code.
+- **Occupied mobs:** `GetFreeInteractableWithin10M` took the nearest mob of the scheme without looking at its users -
+  two miners spawned next to each other hacked at the same vein. A mob whose slots (`ZS_*`) are all used by other NPCs
+  (seated, or walking there with `UseMob`) is skipped, the nearest free slot is taken; the mob is reserved as soon as
+  it's chosen and released when no slot is left.
+
 ## Key commits
 
 `75bd89fd`/`b773c4c0`/`a1a8f2a2`/`e37c8952` movers · `9636179d` trigger system · `cd614258`/`f200e883` wheels ·
@@ -88,6 +100,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 2026-10-13: `ef9bcdd3` fire trees relative to the slot · `3442aebd` fire states (routine, indoors, toggle, distance)
 
 2026-10-16: `e276d797` level change arrival fallback
+
+2026-10-17: `39fbe01c` animation combinations (miners dig) · `63ce6bfa` occupied mobs
 
 ## Main files
 
@@ -111,6 +125,8 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 2026-10-13: `EnableFireTreeRelativePositions`, `EnableFireStates`
 
 2026-10-16: `EnableLevelChangeSpawnFallback`
+
+2026-10-17: `EnableAnimationCombines`, `EnableMobOccupancy`
 
 ## Review notes
 
@@ -141,3 +157,4 @@ timing · `54fe5c8e` enable state · `1417b802` nested movers · `30ddbfd1` trig
 - G1: torches/fireplaces outside are out by day and burn from 22:00 (Marvin skip time); in mines they always burn; touching one toggles it; from the swamp camp no Old Camp smoke is visible.
 - Mroczne Tajemnice: from the ancient temple back through the portal - you arrive next to the mine's portal; G1/G2
   level changes (Old Mine, Irdorath) still arrive at their spots.
+- G1 Old Mine: miners dig with pickaxe sounds and ore splinters, each at its own vein; benches still seat two.

@@ -37,9 +37,8 @@ namespace Gothic.Core.Manager
         // Vanilla G1/G2 END entries: nr = 999, description = DIALOG_ENDE.
         private const int _exitInfoNr = 999;
         private const string _exitDescriptionSymbol = "DIALOG_ENDE";
-        // Pushed back a little inside the bubble's edge, so the hero isn't held right at the stop distance.
-        private const float _bubbleEdgeMargin = 0.2f;
-        // The hero can't be held inside (falling, climbing, teleported, blocked by a wall) - the dialog ends after
+        // Held back a little inside the bubble's edge, so the hero isn't held right at the stop distance.
+        private const float _bubbleEdgeMargin = 0.2f;        // The hero can't be held inside (falling, climbing, teleported, blocked by a wall) - the dialog ends after
         // being outside this long, or at once when this far beyond the bubble's edge.
         private const float _bubbleGiveUpSeconds = 1f;
         private const float _bubbleGiveUpOvershoot = 2f;
@@ -397,11 +396,16 @@ namespace Gothic.Core.Manager
             var outsideSeconds = 0f;
             while (dialogs.IsInDialog && dialogs.CurrentDialogNpc == npcContainer)
             {
+                var canWalkAway = dialogs.IsChoosing && dialogs.ExitInfo != null;
                 if (IsHeroInDialogRange(npcContainer, out var horizontalDistance))
                 {
                     outsideSeconds = 0f;
+
+                    // Slows the hero down before the edge, so the hold doesn't kick in as a hard stop.
+                    if (!canWalkAway)
+                        HoldHeroInBubble(npcContainer);
                 }
-                else if (dialogs.IsChoosing && dialogs.ExitInfo != null)
+                else if (canWalkAway)
                 {
                     Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero walked away - " +
                                "choosing END", LogCat.Dialog);
@@ -419,12 +423,17 @@ namespace Gothic.Core.Manager
                         yield break;
                     }
 
-                    _contextInteractionService.KeepPlayerWithin(npcContainer.Go.transform.position,
-                        Constants.DialogMaxDistance - _bubbleEdgeMargin);
+                    HoldHeroInBubble(npcContainer);
                 }
                 yield return null;
             }
             _bubbleWatcher = null;
+        }
+
+        private void HoldHeroInBubble(NpcContainer npcContainer)
+        {
+            _contextInteractionService.KeepPlayerWithin(npcContainer.Go.transform.position,
+                Constants.DialogSlowDownDistance, Constants.DialogMaxDistance - _bubbleEdgeMargin);
         }
 
         private void StopBubbleWatcher()

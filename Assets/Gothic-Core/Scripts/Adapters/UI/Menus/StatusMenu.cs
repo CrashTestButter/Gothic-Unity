@@ -32,9 +32,14 @@ namespace Gothic.Core.Adapters.UI.Menus
         private static readonly int[] _attrCurrentIndex = { 4, 5, 2, 0 };
         private static readonly int[] _attrMaxIndex     = {-1,-1, 3, 1 };
 
-        // Armor slot → protection index (G1 constants.d PROT_*):
-        // 1=weapons → PROT_EDGE(2), 2=projectiles → PROT_POINT(6), 3=fire → PROT_FIRE(3), 4=magic → PROT_MAGIC(5).
-        // (BLUNT=1, FLY=4 aren't shown.)
+        // Protection array indices (G1 Content/_intern/Constants.d, PROT_* = DAM_INDEX_*; ZenKit DamageType):
+        //   0=BARRIER, 1=BLUNT, 2=EDGE, 3=FIRE, 4=FLY, 5=MAGIC, 6=POINT, 7=FALL
+        //   (Don't mix up with the DAM_* bit flags: DAM_XXX = 1 << DAM_INDEX_XXX.)
+        // Armor rows (G1 System/Menu/Menu_Status.d, MENU_ITEM_ARMOR_{n}_TITLE):
+        //   1 "vor Waffen"     → EDGE(2)  (scripts always set EDGE and BLUNT to the same value on armors/amulets)
+        //   2 "vor Geschossen" → POINT(6)
+        //   3 "vor Feuer"      → FIRE(3)
+        //   4 "vor Magie"      → MAGIC(5)
         private static readonly int[] _armorProtIndex = { 2, 6, 3, 5 };
 
         [Inject] private readonly VmService _vmService;

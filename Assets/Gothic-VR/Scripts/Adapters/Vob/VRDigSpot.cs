@@ -37,6 +37,10 @@ namespace Gothic.VR.Adapters.Vob
         private const float _boundsPadding = 0.1f;
         private const string _stateOneSuffix = "_S1";
 
+        // DeveloperConfig.EnableDigSpotTreasureOnly: the dig functions - everything else used with a melee tool opens a
+        // mob dialog (MT's anvil SMITHERY with the sledgehammer, G2's Goldhacken/Stomp) and is used like other mobs.
+        private static readonly string[] _digStateFunctions = { "B_SCGETTREASURE" };
+
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly GameStateService _gameStateService;
 
@@ -57,6 +61,11 @@ namespace Gothic.VR.Adapters.Vob
             if (string.IsNullOrEmpty(mob.OnStateChangeFunction) || string.IsNullOrEmpty(mob.Item))
                 return false;
 
+            var configService = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
+            if (configService.Dev.EnableDigSpotTreasureOnly &&
+                Array.FindIndex(_digStateFunctions, f => f.EqualsIgnoreCase(mob.OnStateChangeFunction)) < 0)
+                return false;
+
             var tool = vmCacheService.TryGetItemData(mob.Item);
             return tool != null && ((VmGothicEnums.ItemFlags)tool.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) != 0;
         }
@@ -71,6 +80,11 @@ namespace Gothic.VR.Adapters.Vob
             var loader = GetComponentInParent<VobLoader>();
             _mob = loader?.Container?.Vob as IInteractiveObject;
             _renderers = loader != null ? loader.GetComponentsInChildren<Renderer>(true) : Array.Empty<Renderer>();
+            // DeveloperConfig.EnableDigSpotTreasureOnly: only this VOB's renderers - VOBs nested below it in the world
+            // have their own loader. One of MT's anvils took three more anvils: its bounds covered the whole Old Camp
+            // and every sword swing there counted as a hit.
+            if (loader != null && _configService.Dev.EnableDigSpotTreasureOnly)
+                _renderers = Array.FindAll(_renderers, r => r.GetComponentInParent<VobLoader>(true) == loader);
             _hands = FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None);
 
             // Also tells whether the mob is visible at all (G2 X marks were invisible in an older playtest).

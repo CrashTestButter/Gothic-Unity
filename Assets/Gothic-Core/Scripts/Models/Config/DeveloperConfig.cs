@@ -597,6 +597,11 @@ namespace Gothic.Core.Models.Config
                  "them 3 times with a swung melee weapon -> calls [onStateFunc]_S1 like the engine.")]
         public bool EnableDigSpots = true;
 
+        [Tooltip("V1: Only treasure X marks (B_SCGetTreasure) are dug by hitting them, with their own bounds. MT's anvil " +
+                 "(used with the sledgehammer) counted as a dig spot: its smithing dialog never opened, the hero stayed " +
+                 "invincible (NPCs ignored him) and nested VOBs made its bounds cover the whole Old Camp.")]
+        public bool EnableDigSpotTreasureOnly = true;
+
         [Tooltip("Dig spots only react to their own tool (vanilla: pickaxe). Off = any melee weapon (easier testing).")]
         public bool DigSpotsRequireTool;
 

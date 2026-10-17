@@ -260,6 +260,10 @@ namespace Gothic.Core.Models.Config
                  "a new game after loading an Old Mine save started in the middle of the Old Camp.")]
         public bool EnableWorldPointsReset = true;
 
+        [Tooltip("V1: A spawned NPC waits (kinematic, max 10 s) until the world's VOBs are created before it snaps to the " +
+                 "ground and gets gravity - Old Mine miners fell through their scaffolds after loading.")]
+        public bool EnableNpcWaitsForWorldVobs = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

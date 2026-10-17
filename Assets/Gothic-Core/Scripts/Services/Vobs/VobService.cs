@@ -62,6 +62,11 @@ namespace Gothic.Core.Services.Vobs
         private Dictionary<VirtualObjectType, GameObject> _vobTypeParentGOs = new();
         private Queue<VobLoader> _objectsToInitQueue = new();
 
+        /// <summary>
+        /// VOBs culled in but not created yet (InitVobCoroutine works them off in batches after the world is entered).
+        /// </summary>
+        public bool HasPendingVobInits => _objectsToInitQueue.Count > 0;
+
         // Important: All of them are not culled!
         private static readonly VirtualObjectType[] _vobTypesNonLazyLoading =
         {

@@ -142,6 +142,34 @@ namespace Gothic.Core.Adapters.Animations
 
             CreateGraph();
             ResizeRootCollider();
+
+            // DeveloperConfig.EnableNpcWaitsForWorldVobs: the world's VOBs are created after the world is entered
+            // (InitVobCoroutine). An NPC standing on one (the Old Mine's scaffolds) snapped to the ground below or fell
+            // through it - it waits kinematic until they're there.
+            if (_configService.Dev.EnableNpcWaitsForWorldVobs && _vobService.HasPendingVobInits)
+            {
+                StartCoroutine(EnablePhysicsWhenVobsCreated());
+                return;
+            }
+
+            EnablePhysics();
+        }
+
+        private const float _maxVobWaitSeconds = 10f;
+
+        private System.Collections.IEnumerator EnablePhysicsWhenVobsCreated()
+        {
+            var giveUpTime = Time.time + _maxVobWaitSeconds;
+            while (_vobService.HasPendingVobInits && Time.time < giveUpTime)
+                yield return null;
+
+            // Colliders of the VOBs created last frame are registered with physics next frame.
+            yield return new WaitForFixedUpdate();
+            EnablePhysics();
+        }
+
+        private void EnablePhysics()
+        {
             // Snap NpcGo to ground now that we know restRootHeight, then allow gravity.
             // RootCollisionHandler.Awake() set kinematic=true to block the depenetration jump
             // that would otherwise happen before this point.

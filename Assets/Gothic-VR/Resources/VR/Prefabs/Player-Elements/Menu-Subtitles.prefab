@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 3465958681122799452}
   m_Layer: 5
   m_Name: NameLabel
-  m_TagString: Title
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -300,7 +300,7 @@ GameObject:
   - component: {fileID: 5338074538308429778}
   m_Layer: 5
   m_Name: TextLabel
-  m_TagString: Title
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

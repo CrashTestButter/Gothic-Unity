@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 8181131269388117416}
   m_Layer: 5
   m_Name: Texture
-  m_TagString: Subtitle
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -49,7 +49,7 @@ GameObject:
   - component: {fileID: 2079433137011311478}
   m_Layer: 5
   m_Name: Texture
-  m_TagString: Subtitle
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

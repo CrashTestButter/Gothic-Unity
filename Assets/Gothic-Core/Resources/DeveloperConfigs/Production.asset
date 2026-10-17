@@ -152,6 +152,7 @@ MonoBehaviour:
   EnableRuntimeArmorVisuals: 1
   EnableDigSpots: 1
   EnableDigSpotTreasureOnly: 1
+  EnableMobDialogOwnBounds: 1
   DigSpotsRequireTool: 0
   EnableHudAlwaysOnTop: 1
   EnableMobsiDialogs: 1

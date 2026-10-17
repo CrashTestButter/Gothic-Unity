@@ -602,6 +602,10 @@ namespace Gothic.Core.Models.Config
                  "invincible (NPCs ignored him) and nested VOBs made its bounds cover the whole Old Camp.")]
         public bool EnableDigSpotTreasureOnly = true;
 
+        [Tooltip("V1: A mob dialog's box is placed next to the mob's own mesh - VOBs nested below it (MT's anvils) put it " +
+                 "hundreds of meters away and the dialog didn't start (\"hero farther than 5 m\").")]
+        public bool EnableMobDialogOwnBounds = true;
+
         [Tooltip("Dig spots only react to their own tool (vanilla: pickaxe). Off = any melee weapon (easier testing).")]
         public bool DigSpotsRequireTool;
 

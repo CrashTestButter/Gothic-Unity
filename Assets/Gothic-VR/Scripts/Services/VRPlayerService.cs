@@ -328,7 +328,7 @@ namespace Gothic.VR.Services
                 _docService.PendingItemGo = document.gameObject;
             }
 
-            _dialogService.PrepareMobDialog(CreateMobDialogAnchor(loader));
+            _dialogService.PrepareMobDialog(CreateMobDialogAnchor(loader, _configService.Dev.EnableMobDialogOwnBounds));
 
             var oldSelf = vm.GlobalSelf;
             vm.GlobalSelf = vm.GlobalHero;
@@ -439,7 +439,7 @@ namespace Gothic.VR.Services
         /// <summary>
         /// Next to the mob on the player's left (= the mob's right, where NPC dialogs are), at eye height.
         /// </summary>
-        private static GameObject CreateMobDialogAnchor(VobLoader loader)
+        private static GameObject CreateMobDialogAnchor(VobLoader loader, bool isOwnBoundsOnly)
         {
             var cam = Camera.main!.transform;
 
@@ -447,6 +447,10 @@ namespace Gothic.VR.Services
             var hasBounds = false;
             foreach (var mobRenderer in loader.GetComponentsInChildren<Renderer>())
             {
+                // DeveloperConfig.EnableMobDialogOwnBounds: VOBs nested below the mob have their own loader. One of MT's
+                // anvils has three more below it - the anchor landed hundreds of meters away ("hero farther than 5 m").
+                if (isOwnBoundsOnly && mobRenderer.GetComponentInParent<VobLoader>(true) != loader)
+                    continue;
                 if (!hasBounds) { bounds = mobRenderer.bounds; hasBounds = true; }
                 else bounds.Encapsulate(mobRenderer.bounds);
             }

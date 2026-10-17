@@ -1,16 +1,13 @@
 // Copy of TextMeshPro/Sprite (UI vertex color * texture, stencil, clip rect, VR stereo) with a hardcoded
 // ZTest Always: the Canvas overrides unity_GUIZTestMode per draw, so material values can't lift UI above the world.
-// Used by VRUiOnTop for UI backgrounds, Gothic bitmap-font sprites and menu meshes (_IgnoreVertexColor = 1: meshes
-// without vertex colors).
+// Used by VRUiOnTop (materials UiOnTop-Background/-Text/-Mesh) for UI backgrounds, Gothic bitmap-font sprites and
+// menu pictures (MeshRenderers).
 Shader "Gothic/UI OnTop"
 {
 	Properties
 	{
         _MainTex            ("Sprite Texture", 2D) = "white" {}
 		_Color              ("Tint", Color) = (1,1,1,1)
-		_IgnoreVertexColor  ("Ignore Vertex Color", Float) = 0
-		_BaseMap            ("Base Map", 2D) = "white" {}
-		_UseBaseMap         ("Use Base Map", Float) = 0
 
 		_StencilComp        ("Stencil Comparison", Float) = 8
 		_Stencil            ("Stencil ID", Float) = 0
@@ -23,6 +20,10 @@ Shader "Gothic/UI OnTop"
 		_ClipRect           ("Clip Rect", vector) = (-32767, -32767, 32767, 32767)
 
 		[Toggle(UNITY_UI_ALPHACLIP)] _UseUIAlphaClip ("Use Alpha Clip", Float) = 0
+
+		// Alpha blending by default. VRUiOnTop copies the blending of Gothic/UI menu pictures (opaque or transparent).
+		[Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src Blend", Float) = 5
+		[Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst Blend", Float) = 10
 	}
 
 	SubShader
@@ -49,7 +50,7 @@ Shader "Gothic/UI OnTop"
 		Lighting Off
 		ZWrite Off
 		ZTest Always
-		Blend SrcAlpha OneMinusSrcAlpha
+		Blend [_SrcBlend] [_DstBlend]
 		ColorMask [_ColorMask]
 
 		Pass
@@ -86,9 +87,6 @@ Shader "Gothic/UI OnTop"
 
             sampler2D _MainTex;
 			fixed4 _Color;
-			float _IgnoreVertexColor;
-			sampler2D _BaseMap;
-			float _UseBaseMap;
 			fixed4 _TextureSampleAdd;
 			float4 _ClipRect;
             float4 _MainTex_ST;
@@ -116,16 +114,13 @@ Shader "Gothic/UI OnTop"
                 {
                     v.color.rgb = UIGammaToLinear(v.color.rgb);
                 }
-                OUT.color = lerp(v.color, float4(1, 1, 1, 1), _IgnoreVertexColor) * _Color;
+                OUT.color = v.color * _Color;
 				return OUT;
 			}
 
 			fixed4 frag(v2f IN) : SV_Target
 			{
-				// _UseBaseMap: the source was a URP material (texture in _BaseMap) on an Image with a white sprite - the
-				// Canvas puts the sprite's texture into _MainTex on every draw.
-				half4 texColor = _UseBaseMap > 0.5 ? tex2D(_BaseMap, IN.texcoord) : tex2D(_MainTex, IN.texcoord);
-				half4 color = (texColor + _TextureSampleAdd) * IN.color;
+				half4 color = (tex2D(_MainTex, IN.texcoord) + _TextureSampleAdd) * IN.color;
 
                 #if UNITY_UI_CLIP_RECT
 				half2 m = saturate((_ClipRect.zw - _ClipRect.xy - abs(IN.mask.xy)) * IN.mask.zw);

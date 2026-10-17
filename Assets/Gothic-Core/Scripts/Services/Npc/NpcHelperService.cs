@@ -9,6 +9,7 @@ using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Extensions;
 using JetBrains.Annotations;
@@ -34,6 +35,7 @@ namespace Gothic.Core.Services.Npc
         [Inject] private readonly WayNetService _wayNetService;
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
         private const float _fpLookupDistance = 7f; // meter
         private static readonly int _raycastLayersToUse = 1 << Constants.DefaultLayer;
@@ -320,8 +322,7 @@ namespace Gothic.Core.Services.Npc
 
         public int ExtNpcGetTalentSkill(NpcInstance npc, int skillId)
         {
-            // Was a stub returning 0 - every script asking for a talent level got "none". E.g. Mroczne Tajemnice's
-            // teachers (B_GiveprocentSkill) then reset a master's 1H rank to "Nowy". Same storage as Npc_SetTalentSkill.
+            // Same storage as Npc_SetTalentSkill.
             // FIXME - skill levels should also drive the fight overlays (like OpenGothic does).
             return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Skill ?? 0;
         }
@@ -329,6 +330,18 @@ namespace Gothic.Core.Services.Npc
         public int ExtNpcGetTalentValue(NpcInstance npc, int skillId)
         {
             return GetContainer(npc)?.Vob?.GetTalent(skillId)?.Value ?? 0;
+        }
+
+        /// <summary>
+        /// Percentage shown in the status menu. G2 keeps the weapon talents' percentages in C_NPC.hitchance[]
+        /// (B_AddFightSkill), G1 in the talent value (Npc_SetTalentValue).
+        /// </summary>
+        public int GetTalentPercent(NpcContainer npc, int talentIndex)
+        {
+            if (_contextGameVersionService.IsGothic2() && talentIndex <= (int)NpcTalent.Crossbow)
+                return npc.Instance.GetHitChance((NpcTalent)talentIndex);
+
+            return npc.Vob.GetTalent(talentIndex).Value;
         }
 
         public VmGothicEnums.Attitude GetPersonAttitude(NpcContainer self, NpcContainer other)
@@ -543,8 +556,7 @@ namespace Gothic.Core.Services.Npc
         /// fov = 50 - OpenGothic assumes 100 fov for NPCs
         /// fov = 30 - We reuse this for Focus angle during AI_Attack()
         /// </summary>
-        public bool CanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f,
-            bool isFacingBackwards = false)
+        public bool CanSeeNpc(NpcInstance self, NpcInstance other, bool freeLOS, float fov = 50f)
         {
             var selfContainer = self.GetUserData();
             var otherContainer = other.GetUserData();
@@ -578,7 +590,10 @@ namespace Gothic.Core.Services.Npc
                 0f,
                 otherGroundPosition.z - selfGroundPosition.z
             ).normalized;
-            var selfForward = isFacingBackwards ? -selfRoot.forward : selfRoot.forward;
+            // UseMob aligns the root with the mob slot, but sit transitions turn the body around - look the way it does.
+            // (BsSit is already set while walking to the mob, the state id only once seated.)
+            var isSeated = selfContainer.Props.BodyState == VmGothicEnums.BodyState.BsSit && selfContainer.IsUsingMob();
+            var selfForward = isSeated ? -selfRoot.forward : selfRoot.forward;
             var selfForwardHorizontal = new Vector3(selfForward.x, 0f, selfForward.z).normalized;
             var angleToTarget = Vector3.Angle(selfForwardHorizontal, directionToTarget);
             var inFov = angleToTarget <= fov;

@@ -77,9 +77,9 @@ namespace Gothic.Core.Services.Context
             _impl.StoreHeldItemsInBackpack();
         }
 
-        public void KeepPlayerWithin(Vector3 center, float radius)
+        public void KeepPlayerWithin(Vector3 center, float softRadius, float radius)
         {
-            _impl.KeepPlayerWithin(center, radius);
+            _impl.KeepPlayerWithin(center, softRadius, radius);
         }
 
         public void InitUIInteraction()

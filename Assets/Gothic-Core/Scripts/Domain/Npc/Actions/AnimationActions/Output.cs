@@ -131,7 +131,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
             var bodyRadius = Gothic.Core.Domain.Npc.NpcBodySize.GetRadius(NpcContainer);
             voice.minDistance = bodyRadius;
-            voice.maxDistance = bodyRadius + _configService.Dev.DialogMaxDistance * 3f;
+            voice.maxDistance = bodyRadius + Gothic.Core.Const.Constants.DialogMaxDistance * 3f;
             return voice;
         }
 

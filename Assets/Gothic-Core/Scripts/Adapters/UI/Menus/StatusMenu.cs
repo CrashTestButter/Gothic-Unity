@@ -37,14 +37,21 @@ namespace Gothic.Core.Adapters.UI.Menus
         private static readonly int[] _attrCurrentIndex = { 4, 5, 2, 0 };
         private static readonly int[] _attrMaxIndex     = {-1,-1, 3, 1 };
 
-        // Armor slot → protection index (G1 constants.d PROT_*): 1=weapons → PROT_EDGE(2), 2=projectiles → PROT_POINT(6),
-        // 3=fire → PROT_FIRE(3), 4=magic → PROT_MAGIC(5). (BLUNT=1, FLY=4 aren't shown.)
+        // Protection array indices (G1 Content/_intern/Constants.d, PROT_* = DAM_INDEX_*; ZenKit DamageType):
+        //   0=BARRIER, 1=BLUNT, 2=EDGE, 3=FIRE, 4=FLY, 5=MAGIC, 6=POINT, 7=FALL
+        //   (Don't mix up with the DAM_* bit flags: DAM_XXX = 1 << DAM_INDEX_XXX.)
+        // Armor rows (G1 System/Menu/Menu_Status.d, MENU_ITEM_ARMOR_{n}_TITLE):
+        //   1 "vor Waffen"     → EDGE(2)  (scripts always set EDGE and BLUNT to the same value on armors/amulets)
+        //   2 "vor Geschossen" → POINT(6)
+        //   3 "vor Feuer"      → FIRE(3)
+        //   4 "vor Magie"      → MAGIC(5)
         private static readonly int[] _armorProtIndex = { 2, 6, 3, 5 };
 
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly NpcHelperService _npcHelperService;
 
         private void Awake()
         {
@@ -53,7 +60,8 @@ namespace Gothic.Core.Adapters.UI.Menus
 
         private void OnEnable()
         {
-            if (_npcService == null)
+            // No hero yet (menus/boot) - nothing to show.
+            if (_npcService?.GetHeroContainer() == null)
                 return;
             _npcService.SyncHeroInstanceToVob();
             UpdateData();
@@ -93,7 +101,7 @@ namespace Gothic.Core.Adapters.UI.Menus
             var talentCount = Math.Min(talentTitles.Count, vob.TalentCount);
 
             // Talent 0 doesn't exist (TXT_TALENTS[0] = ""), NPC_TALENT_1H = 1 is shown in MENU_ITEM_TALENT_1_*.
-            // Menu row number == talent index. Previously row i+1 got talent i, which shifted everything by one.
+            // Menu row number == talent index.
             var filledRows = 0;
             Enumerable.Range(1, Math.Max(0, talentCount - 1)).ForEach(i =>
             {
@@ -123,23 +131,10 @@ namespace Gothic.Core.Adapters.UI.Menus
                 SetItemText(keySkill, skillFormatted);
                 // Optional: e.g. G1 shows hit chance / failure chance, mods often comment it out for some rows.
                 if (MenuItemCache.ContainsKey(keyDescription))
-                    SetItemText(keyDescription, $"{GetTalentPercent(hero, i, talent.Value)}%");
+                    SetItemText(keyDescription, $"{_npcHelperService.GetTalentPercent(hero, i)}%");
             });
 
             Logger.Log($"[StatusMenu] Talents: count={vob.TalentCount}, titles={talentTitles.Count}, rows filled={filledRows}", LogCat.Ui);
-        }
-
-        /// <summary>
-        /// G2 keeps the weapon percentages (1H, 2H, bow, crossbow = talents 1-4) in C_NPC.hitchance[] (B_AddFightSkill),
-        /// not in the talent value. G1 and G1 mods (e.g. Mroczne Tajemnice) use the talent value (Npc_SetTalentValue).
-        /// </summary>
-        private int GetTalentPercent(NpcContainer hero, int talentIndex, int talentValue)
-        {
-            const int lastWeaponTalent = 4;
-            if (_contextGameVersionService.IsGothic2() && talentIndex <= lastWeaponTalent)
-                return hero.Instance.GetHitChance((NpcTalent)talentIndex);
-
-            return talentValue;
         }
 
         /// <summary>

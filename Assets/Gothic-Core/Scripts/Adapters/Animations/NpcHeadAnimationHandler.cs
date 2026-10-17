@@ -3,15 +3,22 @@ using UnityEngine;
 
 namespace Gothic.Core.Animations
 {
+    /// <summary>
+    /// Turns the NPC's head towards a target on top of the animated pose.
+    /// Two sources: Daedalus (AI_LookAt/AI_LookAtNpc/AI_StopLookAt) and the dialog itself. The dialog only fills in
+    /// when Daedalus isn't looking at something already, and stopping it never ends what Daedalus started.
+    /// </summary>
     public class NpcHeadAnimationHandler : BasePlayerBehaviour
     {
-        private bool _doLookAtNpc;
-        private Transform _destTransform;
-        // private Quaternion _initialHeadRotation;
-        private Quaternion _prevHeadRotation;
+        private Transform _scriptTarget;
+        private Transform _dialogTarget;
+        // Current head offset against the body's forward direction, eased towards the target angles.
+        private float _yaw;
+        private float _pitch;
 
-        private const float _headLookDegreeMax = 80f;
-        private const float _headLookRotateSpeed = 200f;
+        private const float _headLookYawMax = 80f;
+        private const float _headLookPitchMax = 30f;
+        private const float _headLookRotateSpeed = 120f;
 
         protected override void Awake()
         {
@@ -21,114 +28,84 @@ namespace Gothic.Core.Animations
             NpcData.PrefabProps.AnimationHeadHandler = this;
         }
 
+        /// <summary>
+        /// Daedalus: AI_LookAt / AI_LookAtNpc.
+        /// </summary>
         public void StartLookAt(Transform destinationTransform)
         {
-            _doLookAtNpc = true;
-            _destTransform = destinationTransform;
-            // _initialHeadRotation = PrefabProps.Head.rotation;
-            _prevHeadRotation = PrefabProps.Head.rotation;
+            _scriptTarget = destinationTransform;
         }
 
         /// <summary>
-        /// Head will immediately being managed by animation again.
+        /// Daedalus: AI_StopLookAt. The head eases back into the animation.
         /// </summary>
         public void StopLookAt()
         {
-            _doLookAtNpc = false;
+            _scriptTarget = null;
+        }
+
+        public void StartDialogLookAt(Transform destinationTransform)
+        {
+            _dialogTarget = destinationTransform;
+        }
+
+        public void StopDialogLookAt()
+        {
+            _dialogTarget = null;
         }
 
         /// <summary>
-        /// Each NPC has an idle animation which rotates the head in a forward looking state. We need to use LateUpdate() to overwrite this rotation of the head.
-        /// There are three options:
-        /// 1. the LookAt feature is not active - do nothing
-        /// 2. The other NPC is in visible range - RotateTowards()
-        /// 3. The other NPC is not in visible range - rotate back to original head rotation
+        /// The Animator poses the head after Update(), so the offset is added in LateUpdate().
+        /// Only active during dialogs for now: Daedalus' look-ats outside of them would also turn monster heads
+        /// (the Troll did an awkward head rotation).
+        /// Outside the yaw range (e.g. hero behind the NPC) or without a target, the head eases back to the animation.
         /// </summary>
         private void LateUpdate()
         {
-            // FIXME - Currently disabled as the Troll is doing a really awkward head rotation! Fix it first.
-            return;
-            
-            // 1.
-            if (!_doLookAtNpc)
-            {
+            if (PrefabProps.Head == null)
                 return;
-            }
 
-            var lookRotationVector = _destTransform.position - PrefabProps.Head.position;
-            var desiredRotation = Quaternion.LookRotation(lookRotationVector);
+            var target = _dialogTarget == null ? null : _scriptTarget != null ? _scriptTarget : _dialogTarget;
 
-            // Get the parent (neck) rotation
-            var parentRotation = PrefabProps.Head.parent.rotation;
+            var targetYaw = 0f;
+            var targetPitch = 0f;
+            if (target != null)
+                GetLookAngles(target.position, out targetYaw, out targetPitch);
 
-            // Calculate the relative rotation between desired look direction and parent
-            // i.e. we want to have the head rotating ~80 degrees based on central position on the neck only.
-            var relativeRotation = Quaternion.Inverse(parentRotation) * desiredRotation;
-            var relativeEuler = relativeRotation.eulerAngles;
+            var step = _headLookRotateSpeed * Time.deltaTime;
+            _yaw = Mathf.MoveTowards(_yaw, targetYaw, step);
+            _pitch = Mathf.MoveTowards(_pitch, targetPitch, step);
 
-            // Convert angles to -180 to 180 range
-            var horizontalAngle = relativeEuler.y;
-            if (horizontalAngle > 180f)
-            {
-                horizontalAngle -= 360f;
-            }
+            if (_yaw == 0f && _pitch == 0f)
+                return;
 
-            var verticalAngle = relativeEuler.x;
-            if (verticalAngle > 180f)
-            {
-                verticalAngle -= 360f;
-            }
-
-            if (Mathf.Abs(horizontalAngle) <= _headLookDegreeMax && Mathf.Abs(verticalAngle) <= _headLookDegreeMax)
-            {
-                // 2.
-                RotateTowardsOther(verticalAngle, horizontalAngle, parentRotation);
-            }
-            else
-            {
-                // 3.
-                RotateBackToOriginal();
-            }
-
-            _prevHeadRotation = PrefabProps.Head.rotation;
+            // Rotating around the body's axes instead of the head bone's keeps it independent of how the bone is
+            // oriented in the model.
+            var body = Go.transform;
+            var offset = Quaternion.AngleAxis(_yaw, Vector3.up) * Quaternion.AngleAxis(_pitch, body.right);
+            PrefabProps.Head.rotation = offset * PrefabProps.Head.rotation;
         }
 
-        private void RotateTowardsOther(float verticalAngle, float horizontalAngle, Quaternion parentRotation)
+        private void GetLookAngles(Vector3 targetPosition, out float yaw, out float pitch)
         {
-            // Create clamped local rotation
-            var localRotation = Quaternion.Euler(verticalAngle, horizontalAngle, 0);
+            yaw = 0f;
+            pitch = 0f;
 
-            // Convert back to world space
-            var worldRotation = parentRotation * localRotation;
+            var direction = targetPosition - PrefabProps.Head.position;
+            var flatDirection = new Vector3(direction.x, 0f, direction.z);
+            if (flatDirection.sqrMagnitude < 0.0001f)
+                return;
 
-            var currentHeadZ = PrefabProps.Head.rotation.eulerAngles.z;
-            var finalRotation = Quaternion.Euler(
-                worldRotation.eulerAngles.x,
-                worldRotation.eulerAngles.y,
-                currentHeadZ
-            );
+            var bodyForward = Go.transform.forward;
+            bodyForward.y = 0f;
+            var angle = Vector3.SignedAngle(bodyForward, flatDirection, Vector3.up);
+            if (Mathf.Abs(angle) > _headLookYawMax)
+                return;
 
-            PrefabProps.Head.rotation = Quaternion.RotateTowards(
-                _prevHeadRotation,
-                finalRotation,
-                Time.deltaTime * _headLookRotateSpeed
-            );
-        }
-
-        /// <summary>
-        /// With the new AnimationSystem, head has normally an animation being set.
-        /// It means we simply do not update the head rotation here at LateUpdate() and the head will turn back to its original position immediately.
-        /// </summary>
-        private void RotateBackToOriginal()
-        {
-            return;
-
-            // HINT: Old logic returning to original position, but e.g. Orry would then rotate his body back and his "original" head position is now wrong.
-            // PrefabProps.Head.rotation = Quaternion.RotateTowards(
-            //     _prevHeadRotation,
-            //     _initialHeadRotation,
-            //     Time.deltaTime * _headLookRotateSpeed
-            // );
+            yaw = angle;
+            // Positive pitch around the body's right axis looks down.
+            pitch = Mathf.Clamp(-Mathf.Atan2(direction.y, flatDirection.magnitude) * Mathf.Rad2Deg,
+                -_headLookPitchMax, _headLookPitchMax);
         }
     }
 }

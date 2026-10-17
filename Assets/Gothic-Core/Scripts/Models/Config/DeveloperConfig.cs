@@ -335,7 +335,10 @@ namespace Gothic.Core.Models.Config
         [Separator("WIP")]
         [Tooltip("Enable looting dead NPCs/monsters: grab a dead NPC to open a loot panel with their Daedalus inventory. WIP.")]
         public bool EnableNpcLooting;
-        
+
+        [Tooltip("The hero can move during dialogs (inside Constants.DialogMaxDistance); walking away chooses END if offered.")]
+        public bool EnableDialogFreeMovement = true;
+
         [Separator("Debug")]
         [Tooltip("Draw wireframe boxes for all NPC bone colliders. Green = active (attack window), White = inactive. Works in all builds including release.")]
         public bool ShowNpcColliders;
@@ -574,10 +577,6 @@ namespace Gothic.Core.Models.Config
         [Min(0f)]
         public float SmokeStartDelay = 1.5f;
 
-        [Tooltip("PrintScreen/AI_PrintScreen (\"New log entry\", \"1 item received\", ...) shown as a HUD in front of " +
-                 "the VR head + Snd_Play 2D sounds (\"LogEntry\"). Read at VM start - restart the game after toggling.")]
-        public bool EnableScreenMessages = true;
-
         [Tooltip("NPCs using a mob (sitting on a bench, ...) don't turn (AI_TurnToNpc etc.), like the engine. " +
                  "Before, a sitting NPC turned his back to the hero when talking.")]
         public bool EnableNoTurnWhileUsingMob = true;
@@ -597,12 +596,8 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Dig spots only react to their own tool (vanilla: pickaxe). Off = any melee weapon (easier testing).")]
         public bool DigSpotsRequireTool;
 
-        [Tooltip("V1: The dialog box is never cut by walls/benches/the NPC (ignores depth). VR hands render after " +
-                 "transparents so they stay visible above it for pointing.")]
-        public bool EnableDialogAlwaysOnTop = true;
-
-        [Tooltip("V1: The hero's HP/mana bars with their numbers, screen messages (\"New log entry\"), the chapter " +
-                 "popup and the menus are never cut by the world (ignore depth, drawn last); the VR hands stay above open menus.")]
+        [Tooltip("V1: The hero's HP/mana bars with their numbers and the chapter popup are never cut by the world " +
+                 "(VRUiOnTop copied from the menu's). Dialog, subtitles, menus and PrintScreen are always on top (main).")]
         public bool EnableHudAlwaysOnTop = true;
 
         [Tooltip("V1: Grabbing a mob with an onStateFunc and no mover target (G2 shrines, alchemy/rune tables, " +
@@ -814,13 +809,6 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Important dialogs are checked in their nr order like the engine (Baal Cadar: SleepSpell nr 1 " +
                  "before NoTalk nr 2 - he walked up for the sleep spell, then offered NoTalk, forever).")]
         public bool EnableImportantInfoOrder = true;
-
-        [Tooltip("V1: The hero isn't frozen during dialogs. A dialog doesn't start farther than DialogMaxDistance from " +
-                 "the NPC (come closer) and ends when the hero walks away.")]
-        public bool EnableDialogFreeMovement = true;
-
-        [Tooltip("Meters: the farthest distance between the hero and the NPC for a dialog (EnableDialogFreeMovement).")]
-        public float DialogMaxDistance = 5f;
 
         [Tooltip("V1: Dialog distance and voice range grow with the NPC's body (measured from its edge) - G2's undead " +
                  "dragon's lines were inaudible, his head is meters away. Dialog lines play on their own AudioSource.")]
@@ -1064,10 +1052,6 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Dialog subtitles (OU.BIN/OU.CSL) packed in a mod's VDF/.mod are read from the archives - no manual " +
                  "VDFS extraction to VDFS/_WORK/DATA/scripts/content/CUTSCENE needed.")]
         public bool EnableSubtitlesFromVfs = true;
-
-        [Tooltip("V1: In the menu the right stick pulls the menu closer (down) or pushes it away (up), 1-8 m - from 5 m the " +
-                 "save game list was unreadable. Kept for the session.")]
-        public bool EnableMenuZoom = true;
 
         [Tooltip("V1: Light mapped world polygons (caves, mines, houses) show Gothic's lightmaps like the engine - before " +
                  "they had only their dim/black vertex light. Static lights then light VOBs and NPCs only.")]

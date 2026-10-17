@@ -72,6 +72,7 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
                 // If we load it for the player, ZenKit is initialized later therefore, we need to delay the startup execution.
                 GlobalEventDispatcher.ZenKitBootstrapped.AddListener(StartInternal);
+
             }
             else
             {

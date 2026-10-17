@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using ZenKit;
+using ZenKit.Daedalus;
 using ZenKit.Vobs;
 
 namespace Gothic.Core
@@ -70,6 +71,11 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer> FightWindowCombo = new();
 
         public static readonly UnityEvent<NpcContainer, NpcContainer> SetHeroAsTarget = new();
+
+        /// <summary>
+        /// An attribute was written via NpcService.SetAttribute or synced from the instance (SyncHeroInstanceToVob).
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer, NpcAttribute> NpcAttributeChanged = new();
 
         /// <summary>
         /// NpcContainer - who attacks
@@ -147,19 +153,6 @@ namespace Gothic.Core
         public static readonly UnityEvent<Gothic.Core.Models.Trade.TradeSession> TradeClosed = new();
 
         /// <summary>
-        /// Daedalus PrintScreen/AI_PrintScreen ("New log entry", "1 item received", ...).
-        /// string - text
-        /// int - posY in percent of the screen (-1 = centered)
-        /// int - seconds to show
-        /// </summary>
-        public static readonly UnityEvent<string, int, int> ScriptPrintScreen = new();
-
-        /// <summary>
-        /// Daedalus Snd_Play - a non-positional (2D) sound like "LogEntry".
-        /// </summary>
-        public static readonly UnityEvent<string> ScriptSoundPlay = new();
-
-        /// <summary>
         /// PlayVideo/PlayVideoEx from Daedalus (chapter videos, G1 ending "Extro.bik"). string = video file name.
         /// </summary>
         public static readonly UnityEvent<string> ScriptPlayVideo = new();
@@ -182,8 +175,15 @@ namespace Gothic.Core
 
         // DocModel — document to show; GameObject — item GO to attach the viewer to (may be null in flat mode).
         public static readonly UnityEvent<DocModel, GameObject> DocShow = new();
-        // Text on screen for some seconds (Daedalus PrintScreen() or engine messages like Marvin's "testmode on").
+        // Text on screen for some seconds (Daedalus PrintScreen()/AI_PrintScreen()/Print() or engine messages like
+        // Marvin's "testmode on").
         public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();
+
+        // Game menu (MenuHandler): a (sub)menu got opened - also when switching between submenus. GameObject is the
+        // opened submenu.
+        public static readonly UnityEvent<GameObject> MenuOpened = new();
+        // Game menu (MenuHandler) got closed completely.
+        public static readonly UnityEvent MenuClosed = new();
 
         // Marvin: the list of recently executed commands changed.
         public static readonly UnityEvent MarvinRecentCommandsChanged = new();

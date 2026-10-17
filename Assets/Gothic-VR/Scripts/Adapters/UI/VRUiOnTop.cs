@@ -1,316 +1,284 @@
 #if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
-using Gothic.Core.Logging;
-using HurricaneVR.Framework.Core.Grabbers;
-using HurricaneVR.Framework.Core.UI;
+using Gothic.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
-    /// Draws a world space UI (dialog box, NPC subtitles, HUD, menus) on top of walls, furniture and NPC bodies.
+    /// Draws a world space UI (dialog box, NPC subtitles, PrintScreen, game menu) on top of walls, furniture and NPC
+    /// bodies.
     ///
-    /// - Material values can't do it: the Canvas overrides unity_GUIZTestMode per draw, and the dialog background
-    ///   (URP Unlit) has no depth test parameter. All graphics get the "Gothic/UI OnTop" shader (ZTest Always).
-    /// - Menu backgrounds/frames are MeshRenderers (Gothic textures on quads) - they get the same shader.
-    /// - Gothic's bitmap fonts are TMP sprite assets (TMP_SubMeshUI with the asset's material, re-assigned on every text
-    ///   change). Labels get an on-top copy of their sprite asset. UIEvents swaps sprite assets on hover (highlight font)
-    ///   - LateUpdate wraps those again. The copy keeps the original name, as the highlight font is looked up by name.
-    /// - Queues: after all transparents (Gothic alpha materials are sorted back to front and one closer to the camera
-    ///   would cover the UI). Without depth the order decides what is in front: deeper in the hierarchy = later (a
-    ///   status bar's fill is a nested canvas below its background), text after all images, VR hands last.
+    /// - The Canvas overrides unity_GUIZTestMode per draw, so graphics get copies of the on-top material assets
+    ///   ("Gothic/UI OnTop", ZTest Always). Copies only carry the Gothic texture, which is loaded at runtime.
+    /// - Gothic's bitmap fonts are runtime TMP sprite assets. Texts get an on-top copy of their sprite asset; texts
+    ///   whose sprite asset is swapped later (hover highlight, PrintScreen fonts) are wrapped again when TMP
+    ///   regenerates them - and regenerated once more, as TMP ignores dirty flags set during a Canvas rebuild.
+    /// - Menus draw their Gothic background pictures with MeshRenderers. Without depth test, their order comes from
+    ///   the render queue: behind the Canvas plane (menu background) < on it (item pictures) < in front (arrows).
     /// </summary>
     public class VRUiOnTop : MonoBehaviour
     {
-        private const int _backgroundRenderQueue = 3800;
-        private const int _maxHierarchyDepth = 99;
-        private const int _textRenderQueue = 3901;
-        private const int _handsRenderQueue = 3950;
+        [Tooltip("On-top copy for images. Its render queue has to be after all transparents.")]
+        [SerializeField] private Material _backgroundMaterial;
+        [Tooltip("On-top copy for Gothic font sprites. Render queue after _backgroundMaterial.")]
+        [SerializeField] private Material _textMaterial;
+        [Tooltip("Optional: on-top copy for MeshRenderers (menu pictures). Render queue before _backgroundMaterial. " +
+                 "Meshes on the Canvas plane use queue -1, meshes behind it -2.")]
+        [SerializeField] private Material _meshMaterial;
+        [Tooltip("Apply on every enable and whenever a menu below gets opened (and again one frame later, after the " +
+                 "Start() of new elements). For UIs built by Core code, which can't call Apply().")]
+        [SerializeField] private bool _isAppliedAutomatically;
+        [Tooltip("0 = always visible. Otherwise hidden when farther away from the camera (meters).")]
+        [SerializeField] private float _maxVisibleDistance;
+        [Tooltip("Hidden by _maxVisibleDistance. Only needed if _maxVisibleDistance > 0.")]
+        [SerializeField] private CanvasGroup _canvasGroup;
 
-        // Resolved on first use - Shader.Find isn't allowed in a MonoBehaviour's (static) field initializers.
-        private static Shader _onTopShader;
-        private static readonly int _ignoreVertexColorId = Shader.PropertyToID("_IgnoreVertexColor");
-        private static readonly int _baseMapId = Shader.PropertyToID("_BaseMap");
-        private static readonly int _useBaseMapId = Shader.PropertyToID("_UseBaseMap");
+        // Distance to the Canvas plane (Canvas units) from which a mesh counts as being in front of/behind it.
+        private const float _canvasPlaneTolerance = 0.001f;
+        private static readonly int _srcBlendId = Shader.PropertyToID("_SrcBlend");
+        private static readonly int _dstBlendId = Shader.PropertyToID("_DstBlend");
+
+        // Shared by all on-top UIs: dialog options and PrintScreen lines are cloned at runtime.
+        // Key: source material, on-top material asset, render queue.
+        private static readonly Dictionary<(Material, Material, int), Material> _onTopMaterials = new();
         private static readonly Dictionary<TMP_SpriteAsset, TMP_SpriteAsset> _onTopSpriteAssets = new();
-        private static readonly List<(Material material, int queue)> _handMaterials = new();
-        private static readonly HashSet<object> _handsOnTopRequests = new();
-        private static readonly object _dialogHandsRequest = new();
-        // One material per look/queue - re-applying (IsAutoApply) mustn't create new ones.
-        private static readonly Dictionary<(Texture, Color, Vector4, int, bool, bool), Material> _onTopMaterials = new();
+        private static readonly HashSet<TMP_SpriteAsset> _onTopSpriteAssetCopies = new();
 
-        private const float _autoApplySeconds = 0.1f;
-
-        private readonly HashSet<TMP_Text> _texts = new();
-        private CanvasGroup _canvasGroup;
-        private float _nextAutoApplyTime;
+        private bool _isApplied;
+        private int _deferredApplyFrame = -1;
+        private Transform _cameraTransform;
 
         /// <summary>
-        /// Patches new graphics (hit numbers, menu entries, ...) and graphics whose material code replaced later (e.g.
-        /// a status bar's material set after boot, a menu's background picture) a few times per second.
-        /// </summary>
-        public bool IsAutoApply;
-
-        /// <summary>
-        /// The VR hands (and the UI laser) draw above this UI while it is active - pointing at menu entries.
-        /// </summary>
-        public bool IsHandsOnTopWhileActive;
-
-        /// <summary>
-        /// 0 = always visible. Otherwise hidden when farther away from the camera - on-top NPC subtitles of ambient
-        /// smalltalk showed up through every wall of a camp as tiny pixels.
-        /// </summary>
-        public float MaxVisibleDistance;
-
-
-        /// <summary>
-        /// Adds (once) and applies the on-top drawing to a UI root.
-        /// </summary>
-        public static VRUiOnTop Ensure(GameObject root, bool isAutoApply, bool isHandsOnTopWhileActive = false)
-        {
-            if (!root.TryGetComponent<VRUiOnTop>(out var onTop))
-                onTop = root.AddComponent<VRUiOnTop>();
-            onTop.IsAutoApply |= isAutoApply;
-            if (isHandsOnTopWhileActive && !onTop.IsHandsOnTopWhileActive)
-            {
-                onTop.IsHandsOnTopWhileActive = true;
-                if (onTop.isActiveAndEnabled)
-                    RequestHandsOnTop(onTop, true);
-            }
-            onTop.Apply();
-            return onTop;
-        }
-
-        /// <summary>
-        /// Patches all not yet patched graphics and meshes below this GameObject (new dialog options are cloned later on).
+        /// Patches all graphics and meshes below this GameObject which aren't on top (yet/anymore). Call it again after
+        /// cloning new elements or replacing their materials.
+        /// Texts are wrapped on every call: UIEvents resets the dialog options to the original font in between.
         /// </summary>
         public void Apply()
         {
+            _isApplied = true;
             foreach (var graphic in GetComponentsInChildren<Graphic>(true))
             {
                 if (graphic is TMP_Text text)
-                {
-                    if (_texts.Add(text))
-                        WrapSpriteAsset(text);
-                    continue;
-                }
-
-                // Its material comes from the (patched) sprite asset.
-                if (graphic is TMP_SubMeshUI)
-                    continue;
-
-                var original = graphic.material;
-                if (original != null && original.shader == GetOnTopShader())
-                    continue;
-
-                // URP materials (status bars: BAR_HEALTH.TGA in _BaseMap) on Images with a white sprite - the bar's
-                // texture is in the material, not in graphic.mainTexture (the bars came out white).
-                var baseMap = original != null && original.HasProperty(_baseMapId) ? original.GetTexture(_baseMapId) : null;
-                var color = original == null ? Color.white :
-                    original.HasProperty("_BaseColor") ? original.GetColor("_BaseColor") :
-                    original.HasProperty("_Color") ? original.GetColor("_Color") : Color.white;
-                graphic.material = CreateOnTopMaterial(baseMap != null ? baseMap : graphic.mainTexture, color,
-                    new Vector4(1, 1, 0, 0), GetRenderQueue(graphic.transform), false, baseMap != null);
+                    WrapSpriteAsset(text);
+                // Its material comes from the (wrapped) sprite asset.
+                else if (graphic is not TMP_SubMeshUI && !IsOnTop(graphic.material))
+                    graphic.material = GetOnTopMaterial(graphic.material, _backgroundMaterial,
+                        _backgroundMaterial.renderQueue);
             }
+
+            if (_meshMaterial == null)
+                return;
 
             foreach (var meshRenderer in GetComponentsInChildren<MeshRenderer>(true))
                 PatchMeshRenderer(meshRenderer);
         }
 
-        private void PatchMeshRenderer(MeshRenderer meshRenderer)
-        {
-            var materials = meshRenderer.sharedMaterials;
-            var isChanged = false;
-            for (var i = 0; i < materials.Length; i++)
-            {
-                var original = materials[i];
-                if (original == null || original.shader == GetOnTopShader())
-                    continue;
-
-                var textureName = original.HasProperty("_BaseMap") ? "_BaseMap" :
-                    original.HasProperty("_MainTex") ? "_MainTex" : null;
-                var texture = textureName != null ? original.GetTexture(textureName) : null;
-                var scale = textureName != null ? original.GetTextureScale(textureName) : Vector2.one;
-                var offset = textureName != null ? original.GetTextureOffset(textureName) : Vector2.zero;
-                var color = original.HasProperty("_BaseColor") ? original.GetColor("_BaseColor") :
-                    original.HasProperty("_Color") ? original.GetColor("_Color") : Color.white;
-
-                materials[i] = CreateOnTopMaterial(texture, color, new Vector4(scale.x, scale.y, offset.x, offset.y),
-                    GetRenderQueue(meshRenderer.transform), true, false);
-                isChanged = true;
-            }
-
-            if (isChanged)
-                meshRenderer.sharedMaterials = materials;
-        }
-
         /// <summary>
-        /// Deeper in the hierarchy = drawn later (in front).
+        /// DeveloperConfig.EnableHudAlwaysOnTop: the same on-top drawing for a UI built by code, which has no VRUiOnTop
+        /// in its prefab (the hero's status bars, the chapter screen). Copies this one's materials once, applies it.
         /// </summary>
-        private int GetRenderQueue(Transform target)
+        public VRUiOnTop CopyTo(GameObject root)
         {
-            var depth = 0;
-            for (var current = target; current != null && current != transform; current = current.parent)
-                depth++;
-            return _backgroundRenderQueue + Mathf.Min(depth, _maxHierarchyDepth);
-        }
-
-        /// <summary>
-        /// VR hands above on-top UI, so we see them when pointing at a dialog option. Only while a dialog is open -
-        /// otherwise they covered letters/documents held in front of them.
-        /// </summary>
-        public static void SetHandsOnTop(bool onTop)
-        {
-            RequestHandsOnTop(_dialogHandsRequest, onTop);
-        }
-
-        /// <summary>
-        /// Hands (and the UI laser) stay on top while any dialog/menu asks for it.
-        /// </summary>
-        private static void RequestHandsOnTop(object requester, bool onTop)
-        {
-            var wasOnTop = _handsOnTopRequests.Count > 0;
-            if (onTop)
-                _handsOnTopRequests.Add(requester);
-            else
-                _handsOnTopRequests.Remove(requester);
-
-            var isOnTop = _handsOnTopRequests.Count > 0;
-            if (wasOnTop == isOnTop)
-                return;
-
-            if (isOnTop)
+            if (!root.TryGetComponent<VRUiOnTop>(out var copy))
             {
-                _handMaterials.Clear();
-                foreach (var hand in FindObjectsByType<HVRHandGrabber>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                {
-                    var handModel = hand.HandModel != null ? hand.HandModel : hand.transform;
-                    foreach (var handRenderer in handModel.GetComponentsInChildren<Renderer>(true))
-                        MoveToHandsQueue(handRenderer);
-                }
-                // The laser pointing at menu entries.
-                foreach (var pointer in FindObjectsByType<HVRUIPointer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
-                {
-                    if (pointer.TryGetComponent<LineRenderer>(out var line))
-                        MoveToHandsQueue(line);
-                }
-                Logger.Log($"[VRUiOnTop] {_handMaterials.Count} hand/laser material(s) moved to queue {_handsRenderQueue}.", LogCat.VR);
-                return;
+                copy = root.AddComponent<VRUiOnTop>();
+                copy._backgroundMaterial = _backgroundMaterial;
+                copy._textMaterial = _textMaterial;
+                copy._meshMaterial = _meshMaterial;
             }
-
-            foreach (var (material, queue) in _handMaterials)
-            {
-                if (material != null)
-                    material.renderQueue = queue;
-            }
-            _handMaterials.Clear();
-        }
-
-        private static void MoveToHandsQueue(Renderer handRenderer)
-        {
-            foreach (var material in handRenderer.materials)
-            {
-                _handMaterials.Add((material, material.renderQueue));
-                material.renderQueue = _handsRenderQueue;
-            }
+            copy.Apply();
+            return copy;
         }
 
         private void OnEnable()
         {
-            if (IsHandsOnTopWhileActive)
-                RequestHandsOnTop(this, true);
+            TMPro_EventManager.TEXT_CHANGED_EVENT.Add(OnTextChanged);
+
+            if (!_isAppliedAutomatically)
+                return;
+
+            GlobalEventDispatcher.MenuOpened.AddListener(OnMenuOpened);
+            ApplyNowAndNextFrame();
         }
 
         private void OnDisable()
         {
-            RequestHandsOnTop(this, false);
+            TMPro_EventManager.TEXT_CHANGED_EVENT.Remove(OnTextChanged);
+            GlobalEventDispatcher.MenuOpened.RemoveListener(OnMenuOpened);
+        }
+
+        private void Update()
+        {
+            if (_maxVisibleDistance <= 0f || _canvasGroup == null)
+                return;
+
+            if (_cameraTransform == null)
+            {
+                var mainCamera = Camera.main;
+                if (mainCamera == null)
+                    return;
+                _cameraTransform = mainCamera.transform;
+            }
+
+            var sqrDistance = (_cameraTransform.position - transform.position).sqrMagnitude;
+            var isNear = sqrDistance <= _maxVisibleDistance * _maxVisibleDistance;
+            _canvasGroup.alpha = isNear ? 1f : 0f;
+            _canvasGroup.blocksRaycasts = isNear;
         }
 
         private void LateUpdate()
         {
-            UpdateDistanceVisibility();
-
-            if (IsAutoApply && Time.unscaledTime >= _nextAutoApplyTime)
-            {
-                _nextAutoApplyTime = Time.unscaledTime + _autoApplySeconds;
-                _texts.RemoveWhere(text => text == null);
-                Apply();
-            }
-
-            foreach (var text in _texts)
-            {
-                if (text != null)
-                    WrapSpriteAsset(text);
-            }
-        }
-
-        private void UpdateDistanceVisibility()
-        {
-            if (MaxVisibleDistance <= 0f || Camera.main == null)
+            if (_deferredApplyFrame < 0 || Time.frameCount < _deferredApplyFrame)
                 return;
 
-            if (_canvasGroup == null && !TryGetComponent(out _canvasGroup))
-                _canvasGroup = gameObject.AddComponent<CanvasGroup>();
-
-            var isNear = Vector3.Distance(Camera.main.transform.position, transform.position) <= MaxVisibleDistance;
-            _canvasGroup.alpha = isNear ? 1f : 0f;
+            _deferredApplyFrame = -1;
+            Apply();
         }
 
-        private static void WrapSpriteAsset(TMP_Text text)
+        private void OnMenuOpened(GameObject menu)
+        {
+            if (menu != null && menu.transform.IsChildOf(transform))
+                ApplyNowAndNextFrame();
+        }
+
+        /// <summary>
+        /// Now: no frame with world geometry in front of the UI. Next frame: elements activated now replace their
+        /// materials in Start() (e.g. save game thumbnail, Gothic logo) or get created in Awake() (quest log entries).
+        /// </summary>
+        private void ApplyNowAndNextFrame()
+        {
+            Apply();
+            _deferredApplyFrame = Time.frameCount + 1;
+        }
+
+        /// <summary>
+        /// UIEvents swaps the sprite asset on hover (highlight font) - wrap the new one too.
+        /// </summary>
+        private void OnTextChanged(Object changed)
+        {
+            if (!_isApplied || changed is not TMP_Text text || !text.transform.IsChildOf(transform))
+                return;
+
+            // TMP sends this event while the Canvas rebuilds its graphics. There, the spriteAsset setter can't mark the
+            // text dirty, so it would keep the original (depth tested) font material until its next text change.
+            if (WrapSpriteAsset(text))
+                text.ForceMeshUpdate();
+        }
+
+        /// <returns>True, if the text got an on-top sprite asset now.</returns>
+        private bool WrapSpriteAsset(TMP_Text text)
         {
             // No own sprite asset (e.g. NPC subtitle lines): TMP falls back to the default one - wrap that.
             var source = text.spriteAsset != null ? text.spriteAsset : TMP_Settings.defaultSpriteAsset;
-            if (source == null || _onTopSpriteAssets.ContainsValue(source))
-                return;
+            if (source == null || _onTopSpriteAssetCopies.Contains(source))
+                return false;
 
             if (!_onTopSpriteAssets.TryGetValue(source, out var onTop) || onTop == null)
             {
                 onTop = Instantiate(source);
                 onTop.name = source.name; // UIEventsService finds the highlight font by name (..._hi.fnt).
-                onTop.material = CreateOnTopMaterial(source.material.mainTexture, Color.white, new Vector4(1, 1, 0, 0),
-                    _textRenderQueue, false, false);
+                onTop.material = CreateCopy(_textMaterial, _textMaterial.renderQueue, source.material);
                 onTop.UpdateLookupTables();
                 _onTopSpriteAssets[source] = onTop;
+                _onTopSpriteAssetCopies.Add(onTop);
             }
 
             text.spriteAsset = onTop;
+            return true;
         }
 
-        private static Shader GetOnTopShader()
+        private void PatchMeshRenderer(MeshRenderer meshRenderer)
         {
-            if (_onTopShader == null)
-                _onTopShader = Shader.Find("Gothic/UI OnTop");
-            return _onTopShader;
-        }
+            var source = meshRenderer.sharedMaterial;
+            // TextMeshPro (3D) texts render with a MeshRenderer too.
+            if (source == null || IsOnTop(source) || meshRenderer.TryGetComponent<TMP_Text>(out _)
+                || meshRenderer.TryGetComponent<TMP_SubMesh>(out _))
+                return;
 
-        /// <param name="isMesh">Meshes have no vertex colors (UI vertices carry the graphic's color).</param>
-        /// <param name="isBaseMap">The texture goes into _BaseMap - the Canvas overwrites _MainTex with the sprite's.</param>
-        private static Material CreateOnTopMaterial(Texture texture, Color color, Vector4 scaleOffset, int renderQueue,
-            bool isMesh, bool isBaseMap)
-        {
-            var key = (texture, color, scaleOffset, renderQueue, isMesh, isBaseMap);
-            if (_onTopMaterials.TryGetValue(key, out var material) && material != null)
-                return material;
-
-            material = new Material(GetOnTopShader())
+            var queue = _meshMaterial.renderQueue;
+            var canvas = meshRenderer.GetComponentInParent<Canvas>(true);
+            if (canvas != null)
             {
-                mainTexture = texture,
-                color = color,
-                mainTextureScale = new Vector2(scaleOffset.x, scaleOffset.y),
-                mainTextureOffset = new Vector2(scaleOffset.z, scaleOffset.w),
+                var canvasZ = GetCanvasLocalZ(meshRenderer.transform, canvas.transform);
+                if (canvasZ > _canvasPlaneTolerance)
+                    queue -= 2;
+                else if (canvasZ >= -_canvasPlaneTolerance)
+                    queue -= 1;
+            }
+
+            var onTop = GetOnTopMaterial(source, _meshMaterial, queue);
+            // Opaque Gothic/UI pictures stay opaque, transparent ones keep their blending.
+            if (source.HasProperty(_srcBlendId) && source.HasProperty(_dstBlendId))
+            {
+                onTop.SetFloat(_srcBlendId, source.GetFloat(_srcBlendId));
+                onTop.SetFloat(_dstBlendId, source.GetFloat(_dstBlendId));
+            }
+            meshRenderer.sharedMaterial = onTop;
+        }
+
+        /// <summary>
+        /// Local z of the object's origin inside the Canvas. Computed from local transforms only: world positions in
+        /// Gothic are too large to keep the tiny offsets of menu pictures (e.g. background +0.01) precise.
+        /// </summary>
+        private static float GetCanvasLocalZ(Transform target, Transform canvas)
+        {
+            var point = Vector3.zero;
+            for (var current = target; current != null && current != canvas; current = current.parent)
+                point = current.localPosition + current.localRotation * Vector3.Scale(current.localScale, point);
+            return point.z;
+        }
+
+        private bool IsOnTop(Material material)
+        {
+            // Instances of on-top copies (e.g. Renderer.material) are on top as well.
+            return material != null && material.shader == _backgroundMaterial.shader;
+        }
+
+        /// <summary>
+        /// Drops on-top copies whose source material got destroyed (e.g. with its scene) and destroys the copies too.
+        /// Copies of living sources stay: persistent UIs (dialog, menu) still use them.
+        /// </summary>
+        public static void ReleaseDeadMaterials()
+        {
+            var deadKeys = new List<(Material, Material, int)>();
+            foreach (var (key, onTop) in _onTopMaterials)
+            {
+                if (key.Item1 != null && onTop != null)
+                    continue;
+
+                deadKeys.Add(key);
+                if (onTop != null)
+                    Destroy(onTop);
+            }
+
+            foreach (var key in deadKeys)
+                _onTopMaterials.Remove(key);
+        }
+
+        private static Material GetOnTopMaterial(Material source, Material onTopAsset, int renderQueue)
+        {
+            var key = (source, onTopAsset, renderQueue);
+            if (!_onTopMaterials.TryGetValue(key, out var onTop) || onTop == null)
+            {
+                onTop = CreateCopy(onTopAsset, renderQueue, source);
+                _onTopMaterials[key] = onTop;
+            }
+            return onTop;
+        }
+
+        private static Material CreateCopy(Material onTopAsset, int renderQueue, Material source)
+        {
+            return new Material(onTopAsset)
+            {
+                mainTexture = source.mainTexture,
+                mainTextureScale = source.mainTextureScale,
+                mainTextureOffset = source.mainTextureOffset,
+                color = source.color,
                 renderQueue = renderQueue
             };
-            material.SetFloat(_ignoreVertexColorId, isMesh ? 1f : 0f);
-            if (isBaseMap)
-            {
-                material.SetTexture(_baseMapId, texture);
-                material.SetFloat(_useBaseMapId, 1f);
-            }
-            _onTopMaterials[key] = material;
-            return material;
         }
     }
 }

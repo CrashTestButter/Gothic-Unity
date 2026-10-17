@@ -168,14 +168,8 @@ namespace Gothic.Core.Services.Npc
             if (otherContainer != null && NpcHelperService.IsKnockedOut(otherContainer))
                 return false;
 
-            // A seated NPC's root faces its mob slot direction (into the bench) while the sit animation turned his body
-            // around - his field of view pointed away from the hero in front of him (B_AssessTalk: stand up for every
-            // talk). Look the way the body does. Seeing all around made him ignore a hero talking to his back.
-            var selfContainer = self?.GetUserData();
-            var isSeated = _configService.Dev.EnableMobSeatFix && selfContainer?.PrefabProps?.CurrentInteractable != null &&
-                           selfContainer.Props.CurrentInteractableStateId >= 0;
-
-            return _npcHelperService.CanSeeNpc(self, other, freeLOS, fov, isSeated);
+            // A seated NPC looks the way its body faces - NpcHelperService.CanSeeNpc.
+            return _npcHelperService.CanSeeNpc(self, other, freeLOS, fov);
         }
 
         public void ExtNpcClearAiQueue(NpcInstance npc)
@@ -446,21 +440,32 @@ namespace Gothic.Core.Services.Npc
             var container = npc.GetUserData();
             var wasUnconscious = container.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious;
             // Reset immediately (not via queue) so Daedalus C_BodyStateContains checks in the same ZS_*_Loop tick see BsStand.
+            // A seated NPC still sits during the back transition below.
             container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
             if (wasUnconscious)
                 container.Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(string0: "T_Wounded_2_Stand"), container));
 
-            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand), only AI_StandUpQuick pops.
-            // E.g. ZS_Talk with a seated NPC that can't see the hero - he got yanked up inside the bench before.
-            var mob = container.PrefabProps?.CurrentInteractable;
-            // Not when the script already queued the back transition (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
-            if (_configService.Dev.EnableMobSeatFix && mob != null && container.Props.CurrentInteractableStateId >= 0 &&
-                !container.Props.AnimationQueue.OfType<UseMob>().Any())
+            // G1 docs: AI_StandUp plays the back transitions of a mob (S1 -> S0 -> Stand) - unless one is already
+            // running or queued (e.g. ZS_SitAround_End: AI_UseMob(BENCH, -1)).
+            var props = container.Props;
+            var isBackTransitionPending = props.CurrentAction is UseMob { IsStopUsingMob: true } ||
+                                          props.AnimationQueue.OfType<UseMob>().Any(u => u.IsStopUsingMob);
+            if (container.IsUsingMob() && !isBackTransitionPending)
             {
-                container.Props.AnimationQueue.Enqueue(new UseMob(
-                    new AnimationAction(mob.Props.GetVisualScheme(), -1), container));
+                var scheme = container.PrefabProps.CurrentInteractable.Props.GetVisualScheme();
+                props.AnimationQueue.Enqueue(new UseMob(new AnimationAction(scheme, -1), container));
             }
 
+            props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
+        }
+
+        /// <summary>
+        /// G1 docs: like AI_StandUp, but pops out of a mob without its back transitions.
+        /// </summary>
+        public void ExtAiStandUpQuick(NpcInstance npc)
+        {
+            var container = npc.GetUserData();
+            container.Props.BodyState = VmGothicEnums.BodyState.BsStand;
             container.Props.AnimationQueue.Enqueue(new StandUp(new AnimationAction(), container));
         }
 

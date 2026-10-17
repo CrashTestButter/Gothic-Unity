@@ -44,9 +44,15 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly MarvinService _marvinService;
 
         private const string _contextName = "VR";
+        // Meters per second the player is pulled back when they ended up beyond KeepPlayerWithin's radius.
+        private const float _keepWithinPullBackSpeed = 1f;
+        // Share of the normal speed left at KeepPlayerWithin's radius for walking back in or sideways.
+        private const float _keepWithinMinSpeed = 0.25f;
 
         private VRPlayerController _playerController;
         private GameObject _marvinRoot;
+        private int _keepWithinLastFrame = -1;
+        private Vector3 _keepWithinLastPosition;
 
         public VRContextInteractionService()
         {
@@ -54,10 +60,6 @@ namespace Gothic.VR.Services.Context
 
             _vrWeaponService.Init();
 
-            GlobalEventDispatcher.ScriptPrintScreen.AddListener((message, _, seconds) =>
-                VRScreenMessages.ShowMessage(_audioService, message, seconds));
-            GlobalEventDispatcher.ScriptSoundPlay.AddListener(soundName =>
-                VRScreenMessages.PlaySound(_audioService, soundName));
             GlobalEventDispatcher.ScriptPlayVideo.AddListener(fileName => VRCinema.Play(_videoService, fileName));
             // DeveloperConfig.EnableVrHeroBody: the hero's own body + arms under the VR head (one per world scene).
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>
@@ -138,9 +140,7 @@ namespace Gothic.VR.Services.Context
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera
-            var printScreenGo = _resourceCacheService.TryGetPrefabObject(PrefabType.UiPrintScreen);
-            SceneManager.MoveGameObjectToScene(printScreenGo, activeScene);
-            printScreenGo.GetComponent<VRPrintScreen>().Init(_playerController.Camera);
+            activeScene.GetComponentInChildren<VRPrintScreen>(true)!.Init();
         }
 
         private void OnMarvinModeChanged(bool isActive)
@@ -200,13 +200,21 @@ namespace Gothic.VR.Services.Context
         /// <summary>
         /// <summary>
         /// DeveloperConfig.EnableHudAlwaysOnTop: the hero's bars (on the wrists - the other hand and the world cut
-        /// through them) and the menus (texts, background meshes, frames) draw on top of everything, like the dialog
-        /// box; the VR hands above an open menu. Hit numbers and menu entries created later: VRUiOnTop.IsAutoApply.
+        /// through them) draw on top of everything, like the dialog box. The menus have their VRUiOnTop in the prefab,
+        /// it is the template for the bars' materials.
         /// </summary>
         private void ApplyHudOnTop()
         {
             if (!_configService.Dev.EnableHudAlwaysOnTop)
                 return;
+
+            var template = Object.FindFirstObjectByType<VRUiOnTop>(FindObjectsInactive.Include);
+            if (template == null)
+            {
+                Logger.LogWarning("[VRUiOnTop] No on-top UI in the scene to copy - status bars stay depth tested.",
+                    LogCat.VR);
+                return;
+            }
 
             var roots = new System.Collections.Generic.HashSet<GameObject>();
             foreach (var bar in Object.FindObjectsByType<Gothic.Core.Adapters.UI.StatusBars.StatusBarAdapter>(
@@ -216,15 +224,31 @@ namespace Gothic.VR.Services.Context
                     roots.Add(GetRootCanvas(bar.transform) ?? bar.gameObject);
             }
             foreach (var root in roots)
-                VRUiOnTop.Ensure(root, true);
-
-            // Menus: the hands and the laser stay above them while open - pointing at the entries.
-            if (_playerController != null && _playerController.MenuHandler != null)
             {
-                roots.Add(_playerController.MenuHandler.gameObject);
-                VRUiOnTop.Ensure(_playerController.MenuHandler.gameObject, true, true);
+                UseMaterialTextureAsSprite(root);
+                template.CopyTo(root);
             }
-            Logger.Log($"[VRUiOnTop] HUD/menus drawn on top: {string.Join(", ", roots.Select(r => r.name))}", LogCat.VR);
+
+            Logger.Log($"[VRUiOnTop] HUD drawn on top: {string.Join(", ", roots.Select(r => r.name))}", LogCat.VR);
+        }
+
+        /// <summary>
+        /// The bars' fill is an Image with a white sprite and the Gothic texture (BAR_HEALTH.TGA) in its URP material.
+        /// The on-top shader samples the Canvas texture - the sprite's - so the fill came out white. A sprite of the
+        /// material's texture gives the Canvas the right one (URP keeps sampling the material either way).
+        /// </summary>
+        private static void UseMaterialTextureAsSprite(GameObject root)
+        {
+            foreach (var image in root.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+            {
+                var texture = image.material != null ? image.material.mainTexture as Texture2D : null;
+                if (texture == null || image.sprite == null || image.sprite.texture == texture)
+                    continue;
+
+                image.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f));
+                Logger.Log($"[VRUiOnTop] {image.name}: sprite from its material's texture '{texture.name}'", LogCat.VR);
+            }
         }
 
         private static GameObject GetRootCanvas(Transform transform)
@@ -347,21 +371,57 @@ namespace Gothic.VR.Services.Context
             }
         }
 
-        public void KeepPlayerWithin(Vector3 center, float radius)
+        public void KeepPlayerWithin(Vector3 center, float softRadius, float radius)
         {
-            var controller = _playerController.CharacterController;
+            var controller = _playerController != null ? _playerController.CharacterController : null;
             if (controller == null)
                 return;
 
+            // The frame's movement is read from the position of the previous call. After a gap (new dialog, a frame
+            // without a call) there is nothing to compare against.
             var position = _playerController.transform.position;
-            var offset = position - center;
-            offset.y = 0f;
-            if (offset.magnitude <= radius)
+            var frameMovement = _keepWithinLastFrame == Time.frameCount - 1
+                ? position - _keepWithinLastPosition
+                : Vector3.zero;
+            _keepWithinLastFrame = Time.frameCount;
+            _keepWithinLastPosition = position;
+
+            // Falling or on a ladder: a sideways push would fight gravity/the climbing hands.
+            if (!_playerController.IsGrounded || _playerController.IsClimbing)
                 return;
 
-            var delta = center + offset.normalized * radius - position;
-            delta.y = 0f;
-            controller.Move(delta);
+            var offset = position - center;
+            offset.y = 0f;
+            var distance = offset.magnitude;
+            if (distance <= softRadius || distance < Mathf.Epsilon)
+                return;
+
+            var outward = offset / distance;
+
+            // All movement slows down the farther out the player is: full speed at softRadius, down to the minimum at
+            // radius, so walking back in speeds up steadily. Only walking further outward goes down to a full stop.
+            var speed = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(softRadius, radius, distance));
+            var movingSpeed = Mathf.Max(speed, _keepWithinMinSpeed);
+
+            frameMovement.y = 0f;
+            var radialStep = Vector3.Dot(frameMovement, outward);
+            var sidewaysMovement = frameMovement - outward * radialStep;
+            var radialSpeed = radialStep > 0f ? speed : movingSpeed;
+
+            var correction = -outward * (radialStep * (1f - radialSpeed)) - sidewaysMovement * (1f - movingSpeed);
+            var heldDistance = distance - radialStep * (1f - radialSpeed);
+
+            // Still beyond the edge after that (pushed by an NPC, room-scale step): drift back instead of snapping,
+            // which made the camera bounce.
+            var overshoot = heldDistance - radius;
+            if (overshoot > 0f)
+                correction -= outward * Mathf.Min(overshoot, _keepWithinPullBackSpeed * Time.deltaTime);
+
+            if (correction == Vector3.zero)
+                return;
+
+            controller.Move(correction);
+            _keepWithinLastPosition = _playerController.transform.position;
         }
 
         public void InitUIInteraction()

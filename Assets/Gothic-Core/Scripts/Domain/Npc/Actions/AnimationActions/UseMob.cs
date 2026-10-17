@@ -22,7 +22,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         private string _schemeName => Action.String0;
         private int _desiredState => Action.Int0;
-        private bool IsStopUsingMob => _desiredState <= -1;
+        public bool IsStopUsingMob => _desiredState <= -1;
 
         // -1 is the not-in-use state; scripts may send any negative value to stop.
         private int TargetState => IsStopUsingMob ? -1 : _desiredState;

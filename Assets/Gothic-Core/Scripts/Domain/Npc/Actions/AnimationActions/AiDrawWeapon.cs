@@ -2,6 +2,7 @@ using System.Linq;
 using Gothic.Core.Const;
 using UnityEngine;
 using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Extensions;
@@ -40,9 +41,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             // the weapon's undraw - like the engine, drawing a weapon puts it away.
             _npcService.RemoveUsedItemFromHand(NpcContainer);
 
+            // An NPC that draws its weapon doesn't keep the dialog box open.
             if (GameStateService.Dialogs.IsInDialog && GameStateService.Dialogs.CurrentDialogNpc == NpcContainer)
             {
-                Logger.LogWarning($"[DrawWeapon] {NpcInstance.GetName(NpcNameSlot.Slot0)} drew weapon during dialog — closing dialog", LogCat.Fight);
+                Logger.Log($"[DrawWeapon] {NpcInstance.GetName(NpcNameSlot.Slot0)} drew a weapon during the dialog " +
+                           "- closing the dialog", LogCat.Dialog);
                 _dialogService.StopDialog(NpcContainer);
             }
 

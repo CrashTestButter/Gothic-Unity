@@ -20,6 +20,8 @@ namespace Gothic.Core.Manager
         private readonly MusicDomain _musicDomain = new MusicDomain().Inject();
         private readonly SoundDomain _soundDomain = new SoundDomain().Inject();
 
+        private AudioSource _scriptSoundSource;
+
         public SoundEffectInstance InvOpen => _vmCacheService.TryGetSfxData("INV_OPEN").GetFirstSound();
         public SoundEffectInstance InvClose => _vmCacheService.TryGetSfxData("INV_CLOSE").GetFirstSound();
         
@@ -92,6 +94,24 @@ namespace Gothic.Core.Manager
         //
         // Sound
         //
+
+        public void SetScriptSoundSource(AudioSource audioSource)
+        {
+            _scriptSoundSource = audioSource;
+        }
+
+        /// <summary>
+        /// Non-positional sound, e.g. Daedalus Snd_Play("LogEntry").
+        /// </summary>
+        public void PlaySound2D(string soundName)
+        {
+            if (_scriptSoundSource == null)
+                return;
+
+            var clip = GetRandomSoundClip(soundName);
+            if (clip != null)
+                _scriptSoundSource.PlayOneShot(clip);
+        }
 
         [CanBeNull]
         public AudioClip CreateAudioClip(SoundEffectInstance soundEffectInstance)

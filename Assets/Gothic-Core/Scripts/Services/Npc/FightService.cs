@@ -973,11 +973,8 @@ namespace Gothic.Core.Services.Npc
 
             Logger.Log($"[FightService.OnHitUpdateHealth] {target.Instance.GetName(NpcNameSlot.Slot0)} HP after: {hitPoints}/{maxHP}", LogCat.Npc);
 
-            target.Vob.SetAttribute((int)NpcAttribute.HitPoints, hitPoints);
-            // Dual-write like ExtNpcChangeAttribute does: a Vob-only write here would get silently
-            // reverted on the hero the next time SyncHeroInstanceToVob() runs (e.g. on XP grant),
-            // since that blindly copies every attribute FROM the instance INTO Vob.
-            target.Instance.SetAttribute(NpcAttribute.HitPoints, hitPoints);
+            // Health bars follow via GlobalEventDispatcher.NpcAttributeChanged.
+            _npcService.SetAttribute(target, NpcAttribute.HitPoints, hitPoints);
 
             return hitPoints <= 0;
         }

@@ -237,6 +237,9 @@ namespace Gothic.Core.Models.Config
                  "as the difference to the world file - a beer taken before saving lay in the world again after loading.")]
         public bool EnableWorldItemSaveState = true;
 
+        [Tooltip("V1: NPC inventories are saved and restored - a looted NPC got everything back from INIT after loading.")]
+        public bool EnableNpcInventorySaveState = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

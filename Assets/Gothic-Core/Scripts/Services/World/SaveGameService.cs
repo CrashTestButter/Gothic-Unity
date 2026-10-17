@@ -107,6 +107,9 @@ namespace Gothic.Core.Services.World
         private bool IsWorldItemSaveState =>
             _configService.Dev.EnableSaveLoadSystem && _configService.Dev.EnableWorldItemSaveState;
 
+        private bool IsNpcInventorySaveState =>
+            _configService.Dev.EnableSaveLoadSystem && _configService.Dev.EnableNpcInventorySaveState;
+
         /// <summary>
         /// The world being entered was visited before in this game (session or loaded save) - its NPCs are rebuilt from
         /// the init snapshot plus their stored state, also in a game started new.
@@ -986,7 +989,12 @@ namespace Gothic.Core.Services.World
             // The backpack reads from GetPacked() at open time, so it will reflect this automatically.
             if (data.HeroInventory != null && data.HeroInventory.Count > 0)
             {
-                _npcInventorySvc.ExtNpcClearInventory(hero);
+                // DeveloperConfig.EnableNpcInventorySaveState: ExtNpcClearInventory clears only the world file's item
+                // list, not the inventory used at runtime - INIT's items were doubled.
+                if (IsNpcInventorySaveState)
+                    _npcInventorySvc.ClearPackedInventory(hero);
+                else
+                    _npcInventorySvc.ExtNpcClearInventory(hero);
                 var restored = 0;
                 foreach (var entry in data.HeroInventory)
                 {
@@ -1121,8 +1129,48 @@ namespace Gothic.Core.Services.World
                 CurrentFreePointName = npc.Props.CurrentFreePoint?.Name,
                 IsDead = isDead,
                 Protection = Enumerable.Range(0, ProtectionCount).Select(i => vob.GetProtection(i)).ToArray(),
-                EquippedItems = GetEquippedSymbolNames(npc)
+                EquippedItems = GetEquippedSymbolNames(npc),
+                Inventory = IsNpcInventorySaveState ? GetInventoryEntries(npc.Instance) : null
             };
+        }
+
+        private List<HeroInventoryEntry> GetInventoryEntries(NpcInstance npc)
+        {
+            try
+            {
+                return _npcInventorySvc.GetAllInventoryItems(npc)
+                    .Select(i => new HeroInventoryEntry { Name = i.Name, Amount = i.Amount })
+                    .ToList();
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning($"[SaveGame] Inventory of {npc?.GetName(NpcNameSlot.Slot0)} not readable: {e.Message}",
+                    LogCat.Loading);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableNpcInventorySaveState: the saved inventory replaces what INIT just gave (a looted NPC
+        /// stays looted). Before the equipment, which refers to its items.
+        /// </summary>
+        private void RestoreInventory(NpcInstance npc, List<HeroInventoryEntry> inventory)
+        {
+            _npcInventorySvc.ClearPackedInventory(npc);
+            var restored = 0;
+            foreach (var entry in inventory)
+            {
+                var symbol = _gameStateService.GothicVm.GetSymbolByName(entry.Name);
+                if (symbol == null)
+                {
+                    Logger.LogWarning($"[SaveGame] Item '{entry.Name}' not found in VM, skipping", LogCat.Loading);
+                    continue;
+                }
+                _npcInventorySvc.ExtCreateInvItems(npc, symbol.Index, entry.Amount);
+                restored++;
+            }
+            Logger.Log($"[SaveGame] Inventory of {npc.GetName(NpcNameSlot.Slot0)}: {restored}/{inventory.Count} " +
+                       "item(s) restored", LogCat.Loading);
         }
 
         private void ApplyNpcSavedState(NpcContainer npc, NpcSaveEntry entry)
@@ -1131,6 +1179,9 @@ namespace Gothic.Core.Services.World
             if (entry.Attributes != null)
                 for (var i = 0; i < entry.Attributes.Length && i < 8; i++)
                     vob.SetAttribute(i, entry.Attributes[i]);
+
+            if (IsNpcInventorySaveState && entry.Inventory != null)
+                RestoreInventory(npc.Instance, entry.Inventory);
 
             RestoreEquipment(npc, entry.Protection, entry.EquippedItems);
 

@@ -35,6 +35,9 @@ namespace Gothic.Core.Services.World
         // Daedalus symbol names. On load the NPC's INIT re-equips its default gear (EquipItem/Mdl_SetVisualBody),
         // this list replaces it - e.g. a looted sword stays gone. Null in older saves.
         public List<string> EquippedItems;
+        // DeveloperConfig.EnableNpcInventorySaveState: the whole inventory (Daedalus symbol names) - a looted NPC stays
+        // looted, INIT gave it everything back on load. Null in older saves.
+        public List<HeroInventoryEntry> Inventory;
     }
 
     /// <summary>

@@ -65,6 +65,7 @@ MonoBehaviour:
   EnableEngineCodeMaster: 1
   EnableLogicVobSaveState: 1
   EnableWorldItemSaveState: 1
+  EnableNpcInventorySaveState: 1
   EnableNestedMovers: 1
   EnableMobRequiredItem: 1
   PlayerInventoryAddition: 

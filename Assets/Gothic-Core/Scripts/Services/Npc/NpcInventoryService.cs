@@ -541,6 +541,31 @@ namespace Gothic.Core.Services.Npc
             npc.GetUserData()!.Vob.ClearItems();
         }
 
+        /// <summary>
+        /// Empties every inventory category - the packed storage used at runtime. ExtNpcClearInventory clears only the
+        /// world file's item list.
+        /// </summary>
+        public void ClearPackedInventory(NpcInstance npc)
+        {
+            var vob = npc?.GetUserData()?.Vob;
+            if (vob == null)
+                return;
+
+            foreach (VmGothicEnums.InvCats cat in System.Enum.GetValues(typeof(VmGothicEnums.InvCats)))
+            {
+                if (cat == VmGothicEnums.InvCats.InvCatMax)
+                    continue;
+                try
+                {
+                    vob.SetPacked((int)cat, string.Empty);
+                }
+                catch
+                {
+                    // Slot was never initialized for this NPC - nothing to clear.
+                }
+            }
+        }
+
         public void ExtAiEquipBestRangedWeapon(NpcInstance npc)
         {
             if (!_configService.Dev.EnableNpcRangedCombat)

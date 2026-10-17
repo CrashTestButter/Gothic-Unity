@@ -335,7 +335,31 @@ namespace Gothic.Core.Services.Npc
                 }
             }
 
-            if (stopCurrentState)
+            // DeveloperConfig.EnableQueuedStateEnd: AI_StartState(..., 1, ...) ends the current state with its _End
+            // function like the engine - zeroing it here meant it never ran: a dialog that ends in a fight
+            // (AI_StartState(self, ZS_Attack, 1, "")) skipped ZS_Talk_End, the hero kept the dialog's AIV_INVINCIBLE and
+            // nobody talked to or fought him anymore. StartState calls it when the queue reaches it.
+            var endFunction = 0;
+            if (stopCurrentState && _configService.Dev.EnableQueuedStateEnd)
+            {
+                endFunction = container.Props.StateEnd;
+                container.Props.StateEnd = 0;
+                container.Props.CurrentWayPoint = null;
+
+                // Like the engine (AI_StartState is an AI message): lines still queued in a dialog are said first - the
+                // fight or the dragon's escape starts after them, not in the middle of the talk.
+                if (IsTalking(container))
+                {
+                    Logger.Log($"[ExtAiStartState] {npc.GetName(NpcNameSlot.Slot0)}: queued after the dialog's lines",
+                        LogCat.Ai);
+                }
+                else if (!container.Props.AnimationQueue.OfType<UndrawWeapon>().Any() &&
+                         !container.Props.AnimationQueue.OfType<StandUp>().Any())
+                {
+                    container.PrefabProps?.AiHandler?.ClearState(false);
+                }
+            }
+            else if (stopCurrentState)
             {
                 container.Props.StateEnd = 0;
                 container.Props.CurrentWayPoint = null;
@@ -358,8 +382,18 @@ namespace Gothic.Core.Services.Npc
             }
 
             container.Props.AnimationQueue.Enqueue(new StartState(
-                new AnimationAction(int0: action, bool0: stopCurrentState, string0: wayPointName, instance0: other, instance1: victim),
+                new AnimationAction(int0: action, int1: endFunction, bool0: stopCurrentState, string0: wayPointName,
+                    instance0: other, instance1: victim),
                 container));
+        }
+
+        /// <summary>
+        /// Lines of a dialog (or its start/stop) still waiting in the NPC's queue.
+        /// </summary>
+        private static bool IsTalking(NpcContainer container)
+        {
+            return container.Props.AnimationQueue.Any(i =>
+                i is Output or OutputSvm or StartProcessInfos or StopProcessInfos);
         }
 
         public void ExtAiLookAt(NpcInstance npc, string wayPointName)

@@ -9,6 +9,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
     {
         private int _action => Action.Int0;
         private bool _callEndFunction => Action.Bool0;
+        // DeveloperConfig.EnableQueuedStateEnd: the _End function of the state this one replaces.
+        private int _endFunction => Action.Int1;
         private string _wayPoint => Action.String0;
         private NpcInstance _other => Action.Instance0;
         private NpcInstance _victim => Action.Instance1;
@@ -23,6 +25,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             // if we're already in this state and leave the StateTime intact.
 
             var ai = PrefabProps.AiHandler;
+
+            // The old state ends with its own other/victim (ZS_Talk_End: the hero's AIV_INVINCIBLE goes back).
+            if (_endFunction != 0)
+                ai.CallStateEnd(_endFunction, Props.StateOther, Props.StateVictim);
 
             Vob.NextStateIndex = _action;
             Vob.NextStateName = GameStateService.GothicVm.GetSymbolByIndex(_action)!.Name;

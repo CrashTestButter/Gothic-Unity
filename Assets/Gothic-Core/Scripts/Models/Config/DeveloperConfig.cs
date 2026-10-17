@@ -264,6 +264,11 @@ namespace Gothic.Core.Models.Config
                  "ground and gets gravity - Old Mine miners fell through their scaffolds after loading.")]
         public bool EnableNpcWaitsForWorldVobs = true;
 
+        [Tooltip("V1: AI_StartState(..., 1, ...) runs the current state's _End function (it never ran) and, in a dialog, " +
+                 "waits for the queued lines - a dialog ending in a fight left the hero invincible (ZS_Talk_End skipped): " +
+                 "nobody talked to or fought him anymore.")]
+        public bool EnableQueuedStateEnd = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

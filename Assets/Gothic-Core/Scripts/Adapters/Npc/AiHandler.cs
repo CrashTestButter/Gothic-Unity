@@ -243,6 +243,39 @@ namespace Gothic.Core.Adapters.Npc
             return stateIndex == Properties.RoutineCurrent?.Action || stateIndex == NpcInstance.StartAiState;
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableQueuedStateEnd: a state's _End function, called when AI_StartState(..., 1, ...) is
+        /// reached in the queue - with the old state's other/victim, the globals are restored afterwards.
+        /// </summary>
+        public void CallStateEnd(int endFunction, NpcInstance other, NpcInstance victim)
+        {
+            var oldSelf = Vm.GlobalSelf;
+            var oldOther = Vm.GlobalOther;
+            var oldVictim = Vm.GlobalVictim;
+            Vm.GlobalSelf = NpcInstance;
+            if (other != null)
+                Vm.GlobalOther = other;
+            if (victim != null)
+                Vm.GlobalVictim = victim;
+
+            try
+            {
+                Logger.Log($"[AiHandler] {NpcInstance.GetName(NpcNameSlot.Slot0)}: " +
+                           $"{Vm.GetSymbolByIndex(endFunction)?.Name} (state ended by AI_StartState)", LogCat.Ai);
+                CallAiFunction(endFunction);
+            }
+            catch (System.Exception e)
+            {
+                Logger.LogError($"[AiHandler] State end {endFunction} failed: {e.Message}", LogCat.Ai);
+            }
+            finally
+            {
+                Vm.GlobalSelf = oldSelf;
+                Vm.GlobalOther = oldOther;
+                Vm.GlobalVictim = oldVictim;
+            }
+        }
+
         private int CallAiFunction(int symbolIndex)
         {
             var returnContinue = _daedalusLoopContinue;

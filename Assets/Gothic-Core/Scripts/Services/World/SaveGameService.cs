@@ -240,6 +240,19 @@ namespace Gothic.Core.Services.World
 
             SaveGameId = 0;
             Save = new SaveGame(_contextGameVersionService.Version);
+
+            // DeveloperConfig.EnableNewGameSpawnReset: a new game starts at START - a spawn position or level change
+            // left from a loaded save or portal (not consumed by a finished world load) put the hero into the middle
+            // of the Old Camp (Mroczne Tajemnice after playing in the ancient temple).
+            if (_configService.Dev.EnableNewGameSpawnReset)
+            {
+                var playerService = ReflexProjectInstaller.DIContainer.Resolve<PlayerService>();
+                if (playerService.HeroSpawnPosition != default || playerService.LastLevelChangeTriggerVobName != null)
+                    Logger.LogWarning($"[SaveGame] New game: stale spawn {playerService.HeroSpawnPosition} / " +
+                                      $"'{playerService.LastLevelChangeTriggerVobName}' cleared", LogCat.Loading);
+                playerService.ResetSpawn();
+                playerService.LastLevelChangeTriggerVobName = null;
+            }
             LogicVobSaveState.Clear();
             _spawnedNpcsByWorld.Clear();
             _worldNpcStates.Clear();

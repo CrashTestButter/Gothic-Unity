@@ -208,6 +208,7 @@ namespace Gothic.Core.Adapters.Scenes
 
                     if (debugGo != null)
                     {
+                        Logger.Log($"[Spawn] Debug waypoint '{debugSpawnAtWayPoint}'", LogCat.Loading);
                         TeleportPlayerToStart(debugGo.transform.position, debugGo.transform.rotation);
                         return;
                     }
@@ -217,6 +218,7 @@ namespace Gothic.Core.Adapters.Scenes
             // 2.
             if (_playerService.HeroSpawnPosition != default)
             {
+                Logger.Log($"[Spawn] Stored hero position {_playerService.HeroSpawnPosition}", LogCat.Loading);
                 TeleportPlayerToStart(_playerService.HeroSpawnPosition, _playerService.HeroSpawnRotation);
                 return;
             }
@@ -232,6 +234,7 @@ namespace Gothic.Core.Adapters.Scenes
                 startPoint = spots.FirstOrDefault(go => go.Key.EqualsIgnoreCase(startVobName));
                 if (startPoint.Value != null)
                 {
+                    Logger.Log($"[Spawn] Level change start '{startVobName}'", LogCat.Loading);
                     TeleportPlayerToStart(startPoint.Value.Position, startPoint.Value.Rotation);
                     return;
                 }
@@ -261,6 +264,7 @@ namespace Gothic.Core.Adapters.Scenes
                 return;
             }
 
+            Logger.Log($"[Spawn] World start '{startPoint.Key}' {startPoint.Value.Position}", LogCat.Loading);
             TeleportPlayerToStart(startPoint.Value.Position, startPoint.Value.Rotation);
         }
 

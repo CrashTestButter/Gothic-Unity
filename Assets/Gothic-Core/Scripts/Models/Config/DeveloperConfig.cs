@@ -248,6 +248,10 @@ namespace Gothic.Core.Models.Config
                  "c_Ore_S1_1..3, miners stood frozen in front of it.")]
         public bool EnableAnimationCombines = true;
 
+        [Tooltip("V1: A new game clears a spawn position/level change left from a loaded save or portal - Mroczne " +
+                 "Tajemnice's new game started in the middle of the Old Camp.")]
+        public bool EnableNewGameSpawnReset = true;
+
         [Tooltip("V1: A mob whose slots are all used by other NPCs isn't free (AI_UseMob looks for another one) - two " +
                  "miners spawned next to each other hacked at the same ore vein.")]
         public bool EnableMobOccupancy = true;

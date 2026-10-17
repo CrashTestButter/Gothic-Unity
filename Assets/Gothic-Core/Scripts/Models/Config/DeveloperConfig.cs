@@ -252,6 +252,10 @@ namespace Gothic.Core.Models.Config
                  "miners spawned next to each other hacked at the same ore vein.")]
         public bool EnableMobOccupancy = true;
 
+        [Tooltip("V1: Free points and waypoints are cleared before a world is loaded - the previous world's START won and " +
+                 "a new game after loading an Old Mine save started in the middle of the Old Camp.")]
+        public bool EnableWorldPointsReset = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

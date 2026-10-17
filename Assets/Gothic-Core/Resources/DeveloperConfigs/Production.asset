@@ -69,6 +69,7 @@ MonoBehaviour:
   EnableSaveStoresHeldItems: 1
   EnableAnimationCombines: 1
   EnableMobOccupancy: 1
+  EnableWorldPointsReset: 1
   EnableNestedMovers: 1
   EnableMobRequiredItem: 1
   PlayerInventoryAddition: 

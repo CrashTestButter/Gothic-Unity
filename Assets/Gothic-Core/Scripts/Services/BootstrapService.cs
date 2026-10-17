@@ -52,6 +52,7 @@ namespace Gothic.Core.Services
         [Inject] private readonly FrameSkipperService _frameSkipperService;
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly NpcRoutineService _npcRoutineService;
         [Inject] private readonly FightService _fightService;
@@ -204,6 +205,15 @@ namespace Gothic.Core.Services
                 _vobSoundCullingService.PreWorldCreate();
                 _npcService.ClearQueues();
             }
+            // DeveloperConfig.EnableWorldPointsReset: free points (START, FP_*) and waypoints belong to one world. Never
+            // cleared before, the first world's won (TryAdd): a new game after loading an Old Mine save started at the
+            // mine's START - in the main world that's the middle of the Old Camp.
+            if (_configService.Dev.EnableWorldPointsReset)
+            {
+                _gameStateService.FreePoints.Clear();
+                _gameStateService.WayPoints.Clear();
+            }
+
             try
             {
                 _saveGameService.ChangeWorld(worldName);

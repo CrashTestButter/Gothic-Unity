@@ -116,7 +116,11 @@ Assets/StreamingAssets/SpeechToText/*.json.meta
 Assets/Gothic-Core/Resources/DeveloperConfigs/Local/*
 !Assets/Gothic-Core/Resources/DeveloperConfigs/Local/.gitkeep
 
-ZenKitCS
+# Local references
+Gothic-Unity.wiki/
+ZenKit/
+ZenKitCS/
+Daedalus/
 
 # Ignore local AI settings (like pre-approved MCP usage)
 .claude/*

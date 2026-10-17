@@ -38,7 +38,8 @@ namespace Gothic.Core.Manager
         private const int _exitInfoNr = 999;
         private const string _exitDescriptionSymbol = "DIALOG_ENDE";
         // Held back a little inside the bubble's edge, so the hero isn't held right at the stop distance.
-        private const float _bubbleEdgeMargin = 0.2f;        // The hero can't be held inside (falling, climbing, teleported, blocked by a wall) - the dialog ends after
+        private const float _bubbleEdgeMargin = 0.2f;
+        // The hero can't be held inside (falling, climbing, teleported, blocked by a wall) - the dialog ends after
         // being outside this long, or at once when this far beyond the bubble's edge.
         private const float _bubbleGiveUpSeconds = 1f;
         private const float _bubbleGiveUpOvershoot = 2f;
@@ -103,6 +104,11 @@ namespace Gothic.Core.Manager
 
             _gameStateService.Dialogs.IsInDialog = true;
             _gameStateService.Dialogs.CurrentDialogNpc = npcContainer;
+
+            // The NPC follows the hero with its head (hero's Head is the camera). Daedalus' own AI_LookAtNpc wins.
+            if (initialDialogStarting && npcContainer.PrefabProps?.AnimationHeadHandler != null)
+                npcContainer.PrefabProps.AnimationHeadHandler.StartDialogLookAt(
+                    _npcService.GetHeroContainer().PrefabProps.Head);
 
             if (isFreeMovement)
             {
@@ -348,6 +354,10 @@ namespace Gothic.Core.Manager
             _gameStateService.Dialogs.IsChoosing = false;
             _gameStateService.Dialogs.ExitInfo = null;
             StopBubbleWatcher();
+
+            // Only ends the dialog's look-at. One started by Daedalus (e.g. sitting NPCs) stays.
+            if (npc.PrefabProps?.AnimationHeadHandler != null)
+                npc.PrefabProps.AnimationHeadHandler.StopDialogLookAt();
 
             // WIP: unlocking movement
             _contextInteractionService.UnlockPlayer();

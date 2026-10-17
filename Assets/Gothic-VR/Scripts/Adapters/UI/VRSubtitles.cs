@@ -61,8 +61,7 @@ namespace Gothic.VR.Adapters.UI
             _dialogText.text = text;
             Invoke(nameof(HideSubtitles), Mathf.Max(_maxVisibleSeconds, text.Length * _maxVisibleSecondsPerChar));
 
-            if (_configService.Dev.EnableDialogAlwaysOnTop)
-                _onTop.Apply();
+            _onTop.Apply();
         }
 
         public void HideSubtitles()

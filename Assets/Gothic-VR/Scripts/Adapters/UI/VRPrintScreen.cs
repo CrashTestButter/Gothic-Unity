@@ -32,7 +32,6 @@ namespace Gothic.VR.Adapters.UI
         [SerializeField] private VRUiOnTop _onTop;
 
         [Inject] private readonly FontService _fontService;
-        [Inject] private readonly ConfigService _configService;
 
         private readonly List<(TMP_Text Text, float HideAt)> _activeMessages = new();
         private readonly Stack<TMP_Text> _pool = new();
@@ -45,8 +44,7 @@ namespace Gothic.VR.Adapters.UI
             _cameraTransform = cameraTransform;
             _screen.gameObject.SetActive(false);
             // New lines are clones of the template - VRUiOnTop wraps their fonts when they're generated.
-            if (_configService.Dev.EnableDialogAlwaysOnTop)
-                _onTop.Apply();
+            _onTop.Apply();
 
             GlobalEventDispatcher.PrintScreen.AddListener(OnPrintScreen);
         }

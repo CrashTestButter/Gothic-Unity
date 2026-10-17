@@ -23,7 +23,6 @@ namespace Gothic.VR.Adapters.UI
     public class VRDialog : MonoBehaviour
     {
         [Inject] private readonly DialogService _dialogService;
-        [Inject] private readonly ConfigService _configService;
         [Inject] private readonly VRUiOnTopService _uiOnTopService;
 
         [SerializeField] private GameObject _dialogRoot;
@@ -78,11 +77,8 @@ namespace Gothic.VR.Adapters.UI
             _uiEventsHandler.SetElementsToHover(hoverElements, true);
 
             // On every ShowDialog: FillDialog clones new options.
-            if (_configService.Dev.EnableDialogAlwaysOnTop)
-            {
-                _onTop.Apply();
-                _uiOnTopService.SetHandsOnTop(true);
-            }
+            _onTop.Apply();
+            _uiOnTopService.SetHandsOnTop(true);
 
             StartCoroutine(ShowDialogWithDelay());
         }

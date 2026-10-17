@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Adapters.Properties;
+using Gothic.Core.Const;
 using Gothic.Core.Domain.Npc.Actions;
 using Gothic.Core.Domain.Npc.Actions.AnimationActions;
 using Gothic.Core.Extensions;
@@ -82,7 +83,7 @@ namespace Gothic.Core.Manager
             if (isFreeMovement && initialDialogStarting && !IsHeroInDialogRange(npcContainer))
             {
                 Logger.Log($"[Dialog] {npcContainer.Instance.GetName(NpcNameSlot.Slot0)}: hero farther than " +
-                           $"{_configService.Dev.DialogMaxDistance} m - dialog not started", LogCat.Dialog);
+                           $"{Constants.DialogMaxDistance} m - dialog not started", LogCat.Dialog);
                 // Not the cleanup of a dialog with someone else that is going on.
                 if (!_gameStateService.Dialogs.IsInDialog || _gameStateService.Dialogs.CurrentDialogNpc == npcContainer)
                     StopDialog(npcContainer);
@@ -365,7 +366,7 @@ namespace Gothic.Core.Manager
             // Horizontal like KeepPlayerWithin - a height difference (ramp, upper floor) mustn't count.
             var offset = hero.Go.transform.position - npcContainer.Go.transform.position;
             offset.y = 0f;
-            return offset.magnitude <= _configService.Dev.DialogMaxDistance;
+            return offset.magnitude <= Constants.DialogMaxDistance;
         }
 
         /// <summary>
@@ -389,7 +390,7 @@ namespace Gothic.Core.Manager
                     else
                     {
                         _contextInteractionService.KeepPlayerWithin(npcContainer.Go.transform.position,
-                            _configService.Dev.DialogMaxDistance - _bubbleEdgeMargin);
+                            Constants.DialogMaxDistance - _bubbleEdgeMargin);
                     }
                 }
                 yield return null;

@@ -142,6 +142,9 @@ namespace Gothic.Core.Const
         // e.g. for NPCs to check if they reached a FreePoint already. Value is based on best guess/testing.
         public const float NpcDestinationReachedThreshold = 0.6f;
         public const float NpcRotationSpeed = 500f;
+
+        // Meters between hero and NPC for starting and keeping a dialog (DeveloperConfig.EnableDialogFreeMovement).
+        public const float DialogMaxDistance = 5f;
         
 
         public const string SlotRightHand	= "ZS_RIGHTHAND";

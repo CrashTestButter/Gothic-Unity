@@ -50,9 +50,6 @@ MonoBehaviour:
   BrightenUpHoveredVOBs: 1
   ShowNamesOnHoveredVOBs: 1
   EnableDialogFreeMovement: 1
-  DialogMaxDistance: 5
-  EnableDialogAlwaysOnTop: 1
-  EnableScreenMessages: 1
   PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0

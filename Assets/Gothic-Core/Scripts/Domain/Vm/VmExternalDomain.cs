@@ -720,8 +720,7 @@ namespace Gothic.Core.Domain.Vm
                 Logger.Log($"[PrintScreen] {message}", LogCat.Dialog);
             }
 
-            if (_configService.Dev.EnableScreenMessages)
-                GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, seconds));
+            GlobalEventDispatcher.PrintScreen.Invoke(new PrintScreenMessage(message, posX, posY, font, seconds));
         }
 
         /// <summary>

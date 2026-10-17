@@ -164,15 +164,9 @@ namespace Gothic.Core.Models.Config
         [OverrideLabel("Show Names On Hovered VOBs")]
         public bool ShowNamesOnHoveredVOBs = true;
 
-        [Separator("Dialogs & HUD")]
-        [Tooltip("The hero can move during dialogs (inside DialogMaxDistance); walking away chooses END if offered.")]
+        [Separator("Dialogs")]
+        [Tooltip("The hero can move during dialogs (inside Constants.DialogMaxDistance); walking away chooses END if offered.")]
         public bool EnableDialogFreeMovement = true;
-        [Tooltip("Meters between hero and NPC for starting and keeping a dialog (EnableDialogFreeMovement).")]
-        public float DialogMaxDistance = 5f;
-        [Tooltip("Dialog box, subtitles and screen messages are drawn over walls and NPCs.")]
-        public bool EnableDialogAlwaysOnTop = true;
-        [Tooltip("Shows the scripts' PrintScreen/Print messages as a HUD.")]
-        public bool EnableScreenMessages = true;
 
         [Separator("Debug")]
         [Tooltip("Array like this: C_ITEM_NAME:AMOUNT;... e.g., ItMi_Stuff_OldCoin_01:10;ItFo_Potion_Mana_01:1")]

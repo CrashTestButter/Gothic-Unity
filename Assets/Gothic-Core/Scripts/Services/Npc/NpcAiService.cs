@@ -56,6 +56,14 @@ namespace Gothic.Core.Services.Npc
                 return;
             }
 
+            // DeveloperConfig.EnableDownedNpcPerceptions: a knocked out NPC senses nothing but magic until he stands up
+            // (ZS_Unconscious only enables PERC_ASSESSMAGIC) - also in the frames before ZS_Unconscious starts.
+            if (_configService.Dev.EnableDownedNpcPerceptions && type != VmGothicEnums.PerceptionType.AssessMagic &&
+                NpcHelperService.IsKnockedOut(self?.GetUserData()))
+            {
+                return;
+            }
+
             if (IsHeroChaseCoolingDown(type, properties, self, other))
                 return;
 
@@ -310,7 +318,10 @@ namespace Gothic.Core.Services.Npc
                 npc.GetUserData()));
         }
 
-        public void ExtAiStartState(NpcInstance npc, int action, bool stopCurrentState, string wayPointName)
+        /// <param name="isScriptCall">False for state changes of the engine itself (knockout): like the engine, the old
+        /// state's _End isn't called and the queue doesn't wait for dialog lines (EnableQueuedStateEnd).</param>
+        public void ExtAiStartState(NpcInstance npc, int action, bool stopCurrentState, string wayPointName,
+            bool isScriptCall = true)
         {
             var other = (NpcInstance)_gameStateService.GothicVm.GlobalOther;
             var victim = (NpcInstance)_gameStateService.GothicVm.GlobalVictim;
@@ -334,7 +345,7 @@ namespace Gothic.Core.Services.Npc
             // (AI_StartState(self, ZS_Attack, 1, "")) skipped ZS_Talk_End, the hero kept the dialog's AIV_INVINCIBLE and
             // nobody talked to or fought him anymore. StartState calls it when the queue reaches it.
             var endFunction = 0;
-            if (stopCurrentState && _configService.Dev.EnableQueuedStateEnd)
+            if (stopCurrentState && isScriptCall && _configService.Dev.EnableQueuedStateEnd)
             {
                 endFunction = container.Props.StateEnd;
                 container.Props.StateEnd = 0;

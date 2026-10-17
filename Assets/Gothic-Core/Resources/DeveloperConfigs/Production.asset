@@ -73,6 +73,7 @@ MonoBehaviour:
   EnableWorldPointsReset: 1
   EnableNpcWaitsForWorldVobs: 1
   EnableQueuedStateEnd: 1
+  EnableDownedNpcPerceptions: 1
   EnableNestedMovers: 1
   EnableMobRequiredItem: 1
   PlayerInventoryAddition: 

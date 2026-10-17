@@ -269,6 +269,10 @@ namespace Gothic.Core.Models.Config
                  "nobody talked to or fought him anymore.")]
         public bool EnableQueuedStateEnd = true;
 
+        [Tooltip("V1: A knocked out NPC gets no perceptions but magic until he stands up - while lying he drew his " +
+                 "weapon, fled or joined fights. A knockout no longer runs the old state's _End (EnableQueuedStateEnd).")]
+        public bool EnableDownedNpcPerceptions = true;
+
         [Tooltip("V1: A mover below another mover moves along with it, like in the engine - G2's Jharkendar portal petals " +
                  "(children of moving parents) stayed in the middle after loading a save.")]
         public bool EnableNestedMovers = true;

@@ -747,7 +747,9 @@ namespace Gothic.Core.Services.Npc
             vm.GlobalSelf = npc.Instance;
             vm.GlobalOther = attacker.Instance;
             // ClearState(false) inside ExtAiStartState resets BodyState=BsStand — set BsUnconscious after.
-            _npcAiService.ExtAiStartState(npc.Instance, zsUnconscious.Index, true, "");
+            // Not a script call: the old state's _End (e.g. ZS_ProclaimAndPunish_End) ran on the downed NPC and queued
+            // weapon draws and new states - ZS_Unconscious never started and he reacted to everything while lying.
+            _npcAiService.ExtAiStartState(npc.Instance, zsUnconscious.Index, true, "", false);
             npc.Props.BodyState = VmGothicEnums.BodyState.BsUnconscious;
 
             // DeveloperConfig.EnableKnockoutFallAnimation: the engine drops the NPC itself - ZS_Unconscious only calls

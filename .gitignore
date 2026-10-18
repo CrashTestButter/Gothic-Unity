@@ -121,6 +121,7 @@ Gothic-Unity.wiki/
 ZenKit/
 ZenKitCS/
 Daedalus/
+OpenGothic/
 
 # Ignore local AI settings (like pre-approved MCP usage)
 .claude/*

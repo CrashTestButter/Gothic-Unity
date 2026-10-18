@@ -9,6 +9,7 @@ using Gothic.Core.Manager;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.StaticCache;
+using Gothic.Core.Services.World;
 using JetBrains.Annotations;
 using Reflex.Attributes;
 using UnityEngine;
@@ -32,6 +33,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
     public class WorldMeshBuilder : AbstractMeshBuilder
     {
         [Inject] private readonly FrameSkipperService _frameSkipperService;
+        [Inject] private readonly StationaryLightsService _stationaryLightsService;
 
         private StaticCacheService.WorldChunkContainer _worldChunks;
         private IMesh _mesh;
@@ -132,7 +134,9 @@ namespace Gothic.Core.Domain.Meshes.Builder
 
             // Heavy ZenKit data extraction incl. vertex deduplication runs on a background thread.
             // The cached world mesh is only read here, which is thread-safe.
-            var buffers = await Task.Run(() => ExtractChunks(chunks, materials));
+            var lightMappedCells = new HashSet<long>();
+            var buffers = await Task.Run(() => ExtractChunks(chunks, materials, lightMappedCells));
+            _stationaryLightsService.SetLightMappedCells(lightMappedCells);
             try
             {
                 var meshes = await BuildChunkMeshes(chunks.Count, buffers);
@@ -225,7 +229,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
             return entries;
         }
 
-        private ExtractionBuffers ExtractChunks(List<ChunkBuildData> chunks, MaterialEntry[] materials)
+        private ExtractionBuffers ExtractChunks(List<ChunkBuildData> chunks, MaterialEntry[] materials,
+            HashSet<long> lightMappedCells)
         {
             // Pass 1 - size the buffers from the expanded vertex counts cached by GatherMaterialEntries
             // (worst case, pre-deduplication). No second GetPolygon sweep needed here.
@@ -285,6 +290,15 @@ namespace Gothic.Core.Domain.Meshes.Builder
                     var materialIndex = polygon.MaterialIndex;
                     var material = materials[materialIndex];
 
+                    // Gothic lit these (caves, houses) with lightmaps from static lights, which we don't render.
+                    // Their static lights are shown as runtime stationary lights instead (StationaryLightsService).
+                    if (polygon.LightMapIndex >= 0 && positionIndices.Count > 0)
+                    {
+                        var corner = _mesh.GetPosition(positionIndices[0]);
+                        lightMappedCells.Add(StationaryLightsService.ToCell(
+                            new Vector3(corner.X, corner.Y, corner.Z) / 100f));
+                    }
+
                     void AddCorner(int fanIndex)
                     {
                         var key = (positionIndices[fanIndex], featureIndices[fanIndex], materialIndex);
@@ -323,7 +337,11 @@ namespace Gothic.Core.Domain.Meshes.Builder
                                     NormalX = ToSnorm16(feature.Normal.X),
                                     NormalY = ToSnorm16(feature.Normal.Y),
                                     NormalZ = ToSnorm16(feature.Normal.Z),
-                                    NormalW = 0,
+                                    // Outdoor flag: SNorm16 w = 1 (short.MaxValue) on vertex lit (outdoor)
+                                    // polygons, 0 on light mapped ones (rooms, caves). Lit-World.shader reads
+                                    // normal.w to scale only outdoor light with the time of day (_DayLightColor).
+                                    // G1's polygons have no outdoor flag set.
+                                    NormalW = polygon.LightMapIndex < 0 ? short.MaxValue : (short)0,
                                     // Gothic's baked vertex light, kept untouched: ARGB int -> RGBA byte order.
                                     Color = ((light >> 16) & 0xFF) | (((light >> 8) & 0xFF) << 8) |
                                             ((light & 0xFF) << 16) | (((light >> 24) & 0xFF) << 24),

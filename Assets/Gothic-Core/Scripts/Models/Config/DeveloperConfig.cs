@@ -1125,6 +1125,11 @@ namespace Gothic.Core.Models.Config
                  "(Mdl_SetVisualBody of Alrik).")]
         public bool EnableItemDataBySymbol = true;
 
+        [Tooltip("Opacity of the weapon swing trail (1 = Gothic's ZWEAPONTRAIL alpha). In VR the full trail right in front " +
+                 "of the eyes on every swing was too much.")]
+        [Range(0f, 1f)]
+        public float WeaponTrailOpacity = 0.5f;
+
         [Tooltip("V1: A level change whose start VOB isn't a free point spawns at the waypoint/VOB of that name, or next to " +
                  "the trigger back to the old world - Mroczne Tajemnice's temple sends you to a start VOB the mine lacks.")]
         public bool EnableLevelChangeSpawnFallback = true;

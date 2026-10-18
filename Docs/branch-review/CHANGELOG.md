@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-18 (night): one swing, one hit; big monsters
+
+- An NPC's swing hits once: a shadowbeast took your HP 2-3 times in one swing.
+- Sword combos like in Gothic: every swing of a combo deals damage (before only the first did), a single attack stops
+  after its swing instead of playing a second, harmless one.
+- Big monsters and orcs: the shadowbeast's head and front can be hit (only its hind half could), its head and an orc
+  leaning into his swing no longer go into the camera.
+
 ## 2026-10-18 (evening): main merged - world objects
 
 - `main`'s world objects (PR #399) are in: gates, levers and triggers work like main's (a lever used again closes a

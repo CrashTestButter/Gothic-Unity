@@ -91,6 +91,18 @@
 - **Weapon trail at half opacity** (`692f18f1`): `WeaponTrailOpacity` scales color, alpha and Gothic/UI's alpha cutoff
   (0.5 - only the old alpha 0.53 passed it, a lower alpha alone made the trail vanish).
 - ℹ️ Blocking an NPC's hit with the hero's own weapon in VR is still open (no good idea yet).
+- **One swing, one hit** (`c4c2a8d0`, `EnableSingleHitPerNpcAttack`): the next attack with the same animation saw the
+  previous track still blending out - its hit frame counted as reached and the action ended at once (a shadowbeast hit
+  2-3 times per swing).
+- **Combos like the engine** (`c4c2a8d0`, `EnableEngineNpcCombo`), OpenGothic `Pose::continueCombo` /
+  `Sequence::isFinished`: an attack ends at its `DEF_HIT_END`; an attack asked for in the `DEF_WINDOW` continues the same
+  animation from there to its next `DEF_OPT_FRAME` (a master's `s_1hAttack`: 4 parts, hits at 4/36/73/107). Before, the
+  whole animation played and only the first part dealt damage; single-part attacks (shadowbeast, wolf) were restarted
+  and hit twice. Left/right attacks are separate animations, unchanged.
+- **Animated NPC bodies** (`ccb310bb`, `NpcBodyBounds`): hitbox (`EnableAnimatedNpcHitbox`) and personal space
+  (`EnableBodyPersonalSpace`) follow the bones + skin instead of the root bone - a shadowbeast's BIP01 is at its hind
+  legs, the hitbox on the rotated bone lay sideways over its hind half, the head went into the camera. Fight ranges stay
+  Gothic's: `FIGHT_RANGE_BASE` is "BIP01 to bbox", it already counts the body.
 
 ## Key commits
 
@@ -109,7 +121,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 
 2026-10-16: `b53d87e7` AIV_HASDEFEATEDSC for the NPC who beats the hero
 
-2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity
+2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity ·
+`c4c2a8d0` one hit per swing, engine combos · `ccb310bb` animated NPC body (hitbox, personal space)
 
 ## Main files
 
@@ -133,7 +146,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 
 2026-10-16: `EnableHeroDefeatedAivar`
 
-2026-10-18: `EnableNpcPrehitReaction`, `EnableNpcPrehitCancelsAttack`, `EnableNpcParadeBlocksHits`, `WeaponTrailOpacity`
+2026-10-18: `EnableNpcPrehitReaction`, `EnableNpcPrehitCancelsAttack`, `EnableNpcParadeBlocksHits`, `WeaponTrailOpacity`,
+`EnableSingleHitPerNpcAttack`, `EnableEngineNpcCombo`, `EnableAnimatedNpcHitbox`, `EnableBodyPersonalSpace`
 
 ## Review notes
 
@@ -168,3 +182,5 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 - Mroczne Tajemnice: lose Sheer'Ghar's duel - after standing up he has the "honor" dialog (log: `AIV_HASDEFEATEDSC`).
 - G1: fight a guard with a sword - he parries or jumps back from your swings, also mid-combo (log `[Prehit]`); a parry
   clashes with sound and sparks and does no damage (log `parries`). The swing trail is pale.
+- G2: a shadowbeast - one swing takes your HP once; hit its head; it doesn't push its head into the camera. A sword
+  fighter's full combo: every swing hurts (log `[Combo] ... continues s_1hAttack with part 2/2`).

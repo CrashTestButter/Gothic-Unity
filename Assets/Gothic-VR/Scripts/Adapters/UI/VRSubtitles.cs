@@ -26,6 +26,11 @@ namespace Gothic.VR.Adapters.UI
         [SerializeField] private TMP_Text _dialogNpcNameText;
         [SerializeField] private TMP_Text _dialogText;
 
+        [SerializeField] private VRUiOnTop _onTop;
+
+        // Fallback if nobody hides a line (its NPC died, the queue was cleared): long texts get a bit longer.
+        private const float _maxVisibleSeconds = 10f;
+        private const float _maxVisibleSecondsPerChar = 0.1f;
 
         protected override void Awake()
         {
@@ -54,6 +59,9 @@ namespace Gothic.VR.Adapters.UI
             CancelInvoke(nameof(HideSubtitles));
             gameObject.SetActive(true);
             _dialogText.text = text;
+            Invoke(nameof(HideSubtitles), Mathf.Max(_maxVisibleSeconds, text.Length * _maxVisibleSecondsPerChar));
+
+            _onTop.Apply();
         }
 
         public void HideSubtitles()
@@ -61,7 +69,11 @@ namespace Gothic.VR.Adapters.UI
             gameObject.SetActive(false);
         }
 
-        public void ScheduleHide(float delay) => Invoke(nameof(HideSubtitles), delay);
+        public void ScheduleHide(float delay)
+        {
+            CancelInvoke(nameof(HideSubtitles));
+            Invoke(nameof(HideSubtitles), delay);
+        }
     }
 }
 #endif

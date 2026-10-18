@@ -1,10 +1,14 @@
 using System;
 using System.Collections;
+using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Meshes;
+using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.UI;
+using ZenKit.Daedalus;
 
 namespace Gothic.Core.Adapters.UI.StatusBars
 {
@@ -17,6 +21,9 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
         [Inject] private readonly TextureService _textureService;
         [Inject] private readonly PlayerService _playerService;
+        [Inject] private readonly NpcService _npcService;
+
+        private NpcContainer _owner;
 
         private enum StatusType
         {
@@ -38,10 +45,19 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
                 // If we load it for the player, ZenKit is initialized later therefore, we need to delay the startup execution.
                 GlobalEventDispatcher.ZenKitBootstrapped.AddListener(StartInternal);
+
+                // A loaded save replaces the hero.
+                if (_statusType == StatusType.Health)
+                    GlobalEventDispatcher.WorldSceneLoaded.AddListener(RefreshHealth);
             }
             else
             {
-                DisableBar();
+                // Same exception as the player above: Health stays visible. Nothing re-enables a disabled NPC
+                // health bar later on.
+                if (_statusType != StatusType.Health)
+                {
+                    DisableBar();
+                }
                 StartInternal();
             }
         }
@@ -63,8 +79,6 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             switch (_statusType)
             {
                 case StatusType.Health:
-                    if (_isPlayer)
-                        DisableBar();
                     break;
                 case StatusType.Mana:
                     break;
@@ -74,6 +88,58 @@ namespace Gothic.Core.Adapters.UI.StatusBars
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+
+        /// <summary>
+        /// Health follows NpcAttributeChanged while enabled. Culled NPCs are disabled - they refresh when re-enabled.
+        /// </summary>
+        private void OnEnable()
+        {
+            if (_statusType != StatusType.Health)
+                return;
+
+            GlobalEventDispatcher.NpcAttributeChanged.AddListener(OnNpcAttributeChanged);
+            RefreshHealth();
+        }
+
+        private void OnDisable()
+        {
+            if (_statusType != StatusType.Health)
+                return;
+
+            GlobalEventDispatcher.NpcAttributeChanged.RemoveListener(OnNpcAttributeChanged);
+        }
+
+        private void OnNpcAttributeChanged(NpcContainer npc, NpcAttribute attribute)
+        {
+            if (attribute is not (NpcAttribute.HitPoints or NpcAttribute.HitPointsMax) || npc != GetOwner())
+                return;
+
+            RefreshHealth();
+        }
+
+        private void RefreshHealth()
+        {
+            var owner = GetOwner();
+            if (owner == null)
+                return;
+
+            SetFillAmount(owner.Vob.GetAttribute((int)NpcAttribute.HitPoints),
+                owner.Vob.GetAttribute((int)NpcAttribute.HitPointsMax));
+        }
+
+        /// <summary>
+        /// The player's bar follows the current hero (none in menus, a loaded save replaces it). NPC bars are placed
+        /// below their NPC's prefab.
+        /// </summary>
+        private NpcContainer GetOwner()
+        {
+            if (_isPlayer)
+                return _npcService?.GetHeroContainer();
+
+            if (_owner == null)
+                _owner = GetComponentInParent<NpcLoader>()?.Container;
+            return _owner;
         }
 
         private IEnumerator HandleDiveValue()

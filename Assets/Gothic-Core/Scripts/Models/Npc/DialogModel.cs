@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Dialog;
 using ZenKit;
 using ZenKit.Daedalus;
@@ -9,6 +10,7 @@ namespace Gothic.Core.Models.Npc
     {
         public List<InfoInstance> Instances = new();
         public bool IsInDialog;
+        public NpcContainer CurrentDialogNpc;
 
         /// <summary>
         /// Set from C# when the hero physically initiates dialog (collision/grab).
@@ -23,7 +25,18 @@ namespace Gothic.Core.Models.Npc
 
         public InfoInstance CurrentInstance;
         public List<DialogOption> CurrentOptions = new();
-        
+
+        /// <summary>
+        /// The dialog box shows the choices - nobody talks.
+        /// </summary>
+        public bool IsChoosing;
+
+        /// <summary>
+        /// The END entry (DIALOG_ENDE) of the shown main choices. Null for sub-choices (Info_AddChoice) and choices
+        /// without END - like in Gothic, those can't be left.
+        /// </summary>
+        public InfoInstance ExitInfo;
+
         public void Dispose()
         {
             IsInDialog = false;
@@ -31,6 +44,9 @@ namespace Gothic.Core.Models.Npc
             CurrentInstance = null;
             CurrentOptions.Clear();
             GestureCount = 0;
+            CurrentDialogNpc = null;
+            IsChoosing = false;
+            ExitInfo = null;
         }
     }
 }

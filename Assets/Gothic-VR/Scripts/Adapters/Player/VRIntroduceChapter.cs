@@ -12,6 +12,7 @@ namespace Gothic.VR.Adapters.Player
 {
     /// <summary>
     /// UI logic handler for Daedalus call of IntroduceChapter()
+    /// The canvas follows the head while it's shown (VRFollowCamera on the same GameObject).
     /// </summary>
     public class VRIntroduceChapter : MonoBehaviour
     {
@@ -24,26 +25,13 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly TextureService _textureService;
         [Inject] private readonly AudioService _audioService;
 
-        // Data needed for smooth movement of Canvas
-        private Transform _cameraTransform;
-        private float _canvasMoveSmoothTime = 0.3f;
-        private Vector3 _canvasMovementOffset = new(0, 0, 4f); // Expected offset of Canvas in front of Camera view.
-        private Vector3 _canvasMoveVelocity = Vector3.zero;
+        private Material _chapterMaterial;
 
-        private void Update()
+        private void OnDestroy()
         {
-            if (_cameraTransform == null)
-            {
-                return;
-            }
-
-            // Damp movement of canvas in front of us. Causes less friction when viewed.
-            var targetPosition = _cameraTransform.position + _cameraTransform.TransformDirection(_canvasMovementOffset);
-            var pos = Vector3.SmoothDamp(transform.position, targetPosition, ref _canvasMoveVelocity, _canvasMoveSmoothTime);
-            var rot = Quaternion.LookRotation(transform.position - _cameraTransform.position);
-            transform.SetPositionAndRotation(pos, rot);
+            Destroy(_chapterMaterial);
         }
-        
+
         public void DisplayIntroduction(string chapter, string text, string texture, string wav, int time)
         {
             gameObject.SetActive(true);
@@ -62,27 +50,23 @@ namespace Gothic.VR.Adapters.Player
 
         private void ShowChapterCanvas(string chapter, string text, string texture)
         {
-            // Set texture for cover
-            _chapterImage.material = _textureService.GetEmptyMaterial(MaterialExtension.BlendMode.Opaque);
-            _textureService.SetTexture(texture, _chapterImage.material);
+            // Set texture for cover. One material for all chapters - only the texture changes.
+            if (_chapterMaterial == null)
+                _chapterMaterial = _textureService.GetEmptyMaterial(MaterialExtension.BlendMode.Opaque);
+            _textureService.SetTexture(texture, _chapterMaterial);
+            _chapterImage.material = _chapterMaterial;
 
             _chapterTitle.text = chapter;
             _chapterSubtitle.text = text;
-
-            // Set canvas position to move towards.
-            _cameraTransform = Camera.main!.transform;
-            
-            // Set initial canvas position (otherwise it will fly towards us when shown).
-            var pos = _cameraTransform.position + _cameraTransform.TransformDirection(_canvasMovementOffset);
-            var rot = Quaternion.LookRotation(transform.position - _cameraTransform.position);
-            transform.SetPositionAndRotation(pos, rot);
         }
 
         private IEnumerator DisableDelayed(int milliseconds)
         {
-            yield return new WaitForSeconds(milliseconds / 1000f);
+            // The AudioSource lives on this GO - never hide (and cut off the jingle) before the sound is done.
+            // G2's chapter times are often shorter than their WAVs.
+            var clipSeconds = _audioSource.clip != null ? _audioSource.clip.length : 0f;
+            yield return new WaitForSeconds(Mathf.Max(milliseconds / 1000f, clipSeconds));
 
-            _canvasMoveVelocity = Vector3.zero;
             gameObject.SetActive(false);
         }
     }

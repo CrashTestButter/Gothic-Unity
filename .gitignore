@@ -95,6 +95,7 @@ ProjectSettings/Packages/com.unity.testtools.codecoverage/Settings.json
 *.dll.meta
 *.so
 *.so.meta
+
 *CullingData.asset
 *CullingData.asset.meta
 
@@ -115,7 +116,18 @@ Assets/StreamingAssets/SpeechToText/*.json.meta
 Assets/Gothic-Core/Resources/DeveloperConfigs/Local/*
 !Assets/Gothic-Core/Resources/DeveloperConfigs/Local/.gitkeep
 
-ZenKitCS
+# Local references
+Gothic-Unity.wiki/
+ZenKit/
+ZenKitCS/
+Daedalus/
 
 # Ignore local AI settings (like pre-approved MCP usage)
 .claude/*
+!.claude/skills/
+!.claude/agents/
+!.claude/hooks/
+!.claude/settings.json
+!.claude/README.md
+!.claude/CLAUDE-SETUP.md
+!.claude/statuslines/

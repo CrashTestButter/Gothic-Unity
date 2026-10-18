@@ -15,6 +15,14 @@ namespace Gothic.Core.Services.Context
         void SetSwimmingControls();
         void SetDivingControls();
         void TeleportPlayerTo(Vector3 position, Quaternion rotation = default);
+
+        /// <summary>
+        /// Holds the player horizontally inside the circle around center. Between softRadius and radius, movement
+        /// slows down the farther out the player is; walking outward stops at radius, walking back in speeds up
+        /// steadily. Beyond radius the player drifts back.
+        /// Call it every frame while holding. Does nothing while the player is airborne or climbing.
+        /// </summary>
+        void KeepPlayerWithin(Vector3 center, float softRadius, float radius);
         void InitUIInteraction();
         void IntroduceChapter(string chapter, string text, string texture, string wav, int time);
         void DisableMenus();

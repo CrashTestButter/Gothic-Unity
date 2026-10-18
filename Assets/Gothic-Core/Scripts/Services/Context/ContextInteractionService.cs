@@ -72,6 +72,11 @@ namespace Gothic.Core.Services.Context
             _impl.TeleportPlayerTo(position,rotation);
         }
 
+        public void KeepPlayerWithin(Vector3 center, float softRadius, float radius)
+        {
+            _impl.KeepPlayerWithin(center, softRadius, radius);
+        }
+
         public void InitUIInteraction()
         {
             _impl.InitUIInteraction();

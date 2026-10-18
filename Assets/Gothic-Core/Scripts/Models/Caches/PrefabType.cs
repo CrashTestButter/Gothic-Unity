@@ -12,7 +12,8 @@ namespace Gothic.Core.Models.Caches
         UiButtonTextured,
         UiTexture,
         UiThumbnail,
-        
+        UiVirtualKeyboard,
+
         UiDebugText,
         UiDebugLogLine,
         UiDebugButton,
@@ -32,6 +33,7 @@ namespace Gothic.Core.Models.Caches
         VobSwitch,
         VobInteractable,
         VobInteractableSeat,
+        VobInteractableDigSpot,
         VobMovable,
         VobSpot,
         VobPfx,
@@ -43,11 +45,18 @@ namespace Gothic.Core.Models.Caches
         VobMover,
         VobTriggerChangeLevel,
         VobTriggerScript,
+        VobTrigger,
+        VobTriggerList,
+        VobTriggerUntouch,
+        VobTriggerWorldStart,
+        VobCodeMaster,
+        VobMoverController,
+        VobMessageFilter,
 
         VobItem,
         VobItemLockPick,
         VobItemWeapon,
-        
+
         StoryIntroduceChapter
     }
 }

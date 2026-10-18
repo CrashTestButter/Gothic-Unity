@@ -16,7 +16,8 @@ namespace Gothic.Core.Extensions
                 PrefabType.UiButtonTextured => "Prefabs/UI/ButtonTextured",
                 PrefabType.UiTexture => "Prefabs/UI/Texture",
                 PrefabType.UiThumbnail => "Prefabs/UI/Thumbnail",
-                
+                PrefabType.UiVirtualKeyboard => "Prefabs/UI/VirtualKeyboard",
+
                 PrefabType.UiDebugText => "Prefabs/UI/Debug/Text",
                 PrefabType.UiDebugLogLine => "Prefabs/UI/Debug/LogLine",
                 PrefabType.UiDebugButton => "Prefabs/UI/Debug/Button",
@@ -35,7 +36,8 @@ namespace Gothic.Core.Extensions
                 PrefabType.VobWheel => "Prefabs/Vobs/oCMobWheel",
                 PrefabType.VobSwitch => "Prefabs/Vobs/oCMobSwitch",
                 PrefabType.VobInteractable => "Prefabs/Vobs/oCMobInter",
-                PrefabType.VobInteractableSeat => "Prefabs/Vobs/oCMobInterSeat",
+                PrefabType.VobInteractableSeat => "Prefabs/Vobs/oCMobInter/Seat",
+                PrefabType.VobInteractableDigSpot => "Prefabs/Vobs/oCMobInter/DigSpot",
                 PrefabType.VobMovable => "Prefabs/Vobs/oCMobMovable",
                 PrefabType.VobSpot => "Prefabs/Vobs/zCVobSpot",
                 PrefabType.VobPfx => "Prefabs/Vobs/vobPfx",
@@ -47,11 +49,18 @@ namespace Gothic.Core.Extensions
                 PrefabType.VobMover => "Prefabs/Vobs/zCMover",
                 PrefabType.VobTriggerChangeLevel => "Prefabs/Vobs/oCTriggerChangeLevel",
                 PrefabType.VobTriggerScript => "Prefabs/Vobs/oCTriggerScript",
-                
+                PrefabType.VobTrigger => "Prefabs/Vobs/zCTrigger",
+                PrefabType.VobTriggerList => "Prefabs/Vobs/zCTriggerList",
+                PrefabType.VobTriggerUntouch => "Prefabs/Vobs/zCTriggerUntouch",
+                PrefabType.VobTriggerWorldStart => "Prefabs/Vobs/zCTriggerWorldStart",
+                PrefabType.VobCodeMaster => "Prefabs/Vobs/zCCodeMaster",
+                PrefabType.VobMoverController => "Prefabs/Vobs/zCMoverController",
+                PrefabType.VobMessageFilter => "Prefabs/Vobs/zCMessageFilter",
+
                 PrefabType.VobItem => "Prefabs/Vobs/oCItem",
                 PrefabType.VobItemLockPick => "Prefabs/Vobs/oCItem/LockPick",
                 PrefabType.VobItemWeapon => "Prefabs/Vobs/oCItem/Weapon",
-                
+
                 PrefabType.StoryIntroduceChapter => "Prefabs/Story/IntroduceChapter",
                 _ => throw new Exception($"Enum value {type} not yet defined.")
             };

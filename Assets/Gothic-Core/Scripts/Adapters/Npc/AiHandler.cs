@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Gothic.Core.Adapters.Properties;
+using Gothic.Core.Adapters.Properties.Vobs;
 using Gothic.Core.Creator;
 using Gothic.Core.Domain.Npc.Actions;
 using Gothic.Core.Domain.Npc.Actions.AnimationActions;
@@ -9,7 +10,7 @@ using Gothic.Core.Models.Vm;
 using FreePoint = Gothic.Core.Models.Vob.WayNet.FreePoint;
 using WayPoint = Gothic.Core.Models.Vob.WayNet.WayPoint;
 using Gothic.Core.Services;
-using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vm;
 using MyBox;
@@ -28,7 +29,7 @@ namespace Gothic.Core.Adapters.Npc
 #endif
 
         [Inject] private readonly GameStateService _gameStateService;
-        [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
         [Inject] private readonly NpcHelperService _npcHelperService;
         [Inject] private readonly NpcAiService _npcAiService;
         [Inject] private readonly NpcService _npcService;
@@ -339,8 +340,18 @@ namespace Gothic.Core.Adapters.Npc
                 // Whenever we change routine, we reset some data to "start" from scratch as if the NPC got spawned.
                 Vob.CurrentStateValid = false;
                 Properties.AnimationQueue.Clear();
-                Properties.CurrentAction = new None(new AnimationAction(), NpcData);
                 Properties.CurrentLoopState = NpcProperties.LoopState.None; // i.e. call StartNextState() next frame
+
+                // AI_StartState keeps a seated NPC seated (B_AssessTalk: AI_StartState(ZS_Talk, 0)). A running
+                // sit-down transition finishes first, like in the engine.
+                if (NpcData.IsUsingMob() || Properties.CurrentAction is UseMob)
+                {
+                    if (Properties.CurrentAction is not UseMob)
+                        Properties.CurrentAction = new None(new AnimationAction(), NpcData);
+                    return;
+                }
+
+                Properties.CurrentAction = new None(new AnimationAction(), NpcData);
                 Properties.BodyState = VmGothicEnums.BodyState.BsStand;
 
                 PrefabProps.AnimationSystem.StopAllAnimations();
@@ -379,6 +390,20 @@ namespace Gothic.Core.Adapters.Npc
             Properties.CurrentAction = new None(new AnimationAction(), NpcData);
             Properties.StateTime = 0.0f;
 
+            // Mob usage (sitting on a bench, ...) ends with the respawn at the routine waypoint - the routine walks
+            // there and sits down again. Before, the NPC kept its sitting state and sat in the air at the respawn
+            // point.
+            if (Properties.CurrentInteractableStateId >= 0)
+            {
+                if (PrefabProps.CurrentInteractable?.Props is InteractiveProperties mobProps)
+                    mobProps.State = -1;
+
+                PrefabProps.CurrentInteractable = null;
+                PrefabProps.CurrentInteractableSlot = null;
+                Properties.CurrentInteractableStateId = -1;
+                Properties.BodyState = VmGothicEnums.BodyState.BsStand;
+            }
+
             // WayNet handling
             // Nothing to do -> Even a despawned NPC (based on culling) needs to stick with its WPs/FPs.
             // Whenever re-enabled they are still attached / sit / stand at their points. Otherwise, another NPC
@@ -414,7 +439,7 @@ namespace Gothic.Core.Adapters.Npc
             // Reset "currently" used item
 
             // FIXME - We need to properly set this value for Gothic2 as well.
-            if (_configService.Dev.GameVersion == GameVersion.Gothic1)
+            if (_contextGameVersionService.IsGothic1())
             {
                 NpcInstance.SetAiVar(_vmService.AIVItemStatusKey, _vmService.TAITNone);
             }

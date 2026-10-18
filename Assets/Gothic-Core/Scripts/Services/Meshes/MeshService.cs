@@ -51,7 +51,7 @@ namespace Gothic.Core.Services.Meshes
             return npcGo;
         }
 
-         public GameObject CreateNpcWeapon(GameObject npcGo, ItemInstance itemData,
+        public GameObject CreateNpcWeapon(GameObject npcGo, ItemInstance itemData,
             VmGothicEnums.ItemFlags mainFlag, VmGothicEnums.ItemFlags flags, bool isEquipped = false)
         {
             var npcWeaponBuilder = new NpcWeaponMeshBuilder().Inject();
@@ -74,9 +74,10 @@ namespace Gothic.Core.Services.Meshes
             return npcWeaponBuilder.Build();
         }
 
-         public GameObject CreateVob(string objectName, IMultiResolutionMesh mrm,
+        public GameObject CreateVob(string objectName, IMultiResolutionMesh mrm,
             Vector3 position = default, Quaternion rotation = default, bool withCollider = true,
-            GameObject parent = null, GameObject rootGo = null, bool useTextureArray = true, bool useColliderCache = false)
+            GameObject parent = null, GameObject rootGo = null, bool useTextureArray = true,
+            bool useColliderCache = false)
         {
             if (!HasTextures(mrm))
             {
@@ -100,11 +101,12 @@ namespace Gothic.Core.Services.Meshes
             return vobBuilder.Build();
         }
 
-         public GameObject CreateVob(string objectName, IModel mdl,
+        public GameObject CreateVob(string objectName, IModel mdl,
             Vector3 position = default, Quaternion rotation = default,
-            GameObject parent = null, GameObject rootGo = null, bool useTextureArray = true)
+            GameObject parent = null, GameObject rootGo = null, bool useTextureArray = true,
+            bool allowUntextured = false)
         {
-            if (!HasMeshes(mdl.Mesh))
+            if (!allowUntextured && !HasMeshes(mdl.Mesh))
             {
                 return null;
             }
@@ -112,15 +114,17 @@ namespace Gothic.Core.Services.Meshes
             var vobBuilder = new VobMeshBuilder().Inject();
             vobBuilder.SetRootPosAndRot(position, rotation);
             vobBuilder.SetGameObject(rootGo, objectName);
-            vobBuilder.SetParent(parent, resetRotation: true); // If we don't reset these, all objects will be rotated wrong!
+            vobBuilder.SetParent(parent,
+                resetRotation: true); // If we don't reset these, all objects will be rotated wrong!
             vobBuilder.SetMeshName(objectName);
             vobBuilder.SetMdl(mdl);
             vobBuilder.SetUseTextureArray(useTextureArray);
+            vobBuilder.SetAllowUntextured(allowUntextured);
 
             return vobBuilder.Build();
         }
 
-         public GameObject CreateVob(string objectName, IMorphMesh mmb,
+        public GameObject CreateVob(string objectName, IMorphMesh mmb,
             Vector3 position = default, Quaternion rotation = default,
             GameObject parent = null, GameObject rootGo = null, bool useTextureArray = false,
             bool useColliderCache = false)
@@ -137,7 +141,7 @@ namespace Gothic.Core.Services.Meshes
             return vobBuilder.Build();
         }
 
-         public GameObject CreateVob(string objectName, IModelMesh mdm, IModelHierarchy mdh,
+        public GameObject CreateVob(string objectName, IModelMesh mdm, IModelHierarchy mdh,
             Vector3 position = default, Quaternion rotation = default,
             GameObject parent = null, GameObject rootGo = null, bool useTextureArray = true)
         {
@@ -177,12 +181,14 @@ namespace Gothic.Core.Services.Meshes
             return !(noMeshTextures && noAttachmentTextures);
         }
 
-        public GameObject CreateVobPfx(IVirtualObject vob, Vector3 position = default, Quaternion rotation = default, GameObject parent = null)
+        public GameObject CreateVobPfx(IVirtualObject vob, Vector3 position = default, Quaternion rotation = default,
+            GameObject parent = null)
         {
             return CreateVobPfx(vob.Visual!.Name, position, rotation, parent);
         }
 
-        public GameObject CreateVobPfx(string pfxName, Vector3 position = default, Quaternion rotation = default, GameObject parent = null, bool destroyAfterPlay = false)
+        public GameObject CreateVobPfx(string pfxName, Vector3 position = default, Quaternion rotation = default,
+            GameObject parent = null, bool destroyAfterPlay = false)
         {
             var vobPfxBuilder = new VobPfxMeshBuilder().Inject();
             vobPfxBuilder.SetGameObject(null, pfxName);
@@ -194,7 +200,8 @@ namespace Gothic.Core.Services.Meshes
             return vobPfxBuilder.Build();
         }
 
-        public GameObject CreateVobDecal(IVirtualObject vob, VisualDecal decal, Vector3 position = default, Quaternion rotation = default, GameObject parent = null)
+        public GameObject CreateVobDecal(IVirtualObject vob, VisualDecal decal, Vector3 position = default,
+            Quaternion rotation = default, GameObject parent = null)
         {
             var vobDecalBuilder = new VobDecalMeshBuilder().Inject();
             vobDecalBuilder.SetGameObject(null, vob.Name);
@@ -205,12 +212,12 @@ namespace Gothic.Core.Services.Meshes
             return vobDecalBuilder.Build();
         }
 
-         public async Task CreateTextureArray()
+        public async Task CreateTextureArray()
         {
             await new TextureArrayBuilder().Inject().BuildAsync();
         }
 
-         public GameObject CreateBarrier(string objectName, IMesh mesh)
+        public GameObject CreateBarrier(string objectName, IMesh mesh)
         {
             var barrierBuilder = new BarrierMeshBuilder().Inject();
             barrierBuilder.SetGameObject(null, objectName);
@@ -219,7 +226,7 @@ namespace Gothic.Core.Services.Meshes
             return barrierBuilder.Build();
         }
 
-         public GameObject CreatePolyStrip(GameObject go, int numberOfSegments, Vector3 startPoint,
+        public GameObject CreatePolyStrip(GameObject go, int numberOfSegments, Vector3 startPoint,
             Vector3 endPoint)
         {
             var polyStripBuilder = new PolyStripMeshBuilder().Inject();

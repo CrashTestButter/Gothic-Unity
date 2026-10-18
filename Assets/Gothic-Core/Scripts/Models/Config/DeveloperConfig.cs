@@ -47,17 +47,25 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(fieldToCheck: nameof(PreselectGameVersion), compareValues: true)]
         public GameVersion GameVersion = GameVersion.Gothic1;
 
-        [Tooltip("Select a specific installed mod ini. Default if empty: GothicGame.ini")]
+        [Separator("Mod")]
+        [Tooltip("Pre-select a mod.")]
+        public bool PreSelectMod;
+        [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
+        [Tooltip("INI filename inside ModPath/system/ (e.g. DM_E.ini)")]
         public string ModIni = string.Empty;
-        
+        [ConditionalField(fieldToCheck: nameof(PreSelectMod), compareValues: true)]
+        [Tooltip("If Mod is outside Gothic installation, select folder used as the game root " +
+                 "(contains Data/, _work/, system/), e.g. C:\\Gothic Mods\\Mroczne Tajemnice")]
+        public string ModPath = string.Empty;
+
         public Controls GameControls = Controls.VR;
 
         [Separator("Debug")]
         [ConditionalField(fieldToCheck: nameof(GameControls), compareValues: Controls.VR)]
         public bool EnableVRDeviceSimulator;
 
-        [Tooltip("Show Marvin Mode menu next to left hand in VR.")]
-        public bool ActivateMarvinMode;
+        [Tooltip("Start with Marvin mode on (shortcut). Without it, Marvin mode can still be activated in game.")]
+        public bool PreselectMarvinMode;
 
         
         /**
@@ -204,7 +212,10 @@ namespace Gothic.Core.Models.Config
         [Separator("WIP")]
         [Tooltip("Enable looting dead NPCs/monsters: grab a dead NPC to open a loot panel with their Daedalus inventory. WIP.")]
         public bool EnableNpcLooting;
-        
+
+        [Tooltip("The hero can move during dialogs (inside Constants.DialogMaxDistance); walking away chooses END if offered.")]
+        public bool EnableDialogFreeMovement = true;
+
         [Separator("Debug")]
         [Tooltip("Draw wireframe boxes for all NPC bone colliders. Green = active (attack window), White = inactive. Works in all builds including release.")]
         public bool ShowNpcColliders;

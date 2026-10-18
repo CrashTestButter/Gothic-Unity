@@ -6,6 +6,7 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Culling;
+using Gothic.Core.Services.Marvin;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
@@ -61,6 +62,7 @@ namespace Gothic.Core
             containerBuilder.AddSingleton(typeof(ContextInteractionService));
             containerBuilder.AddSingleton(typeof(ContextMenuService));
             containerBuilder.AddSingleton(typeof(ContextDialogService));
+            containerBuilder.AddSingleton(typeof(ContextTextInputService));
             containerBuilder.AddSingleton(typeof(ContextGameVersionService));
 
             containerBuilder.AddSingleton(typeof(NpcMeshCullingService));
@@ -73,6 +75,7 @@ namespace Gothic.Core
 
             // Vob
             containerBuilder.AddSingleton(typeof(VobService));
+            containerBuilder.AddSingleton(typeof(MobInteractionService));
             containerBuilder.AddSingleton(typeof(ParticleService));
             
             // Player
@@ -119,6 +122,7 @@ namespace Gothic.Core
 
             // Marvin
             containerBuilder.AddSingleton(typeof(MarvinService));
+            containerBuilder.AddSingleton(typeof(MarvinCommandService));
 
             // FIXME - Need to be migrated to a Service!
             containerBuilder.AddSingleton(typeof(VobInitializerDomain));

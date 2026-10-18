@@ -72,7 +72,6 @@ MonoBehaviour:
   SunLightIntensity: 1
   SunUpdateInterval: 1
   AmbientLightColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
-  StationaryLightMaxDistance: 80
   StartTimeHour: 8
   StartTimeMinute: 0
   TimeSpeedMultiplier: 1

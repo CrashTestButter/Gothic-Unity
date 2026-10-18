@@ -24,10 +24,7 @@ OpenGothic is the reference for lighting every light near the camera.
 
 ## Config
 
-Kept (in `DeveloperConfig` → Lighting → "World lights"):
-- `StationaryLightMaxDistance` (80 m): pooled lights farther than this don't get a slot.
-
-Dropped:
+None kept. Dropped:
 - `EnableDayNightWorldLight` and `DayNightLightStrength`. Night always uses Gothic's sky colors.
 - `EnableStaticLightsInLightMappedAreas`. Turning it off only made caves and houses dark again, so static lights
   next to light mapped polygons always get a runtime slot now.
@@ -36,8 +33,7 @@ Dropped:
   StaticCache.
 - `StaticLightPoolSize` and `StationaryLightPoolRefreshSeconds`. The pool always uses all slots (1023/512), and the
   refresh interval is a constant (2 s).
-
-`Production.asset`: same max distance as the source branch (80 m).
+- `StationaryLightMaxDistance`. Now the constant `_poolMaxDistance` (80 m, as in the source branch), see below.
 
 ## How to test (VR, ~10-15 min)
 
@@ -91,3 +87,7 @@ Dropped:
   - `RebalancePool` sorts the pooled lights in reach every 2 s, and skips it while the camera moved less than 2 m.
     Lights cache their position and range, and `UpdateRenderer` reuses one material list (no garbage per renderer
     on slot changes). Measure it on Quest - a world load or teleport still hands out many slots in one frame.
+  - Lights farther than 80 m (`_poolMaxDistance`) get no slot, although VOB culling keeps them loaded up to
+    ~200 m: at night, far fires are visible but don't light the ground. It's kept because `UpdateRenderer` writes
+    only the first 16 lights per renderer (in slot order). After profiling on Quest, try dropping the limit and
+    letting VOB culling decide.

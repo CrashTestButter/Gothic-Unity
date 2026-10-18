@@ -262,9 +262,6 @@ namespace Gothic.Core.Models.Config
         public GameTimeService.GameTimeInterval SunUpdateInterval = GameTimeService.GameTimeInterval.EveryGameMinute;
         public Color AmbientLightColor = new(0.1f, 0.1f, 0.1f, 1);
 
-        [Separator("World lights")]
-        [Tooltip("Pooled lights farther than this (m, minus their range) don't get a slot.")]
-        public float StationaryLightMaxDistance = 80f;
 
         /**
          * ##########

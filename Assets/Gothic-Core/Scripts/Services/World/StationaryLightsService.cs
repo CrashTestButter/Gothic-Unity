@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Logging;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Extensions;
 using Reflex.Attributes;
 using UnityEngine;
@@ -11,8 +10,6 @@ namespace Gothic.Core.Services.World
 {
     public class StationaryLightsService
     {
-        [Inject] private readonly ConfigService _configService;
-
         /// <summary>
         /// Same as MAX_TOTAL_STATIONARY_LIGHTS in StationaryLighting.hlsl (1023 = Unity's cap, mobile 512). The global
         /// arrays always get this size: Unity fixes a global array's size the first time it's set.
@@ -51,6 +48,16 @@ namespace Gothic.Core.Services.World
         /// others or the max distance, instead of flipping on/off at the cutoff with every refresh.
         /// </summary>
         private const float _poolHysteresis = 5f;
+
+        /// <summary>
+        /// Pooled lights farther than this (m, minus their range) don't get a slot. Not from Gothic/OpenGothic -
+        /// VOB culling keeps lights loaded up to ~200 m (Large group, as a light's bounds are 2x its range), and the
+        /// closest-first sort already gives the nearest lights priority on Quest's 512 slots.
+        /// Kept as insurance until profiled on Quest: UpdateRenderer() writes only the first 16 lights of a renderer
+        /// (in slot order, not by distance), so far lights could take entries from near ones on big world chunks.
+        /// Tradeoff: at night, fires 80-200 m away are visible but don't light the ground around them.
+        /// </summary>
+        private const float _poolMaxDistance = 80f;
 
         private HashSet<long> _lightMappedCells = new();
         private readonly Stack<int> _freeRuntimeSlots = new();
@@ -286,7 +293,6 @@ namespace Gothic.Core.Services.World
                 _poolMinCameraMove * _poolMinCameraMove)
                 return;
             _lastPoolRebalanceCameraPosition = camPos;
-            var maxDistance = _configService.Dev.StationaryLightMaxDistance;
             var capacity = _freeRuntimeSlots.Count;
 
             _pooledSorted.Clear();
@@ -302,7 +308,7 @@ namespace Gothic.Core.Services.World
                 var reach = Vector3.Distance(light.CachedPosition, camPos) - light.CachedRange;
                 if (hasSlot)
                     reach -= _poolHysteresis;
-                if (reach <= maxDistance)
+                if (reach <= _poolMaxDistance)
                     _pooledSorted.Add((reach, light));
             }
             _pooledSorted.Sort((a, b) => a.Reach.CompareTo(b.Reach));

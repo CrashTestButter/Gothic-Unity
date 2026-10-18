@@ -7,6 +7,7 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Const;
 using Gothic.Core.Creator;
 using Gothic.Core.Domain.Npc;
+using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Models.Container;
@@ -26,6 +27,7 @@ using UnityEngine;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
+using Logger = Gothic.Core.Logging.Logger;
 using Object = UnityEngine.Object;
 
 namespace Gothic.Core.Services.Npc
@@ -150,6 +152,22 @@ namespace Gothic.Core.Services.Npc
             return _initializerDomain.GetFreeAreaAtSpawnPoint(positionToScan);
         }
 
+        /// <summary>
+        /// Spawns the NPC instance with the given Daedalus symbol name during gameplay.
+        /// </summary>
+        public bool SpawnNpcByName(string symbolName, Vector3 position, Quaternion rotation)
+        {
+            var symbol = _gameStateService.GothicVm.GetSymbolByName(symbolName);
+            if (symbol == null || symbol.Type != DaedalusDataType.Instance)
+            {
+                Logger.LogWarning($"[NpcService] SpawnNpcByName: '{symbolName}' is no Daedalus instance", LogCat.Npc);
+                return false;
+            }
+
+            _initializerDomain.SpawnNpcRuntime(symbol.Index, position, rotation);
+            return true;
+        }
+
         public async Task CreateWorldNpcs(LoadingService loading)
         {
             MobRoutines.ClearAndReleaseMemory();
@@ -187,25 +205,25 @@ namespace Gothic.Core.Services.Npc
         public void ExtNpcSetTalentValue(NpcInstance npc, VmGothicEnums.Talent talent, int level)
         {
             var vob = npc.GetUserData()!.Vob;
-
+            var existing = vob.GetTalent((int)talent);
             vob.SetTalent((int)talent, new Talent
             {
-                Type =  (int)talent,
-                Skill = 0,
+                Type  = (int)talent,
+                Skill = existing?.Skill ?? 0,
                 Value = level
             });
         }
-        
+
         // FIXME - In OpenGothic it adds MDS overlays based on skill level.
         public void ExtNpcSetTalentSkill(NpcInstance npc, VmGothicEnums.Talent talent, int skillValue)
         {
             var vob = npc.GetUserData()!.Vob;
-
+            var existing = vob.GetTalent((int)talent);
             vob.SetTalent((int)talent, new Talent
             {
-                Type =  (int)talent,
+                Type  = (int)talent,
                 Skill = skillValue,
-                Value = 0
+                Value = existing?.Value ?? 0
             });
         }
 
@@ -242,14 +260,72 @@ namespace Gothic.Core.Services.Npc
 
         public void ExtNpcChangeAttribute(NpcInstance npc, int attributeId, int value)
         {
-            var vob = npc.GetUserData().Vob;
+            var container = npc.GetUserData();
+            var vob = container.Vob;
+            var newValue = vob.GetAttribute(attributeId) + value;
 
-            vob.Attributes[attributeId] = value;
+            // Clamp paired attributes (HP/HP_MAX, Mana/Mana_MAX): max is at attributeId+1 by G1 convention.
+            // Only those two! Strength (4) is followed by Dexterity (5), which isn't its max - clamping it there made
+            // e.g. an amulet's +10 strength do nothing while the -10 on unequip still applied.
+            var isPairedWithMax = attributeId == (int)NpcAttribute.HitPoints || attributeId == (int)NpcAttribute.Mana;
+            if (isPairedWithMax && attributeId + 1 < vob.Attributes.Count)
+            {
+                var max = vob.GetAttribute(attributeId + 1);
+                if (max > 0)
+                    newValue = Mathf.Clamp(newValue, 0, max);
+            }
+
+            SetAttribute(container, (NpcAttribute)attributeId, newValue);
+        }
+
+        /// <summary>
+        /// The engine keeps these values in one place (oCNpc), we have two: scripts read the instance, C# the vob.
+        /// Every C# write goes through these setters, so both stay equal.
+        /// </summary>
+        public void SetAttribute(NpcContainer npc, NpcAttribute attribute, int value)
+        {
+            npc.Vob.SetAttribute((int)attribute, value);
+            npc.Instance.SetAttribute(attribute, value);
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(npc, attribute);
+        }
+
+        public void SetLevel(NpcContainer npc, int level)
+        {
+            npc.Vob.Level = level;
+            npc.Instance.Level = level;
+        }
+
+        public void SetLp(NpcContainer npc, int lp)
+        {
+            npc.Vob.Lp = lp;
+            npc.Instance.Lp = lp;
         }
 
         public NpcContainer GetHeroContainer()
         {
-            return ((NpcInstance)_gameStateService.GothicVm.GlobalHero).GetUserData();
+            // Hero doesn't exist yet in menus / during boot (e.g. the player's health bar asks for it there).
+            return (_gameStateService.GothicVm?.GlobalHero as NpcInstance)?.GetUserData();
+        }
+
+        /// <summary>
+        /// Daedalus writes hero values directly on the instance (hero.lp, hero.attribute[] at teachers, permanent
+        /// potions). Copies them to the vob - safe because C# writes both stores (SetAttribute/SetLevel/SetLp).
+        /// </summary>
+        public void SyncHeroInstanceToVob()
+        {
+            var hero = GetHeroContainer();
+            if (hero == null)
+                return;
+
+            hero.Vob.Level = hero.Instance.Level;
+            hero.Vob.Xp = hero.Instance.Exp;
+            hero.Vob.XpNextLevel = hero.Instance.ExpNext;
+            hero.Vob.Lp = hero.Instance.Lp;
+            for (var i = 0; i < Enum.GetNames(typeof(NpcAttribute)).Length; i++)
+                hero.Vob.SetAttribute(i, hero.Instance.GetAttribute((NpcAttribute)i));
+
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(hero, NpcAttribute.HitPoints);
+            GlobalEventDispatcher.NpcAttributeChanged.Invoke(hero, NpcAttribute.HitPointsMax);
         }
 
         public GameObject GetHeroGameObject()
@@ -488,8 +564,13 @@ namespace Gothic.Core.Services.Npc
         public void SetDialogs(NpcContainer npcContainer)
         {
             var npcIndex = npcContainer.Instance.Index;
+            // A mod's hero can be another instance (Mroczne Tajemnice: PC_Rockefeller) - the mob dialogs (bed, shrine)
+            // are still C_INFOs with npc = PC_Hero.
+            var heroAliasIndex = npcIndex == (_vm.GlobalHero as NpcInstance)?.Index
+                ? _vm.GetSymbolByName("PC_HERO")?.Index ?? npcIndex
+                : npcIndex;
             npcContainer.Props.Dialogs = _gameStateService.Dialogs.Instances
-                .Where(dialog => dialog.Npc == npcIndex)
+                .Where(dialog => dialog.Npc == npcIndex || dialog.Npc == heroAliasIndex)
                 .OrderByDescending(dialog => dialog.Important)
                 .ToList();
 

@@ -81,8 +81,6 @@ namespace Gothic.Core.Adapters.Animations
         private List<AnimationTrackInstance> _trackInstances = new();
         // Reusable snapshot for Update(): instances can be added (NextAni/idle) or removed while iterating.
         private List<AnimationTrackInstance> _updateSnapshot = new();
-        private bool _isSittingInverted;
-        private Quaternion _lastInvertedRotation;
 
         // Cached to avoid a delegate allocation per PlayAnimation call.
         private static readonly Comparison<AnimationTrackInstance> _trackOrderComparison = (instanceA, instanceB) =>
@@ -452,7 +450,6 @@ namespace Gothic.Core.Adapters.Animations
 
             var newInstance = new AnimationTrackInstance(newTrack);
 
-            PrePlayAnimation(newInstance);
             _trackInstances.Add(newInstance);
 
             // AnimationPoseJob applies tracks in list order: later entries override earlier ones (for their bones).
@@ -606,20 +603,10 @@ namespace Gothic.Core.Adapters.Animations
         private void LateUpdate()
         {
             FollowRootColliderHeight();
-            ApplyFinalRotation();
-        }
-
-        private void PrePlayAnimation(AnimationTrackInstance instance)
-        {
-            if (instance.Track.InvertYAxis)
-                _isSittingInverted = true;
         }
 
         private void PreStopAnimation(AnimationTrackInstance instance)
         {
-            if (instance.Track.InvertYAxis)
-                _isSittingInverted = false;
-
             if (AttackAnimation.EqualsIgnoreCase(instance.AnimationName))
                 DisableAttack();
         }
@@ -655,23 +642,6 @@ namespace Gothic.Core.Adapters.Animations
 
             // Pos change is applied with rotated value.
             Go.transform.localPosition += Go.transform.rotation * finalMovement;
-        }
-
-        private void ApplyFinalRotation()
-        {
-            if (!_isSittingInverted)
-                return;
-
-            var bip01 = PrefabProps.Bip01.transform;
-
-            // Only invert poses freshly written by the Animator. If the rotation still holds our own last write
-            // (i.e. no clip drove the bone this frame), inverting again would flip-flop the NPC every frame.
-            if (bip01.localRotation == _lastInvertedRotation)
-                return;
-
-            var currentRotation = bip01.localRotation.eulerAngles;
-            _lastInvertedRotation = Quaternion.Euler(currentRotation.x, -currentRotation.y, currentRotation.z);
-            bip01.localRotation = _lastInvertedRotation;
         }
 
         private void ApplyEvents()
@@ -717,13 +687,19 @@ namespace Gothic.Core.Adapters.Animations
                         AttackAnimation = trackInstance.AnimationName;
                         break;
                     case EventType.OptimalFrame:
-                        AttackOptFrame = eventTag.Slots.Item1.Split(' ').Where(s => !string.IsNullOrEmpty(s)).Select(i => Convert.ToInt32(i)).ToList();
+                        // ZenKit stores numeric frame params in .Frames. .Slots holds string params like bone names.
+                        AttackOptFrame = eventTag.Frames;
                         break;
                     case EventType.HitEnd:
-                        AttackHitEnd = eventTag.Slots.Item1.Split(' ').Where(s => !string.IsNullOrEmpty(s)).Select(i => Convert.ToInt32(i)).ToList();
+                        AttackHitEnd = eventTag.Frames;
                         break;
                     case EventType.ComboWindow:
-                        AttackWindowFrames = eventTag.Slots.Item1.Split(' ').Where(s => !string.IsNullOrEmpty(s)).Select(i => Convert.ToInt32(i)).ToList();
+                        AttackWindowFrames = eventTag.Frames;
+                        if (AttackWindowFrames.Count == 0)
+                        {
+                            Logger.LogWarning($"DEF_WINDOW on >{trackInstance.AnimationName}< has no frame params - " +
+                                              "combo window will never open.", LogCat.Animation);
+                        }
                         break;
                     // Unused. @see: https://gothic-modding-community.github.io/gmc/zengin/anims/events/#def_dir
                     case EventType.HitDirection:
@@ -811,7 +787,8 @@ namespace Gothic.Core.Adapters.Animations
         {
             foreach (var trackInstance in _trackInstances)
             {
-                if (trackInstance.Track.Name.EqualsIgnoreCase(animationName))
+                // Aliases (e.g. t_Bench_S1_2_S0 = t_Bench_S0_2_S1 reversed) are requested by their alias name.
+                if (trackInstance.Track.MatchesName(animationName))
                     return true;
             }
 

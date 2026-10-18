@@ -7,6 +7,7 @@ using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Extensions;
 using Gothic.Core.Models.Caches;
+using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Models.Vob.WayNet;
 using Gothic.Core.Services;
@@ -15,7 +16,7 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Culling;
 using Gothic.Core.Services.Meshes;
-using Gothic.Core.Services.StaticCache;
+using Gothic.Core.Services.World;
 using JetBrains.Annotations;
 using MyBox;
 using Reflex.Attributes;
@@ -40,10 +41,10 @@ namespace Gothic.Core.Domain.Vobs
         [Inject] private readonly MeshService _meshService;
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VmCacheService _vmCacheService;
-        [Inject] private readonly StaticCacheService _staticCacheService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly StationaryLightsService _stationaryLightsService;
 
 
         /// <summary>
@@ -119,6 +120,7 @@ namespace Gothic.Core.Domain.Vobs
                             go = CreateDefaultMesh(vob, parent);
                             break;
                     }
+
                     break;
                 case VirtualObjectType.oCMobInter:
                     if (vob.Name.ContainsIgnoreCase("bench") ||
@@ -174,30 +176,52 @@ namespace Gothic.Core.Domain.Vobs
                     // This value is always true when a new game/world is loaded. (Compared with G1 save game.)
                     ((TriggerList)vob).SendOnTrigger = true;
 
-                    // For SaveGame comparison, we load our fallback Prefab and set VobProperties.
-                    // Remove it from here once we properly implement and handle it.
-                    CreateEmptyDefaultVob(vob, parent);
-                    return;
+                    go = GetPrefab(vob, parent);
+                    go.name = $"TriggerList_{vob.Name}";
+                    go.GetComponent<TriggerListHandler>().Init((ITriggerList)vob);
+                    break;
                 case VirtualObjectType.oCTriggerScript:
                     go = CreateTriggerScript((ITriggerScript)vob, parent);
-                    return;
-                case VirtualObjectType.zCVobScreenFX:
+                    break;
+                case VirtualObjectType.zCCodeMaster:
+                    go = GetPrefab(vob, parent);
+                    go.name = $"CodeMaster_{vob.Name}";
+                    go.GetComponent<CodeMasterHandler>().Init((ICodeMaster)vob);
+                    break;
+                case VirtualObjectType.zCTrigger:
+                    go = CreateTriggerZone(vob, parent, $"TriggerZone_{vob.Name}");
+                    go.GetComponent<TriggerZoneHandler>().Init((ITrigger)vob);
+                    break;
+                case VirtualObjectType.zCTriggerUntouch:
+                    go = CreateTriggerZone(vob, parent, $"TriggerUntouch_{vob.Name}");
+                    go.GetComponent<TriggerUntouchHandler>().Init((ITriggerUntouch)vob);
+                    break;
                 case VirtualObjectType.zCTriggerWorldStart:
+                    go = GetPrefab(vob, parent);
+                    go.name = $"TriggerWorldStart_{vob.Name}";
+                    go.GetComponent<TriggerWorldStartHandler>().Init((ITriggerWorldStart)vob);
+                    break;
+                case VirtualObjectType.zCMoverController:
+                    go = GetPrefab(vob, parent);
+                    go.name = $"MoverController_{vob.Name}";
+                    go.GetComponent<MoverControllerHandler>().Init((IMoverController)vob);
+                    break;
+                case VirtualObjectType.zCMessageFilter:
+                    go = GetPrefab(vob, parent);
+                    go.name = $"MessageFilter_{vob.Name}";
+                    go.GetComponent<MessageFilterHandler>().Init((IMessageFilter)vob);
+                    break;
+                case VirtualObjectType.zCVobScreenFX:
                 case VirtualObjectType.oCCSTrigger:
                 case VirtualObjectType.zCVobLensFlare:
-                case VirtualObjectType.zCMoverController:
                 case VirtualObjectType.zCZoneZFog:
                 case VirtualObjectType.zCZoneZFogDefault:
                 case VirtualObjectType.zCZoneVobFarPlane:
                 case VirtualObjectType.zCZoneVobFarPlaneDefault:
-                case VirtualObjectType.zCMessageFilter:
-                case VirtualObjectType.zCCodeMaster:
                 case VirtualObjectType.zCCSCamera:
                 case VirtualObjectType.zCCamTrj_KeyFrame:
                 case VirtualObjectType.oCTouchDamage:
-                case VirtualObjectType.zCTriggerUntouch:
                 case VirtualObjectType.zCEarthquake:
-                case VirtualObjectType.zCTrigger:
                 case VirtualObjectType.Ignored:
                 case VirtualObjectType.Unknown:
                     // For SaveGame comparison, we load our fallback Prefab and set VobProperties.
@@ -208,14 +232,18 @@ namespace Gothic.Core.Domain.Vobs
                     // Nothing to do.
                     return;
                 default:
-                    Logger.LogError($"VobType={vob.Type} not yet handled. And we didn't know we need to do so. ;-)", LogCat.Vob);
+                    Logger.LogError($"VobType={vob.Type} not yet handled. And we didn't know we need to do so. ;-)",
+                        LogCat.Vob);
                     return;
             }
 
             // Do not check children if the current VOB can't be created.
             if (!go)
                 return;
-            
+
+            if (!isRootVob)
+                EnsureOwnVobLoader(vob, go);
+
             foreach (var childVob in vob.Children)
             {
                 InitVob(childVob, go, worldPosition, false);
@@ -225,6 +253,14 @@ namespace Gothic.Core.Domain.Vobs
         public void SetPosAndRot(GameObject obj, System.Numerics.Vector3 position, Matrix3x3 rotation)
         {
             obj.transform.SetLocalPositionAndRotation(position.ToUnityVector(), rotation.ToUnityQuaternion());
+        }
+
+        /// <summary>
+        /// G1 calls it ItKeLockpick, G2 ItKe_Lockpick. World items carry it as name or only as instance.
+        /// </summary>
+        private static bool IsLockPick(string itemName)
+        {
+            return itemName.EqualsIgnoreCase("ItKeLockpick") || itemName.EqualsIgnoreCase("ItKe_Lockpick");
         }
 
         private GameObject GetPrefab(IVirtualObject vob, GameObject parent = null)
@@ -239,11 +275,13 @@ namespace Gothic.Core.Domain.Vobs
                     var itemName = vobItem.Instance.NotNullOrEmpty() ? vobItem.Instance : vobItem.Name;
                     var item = _vmCacheService.TryGetItemData(itemName)!;
                     var mainFlag = (VmGothicEnums.ItemFlags)item.MainFlag;
-                    
+
                     if (mainFlag is VmGothicEnums.ItemFlags.ItemKatNf or VmGothicEnums.ItemFlags.ItemKatFf)
-                        go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItemWeapon, name: name, parent: parent);
-                    else if (name.EqualsIgnoreCase("ItKeLockpick"))
-                        go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItemLockPick, name: name, parent: parent);
+                        go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItemWeapon, name: name,
+                            parent: parent);
+                    else if (IsLockPick(name) || IsLockPick(itemName))
+                        go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItemLockPick, name: name,
+                            parent: parent);
                     else
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobItem, name: name, parent: parent);
 
@@ -256,7 +294,8 @@ namespace Gothic.Core.Domain.Vobs
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobSound, name: name, parent: parent);
                     break;
                 case VirtualObjectType.zCVobSoundDaytime:
-                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobSoundDaytime, name: name, parent: parent);
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobSoundDaytime, name: name,
+                        parent: parent);
                     break;
                 case VirtualObjectType.oCZoneMusic:
                 case VirtualObjectType.oCZoneMusicDefault:
@@ -269,10 +308,15 @@ namespace Gothic.Core.Domain.Vobs
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobFire, name: name, parent: parent);
                     break;
                 case VirtualObjectType.oCMobInter:
-                    if (vob.Name.ContainsIgnoreCase("bench") ||
-                        vob.Name.ContainsIgnoreCase("chair") ||
-                        vob.Name.ContainsIgnoreCase("throne") ||
-                        vob.Name.ContainsIgnoreCase("barrelo"))
+                    // Mobs used with a melee tool (e.g. G2 treasure X marks + pickaxe) can be dug up by hitting them.
+                    if (_vmCacheService.IsDigSpot(vob))
+                    {
+                        go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobInteractableDigSpot);
+                    }
+                    else if (vob.Name.ContainsIgnoreCase("bench") ||
+                             vob.Name.ContainsIgnoreCase("chair") ||
+                             vob.Name.ContainsIgnoreCase("throne") ||
+                             vob.Name.ContainsIgnoreCase("barrelo"))
                     {
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobInteractableSeat);
                     }
@@ -280,6 +324,7 @@ namespace Gothic.Core.Domain.Vobs
                     {
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobInteractable);
                     }
+
                     break;
                 case VirtualObjectType.oCMobBed:
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobBed, name: name, parent: parent);
@@ -291,10 +336,8 @@ namespace Gothic.Core.Domain.Vobs
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobSwitch, name: name, parent: parent);
                     break;
                 case VirtualObjectType.oCMobDoor:
-                    var visualName = vob.Visual?.Name;
-                    var isBed = !visualName.IsNullOrEmpty()
-                                && visualName.Split('_')[0].EqualsIgnoreCase("BED");
-                    go = isBed
+                    // G2 beds are named BEDHIGH_NW_..., not only BED_... (they were built as doors - no focus, no use).
+                    go = vob.IsBed()
                         ? _resourceCacheService.TryGetPrefabObject(PrefabType.VobBed, name: name, parent: parent)
                         : _resourceCacheService.TryGetPrefabObject(PrefabType.VobDoor, name: name, parent: parent);
                     break;
@@ -311,10 +354,41 @@ namespace Gothic.Core.Domain.Vobs
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobLight, name: name, parent: parent);
                     break;
                 case VirtualObjectType.oCTriggerChangeLevel:
-                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerChangeLevel, name: name, parent: parent);
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerChangeLevel, name: name,
+                        parent: parent);
                     break;
                 case VirtualObjectType.oCTriggerScript:
-                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerScript, name: name, parent: parent);
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerScript, name: name,
+                        parent: parent);
+                    break;
+                case VirtualObjectType.zCTrigger:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTrigger, name: name, parent: parent);
+                    break;
+                case VirtualObjectType.zCTriggerList:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerList, name: name,
+                        parent: parent);
+                    break;
+                case VirtualObjectType.zCTriggerUntouch:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerUntouch, name: name,
+                        parent: parent);
+                    break;
+                case VirtualObjectType.zCTriggerWorldStart:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobTriggerWorldStart, name: name,
+                        parent: parent);
+                    break;
+                case VirtualObjectType.zCCodeMaster:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobCodeMaster, name: name, parent: parent);
+                    break;
+                case VirtualObjectType.zCMover:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobMover, name: name, parent: parent);
+                    break;
+                case VirtualObjectType.zCMoverController:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobMoverController, name: name,
+                        parent: parent);
+                    break;
+                case VirtualObjectType.zCMessageFilter:
+                    go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobMessageFilter, name: name,
+                        parent: parent);
                     break;
                 default:
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.Vob, name: name, parent: parent);
@@ -359,7 +433,7 @@ namespace Gothic.Core.Domain.Vobs
                 Logger.LogWarning($"Fire world {vob.VobTree} not found. Skipping usage...", LogCat.Loading);
                 return null;
             }
-            
+
             CreateFireVobs(fireWorld.RootObjects, go.FindChildRecursively(vob.Slot) ?? go, worldPosition);
 
             return go;
@@ -382,17 +456,15 @@ namespace Gothic.Core.Domain.Vobs
 
         private GameObject CreateLight(Light vob, GameObject parent, Vector3 worldPosition)
         {
-            if (vob.LightStatic)
-            {
-                // Logging these will cause stuttering when a lot of them are needed.
-                // Logger.LogWarning($"Non-static lights aren't handled so far. go={vob.Name}");
+            // Static lights are baked into the world's vertex light outdoors. In light mapped areas (caves, houses)
+            // they light the walls only via lightmaps we don't render - there they get a runtime light slot.
+            if (vob.LightStatic && !_stationaryLightsService.IsNearLightMappedPolygons(worldPosition, vob.Range * .01f))
                 return null;
-            }
 
             var go = GetPrefab(vob);
             go.name = $"{vob.LightType} Light {vob.Name}";
 
-            // TODO - We need to be careful. It might be, that a light is in a sub-GO structure, where we need the parent pos+rot. If it's the case, we will get a warning as Index==-1 below.
+            // TODO - We need to be careful. It might be, that a light is in a sub-GO structure, where we need the parent pos+rot.
             go.SetParent(parent, true, true);
 
             var lightComp = go.GetComponent<StationaryLight>();
@@ -404,19 +476,8 @@ namespace Gothic.Core.Domain.Vobs
             lightComp.SpotAngle = vob.ConeAngle;
             lightComp.Intensity = 1;
 
-            // SaveGames might contain different order of Light objects (or Vobs where lights are children).
-            // We therefore need to fetch which Vob has the same position as the one from cache.
-            // Hint: The StationaryLights array should be ~512 elements max. If loading is slow,
-            // we could also simply remove elements which are set to LightGOs already.
-            lightComp.Index = _staticCacheService.LoadedStationaryLights.StationaryLights.FirstIndex(i =>
-                i.P == worldPosition);
-
-            if (lightComp.Index == -1)
-            {
-                Logger.LogWarning($"Light {vob.Name} not found in StaticCache. Therefore no LightIndex set and ignored by shader. " +
-                                  $"Will be solved later. ;-)", LogCat.Vob);
-            }
-
+            // All world lights share the shader slots - the ones closest to the camera get them.
+            lightComp.RuntimeLinearColor = lightComp.Color.linear;
             lightComp.Init();
 
             return go;
@@ -428,8 +489,17 @@ namespace Gothic.Core.Domain.Vobs
             // TODO - We need to check if it's the case for a loaded game
             vob.MoverState = (int)VmGothicEnums.MoverState.Closed;
 
-            // TODO - We need to implement animations for this vob type
             var go = CreateDefaultMesh(vob, parent);
+
+            // Movers without a mesh (e.g. invisible anchors of a chain) still need a GO that carries the adapter.
+            if (go == null)
+            {
+                go = GetPrefab(vob, parent);
+                go.name = $"Mover_{vob.Name}";
+                go.transform.SetPositionAndRotation(vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion());
+            }
+
+            go.GetComponent<MoverAdapter>().Init(vob, vob.Target);
 
             return go;
         }
@@ -471,7 +541,8 @@ namespace Gothic.Core.Domain.Vobs
 
             if (mrm != null)
             {
-                return _meshService.CreateVob(item.Visual, mrm, parent: parent, rootGo: go, useColliderCache: true, useTextureArray: false);
+                return _meshService.CreateVob(item.Visual, mrm, parent: parent, rootGo: go, useColliderCache: true,
+                    useTextureArray: false);
             }
 
             // shortbow (itrw_bow_l_01) has no mrm, but has mmb
@@ -485,7 +556,8 @@ namespace Gothic.Core.Domain.Vobs
             var mrm = _resourceCacheService.TryGetMultiResolutionMesh(item.Visual);
             if (mrm != null)
             {
-                return _meshService.CreateVob(item.Visual, mrm, position, default, false, parentGo, useTextureArray: false);
+                return _meshService.CreateVob(item.Visual, mrm, position, default, false, parentGo,
+                    useTextureArray: false);
             }
 
             // shortbow (itrw_bow_l_01) has no mrm, but has mmb
@@ -523,7 +595,7 @@ namespace Gothic.Core.Domain.Vobs
 
             go.GetComponent<SoundHandler>().Init(vob);
             PrepareAudioSource(source, vob, vob.SoundName);
-            
+
             _vobSoundCullingService.AddCullingEntry(go, vob);
 
             return go;
@@ -540,7 +612,7 @@ namespace Gothic.Core.Domain.Vobs
         {
             var go = GetPrefab(vob, parent);
             go.name = $"{vob.SoundName}-{vob.SoundNameDaytime}";
-            
+
             var sources = go.GetComponents<AudioSource>();
 
             PrepareAudioSource(sources[0], vob, vob.SoundName);
@@ -560,7 +632,7 @@ namespace Gothic.Core.Domain.Vobs
             source.playOnAwake = soundData.InitiallyPlaying && soundData.Mode != SoundMode.Random;
             source.loop = soundData.Mode == SoundMode.Loop;
             source.spatialBlend = soundData.Ambient3d ? 1f : 0f;
-            
+
             source.clip = GetSoundClip(soundName);
         }
 
@@ -595,7 +667,9 @@ namespace Gothic.Core.Domain.Vobs
                     return null;
 
                 if (sfxContainer.Count > 1)
-                    Logger.LogWarning($"Multiple random elements exist for >{firstSound.File}< but only first is selected.", LogCat.Audio);
+                    Logger.LogWarning(
+                        $"Multiple random elements exist for >{firstSound.File}< but only first is selected.",
+                        LogCat.Audio);
 
                 clip = _audioService.CreateAudioClip(firstSound.File);
             }
@@ -669,6 +743,24 @@ namespace Gothic.Core.Domain.Vobs
             return vobObj;
         }
 
+        /// <summary>
+        /// Trigger VOBs that react to the player entering/leaving their bounding box (trigger collider of the prefab).
+        /// </summary>
+        private GameObject CreateTriggerZone(IVirtualObject vob, GameObject parent, string name)
+        {
+            var go = GetPrefab(vob, parent);
+            go.name = name;
+
+            var min = vob.BoundingBox.Min.ToUnityVector();
+            var max = vob.BoundingBox.Max.ToUnityVector();
+            go.transform.position = (min + max) / 2f;
+            // The bounding box is a world-space AABB, but the loader above may be rotated.
+            go.transform.rotation = Quaternion.identity;
+            go.transform.localScale = Vector3.Max(max - min, Vector3.one * 0.01f);
+
+            return go;
+        }
+
         private GameObject CreateTriggerScript(ITriggerScript vob, GameObject parent)
         {
             var vobObj = GetPrefab(vob, parent);
@@ -676,9 +768,11 @@ namespace Gothic.Core.Domain.Vobs
             var min = vob.BoundingBox.Min.ToUnityVector();
             var max = vob.BoundingBox.Max.ToUnityVector();
             vobObj.transform.position = (min + max) / 2f;
+            // The bounding box is a world-space AABB, but the loader above may be rotated.
+            vobObj.transform.rotation = Quaternion.identity;
 
             vobObj.transform.localScale = max - min;
-            
+
             vobObj.GetComponent<TriggerScriptHandler>().Init(vob);
 
             return vobObj;
@@ -692,6 +786,58 @@ namespace Gothic.Core.Domain.Vobs
             return go;
         }
 
+        /// <summary>
+        /// In G2 the X is a child of the RAKEPLACE decal, which (WIP EnableDecalVisuals) applies the vob's
+        /// position+rotation a second time below its already placed loader. Snap to the loader, upright.
+        /// </summary>
+        private static void SnapDigSpotToLoader(GameObject go)
+        {
+            var loader = go.GetComponentInParent<VobLoader>();
+            if (loader == null)
+                return;
+
+            go.transform.SetPositionAndRotation(loader.transform.position,
+                Quaternion.Euler(0f, loader.transform.eulerAngles.y, 0f));
+        }
+
+        /// <summary>
+        /// Child vobs are created inside their parent's GO without a VobLoader of their own. Their adapters
+        /// (VRVobContainer, VRVobContainerPhysicsChest, door lock picking, VRFocus) call
+        /// GetComponentInParent&lt;VobLoader&gt;() and got the PARENT's vob (often an unnamed zCVob) -
+        /// InvalidCastExceptions, "No door or container found for ><", doors/chests that don't work (G2 Xardas' tower).
+        /// </summary>
+        private void EnsureOwnVobLoader(IVirtualObject vob, GameObject go)
+        {
+            if (vob is not (IInteractiveObject or IItem) && !IsNamedVobType(vob.Type))
+                return;
+
+            var loader = go.GetComponentInParent<VobLoader>();
+            if (loader != null && loader.Container?.Vob == vob)
+                return;
+
+            AddOwnVobLoader(vob, go);
+            // Movers and triggers are looked up by name (Wld_SendTrigger, chained targets), child VOBs included.
+            if (IsNamedVobType(vob.Type))
+                _gameStateService.RegisterNamedVob(go.GetComponent<VobLoader>().Container);
+            Logger.Log($"[ChildVob] '{vob.Name}' ({vob.Type}) under '{loader?.Container?.Vob?.Name}' got its own " +
+                       "VobLoader.", LogCat.Vob);
+        }
+
+        private static bool IsNamedVobType(VirtualObjectType type)
+        {
+            return type is VirtualObjectType.zCMover or VirtualObjectType.oCTriggerScript
+                or VirtualObjectType.zCTriggerList or VirtualObjectType.zCCodeMaster
+                or VirtualObjectType.zCTrigger or VirtualObjectType.zCMoverController
+                or VirtualObjectType.zCMessageFilter;
+        }
+
+        private static void AddOwnVobLoader(IVirtualObject vob, GameObject go)
+        {
+            var ownLoader = go.AddComponent<VobLoader>();
+            ownLoader.Container = new VobContainer(vob) { Go = go };
+            ownLoader.IsLoaded = true;
+        }
+
         private GameObject CreateDefaultMesh(IVirtualObject vob, GameObject parent)
         {
             var go = GetPrefab(vob);
@@ -700,6 +846,7 @@ namespace Gothic.Core.Domain.Vobs
             if (meshName.IsNullOrEmpty())
             {
                 Logger.LogWarning("VisualName is empty.", LogCat.Vob);
+                Object.Destroy(go);
                 return null;
             }
 
@@ -707,13 +854,17 @@ namespace Gothic.Core.Domain.Vobs
             var mdl = _resourceCacheService.TryGetModel(meshName, false);
             if (mdl != null)
             {
-                var ret = _meshService.CreateVob(meshName, mdl, parent: parent, rootGo: go);
+                // G2's treasure X marks (TREASURE_ADDON_01) are a color-only mesh without texture. MeshService skips
+                // those on purpose (G1's empty harp or WASH_SLOT), but the X needs to be visible and diggable.
+                var isDigSpot = _vmCacheService.IsDigSpot(vob);
+                var ret = _meshService.CreateVob(meshName, mdl, parent: parent, rootGo: go,
+                    useTextureArray: !isDigSpot, allowUntextured: isDigSpot);
 
                 // A few objects are broken and have no meshes. We need to destroy them immediately again.
                 if (ret == null)
-                {
                     Object.Destroy(go);
-                }
+                else if (isDigSpot)
+                    SnapDigSpotToLoader(ret);
 
                 return ret;
             }
@@ -779,7 +930,8 @@ namespace Gothic.Core.Domain.Vobs
 
         private GameObject CreatePfx(IVirtualObject vob, GameObject parent)
         {
-            return _meshService.CreateVobPfx(vob, vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion(), parent);
+            return _meshService.CreateVobPfx(vob, vob.Position.ToUnityVector(), vob.Rotation.ToUnityQuaternion(),
+                parent);
         }
 
         /// <summary>

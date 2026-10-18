@@ -13,6 +13,9 @@ namespace Gothic.Core.Model.UI.Menu
     {
         [Inject] private readonly GameStateService _gameStateService;
         
+        // Gothic scripts: _intern/Menu.d CONST INT MAX_ITEMS = 150 (G1 + G2).
+        private const int _maxMenuItems = 150;
+
         private MenuInstance _menuInstance;
 
         public MenuInstanceAdapter(string name, [CanBeNull] AbstractMenuInstance parentAbstractMenu): base(name, parentAbstractMenu)
@@ -21,13 +24,15 @@ namespace Gothic.Core.Model.UI.Menu
             
             // We immediately initialize all menu entries as we will later change Index of them (e.g. add a new menu in between).
             Items = new();
-            for (var i = 0;; i++)
+            // Like the engine: walk the whole C_MENU_DEF.items[MAX_ITEMS] array and skip empty entries.
+            // Scripts can have gaps (e.g. Mroczne Tajemnice's MENU_STATUS comments out items[33]). Stopping at the
+            // first empty entry dropped every item after it (all status menu talent rows except the first).
+            for (var i = 0; i < _maxMenuItems; i++)
             {
                 var itemName = _menuInstance.GetItem(i);
 
-                // We passed the last element.
                 if (itemName.IsNullOrEmpty())
-                    break;
+                    continue;
 
                 var instance = _gameStateService.MenuVm.InitInstance<MenuItemInstance>(itemName);
                 Items.Add(new MenuItemInstanceAdapter(instance, itemName, this));

@@ -86,23 +86,35 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         {
             clip = null;
 
-            var mds = _resourceCacheService.TryGetModelScript("Humans")!;
+            var mds = _resourceCacheService.TryGetModelScript("Humans");
+            if (mds == null)
+                return false;
+
             var animationName = string.Format(_animationSchemeWithSfx, item.SchemeName);
             var anim = mds.Animations.FirstOrDefault(i => i.Name.EqualsIgnoreCase(animationName));
             if (anim == null)
             {
+                Logger.LogWarning($"Humans.mds: '{animationName}' animation not found. Eating/drinking sound skipped.",
+                    LogCat.VR);
                 return false;
             }
 
             var sfx = anim.SoundEffects.FirstOrDefault();
             if (sfx == null)
             {
+                Logger.LogWarning($"Humans.mds: '{animationName}' has no sound effect. Eating/drinking sound skipped.",
+                    LogCat.VR);
                 return false;
             }
 
             var sfxContainer = _vmCacheService.TryGetSfxData(sfx.Name);
             if (sfxContainer == null)
+            {
+                Logger.LogWarning($"SFX '{sfx.Name}' referenced by '{animationName}' not found. Eating/drinking " +
+                                  "sound skipped.",
+                    LogCat.VR);
                 return false;
+            }
 
             clip = _audioService.CreateAudioClip(sfxContainer.GetRandomSound());
             if (clip == null)

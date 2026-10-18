@@ -58,6 +58,8 @@ namespace Gothic.Core.Const
         public static readonly int ShaderPropertyFocusBrightness = Shader.PropertyToID("_FocusBrightness");
         public static readonly float ShaderPropertyFocusBrightnessDefault = 1f;
         public static readonly float ShaderPropertyFocusBrightnessValue = 10f;
+        // NPC textures are brighter than item textures.
+        public static readonly float ShaderPropertyFocusBrightnessNpcValue = 2.5f;
 
         // Item is a "ghost" in hand. i.e. no collision.
         public static readonly int ShaderPropertyTransparency = Shader.PropertyToID("_Alpha");
@@ -140,6 +142,13 @@ namespace Gothic.Core.Const
         // e.g. for NPCs to check if they reached a FreePoint already. Value is based on best guess/testing.
         public const float NpcDestinationReachedThreshold = 0.6f;
         public const float NpcRotationSpeed = 500f;
+
+        // Meters between hero and NPC for starting and keeping a dialog (DeveloperConfig.EnableDialogFreeMovement).
+        public const float DialogMaxDistance = 5f;
+        // Meters between hero and NPC from which walking away slows down until it stops at DialogMaxDistance.
+        public const float DialogSlowDownDistance = 3f;
+        // Max height difference (floor, cliff, ladder) between hero and NPC for starting and keeping a dialog.
+        public const float DialogMaxHeightDifference = 3f;
         
 
         public const string SlotRightHand	= "ZS_RIGHTHAND";

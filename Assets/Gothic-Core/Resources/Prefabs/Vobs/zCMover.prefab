@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2022050282646122291}
   - component: {fileID: 1469735153275895858}
+  - component: {fileID: 8986394714634305455}
   m_Layer: 0
   m_Name: zCMover
   m_TagString: GothicVob
@@ -45,3 +46,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _injectionStrategy: 2
+--- !u!114 &8986394714634305455
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6503575194566409312}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 111c5fb4e07e0f04d9ccd36f3e09778b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.Core::Gothic.Core.Adapters.Vob.MoverAdapter

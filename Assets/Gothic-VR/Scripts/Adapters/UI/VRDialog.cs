@@ -8,6 +8,8 @@ using Gothic.Core.Const;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Dialog;
 using Gothic.Core.Extensions;
+using Gothic.Core.Services.Config;
+using Gothic.VR.Services;
 using MyBox;
 using Reflex.Attributes;
 using TMPro;
@@ -21,10 +23,12 @@ namespace Gothic.VR.Adapters.UI
     public class VRDialog : MonoBehaviour
     {
         [Inject] private readonly DialogService _dialogService;
+        [Inject] private readonly VRUiOnTopService _uiOnTopService;
 
         [SerializeField] private GameObject _dialogRoot;
         [SerializeField] private List<GameObject> _dialogItems;
         [SerializeField] private UIEvents _uiEventsHandler;
+        [SerializeField] private VRUiOnTop _onTop;
 
         [NonSerialized]
         public List<string> CurrentDialogOptionTexts;
@@ -54,6 +58,7 @@ namespace Gothic.VR.Adapters.UI
         public void EndDialog()
         {
             gameObject.SetActive(false); // Disable whole Dialog menu (Audio, UI, Billboard)
+            _uiOnTopService.SetHandsOnTop(this, false);
             _dialogRoot.SetParent(SceneManager.GetSceneByName(Constants.ScenePlayer).GetRootGameObjects()[0], worldPositionStays: true);
         }
 
@@ -70,7 +75,11 @@ namespace Gothic.VR.Adapters.UI
             hoverElements.AddRange(_dialogItems);
             hoverElements.AddRange(_dialogItems.Select(i => i.GetComponentInChildren<TMP_Text>().gameObject).ToList());
             _uiEventsHandler.SetElementsToHover(hoverElements, true);
-            
+
+            // On every ShowDialog: FillDialog clones new options.
+            _onTop.Apply();
+            _uiOnTopService.SetHandsOnTop(this, true);
+
             StartCoroutine(ShowDialogWithDelay());
         }
 

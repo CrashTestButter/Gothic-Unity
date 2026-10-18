@@ -121,7 +121,24 @@ namespace Gothic.Core.Adapters.Vob
             }
         }
 
-        public int Index { get; set; } = -1;
+        /// <summary>
+        /// Shader slot: StationaryLightsService hands one out only while the light is loaded and among the lights
+        /// closest to the camera - -1 otherwise.
+        /// </summary>
+        public int Index { get; private set; } = -1;
+
+        /// <summary>
+        /// Color the pool writes into the shader slot it hands out (linear space).
+        /// </summary>
+        public Color RuntimeLinearColor { get; set; }
+
+        /// <summary>
+        /// World position and range, set in Init(). The light never moves - the pool reads them on every refresh
+        /// without asking the engine.
+        /// </summary>
+        public Vector3 CachedPosition { get; private set; }
+
+        public float CachedRange { get; private set; }
 
         public static readonly int StationaryLightIndicesShaderId = Shader.PropertyToID("_StationaryLightIndices");
         public static readonly int StationaryLightIndices2ShaderId = Shader.PropertyToID("_StationaryLightIndices2");
@@ -131,6 +148,8 @@ namespace Gothic.Core.Adapters.Vob
 
         private List<MeshRenderer> _affectedRenderers = new();
         private Light _unityLight;
+        // OnEnable already runs when the prefab is spawned - the pool may only know the light after Init().
+        private bool _isInitialized;
 
         private void OnDrawGizmosSelected()
         {
@@ -147,26 +166,46 @@ namespace Gothic.Core.Adapters.Vob
         /// </summary>
         public void Init()
         {
+            CachedPosition = transform.position;
+            CachedRange = Range;
+            _isInitialized = true;
             GatherRenderers();
 
             // Call Light on Renderer activation again.
             OnEnable();
         }
 
-        private void OnEnable()
+        /// <summary>
+        /// The pool gave this light a shader slot: light the renderers around it.
+        /// </summary>
+        public void AttachSlot(int index)
+        {
+            Index = index;
+            foreach (var rend in _affectedRenderers)
+                _stationaryLightsService.AddLightOnRenderer(this, rend);
+        }
+
+        /// <summary>
+        /// The pool took the slot back (farther away than others, or unloaded).
+        /// </summary>
+        public void DetachSlot()
         {
             foreach (var rend in _affectedRenderers)
-            {
-                _stationaryLightsService.AddLightOnRenderer(this, rend);
-            }
+                _stationaryLightsService.RemoveLightOnRenderer(this, rend);
+            Index = -1;
+        }
+
+        private void OnEnable()
+        {
+            // Init() calls this on a light that may still be inactive (lazy loading) - Unity calls it again later.
+            if (_isInitialized && isActiveAndEnabled)
+                _stationaryLightsService.RegisterPooledLight(this);
         }
 
         private void OnDisable()
         {
-            foreach (var rend in _affectedRenderers)
-            {
-                _stationaryLightsService.RemoveLightOnRenderer(this, rend);
-            }
+            if (_isInitialized)
+                _stationaryLightsService.UnregisterPooledLight(this);
         }
 
         private void GatherRenderers()

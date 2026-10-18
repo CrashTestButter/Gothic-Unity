@@ -1,9 +1,11 @@
 ﻿using System;
 using System.IO;
+using Gothic.Core.Logging;
 using Gothic.Core.Models.Config;
 using UnityEngine;
 using UnityEngine.Networking;
 using ZenKit;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Domain.Config
 {
@@ -35,7 +37,7 @@ namespace Gothic.Core.Domain.Config
             var settingsJson = File.ReadAllText(settingsFilePath);
             var loadedSettings = JsonUtility.FromJson<JsonRootConfig>(settingsJson);
 
-            // Overwrite data with GameSettings.dev.json if it exists.
+            // Overwrite data with GameSettings.dev.json if it exists (git-ignored local override).
             var settingsDevFilePath = $"{rootPath}/{_settingsFileNameDev}";
             if (File.Exists(settingsDevFilePath))
             {
@@ -46,7 +48,7 @@ namespace Gothic.Core.Domain.Config
             // We need to do a final check for Gothic installation path and which one to ultimately use.
             loadedSettings.Gothic1Path = AlterGothicInstallationPath(loadedSettings.Gothic1Path, GameVersion.Gothic1);
             loadedSettings.Gothic2Path = AlterGothicInstallationPath(loadedSettings.Gothic2Path, GameVersion.Gothic2);
-
+            
             return loadedSettings;
         }
 

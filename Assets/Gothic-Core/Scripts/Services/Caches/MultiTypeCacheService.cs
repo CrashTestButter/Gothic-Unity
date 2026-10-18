@@ -20,24 +20,30 @@ namespace Gothic.Core.Services.Caches
         ///       Otherwise, UserData's WeakReference pointer gets cleared.
         /// </summary>
         public readonly List<NpcContainer> NpcCache = new();
-        
+
         public readonly List<VobContainer> VobCache = new();
-        
-        
+
+
         /// <summary>
         /// This dictionary caches the sprite assets for fonts.
         /// </summary>
         public Dictionary<string, TMP_SpriteAsset> FontCache = new();
-        
+
         /// <summary>
         /// Caching all types of Meshes (World?, Vob, Npc) to optimize memory usage of meshes if duplicated
         /// (e.g. multiple VOBs sharing the same mesh)
         /// </summary>
         public Dictionary<string, Mesh> Meshes = new();
-        
+
         public Dictionary<string, AudioClip> AudioClips = new();
 
-        
+        /// <summary>
+        /// Materials of texture-less, color-only meshes (e.g. G2's treasure X marks) - shared by all VOBs with the same
+        /// color.
+        /// </summary>
+        public Dictionary<Color32, Material> UntexturedMaterials = new();
+
+
         public void Init()
         {
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(delegate
@@ -52,6 +58,7 @@ namespace Gothic.Core.Services.Caches
             FontCache.Clear();
             Meshes.Clear();
             AudioClips.Clear();
+            UntexturedMaterials.Clear();
             NpcCache.Clear();
             VobCache.Clear();
         }

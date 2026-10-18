@@ -302,17 +302,14 @@ namespace Gothic.Core.Services.World
         }
 
         /// <summary>
-        /// DeveloperConfig.DayNightLightStrength: Gothic's sky polyColor (bright by day, dark blue at night) scales
-        /// the outdoor world's baked light and the sun/ambient of VOBs and NPCs - before, only the hands (URP ambient)
-        /// followed it. Fires and torches (stationary lights) are added after it and stay bright.
+        /// Gothic's sky polyColor (bright by day, dark blue at night) scales the outdoor world's baked light and the
+        /// sun/ambient of VOBs and NPCs. Fires and torches (stationary lights) are added after it and stay bright.
         /// </summary>
         private void SetDayLight(Color polyColor)
         {
             _polyColor = polyColor;
-            // Strength 0 = always day light (the feature is off), 1 = Gothic's sky colors.
             // Indoor worlds (e.g. G1's Old Mine, Orc Temple) have no day/night - like in Gothic.
-            var strength = _isIndoorWorld ? 0f : _configService.Dev.DayNightLightStrength;
-            var dayLight = Color.Lerp(Color.white, polyColor, strength);
+            var dayLight = _isIndoorWorld ? Color.white : polyColor;
 
             Shader.SetGlobalColor(_dayLightColorShaderId, dayLight);
             Shader.SetGlobalColor(_sunColorShaderId, _configService.Dev.SunLightColor * dayLight);

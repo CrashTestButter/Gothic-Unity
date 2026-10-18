@@ -49,7 +49,7 @@ MonoBehaviour:
     CullingDistance: 200
   BrightenUpHoveredVOBs: 1
   ShowNamesOnHoveredVOBs: 1
-  PlayerInventoryAddition:
+  PlayerInventoryAddition: 
   ShowVOBMeshCullingGizmos: 0
   ShowCapsuleOverlapGizmos: 0
   EnableNpcs: 1
@@ -72,7 +72,6 @@ MonoBehaviour:
   SunLightIntensity: 1
   SunUpdateInterval: 1
   AmbientLightColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
-  DayNightLightStrength: 1
   EnableStaticLightsInLightMappedAreas: 1
   StaticLightPoolSize: 1023
   EnablePooledStationaryLights: 1

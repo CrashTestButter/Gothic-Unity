@@ -262,13 +262,7 @@ namespace Gothic.Core.Models.Config
         public GameTimeService.GameTimeInterval SunUpdateInterval = GameTimeService.GameTimeInterval.EveryGameMinute;
         public Color AmbientLightColor = new(0.1f, 0.1f, 0.1f, 1);
 
-        [Separator("Day/night and world lights")]
-        [Tooltip("How much night falls on the world, VOBs and NPCs (Gothic's sky polyColor), not only on the " +
-                 "hands. 0 = off (always day light), 1 = Gothic's sky colors. Rooms/caves and fires/torches keep " +
-                 "their light.")]
-        [Range(0, 1)]
-        public float DayNightLightStrength = 1f;
-
+        [Separator("World lights")]
         [Tooltip("Static lights in light mapped areas (caves, houses - torches, braziers) light the walls like " +
                  "Gothic's lightmaps. Outdoors they're already baked into the world's vertex light. Performance " +
                  "escape hatch (e.g. mobile): off = fewer lights per renderer, but caves and houses stay dark.")]

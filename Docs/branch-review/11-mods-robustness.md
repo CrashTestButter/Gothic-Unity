@@ -40,6 +40,20 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
   whose payload starts with `0x0A`, e.g. meshes with 10/266/522 materials). Issue/PR draft with repro and the suggested
   one-line fix: [zenkit-issue-material-count.md](zenkit-issue-material-count.md). Once ZenKit is fixed, the fallback
   never triggers and `ZenWorldArchiveFixDomain` + `EnableZenMaterialCountFix` can be removed.
+**Added 2026-10-18** (Gothic II Renovation, 2026 release)
+
+- **Mesh chunk lengths** (`6cc8e641`): Renovation's `DRAGONISLAND.ZEN` stores its materials chunk 177 bytes short
+  (the last material left out). ZenKit seeks back to the stored end after reading the materials, reads material data as
+  the next chunk and never returns - PreCaching froze with Unity "not responding". Before ZenKit loads a mod's ASCII
+  world, `ZenWorldArchiveFixDomain.TryFixMeshChunkLengths` walks the `MeshAndBsp` chunks; a chunk not followed by a
+  known one gets the length up to where the chain continues. BIN_SAFE worlds (vanilla) aren't touched. Checked on
+  Renovation's and Mroczne Tajemnice's worlds: only the broken one changes.
+  ⚠️ To be raised in ZenKit as well: [zenkit-issue-chunk-length.md](zenkit-issue-chunk-length.md).
+- **Item instances by symbol** (`77bb432a`): items looked up by symbol index went through their lowercased name, and
+  ZenKit matches names case-insensitively only for ASCII - Renovation's `ITAR_ŃASTOFFS` (Alrik's rags) wasn't found,
+  `Mdl_SetVisualBody` threw inside `Wld_InsertNpc` and the whole world's NPC creation stopped. They're initialized from
+  the symbol now; an armor that isn't an item leaves the NPC in its body with a warning.
+
 - **Items where scripts expect an NPC:** NPC/item parameters of the externals are taken as instances and checked - G1's
   `B_FetchWeapon` calls `Npc_GetDistToNpc(self, item)` (the engine measures between any two VOBs), the item failed
   ZenKitCS' cast, the stack stayed broken and the VM crashed natively (Mroczne Tajemnice's giant skeleton by Fellan's
@@ -58,6 +72,8 @@ items as NPC parameters
 
 2026-10-16: `af632900` ZEN material count header · `f4989135` subtitles from the archives
 
+2026-10-18: `6cc8e641` ZEN mesh chunk lengths · `77bb432a` item instances by symbol
+
 ## Main files
 
 `Services/Config/ConfigService.cs` · `Services/Caches/ResourceCacheService.cs` · `Domain/Audio/SoundDomain.cs` ·
@@ -74,6 +90,8 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 2026-10-15: `EnableVmCacheResetOnLoad`
 
 2026-10-16: `EnableZenMaterialCountFix`, `EnableSubtitlesFromVfs`
+
+2026-10-18: `EnableZenChunkLengthFix`, `EnableItemDataBySymbol`
 
 ## Review notes
 
@@ -93,3 +111,5 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 - Mroczne Tajemnice abandoned mine: let the giant skeleton by Fellan's armor pick up the sword - no crash.
 - Mroczne Tajemnice abandoned mine: the portal takes you to the ancient temple (log: "header fixed").
 - A mod without an extracted `OU.BIN` under `VDFS/`: subtitles show (log: "Subtitles OU.BIN read from the archives").
+- Gothic II Renovation (2026, fresh install, own profile): pre-caching passes Dragon Island (log: "has wrong chunk
+  lengths - fixed: chunk 0xB020 length 75890 -> 76067"), a new game loads, Alrik wears his rags.

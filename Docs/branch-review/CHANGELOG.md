@@ -13,6 +13,12 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-18: Gothic II Renovation (2026) starts
+
+- The 2026 release of Renovation gets through the first start: pre-caching froze on the mod's Dragon Island world
+  (a broken length in the file the original game ignores), a new game stopped loading at Alrik in Khorinis (his rags'
+  name has a Polish letter).
+
 ## 2026-10-17 (midnight): main merged, knocked out NPCs, anvils
 
 - `main`'s new dialogs and UI are in (see [the merge notes](merge-2026-10-17.md)): walking away from a dialog slows

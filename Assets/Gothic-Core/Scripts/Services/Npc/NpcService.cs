@@ -283,7 +283,18 @@ namespace Gothic.Core.Services.Npc
                 // Mdl_SetVisualBody(..., armorInstance) equips the armor in the engine - incl. its protection.
                 // Most NPCs (and test heroes like PC_Rockefeller) get their armor this way, not via EquipItem().
                 // Same armor again (re-dressing): the slot conflict unequips + re-equips it, so nothing is doubled.
-                if (_configService.Dev.EnableScriptEquipEffects && armorData != null)
+                // Like the engine: an armor that isn't an item leaves the NPC in its body - a null armor threw here and
+                // stopped the whole world's NPC creation (startup scripts run inside Wld_InsertNpc).
+                if (armorData == null)
+                {
+                    Logger.LogWarning($"[Mdl_SetVisualBody] {data.Npc.GetName(NpcNameSlot.Slot0)}: armor " +
+                                      $"'{_gameStateService.GothicVm.GetSymbolByIndex(data.Armor)?.Name}' ({data.Armor}) " +
+                                      "isn't an item - no armor.", LogCat.Npc);
+                    props.MdmName = data.Body;
+                    return;
+                }
+
+                if (_configService.Dev.EnableScriptEquipEffects)
                     _npcInventoryService.EquipItemWithEffects(data.Npc, armorData, deferItemFunctions: true);
                 else
                     props.EquippedItems.Add(armorData);

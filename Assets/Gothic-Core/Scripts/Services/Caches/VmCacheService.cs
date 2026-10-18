@@ -5,6 +5,7 @@ using Gothic.Core.Models.Audio;
 using Gothic.Core.Models.Proxy;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
+using Gothic.Core.Services.Config;
 using JetBrains.Annotations;
 using Reflex.Attributes;
 using ZenKit.Daedalus;
@@ -14,6 +15,7 @@ namespace Gothic.Core.Services.Caches
     public class VmCacheService
     {
         [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly ConfigService _configService;
         
         private readonly Dictionary<string, ItemInstance> _itemDataCache = new();
         private readonly Dictionary<string, FightAiProxy> _fightAiDataCache = new();
@@ -37,7 +39,28 @@ namespace Gothic.Core.Services.Caches
                 return null;
             }
 
-            return TryGetItemData(symbol.Name);
+            // DeveloperConfig.EnableItemDataBySymbol: the name lookup lowercases the key, ZenKit only matches ASCII
+            // case-insensitively - Renovation's ITAR_ŃASTOFFS (Alrik's rags) became itar_ńastoffs, "Symbol not found",
+            // and Mdl_SetVisualBody stopped the whole world's NPC creation.
+            if (!_configService.Dev.EnableItemDataBySymbol)
+                return TryGetItemData(symbol.Name);
+
+            var preparedKey = GetPreparedKey(symbol.Name);
+            if (_itemDataCache.TryGetValue(preparedKey, out var data) && data != null)
+                return data;
+
+            ItemInstance newData = null;
+            try
+            {
+                newData = _gameStateService.GothicVm.InitInstance<ItemInstance>(symbol);
+            }
+            catch (Exception)
+            {
+                // ignored - like the name lookup: not an item
+            }
+
+            _itemDataCache[preparedKey] = newData;
+            return newData;
         }
 
         /// <summary>

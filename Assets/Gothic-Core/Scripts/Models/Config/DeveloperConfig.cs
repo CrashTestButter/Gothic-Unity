@@ -1120,6 +1120,11 @@ namespace Gothic.Core.Models.Config
                  "material), PreCaching froze.")]
         public bool EnableZenChunkLengthFix = true;
 
+        [Tooltip("V1: Items looked up by their symbol index are initialized from the symbol, not by name - ZenKit matches " +
+                 "names case-insensitively only for ASCII: Renovation's ITAR_ŃASTOFFS wasn't found and the world stopped loading " +
+                 "(Mdl_SetVisualBody of Alrik).")]
+        public bool EnableItemDataBySymbol = true;
+
         [Tooltip("V1: A level change whose start VOB isn't a free point spawns at the waypoint/VOB of that name, or next to " +
                  "the trigger back to the old world - Mroczne Tajemnice's temple sends you to a start VOB the mine lacks.")]
         public bool EnableLevelChangeSpawnFallback = true;

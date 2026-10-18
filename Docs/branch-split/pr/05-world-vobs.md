@@ -53,12 +53,11 @@ root motion).
 
 ## Config
 
-- Kept (one `[Separator("Movers, triggers and mobs")]` block):
-  - `MoverSpeedMultiplier` – **1 = original Gothic speed**. Production: **1** (the source branch had 3.48: that only
-    compensated a unit error – speed was used as m/s instead of cm/ms, factor 10 – so movers there were still ~3x
-    too slow). `Lab.HVR.Simulator.asset` has no value → default 1, same as Production.
-  - `EnableMobsiDialogs` (on), `EnableDigSpots` (on), `DigSpotsRequireTool` (off = any melee weapon).
-- Dropped (fix always on): `EnableMobSeatFix`, `EnableNoTurnWhileUsingMob`, `EnableChildVobLoaders`.
+- No new flags. Movers always run at original Gothic speed (the source branch's `MoverSpeedMultiplier` 3.48 only
+  compensated a unit error – speed was used as m/s instead of cm/ms, factor 10).
+- Dropped (fix/feature always on): `EnableMobSeatFix`, `EnableNoTurnWhileUsingMob`, `EnableChildVobLoaders`,
+  `MoverSpeedMultiplier`, `EnableMobsiDialogs`, `EnableDigSpots`, `DigSpotsRequireTool` (dig spots now need the
+  mob's own tool, like vanilla: the pickaxe for G2 X marks).
   ⚠ Slice 04 also used `EnableMobSeatFix` – it must use the "on" path without the flag too.
 
 ## Asset changes

@@ -4,7 +4,6 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Services;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
 using Reflex.Attributes;
 using UnityEngine;
@@ -25,17 +24,19 @@ namespace Gothic.Core.Adapters.Vob
     {
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VobService _vobService;
-        [Inject] private readonly ConfigService _configService;
 
         // Below this distance (in cm, like Gothic) a segment counts as rotation-only (OpenGothic threshold).
         private const float _rotationOnlyThresholdCm = 0.01f;
+
         // OpenGothic: rotation speeds of slow movers are scaled up, otherwise e.g. temple doors take minutes.
         private const float _lowRotationSpeed = 0.006f;
         private const float _lowRotationSpeedFactor = 300f;
 
         private IMover _mover;
         private string _chainTarget;
+
         private (Vector3 pos, Quaternion rot)[] _keyframes;
+
         // Seconds from keyframe i to keyframe i + 1 (cyclic) at original speed.
         private float[] _segmentSeconds;
         private bool _isOpen;
@@ -290,14 +291,13 @@ namespace Gothic.Core.Adapters.Vob
             PlaySfx(sfxStart);
 
             var count = _keyframes.Length;
-            var speedMultiplier = Mathf.Max(0.01f, _configService.Dev.MoverSpeedMultiplier);
             var segmentStart = fromIdx;
             while (segmentStart != toIdx)
             {
                 var segmentEnd = (segmentStart + step + count) % count;
                 // Moving backwards runs the segment that starts at the lower keyframe in reverse.
                 var segmentIndex = step > 0 ? segmentStart : segmentEnd;
-                var duration = _segmentSeconds[segmentIndex] / speedMultiplier;
+                var duration = _segmentSeconds[segmentIndex];
                 var isFirstSegment = segmentStart == fromIdx;
                 var isLastSegment = segmentEnd == toIdx;
 

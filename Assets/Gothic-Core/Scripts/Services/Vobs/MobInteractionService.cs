@@ -5,7 +5,6 @@ using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Caches;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vm;
@@ -24,7 +23,6 @@ namespace Gothic.Core.Services.Vobs
     {
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly VobService _vobService;
-        [Inject] private readonly ConfigService _configService;
         [Inject] private readonly DialogService _dialogService;
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly VmCacheService _vmCacheService;
@@ -68,6 +66,7 @@ namespace Gothic.Core.Services.Vobs
                         LogCat.Vob);
                     return;
                 }
+
                 if (condResult == 0)
                 {
                     Logger.Log($"[MobInteractionService] HandleMobGrab: '{condFunc}' denied (returned 0)", LogCat.Vob);
@@ -76,8 +75,7 @@ namespace Gothic.Core.Services.Vobs
             }
 
             // Mobs without a mover target but with an onStateFunc (G2 shrines, alchemy/rune tables, bookstands, ...).
-            if (_configService.Dev.EnableMobsiDialogs && string.IsNullOrEmpty(mob.Target) &&
-                TryUseMobStateFunction(loader, mob, createDialogAnchor))
+            if (string.IsNullOrEmpty(mob.Target) && TryUseMobStateFunction(loader, mob, createDialogAnchor))
                 return;
 
             var target = mob.Target;

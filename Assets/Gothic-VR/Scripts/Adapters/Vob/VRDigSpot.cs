@@ -5,7 +5,6 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
-using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vm;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
@@ -17,7 +16,7 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.Vob
 {
     /// <summary>
-    /// DeveloperConfig.EnableDigSpots: mobs you "use with" a melee tool and which have an onStateFunc - e.g. G2's
+    /// Mobs you "use with" a melee tool and which have an onStateFunc - e.g. G2's
     /// treasure X marks (oCMobInter, TREASURE_ADDON_01.ASC, useWithItem ItMw_2H_Axe_L_01 = pickaxe, onStateFunc
     /// B_SCGetTreasure), see VmCacheService.IsDigSpot. In Gothic the hero plays the dig animation and the engine calls
     /// "[onStateFunc]_S1" when state 1 is reached. In VR: hit the mob _digHitsNeeded times with a swung melee weapon,
@@ -29,14 +28,15 @@ namespace Gothic.VR.Adapters.Vob
     public class VRDigSpot : MonoBehaviour
     {
         private const int _digHitsNeeded = 3;
+
         // Minimum weapon speed (m/s) for a touch to count as a hit.
         private const float _minSwingSpeed = 1.2f;
+
         // A single swing can overlap for several physics ticks - count it once.
         private const float _hitCooldown = 0.4f;
         private const float _boundsPadding = 0.1f;
         private const string _stateOneSuffix = "_S1";
 
-        [Inject] private readonly ConfigService _configService;
         [Inject] private readonly VmService _vmService;
 
         private IInteractiveObject _mob;
@@ -67,7 +67,7 @@ namespace Gothic.VR.Adapters.Vob
 
         private void FixedUpdate()
         {
-            if (_mob == null || !_configService.Dev.EnableDigSpots)
+            if (_mob == null)
                 return;
             if (Time.time - _lastHitTime < _hitCooldown)
                 return;
@@ -121,10 +121,7 @@ namespace Gothic.VR.Adapters.Vob
             if (item == null || ((VmGothicEnums.ItemFlags)item.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) == 0)
                 return false;
 
-            // Default: any melee weapon (easier to test). Vanilla requires the mob's tool (e.g. the pickaxe).
-            if (!_configService.Dev.DigSpotsRequireTool)
-                return true;
-
+            // Like vanilla, only the mob's own tool (e.g. the pickaxe) digs.
             var vobItem = container.VobAs<IItem>();
             var instanceName = !string.IsNullOrEmpty(vobItem.Instance) ? vobItem.Instance : vobItem.Name;
             return instanceName.EqualsIgnoreCase(_mob.Item);

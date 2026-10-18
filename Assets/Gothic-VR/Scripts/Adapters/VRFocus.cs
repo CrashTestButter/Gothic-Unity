@@ -76,8 +76,7 @@ namespace Gothic.VR.Adapters
             }
 
             // Mobs used with a melee tool (e.g. G2 treasure X marks + pickaxe) can be dug up by hitting them.
-            if (_configService.Dev.EnableDigSpots &&
-                _vmCacheService.IsDigSpot(GetComponentInParent<VobLoader>()?.Container?.Vob) &&
+            if (_vmCacheService.IsDigSpot(GetComponentInParent<VobLoader>()?.Container?.Vob) &&
                 GetComponent<VRDigSpot>() == null)
             {
                 gameObject.AddComponent<VRDigSpot>();
@@ -128,7 +127,8 @@ namespace Gothic.VR.Adapters
                 _cachedObjectRenderer = GetComponentInChildren<Renderer>();
 
             if (_featureBrightenUp)
-                _dynamicMaterialService.SetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness, shaderPropertyFocusBrightnessValue);
+                _dynamicMaterialService.SetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness,
+                    shaderPropertyFocusBrightnessValue);
 
             if (_featureShowName)
                 SetFocusName();
@@ -140,7 +140,8 @@ namespace Gothic.VR.Adapters
         {
             if (_featureBrightenUp)
             {
-                _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness, Constants.ShaderPropertyFocusBrightnessDefault);
+                _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness,
+                    Constants.ShaderPropertyFocusBrightnessDefault);
             }
 
             _nameCanvas.SetActive(false);
@@ -154,14 +155,14 @@ namespace Gothic.VR.Adapters
 
             // Calculate direction from parent object to camera
             var directionToCamera = (_mainCamera.transform.position - transform.position).normalized;
-            
+
             // Position canvas at the top of bounds, shifted toward camera
             _nameCanvas.transform.position = new Vector3(
                 _cachedObjectRenderer.bounds.center.x,
                 _cachedObjectRenderer.bounds.max.y,
                 _cachedObjectRenderer.bounds.center.z
             );
-        
+
             // Rotate to face camera
             _nameCanvas.transform.rotation = Quaternion.LookRotation(-directionToCamera);
         }
@@ -190,7 +191,8 @@ namespace Gothic.VR.Adapters
             var npcLoader = GetComponentInParent<NpcLoader>();
             if (npcLoader != null)
             {
-                _nameCanvas.GetComponentInChildren<TMP_Text>().text = npcLoader.Npc.GetUserData().PrefabProps.GetFocusName();
+                _nameCanvas.GetComponentInChildren<TMP_Text>().text =
+                    npcLoader.Npc.GetUserData().PrefabProps.GetFocusName();
                 return;
             }
         }

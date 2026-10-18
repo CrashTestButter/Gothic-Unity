@@ -46,7 +46,7 @@ quota() { # label used reset
   [ "$2" -ge 50 ] && col=33
   [ "$2" -ge 75 ] && col=31
   local t
-  if [ "$1" = "7d" ]; then t="$(date -d "@$3" +%a-%H:%M)"
+  if [ "$1" = "7d" ]; then t="$(date -d "@$3" +%a/%H:%M)"
   elif [ $left -ge 86400 ]; then t="$((left/86400))d$(((left%86400)/3600))h"
   else t="$((left/3600))h$(printf %02d $(((left%3600)/60)))m"; fi
   printf '  %s[%s: %s%%%s resets %s%s]%s' "$(esc 2)" "$1" "$(esc $col)$2" "$(esc 0)$(esc 2)" "$t" "" "$reset"

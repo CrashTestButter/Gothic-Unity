@@ -776,7 +776,7 @@ namespace Gothic.Core.Domain.Vobs
         /// </summary>
         private bool TryKeepAsDigSpotPlaceholder(IVirtualObject vob, GameObject go, GameObject parent)
         {
-            if (!_configService.Dev.EnableDigSpots || go == null || !_vmCacheService.IsDigSpot(vob))
+            if (go == null || !_vmCacheService.IsDigSpot(vob))
                 return false;
 
             go.name = vob.GetVisualName();

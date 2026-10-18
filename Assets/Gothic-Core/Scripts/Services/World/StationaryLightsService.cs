@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Config;
-using Gothic.Core.Services.StaticCache;
 using Gothic.Core.Extensions;
 using Reflex.Attributes;
 using UnityEngine;
@@ -12,7 +11,6 @@ namespace Gothic.Core.Services.World
 {
     public class StationaryLightsService
     {
-        [Inject] private readonly StaticCacheService _staticCacheService;
         [Inject] private readonly ConfigService _configService;
 
         /// <summary>
@@ -37,6 +35,23 @@ namespace Gothic.Core.Services.World
         /// </summary>
         private const float _poolMinRebalanceInterval = 0.5f;
 
+        /// <summary>
+        /// The pooled lights are re-sorted by distance this often (s). Unloaded lights free their slot at once.
+        /// </summary>
+        private const float _poolRefreshInterval = 2f;
+
+        /// <summary>
+        /// The periodic re-sort is skipped while the camera moved less than this since the last one (m) - the order
+        /// can't have changed (e.g. only VR head movement).
+        /// </summary>
+        private const float _poolMinCameraMove = 2f;
+
+        /// <summary>
+        /// A light with a slot counts this much closer (m): it keeps its slot until it's clearly farther than the
+        /// others or the max distance, instead of flipping on/off at the cutoff with every refresh.
+        /// </summary>
+        private const float _poolHysteresis = 5f;
+
         private HashSet<long> _lightMappedCells = new();
         private readonly Stack<int> _freeRuntimeSlots = new();
         private readonly HashSet<StationaryLight> _pooledLights = new();
@@ -46,6 +61,7 @@ namespace Gothic.Core.Services.World
         private bool _isPoolDirty;
         private float _nextPoolRebalance;
         private float _lastPoolRebalance;
+        private Vector3 _lastPoolRebalanceCameraPosition;
         private int _poolPeak;
         private bool _isUploadDirty;
         
@@ -58,6 +74,8 @@ namespace Gothic.Core.Services.World
 
         private readonly HashSet<MeshRenderer> _dirtiedMeshes = new();
         private readonly Dictionary<MeshRenderer, List<StationaryLight>> _lightsPerRenderer = new();
+        // Reused by UpdateRenderer() - slot changes update hundreds of renderers at once (GC spikes on Quest).
+        private readonly List<Material> _rendererMaterials = new();
 
         public void LateUpdate()
         {
@@ -124,7 +142,7 @@ namespace Gothic.Core.Services.World
 
             var rendererLights = _lightsPerRenderer[renderer];
 
-            var nonAllocMaterials = new List<Material>();
+            var nonAllocMaterials = _rendererMaterials;
             var indicesMatrix = Matrix4x4.identity;
             renderer.GetSharedMaterials(nonAllocMaterials);
             for (var i = 0; i < Mathf.Min(16, rendererLights.Count); i++)
@@ -164,36 +182,17 @@ namespace Gothic.Core.Services.World
         private Vector4[] _lightColors;
 
         /// <summary>
-        /// First slot of the light pool: slots before it hold the cached fire lights for good (only when
-        /// EnablePooledStationaryLights is off). -1 until InitStationaryLights() has run.
-        /// </summary>
-        private int _firstPoolSlot = -1;
-
-        /// <summary>
         /// Set global Shader data when world is being loaded.
         /// </summary>
         public void InitStationaryLights()
         {
-            var lights = _staticCacheService.LoadedStationaryLights.StationaryLights;
             var maxTotalLights = _maxTotalLights;
-            // Pooled: the cached fire lights get slots like every other world light (closest first) instead of
-            // keeping one for good.
-            var cachedCount = _configService.Dev.EnablePooledStationaryLights
-                ? 0
-                : Mathf.Min(lights.Count, maxTotalLights);
-            if (!_configService.Dev.EnablePooledStationaryLights && lights.Count > cachedCount)
-                Logger.LogWarning($"[StationaryLights] {lights.Count} cached lights - only {cachedCount} fit " +
-                                  "into the shader.", LogCat.Vob);
-
-            _firstPoolSlot = cachedCount;
             _lightPositionsAndAttenuation = new Vector4[maxTotalLights];
             _lightColors = new Vector4[maxTotalLights];
 
-            // The slots after the cached lights host the pooled lights (static lights of light mapped areas, and
-            // with EnablePooledStationaryLights the fire lights too).
+            // Every slot hosts pooled lights (fires and static lights of light mapped areas), closest first.
             _freeRuntimeSlots.Clear();
-            var poolEnd = Mathf.Min(maxTotalLights, _firstPoolSlot + _configService.Dev.StaticLightPoolSize);
-            for (var i = poolEnd - 1; i >= _firstPoolSlot; i--)
+            for (var i = maxTotalLights - 1; i >= 0; i--)
                 _freeRuntimeSlots.Push(i);
             // Lights of the previous world are gone (OnDisable unregistered them) - start clean anyway.
             foreach (var light in _pooledLights)
@@ -203,16 +202,8 @@ namespace Gothic.Core.Services.World
             _poolPeak = 0;
             _isPoolDirty = true;
 
-            Logger.Log($"[StationaryLights] cached={lights.Count} runtimeSlots={_freeRuntimeSlots.Count} " +
-                       $"lightMappedCells={_lightMappedCells.Count}", LogCat.Vob);
-
-            for (var i = 0; i < cachedCount; i++)
-            {
-                _lightPositionsAndAttenuation[i] = new Vector4(
-                    lights[i].P.x, lights[i].P.y, lights[i].P.z,
-                    1f / (lights[i].R * lights[i].R));
-                _lightColors[i] = lights[i].Col;
-            }
+            Logger.Log($"[StationaryLights] slots={maxTotalLights} lightMappedCells={_lightMappedCells.Count}",
+                LogCat.Vob);
 
             UploadGlobalLightArrays();
         }
@@ -276,20 +267,25 @@ namespace Gothic.Core.Services.World
         /// <summary>
         /// Like OpenGothic, every loaded world light could shine - but the shader has a fixed number of slots
         /// (1023, 512 on Quest). The lights closest to the camera (reach = distance - range) get them, the rest
-        /// waits until the hero comes closer. Re-sorted every StationaryLightPoolRefreshSeconds.
+        /// waits until the hero comes closer. Re-sorted every _poolRefreshInterval.
         /// </summary>
         private void RebalancePool()
         {
+            var isDirty = _isPoolDirty;
             _isPoolDirty = false;
             _lastPoolRebalance = Time.time;
-            _nextPoolRebalance = Time.time + _configService.Dev.StationaryLightPoolRefreshSeconds;
-            if (_firstPoolSlot < 0 || _pooledLights.Count == 0)
+            _nextPoolRebalance = Time.time + _poolRefreshInterval;
+            if (_lightPositionsAndAttenuation == null || _pooledLights.Count == 0)
                 return;
 
             var cam = Camera.main;
             if (cam == null)
                 return;
             var camPos = cam.transform.position;
+            if (!isDirty && (camPos - _lastPoolRebalanceCameraPosition).sqrMagnitude <
+                _poolMinCameraMove * _poolMinCameraMove)
+                return;
+            _lastPoolRebalanceCameraPosition = camPos;
             var maxDistance = _configService.Dev.StationaryLightMaxDistance;
             var capacity = _freeRuntimeSlots.Count;
 
@@ -298,11 +294,14 @@ namespace Gothic.Core.Services.World
             {
                 if (light == null)
                     continue;
-                if (light.Index >= 0)
+                var hasSlot = light.Index >= 0;
+                if (hasSlot)
                     capacity++;
                 // Reach is computed once per refresh, not per comparison. It subtracts the range, so plain
                 // distances are needed (squared ones wouldn't sort the same).
-                var reach = Vector3.Distance(light.transform.position, camPos) - light.Range;
+                var reach = Vector3.Distance(light.CachedPosition, camPos) - light.CachedRange;
+                if (hasSlot)
+                    reach -= _poolHysteresis;
                 if (reach <= maxDistance)
                     _pooledSorted.Add((reach, light));
             }
@@ -323,9 +322,9 @@ namespace Gothic.Core.Services.World
                     continue;
 
                 var slot = _freeRuntimeSlots.Pop();
-                var position = light.transform.position;
+                var position = light.CachedPosition;
                 _lightPositionsAndAttenuation[slot] = new Vector4(position.x, position.y, position.z,
-                    1f / (light.Range * light.Range));
+                    1f / (light.CachedRange * light.CachedRange));
                 _lightColors[slot] = light.RuntimeLinearColor;
                 light.AttachSlot(slot);
                 _isUploadDirty = true;
@@ -344,7 +343,7 @@ namespace Gothic.Core.Services.World
         {
             var slot = light.Index;
             light.DetachSlot();
-            if (slot < _firstPoolSlot || slot >= _lightPositionsAndAttenuation.Length)
+            if (slot < 0 || slot >= _lightPositionsAndAttenuation.Length)
                 return;
 
             _lightPositionsAndAttenuation[slot] = Vector4.zero;

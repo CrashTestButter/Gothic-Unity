@@ -16,7 +16,6 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Culling;
 using Gothic.Core.Services.Meshes;
-using Gothic.Core.Services.StaticCache;
 using Gothic.Core.Services.World;
 using JetBrains.Annotations;
 using MyBox;
@@ -42,7 +41,6 @@ namespace Gothic.Core.Domain.Vobs
         [Inject] private readonly MeshService _meshService;
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly VmCacheService _vmCacheService;
-        [Inject] private readonly StaticCacheService _staticCacheService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
@@ -460,18 +458,13 @@ namespace Gothic.Core.Domain.Vobs
         {
             // Static lights are baked into the world's vertex light outdoors. In light mapped areas (caves, houses)
             // they light the walls only via lightmaps we don't render - there they get a runtime light slot.
-            var isRuntimeSlot = false;
-            if (vob.LightStatic)
-            {
-                if (!_stationaryLightsService.IsNearLightMappedPolygons(worldPosition, vob.Range * .01f))
-                    return null;
-                isRuntimeSlot = true;
-            }
+            if (vob.LightStatic && !_stationaryLightsService.IsNearLightMappedPolygons(worldPosition, vob.Range * .01f))
+                return null;
 
             var go = GetPrefab(vob);
             go.name = $"{vob.LightType} Light {vob.Name}";
 
-            // TODO - We need to be careful. It might be, that a light is in a sub-GO structure, where we need the parent pos+rot. If it's the case, we will get a warning as Index==-1 below.
+            // TODO - We need to be careful. It might be, that a light is in a sub-GO structure, where we need the parent pos+rot.
             go.SetParent(parent, true, true);
 
             var lightComp = go.GetComponent<StationaryLight>();
@@ -483,29 +476,8 @@ namespace Gothic.Core.Domain.Vobs
             lightComp.SpotAngle = vob.ConeAngle;
             lightComp.Intensity = 1;
 
-            // DeveloperConfig.EnablePooledStationaryLights: fire lights share the pool too (closest to the camera).
-            if (isRuntimeSlot || _configService.Dev.EnablePooledStationaryLights)
-            {
-                lightComp.IsRuntimeSlot = true;
-                lightComp.RuntimeLinearColor = lightComp.Color.linear;
-                lightComp.Init();
-                return go;
-            }
-
-            // SaveGames might contain different order of Light objects (or Vobs where lights are children).
-            // We therefore need to fetch which Vob has the same position as the one from cache.
-            // Hint: The StationaryLights array should be ~512 elements max. If loading is slow,
-            // we could also simply remove elements which are set to LightGOs already.
-            lightComp.Index = _staticCacheService.LoadedStationaryLights.StationaryLights.FirstIndex(i =>
-                i.P == worldPosition);
-
-            if (lightComp.Index == -1)
-            {
-                Logger.LogWarning(
-                    $"Light {vob.Name} not found in StaticCache. Therefore no LightIndex set and ignored by shader. " +
-                    $"Will be solved later. ;-)", LogCat.Vob);
-            }
-
+            // All world lights share the shader slots - the ones closest to the camera get them.
+            lightComp.RuntimeLinearColor = lightComp.Color.linear;
             lightComp.Init();
 
             return go;

@@ -10,7 +10,8 @@ Branch: `split/06-lighting` (worktree `GU-split-06-lighting`), based on `origin/
 - **Shared light pool.** All world lights (fires and the static lights above) share the shader light slots: 1023 on
   PC (Unity's cap for global arrays), 512 on mobile. The lights closest to the camera get a slot, the same way
   OpenGothic lights everything near you. Unloaded lights free their slot right away, and the pool is re-sorted every
-  2 s. Before this, G2's ~700 cached fire lights didn't fit into 512 slots, so the ones above 512 never lit
+  2 s once the camera moved 2 m. A light with a slot keeps it within 5 m of the cutoff, so lights don't flicker at
+  the edge. Before this, G2's ~700 cached fire lights didn't fit into 512 slots, so the ones above 512 never lit
   anything.
 - **Night falls on the world.** Gothic's sky `polyColor` (bright by day, dark blue at night) now scales the outdoor
   world's baked light and the sun/ambient color of VOBs and NPCs. Before, only the hands (URP ambient) followed the
@@ -24,16 +25,19 @@ OpenGothic is the reference for lighting every light near the camera.
 ## Config
 
 Kept (in `DeveloperConfig` → Lighting → "World lights"):
-- `EnablePooledStationaryLights` (switches between the pool and the old fixed slots, needed on mobile where G2's
-  ~700 fire lights don't fit into 512), and the tunables `StaticLightPoolSize`, `StationaryLightMaxDistance`,
-  `StationaryLightPoolRefreshSeconds`.
+- `StationaryLightMaxDistance` (80 m): pooled lights farther than this don't get a slot.
 
 Dropped:
 - `EnableDayNightWorldLight` and `DayNightLightStrength`. Night always uses Gothic's sky colors.
 - `EnableStaticLightsInLightMappedAreas`. Turning it off only made caves and houses dark again, so static lights
   next to light mapped polygons always get a runtime slot now.
+- `EnablePooledStationaryLights`. The old fixed slots per cached fire light broke on mobile (G2's ~700 fire lights
+  don't fit into 512), so all world lights are always pooled. `VobInitializerDomain` no longer looks lights up in the
+  StaticCache.
+- `StaticLightPoolSize` and `StationaryLightPoolRefreshSeconds`. The pool always uses all slots (1023/512), and the
+  refresh interval is a constant (2 s).
 
-`Production.asset`: same values as the source branch (1023, 80 m, 2 s, pooling on).
+`Production.asset`: same max distance as the source branch (80 m).
 
 ## How to test (VR, ~10-15 min)
 
@@ -45,9 +49,7 @@ Dropped:
 3. **Day again.** Skip to noon: the colors are back to normal, and the light changes smoothly between sky states.
 4. **Pool.** Walk through the G2 city (many fires). Lights keep appearing ahead of you with no gaps around you.
    The `[StationaryLights] pool: …` log line (LogCat `Vob`) shows lit vs. loaded lights.
-5. **Switch.** Turn off `EnablePooledStationaryLights` → the old
-   behavior (fire lights keep a fixed slot), with the warning when they don't fit.
-6. **Mobile (Quest/Pico), needs a device run.** `StationaryLighting.hlsl` uses 512 slots under
+5. **Mobile (Quest/Pico), needs a device run.** `StationaryLighting.hlsl` uses 512 slots under
    `SHADER_API_MOBILE` and `StationaryLightsService` uses 512 when `Application.isMobilePlatform`. **Verify that the
    `SHADER_API_MOBILE` variant (512 slots) is the one used on Quest/Pico Vulkan.** If the shader compiles 1023 while
    C# uploads 512 (or the other way round), the lights are wrong or missing. Check that caves
@@ -70,14 +72,13 @@ Dropped:
   - The reserved "dynamic light" slot (`DynamicLightIndex`, `UpdateDynamicLight()`, `ClearDynamicLight()`) and
     `StationaryLight.Refresh()` are used by the torch (slice 14) and the Light spell (slice 20). Whichever of those
     lands first re-adds them. Reserve one slot right after the cached lights and start the pool one slot later
-    (`_firstPoolSlot = cachedCount + 1`); in the source this was `DynamicLightIndex = cachedCount`.
+    (e.g. slot 0, pool from slot 1); in the source this was `DynamicLightIndex = cachedCount`.
   - The `RoomService` sector cells in `WorldMeshBuilder` belong to slice 11 (it will add its own parameters to
     `ExtractChunks`).
 - **Deviations from the source:**
-  - Without the dynamic slot, the pool starts at `_firstPoolSlot` (= number of cached lights) instead of
-    `DynamicLightIndex + 1`. With `EnablePooledStationaryLights` off, the cached lights may use all slots.
-  - The "cached lights don't fit" warning only logs when pooling is off. With pooling on it fired on every world load
-    even though nothing was lost.
+  - Without the dynamic slot, the pool uses all slots instead of starting at `DynamicLightIndex + 1`.
+  - The fixed slots for cached fire lights (and the "cached lights don't fit" warning) are gone - every world light
+    is pooled.
   - Removed the "V1:" prefixes from tooltips, moved `SetDayLight`'s summary from a field onto the method, and
     wrapped lines to 120 characters.
   - Review fixes (`3ca511ca`): `EnableDayNightWorldLight` dropped (strength 0 = off); the `_polyColor` field moved
@@ -87,5 +88,6 @@ Dropped:
 - **Known limitations:**
   - Lights are still assigned to renderers when they're created (an existing limitation), so lazily loaded VOB
     meshes aren't lit by lights that were already active.
-  - `RebalancePool` sorts the pooled lights in reach every 2 s (reach computed once per light, reused lists).
-    That's cheap for ~1000 lights on PC. Measure it on Quest.
+  - `RebalancePool` sorts the pooled lights in reach every 2 s, and skips it while the camera moved less than 2 m.
+    Lights cache their position and range, and `UpdateRenderer` reuses one material list (no garbage per renderer
+    on slot changes). Measure it on Quest - a world load or teleport still hands out many slots in one frame.

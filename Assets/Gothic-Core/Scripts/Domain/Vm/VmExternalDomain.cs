@@ -1467,6 +1467,12 @@ namespace Gothic.Core.Domain.Vm
             const int invWeapon = 1;
             const int invArmor = 2;
 
+            if (_configService.Dev.EnableInvItemBySlot && TryGetInvItemBySlot(npc, invType, slot, out var item, out var amount))
+            {
+                _gameStateService.GothicVm.GlobalItem = item;
+                return LogInstantExternal(nameof(Npc_GetInvItemBySlot), amount, npc, invType, slot);
+            }
+
             var props = npc.GetUserData().Props;
             ItemInstance found = null;
 
@@ -1488,6 +1494,47 @@ namespace Gothic.Core.Domain.Vm
             _gameStateService.GothicVm.GlobalItem = found;
             var count = found != null ? 1 : 0;
             return LogInstantExternal(nameof(Npc_GetInvItemBySlot), count, npc);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableInvItemBySlot: like the engine (OpenGothic Inventory::findByFlags), the slot-th item
+        /// (1 based) of the inventory category - our packed inventory is stored per the same INV_* category. Before,
+        /// only the equipped weapon/armor was found: B_Plunder (G1) looks for ore in INV_MISC and NPCs who knocked out
+        /// the hero said "not even ore" with 1000 in the backpack.
+        /// </summary>
+        private bool TryGetInvItemBySlot(NpcInstance npc, int invType, int slot, out ItemInstance item, out int amount)
+        {
+            item = null;
+            amount = 0;
+            if (npc?.GetUserData() == null || slot < 1 || invType < (int)VmGothicEnums.InvCats.InvWeapon ||
+                invType >= (int)VmGothicEnums.InvCats.InvCatMax)
+                return false;
+
+            List<Gothic.Core.Models.Vob.ContentItem> items;
+            try
+            {
+                items = _npcInventoryService.GetInventoryItems(npc, (VmGothicEnums.InvCats)invType);
+            }
+            catch
+            {
+                // Category slot was never initialized for this NPC - nothing in it.
+                return false;
+            }
+
+            var found = 0;
+            foreach (var contentItem in items)
+            {
+                if (contentItem.Amount <= 0)
+                    continue;
+                if (++found < slot)
+                    continue;
+
+                item = _vmCacheService.TryGetItemData(contentItem.Name);
+                amount = contentItem.Amount;
+                return item != null;
+            }
+
+            return false;
         }
 
         public void Npc_RemoveInvItems(IntPtr vmPtr)

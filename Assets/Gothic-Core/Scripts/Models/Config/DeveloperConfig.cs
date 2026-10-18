@@ -743,6 +743,11 @@ namespace Gothic.Core.Models.Config
                  "and only its first swing did damage.")]
         public bool EnableEngineNpcCombo = true;
 
+        [Tooltip("V1: Npc_GetInvItemBySlot returns the slot-th item of an inventory category like the engine - only the " +
+                 "equipped weapon/armor was found: an NPC plundering the knocked out hero (G1 B_Plunder) said he had " +
+                 "no ore with 1000 in the backpack.")]
+        public bool EnableInvItemBySlot = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

@@ -181,6 +181,7 @@ MonoBehaviour:
   EnableAnimatedNpcHitbox: 1
   EnableSingleHitPerNpcAttack: 1
   EnableEngineNpcCombo: 1
+  EnableInvItemBySlot: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1
   EnableNpcNavMesh: 1

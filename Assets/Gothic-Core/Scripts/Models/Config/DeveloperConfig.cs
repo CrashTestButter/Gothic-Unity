@@ -748,6 +748,10 @@ namespace Gothic.Core.Models.Config
                  "no ore with 1000 in the backpack.")]
         public bool EnableInvItemBySlot = true;
 
+        [Tooltip("V1: The VR UI pointer's line is drawn above the on-top menu/dialog like the hands - it ended at the " +
+                 "menu's edge and you couldn't see where you pointed.")]
+        public bool EnablePointerLineOnTop = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

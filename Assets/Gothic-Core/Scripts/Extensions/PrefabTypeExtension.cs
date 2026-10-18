@@ -37,6 +37,7 @@ namespace Gothic.Core.Extensions
                 PrefabType.VobSwitch => "Prefabs/Vobs/oCMobSwitch",
                 PrefabType.VobInteractable => "Prefabs/Vobs/oCMobInter",
                 PrefabType.VobInteractableSeat => "Prefabs/Vobs/oCMobInterSeat",
+                PrefabType.VobInteractableDigSpot => "Prefabs/Vobs/oCMobInterDigSpot",
                 PrefabType.VobMovable => "Prefabs/Vobs/oCMobMovable",
                 PrefabType.VobSpot => "Prefabs/Vobs/zCVobSpot",
                 PrefabType.VobPfx => "Prefabs/Vobs/vobPfx",

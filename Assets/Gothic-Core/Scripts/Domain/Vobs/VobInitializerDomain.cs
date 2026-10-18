@@ -308,10 +308,15 @@ namespace Gothic.Core.Domain.Vobs
                     go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobFire, name: name, parent: parent);
                     break;
                 case VirtualObjectType.oCMobInter:
-                    if (vob.Name.ContainsIgnoreCase("bench") ||
-                        vob.Name.ContainsIgnoreCase("chair") ||
-                        vob.Name.ContainsIgnoreCase("throne") ||
-                        vob.Name.ContainsIgnoreCase("barrelo"))
+                    // Mobs used with a melee tool (e.g. G2 treasure X marks + pickaxe) can be dug up by hitting them.
+                    if (_vmCacheService.IsDigSpot(vob))
+                    {
+                        go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobInteractableDigSpot);
+                    }
+                    else if (vob.Name.ContainsIgnoreCase("bench") ||
+                             vob.Name.ContainsIgnoreCase("chair") ||
+                             vob.Name.ContainsIgnoreCase("throne") ||
+                             vob.Name.ContainsIgnoreCase("barrelo"))
                     {
                         go = _resourceCacheService.TryGetPrefabObject(PrefabType.VobInteractableSeat);
                     }

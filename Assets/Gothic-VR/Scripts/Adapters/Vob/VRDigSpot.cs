@@ -23,7 +23,7 @@ namespace Gothic.VR.Adapters.Vob
     /// then we call the same function (self = hero). The script does the rest (Wld_InsertItem, quest variables, XP).
     ///
     /// Hit detection only compares bounds + weapon speed - no colliders, layers or combat code involved.
-    /// Added at runtime by VRFocus.
+    /// Part of the oCMobInterDigSpot prefab (PrefabType.VobInteractableDigSpot).
     /// </summary>
     public class VRDigSpot : MonoBehaviour
     {
@@ -47,11 +47,6 @@ namespace Gothic.VR.Adapters.Vob
         private HVRGrabbable _lastWeapon;
         private bool? _isLastWeaponAllowed;
         private Collider[] _lastWeaponColliders;
-
-        private void Awake()
-        {
-            this.Inject();
-        }
 
         private void Start()
         {

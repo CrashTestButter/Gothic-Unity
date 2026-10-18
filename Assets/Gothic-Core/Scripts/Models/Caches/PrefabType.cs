@@ -33,6 +33,7 @@ namespace Gothic.Core.Models.Caches
         VobSwitch,
         VobInteractable,
         VobInteractableSeat,
+        VobInteractableDigSpot,
         VobMovable,
         VobSpot,
         VobPfx,

@@ -31,6 +31,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private Transform _enemyTransform => _enemy.Go.transform;
         private bool _comboWindowLogged;
         private bool _hasHitFired;
+        // DeveloperConfig.EnableEngineNpcCombo: which part of a combo animation this attack is (its hit frame, window, end).
+        private int _comboIndex;
         private bool _isRangedFollowUp;
         private bool _isRunAttackPlanned;
         private bool _isRunAttackActive;
@@ -106,12 +108,94 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 StartSwimming();
                 return;
             }
+
+            if (TryContinueCombo())
+                return;
             base.Start();
 
             // DeveloperConfig.EnableNpcRunAttack: this run either ends in a strike out of the run or, like before,
             // stops in range and the next AI_Attack strikes from a stand.
             _isRunAttackPlanned = _move == FightAiMove.Run && _configService.Dev.EnableNpcRunAttack &&
                                   Random.value < _runAttackChance;
+        }
+
+        private bool IsMeleeAttackMove()
+        {
+            return _move is FightAiMove.Attack or FightAiMove.AttackSide && _swimAnimName == null &&
+                   (VmGothicEnums.WeaponState)Vob.FightMode is not (VmGothicEnums.WeaponState.Mage or
+                       VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableEngineNpcCombo: the previous attack left its animation playing for us - the same
+        /// animation continues at the end of its last part (OpenGothic Pose::continueCombo) instead of starting over.
+        /// </summary>
+        private bool TryContinueCombo()
+        {
+            var animationName = Props.ComboContinueAnimation;
+            var index = Props.ComboContinueIndex;
+            Props.ComboContinueAnimation = null;
+            if (!_configService.Dev.EnableEngineNpcCombo || animationName == null || !IsMeleeAttackMove())
+                return false;
+
+            if (!animationName.EqualsIgnoreCase(Action.String0))
+            {
+                // Another attack animation (left/right): it starts fresh, the old one goes.
+                PrefabProps.AnimationSystem.StopAnimation(animationName);
+                return false;
+            }
+
+            var secondsLeft = PrefabProps.AnimationSystem.ContinueCombo(Action.String0, index);
+            if (secondsLeft < 0f)
+                return false;
+
+            _comboIndex = index;
+            ActionEndEventTime = Mathf.Max(secondsLeft, 0.01f);
+            Logger.Log($"[Combo] {NpcInstance.GetName(NpcNameSlot.Slot0)} continues {Action.String0} with part " +
+                       $"{index + 1}/{PrefabProps.AnimationSystem.OptimalFrameCount}", LogCat.Animation);
+            return true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableEngineNpcCombo, like the engine: this part hits at its DEF_OPT_FRAME; an attack queued
+        /// in its DEF_WINDOW continues the same animation if it has another part (hand-over to the next action), else the
+        /// next attack waits; without one the attack ends at the part's DEF_HIT_END. Before, the whole animation played:
+        /// a master's later swings did no damage, and a restarted single-hit attack (shadowbeast) hit twice per swing.
+        /// </summary>
+        private void TickEngineCombo()
+        {
+            var animationSystem = PrefabProps.AnimationSystem;
+            if (!_hasHitFired && _configService.Dev.EnableNpcHitAtOptimalFrame &&
+                animationSystem.HasOptimalFrameReached(Action.String0, _comboIndex))
+            {
+                _hasHitFired = true;
+                TryFireHit();
+            }
+
+            if (!_hasHitFired)
+                return;
+
+            var hasNextPart = _comboIndex + 1 < animationSystem.OptimalFrameCount;
+            var isComboLeft = !_configService.Dev.EnableNpcComboLimit ||
+                              Props.AttackComboLength < animationSystem.ComboWindowCount;
+            if (hasNextPart && isComboLeft && Props.AnimationQueue.Count > 0 &&
+                animationSystem.IsComboWindowOpen(Action.String0, _comboIndex))
+            {
+                Props.AttackComboLength++;
+                Props.ComboContinueAnimation = Action.String0;
+                Props.ComboContinueIndex = _comboIndex + 1;
+                Logger.Log($"[Combo] {NpcInstance.GetName(NpcNameSlot.Slot0)} part {_comboIndex + 1} -> next part " +
+                           $"(queue={Props.AnimationQueue.Count})", LogCat.Animation);
+                IsFinishedFlag = true;
+                return;
+            }
+
+            if (animationSystem.HasHitEndReached(Action.String0, _comboIndex))
+            {
+                Props.AttackComboLength = 0;
+                animationSystem.StopAnimation(Action.String0);
+                IsFinishedFlag = true;
+            }
         }
 
         private bool IsSwimming()
@@ -170,18 +254,28 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return;
             }
 
-            // DeveloperConfig.EnableNpcHitAtOptimalFrame: like the engine, the hit lands at DEF_OPT_FRAME.
-            if (!_hasHitFired && _configService.Dev.EnableNpcHitAtOptimalFrame &&
-                PrefabProps.AnimationSystem.HasOptimalFrameReached(Action.String0))
+            if (_configService.Dev.EnableEngineNpcCombo && IsMeleeAttackMove())
             {
-                _hasHitFired = true;
-                TryFireHit();
+                TickEngineCombo();
+                if (IsFinishedFlag)
+                    return;
+            }
+            else
+            {
+                // DeveloperConfig.EnableNpcHitAtOptimalFrame: like the engine, the hit lands at DEF_OPT_FRAME.
+                if (!_hasHitFired && _configService.Dev.EnableNpcHitAtOptimalFrame &&
+                    PrefabProps.AnimationSystem.HasOptimalFrameReached(Action.String0))
+                {
+                    _hasHitFired = true;
+                    TryFireHit();
+                }
             }
 
             // Combo chaining: once the DEF_WINDOW frame is reached, cut this animation short so the
             // next queued attack starts immediately — exactly like Gothic's original combo system.
             // The last attack in a sequence has nothing queued, so it plays to full completion.
-            if (PrefabProps.AnimationSystem.HasComboWindowOpened)
+            if (!(_configService.Dev.EnableEngineNpcCombo && IsMeleeAttackMove()) &&
+                PrefabProps.AnimationSystem.HasComboWindowOpened)
             {
                 // Auto-register hit at the attack frame (replaces bone collider detection, temporary debug aid).
                 if (!_hasHitFired)
@@ -195,6 +289,12 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 // end. ZS_MM_Attack_Loop queues AI_Attack every loop: a lurker chained 4 bites a second forever.
                 var isComboLeft = !_configService.Dev.EnableNpcComboLimit ||
                                   Props.AttackComboLength < PrefabProps.AnimationSystem.ComboWindowCount;
+                // DeveloperConfig.EnableSingleHitPerNpcAttack: like the engine (OpenGothic Pose::continueCombo) a combo
+                // continues the same animation to its next hit frame - one with a single DEF_OPT_FRAME (shadowbeast,
+                // wolf) has no second hit. Restarted here, it hit again 0.3 s later: one swing, the hero's HP twice.
+                if (_configService.Dev.EnableSingleHitPerNpcAttack &&
+                    PrefabProps.AnimationSystem.OptimalFrameCount <= Props.AttackComboLength + 1)
+                    isComboLeft = false;
                 if (Props.AnimationQueue.Count > 0 && isComboLeft)
                 {
                     Props.AttackComboLength++;

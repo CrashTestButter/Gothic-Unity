@@ -721,6 +721,16 @@ namespace Gothic.Core.Models.Config
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
         public bool EnableHeroPersonalSpace = true;
 
+        [Tooltip("V1: An NPC's attack hits once - the next attack with the same animation saw the old track still " +
+                 "blending out: its hit frame counted as reached and the action ended at once (a shadowbeast took the " +
+                 "hero's HP 3 times in one swing). A combo only restarts an attack with another hit frame (engine).")]
+        public bool EnableSingleHitPerNpcAttack = true;
+
+        [Tooltip("V1: NPC melee combos like the engine: an attack ends at its hit end, a combo continues the same " +
+                 "animation to its next hit frame (a master's s_1hAttack: 4 hits). Before, the whole animation played " +
+                 "and only its first swing did damage.")]
+        public bool EnableEngineNpcCombo = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

@@ -228,6 +228,14 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         // FIXME - In the future, we need to handle more information than just playing the attack animations. But fine for the first iteration.
         private void StartAttackAction()
         {
+            // DeveloperConfig.EnableEngineNpcCombo: the combo isn't continued - its animation stops (the engine ends an
+            // attack at its hit end).
+            if (Props.ComboContinueAnimation != null && _move != FightAiMove.Attack)
+            {
+                PrefabProps.AnimationSystem.StopAnimation(Props.ComboContinueAnimation);
+                Props.ComboContinueAnimation = null;
+            }
+
             switch (_move)
             {
                 case FightAiMove.Wait:

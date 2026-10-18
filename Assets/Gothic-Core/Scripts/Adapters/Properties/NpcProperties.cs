@@ -96,6 +96,10 @@ namespace Gothic.Core.Adapters.Properties
 
         // DeveloperConfig.EnableNpcComboLimit: attacks chained at combo windows since the last one that played to its end.
         public int AttackComboLength;
+        // DeveloperConfig.EnableEngineNpcCombo: the attack animation that keeps playing for the next attack to continue,
+        // and the combo part it continues with.
+        public string ComboContinueAnimation;
+        public int ComboContinueIndex;
         public AbstractAnimationAction CurrentAction;
 
         // "other" and "victim" saved when a state is started via AI_StartState with a specific enemy.

@@ -1078,6 +1078,90 @@ namespace Gothic.Core.Adapters.Animations
         /// </summary>
         public int ComboWindowCount => AttackWindowFrames == null ? 0 : AttackWindowFrames.Count / 2;
 
+        /// <summary>
+        /// DEF_OPT_FRAME entries (hit frames) of the current attack animation.
+        /// </summary>
+        public int OptimalFrameCount => AttackOptFrame?.Count ?? 0;
+
+        /// <summary>
+        /// DeveloperConfig.EnableEngineNpcCombo: the playing (not blending out) track of the attack animation.
+        /// </summary>
+        private AnimationTrackInstance GetPlayingAttackTrack(string animationName)
+        {
+            foreach (var trackInstance in _trackInstances)
+            {
+                if (trackInstance.State is not (AnimationState.Play or AnimationState.BlendIn))
+                    continue;
+                if (trackInstance.Track.MatchesName(animationName) ||
+                    (AttackAnimation != null && trackInstance.AnimationName.EqualsIgnoreCase(AttackAnimation)))
+                    return trackInstance;
+            }
+
+            return null;
+        }
+
+        private static bool TryGetFrame(List<int> frames, int index, out int frame)
+        {
+            frame = 0;
+            if (frames == null || index < 0 || index >= frames.Count)
+                return false;
+            frame = frames[index];
+            return true;
+        }
+
+        /// <summary>
+        /// The combo part's hit frame (DEF_OPT_FRAME[index]) passed. Like the engine, a combo continues the same attack
+        /// animation - its parts hit at their own frames (a master's s_1hAttack: 4 hits).
+        /// </summary>
+        public bool HasOptimalFrameReached(string animationName, int index)
+        {
+            var track = GetPlayingAttackTrack(animationName);
+            return track != null && TryGetFrame(AttackOptFrame, index, out var frame) &&
+                   track.CurrentTime >= frame / track.Track.FpsSource;
+        }
+
+        /// <summary>
+        /// The combo part's window (DEF_WINDOW pair index) is open now - an attack asked for in it continues the combo.
+        /// </summary>
+        public bool IsComboWindowOpen(string animationName, int index)
+        {
+            var track = GetPlayingAttackTrack(animationName);
+            if (track == null || !TryGetFrame(AttackWindowFrames, index * 2, out var start) ||
+                !TryGetFrame(AttackWindowFrames, index * 2 + 1, out var end))
+                return false;
+            var time = track.CurrentTime;
+            return time >= start / track.Track.FpsSource && time <= end / track.Track.FpsSource;
+        }
+
+        /// <summary>
+        /// The combo part ended (DEF_HIT_END[index]) - like the engine, the attack is over there unless continued.
+        /// False if the animation has no hit end for it (it plays to its end then).
+        /// </summary>
+        public bool HasHitEndReached(string animationName, int index)
+        {
+            var track = GetPlayingAttackTrack(animationName);
+            return track != null && TryGetFrame(AttackHitEnd, index, out var frame) &&
+                   track.CurrentTime >= frame / track.Track.FpsSource;
+        }
+
+        /// <summary>
+        /// Continues the combo like the engine (OpenGothic Pose::continueCombo): the playing attack animation jumps to
+        /// the end of the part that just hit (DEF_HIT_END[index - 1]) and runs on to the next part's hit frame.
+        /// Returns the seconds left of the animation, or a negative value if it couldn't continue.
+        /// </summary>
+        public float ContinueCombo(string animationName, int index)
+        {
+            var track = GetPlayingAttackTrack(animationName);
+            if (track == null || !TryGetFrame(AttackOptFrame, index, out _) ||
+                !TryGetFrame(AttackHitEnd, index - 1, out var hitEnd))
+                return -1f;
+
+            var time = hitEnd / track.Track.FpsSource;
+            if (track.CurrentTime < time)
+                track.CurrentTime = time;
+            return Mathf.Max(0f, track.Track.Duration - track.CurrentTime);
+        }
+
         /// True when the current attack animation has advanced past the DEF_WINDOW start frame.
         /// DEF_WINDOW fires at frame 0 in MDS (stores window bounds as params), so we check elapsed time
         /// against the actual window start frame — matching how VrWeaponAttackDomain reads it.
@@ -1113,6 +1197,11 @@ namespace Gothic.Core.Adapters.Animations
             {
                 if (!trackInstance.Track.MatchesName(animationName) &&
                     (AttackAnimation == null || !trackInstance.AnimationName.EqualsIgnoreCase(AttackAnimation)))
+                    continue;
+                // DeveloperConfig.EnableSingleHitPerNpcAttack: the previous attack's track of the same animation still
+                // blends out (its time already past the hit frame) - the new attack hit at once, a shadowbeast took the
+                // hero's HP 3 times in one swing.
+                if (_configService.Dev.EnableSingleHitPerNpcAttack && trackInstance.State == AnimationState.BlendOut)
                     continue;
                 return trackInstance.CurrentTime >= AttackOptFrame[0] / trackInstance.Track.FpsSource;
             }
@@ -1163,16 +1252,22 @@ namespace Gothic.Core.Adapters.Animations
         /// </summary>
         public bool IsAnimationBlendingOut(string animationName)
         {
+            var isBlendingOut = false;
             foreach (var instance in _trackInstances)
             {
-                if (instance.Track.MatchesName(animationName)
-                    && instance.State == AnimationState.BlendOut)
-                {
-                    return true;
-                }
+                if (!instance.Track.MatchesName(animationName))
+                    continue;
+
+                if (instance.State == AnimationState.BlendOut)
+                    isBlendingOut = true;
+                // DeveloperConfig.EnableSingleHitPerNpcAttack: the same animation started again (next attack) while the
+                // old track still blends out - the new one plays, the action isn't over.
+                else if (_configService.Dev.EnableSingleHitPerNpcAttack &&
+                         instance.State is AnimationState.Play or AnimationState.BlendIn)
+                    return false;
             }
 
-            return false;
+            return isBlendingOut;
         }
     }
 }

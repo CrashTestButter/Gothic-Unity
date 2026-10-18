@@ -4,6 +4,12 @@
 
 ## What changed
 
+> **2026-10-18: main's PR #399 merged** ([merge notes](merge-2026-10-18.md)). The base is main's now: trigger VOBs as
+> prefabs, `MoverAdapter` with the engine's segment timing, mob use in Core `MobInteractionService` + VR
+> `VRMobInteraction` (was `VRPlayerService.HandleMobGrab` / `VRFocus`), dig spots as the `oCMobInter/DigSpot` prefab
+> with the real X mesh, `EnsureOwnVobLoader` registering named child VOBs, seats without flags. What this page lists
+> below is on top of it, ported into main's files.
+
 - **Movers** (`zCMover`): keyframe movement with Open/Close/Toggle, speed fix, chained triggers, all same-named
   instances triggered, Gothic `//` target prefixes handled.
 - **Trigger system:** `zCTrigger`, `zCTriggerList`, `zCCodeMaster`, `zCMessageFilter`, `zCMoverController`,
@@ -123,16 +129,16 @@ reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs · `f5
 
 `Adapters/Vob/MoverAdapter.cs`, `TriggerListHandler.cs`, `CodeMasterHandler.cs`, `MessageFilterHandler.cs`,
 `MoverControllerHandler.cs`, `Trigger*Handler.cs` (all new) · `Services/Vobs/VobService.cs` (+410) ·
-`Domain/Vobs/VobInitializerDomain.cs` · `Services/World/RoomService.cs` · VR: `VRWheelInteraction.cs`,
-`VRDigSpot.cs`, `VRPlayerService.cs` (`HandleMobGrab`, MOBSI)
+`Domain/Vobs/VobInitializerDomain.cs` · `Services/World/RoomService.cs` · `Services/Vobs/MobInteractionService.cs`
+(main's, + fire, mob item events, required item) · VR: `VRWheelInteraction.cs`, `VRDigSpot.cs`, `VRMobInteraction.cs`
+(main's), `VRPlayerService.cs` (dialog anchor, bookstand pages, mummy loot)
 
 ## Config flags
 
-`MoverSpeedMultiplier`, `EnableMobsiDialogs`, `EnableMobSeatFix`, `EnableNoTurnWhileUsingMob`, `EnableDigSpots`,
-`DigSpotsRequireTool`, `EnableChildVobLoaders`, `EnableEnterRoomPerception`, `EnableEmptyVobContainerChildren`,
+`EnableEnterRoomPerception`, `EnableEmptyVobContainerChildren`,
 `EnableWorldSpaceChildVobs`, `DebugTraceVobVisual` (debug: logs a VOB's loader creation, init and destruction).
 
-2026-10-10/11: `EnableChildLogicVobs`, `EnableEngineMoverTiming`, `EnableTriggerEnableState`,
+2026-10-10/11: `EnableChildLogicVobs`, `EnableTriggerEnableState`,
 `EnableMoverRelativeKeyframes`, `EnableNestedMovers`, `EnableTriggerListSummedDelays`, `EnableEngineCodeMaster`,
 `EnableMobRequiredItem`, `EnableDamageTargetAutoAim`, `EnableDamageTargetMarkers`
 
@@ -145,11 +151,18 @@ reset · `93d2466a` new game spawn reset · `90301646` NPCs wait for VOBs · `f5
 2026-10-17: `EnableAnimationCombines`, `EnableMobOccupancy`, `EnableWorldPointsReset`, `EnableNewGameSpawnReset`,
 `EnableNpcWaitsForWorldVobs`, `EnableDigSpotTreasureOnly`, `EnableMobDialogOwnBounds`
 
+Removed with the 2026-10-18 merge (always on in main): `MoverSpeedMultiplier`, `EnableEngineMoverTiming`,
+`EnableMobsiDialogs`, `EnableMobSeatFix`, `EnableNoTurnWhileUsingMob`, `EnableDigSpots`, `DigSpotsRequireTool`,
+`EnableChildVobLoaders`.
+
 ## Review notes
 
 - ✅ Trigger handlers are small, one per VOB type — fits the adapter pattern.
 - ⚠️ `VobService` keeps growing (movers, triggers, mob owners diagnostics). The trigger dispatch could be its own
   service.
+- ⚠️ G2 doors still behave oddly in VR (playtest 2026-10-18) - not from the merge, open.
+- ℹ️ PR candidate for main: treasure-only dig spots in `VmCacheService.IsDigSpot` - main's generic test still treats
+  Mroczne Tajemnice's anvil and G2's Goldhacken/Stomp as dig spots.
 - ℹ️ The G1 OrcGraveyard gate (WHEEL) from Chapter 3 was the original driver for wheels; verify it end to end.
 
 ## How to test

@@ -13,6 +13,13 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-18 (evening): main merged - world objects
+
+- `main`'s world objects (PR #399) are in: gates, levers and triggers work like main's (a lever used again closes a
+  trigger-controlled gate again), the treasure X is Gothic's own mesh instead of red planks, you can't walk through
+  doors, chests, beds or items lying around. Everything the branch had on top (saved gates and triggers, Irdorath's
+  rooms, forge and anvil, bookstands, fires, mummies, Mroczne Tajemnice's anvil) still works.
+
 ## 2026-10-18 (afternoon): NPCs parry, beaten NPCs
 
 - NPCs react to your swings: they parry, jump back or step aside, also in the middle of their own combo. A parry

@@ -263,11 +263,6 @@ namespace Gothic.Core.Models.Config
         public Color AmbientLightColor = new(0.1f, 0.1f, 0.1f, 1);
 
         [Separator("World lights")]
-        [Tooltip("Static lights in light mapped areas (caves, houses - torches, braziers) light the walls like " +
-                 "Gothic's lightmaps. Outdoors they're already baked into the world's vertex light. Performance " +
-                 "escape hatch (e.g. mobile): off = fewer lights per renderer, but caves and houses stay dark.")]
-        public bool EnableStaticLightsInLightMappedAreas = true;
-
         [Tooltip("Shader slots for the pooled lights that are lit at once (the rest stays dark). " +
                  "Capped by what's left after the cached fire lights (1023 in total, 512 on mobile).")]
         [Range(0, 1023)]

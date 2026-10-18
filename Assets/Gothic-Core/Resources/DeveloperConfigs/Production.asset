@@ -72,7 +72,6 @@ MonoBehaviour:
   SunLightIntensity: 1
   SunUpdateInterval: 1
   AmbientLightColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
-  EnableStaticLightsInLightMappedAreas: 1
   StaticLightPoolSize: 1023
   EnablePooledStationaryLights: 1
   StationaryLightMaxDistance: 80

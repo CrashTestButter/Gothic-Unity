@@ -463,8 +463,7 @@ namespace Gothic.Core.Domain.Vobs
             var isRuntimeSlot = false;
             if (vob.LightStatic)
             {
-                if (!_configService.Dev.EnableStaticLightsInLightMappedAreas ||
-                    !_stationaryLightsService.IsNearLightMappedPolygons(worldPosition, vob.Range * .01f))
+                if (!_stationaryLightsService.IsNearLightMappedPolygons(worldPosition, vob.Range * .01f))
                     return null;
                 isRuntimeSlot = true;
             }

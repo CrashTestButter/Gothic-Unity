@@ -23,17 +23,17 @@ OpenGothic is the reference for lighting every light near the camera.
 
 ## Config
 
-Kept (in `DeveloperConfig` → Lighting → "Day/night and world lights"):
-- `DayNightLightStrength` (tunable; **0 = day/night off**, 1 = Gothic's sky colors).
-- `EnableStaticLightsInLightMappedAreas`, kept as a **performance escape hatch**. Static lights in caves and houses
-  add up to 16 lights per world renderer, evaluated per vertex in `Lit-World`. On mobile this is the setting to turn
-  off if caves cost too much; caves then stay dark like on `main`. The tooltip says so.
+Kept (in `DeveloperConfig` → Lighting → "World lights"):
 - `EnablePooledStationaryLights` (switches between the pool and the old fixed slots, needed on mobile where G2's
   ~700 fire lights don't fit into 512), and the tunables `StaticLightPoolSize`, `StationaryLightMaxDistance`,
   `StationaryLightPoolRefreshSeconds`.
 
-Dropped: `EnableDayNightWorldLight`. It duplicated `DayNightLightStrength = 0`.
-`Production.asset`: same values as the source branch (strength 1, 1023, 80 m, 2 s, both switches on).
+Dropped:
+- `EnableDayNightWorldLight` and `DayNightLightStrength`. Night always uses Gothic's sky colors.
+- `EnableStaticLightsInLightMappedAreas`. Turning it off only made caves and houses dark again, so static lights
+  next to light mapped polygons always get a runtime slot now.
+
+`Production.asset`: same values as the source branch (1023, 80 m, 2 s, pooling on).
 
 ## How to test (VR, ~10-15 min)
 
@@ -45,7 +45,7 @@ Dropped: `EnableDayNightWorldLight`. It duplicated `DayNightLightStrength = 0`.
 3. **Day again.** Skip to noon: the colors are back to normal, and the light changes smoothly between sky states.
 4. **Pool.** Walk through the G2 city (many fires). Lights keep appearing ahead of you with no gaps around you.
    The `[StationaryLights] pool: …` log line (LogCat `Vob`) shows lit vs. loaded lights.
-5. **Switches.** Set `DayNightLightStrength` to 0 → always day. Turn off `EnablePooledStationaryLights` → the old
+5. **Switch.** Turn off `EnablePooledStationaryLights` → the old
    behavior (fire lights keep a fixed slot), with the warning when they don't fit.
 6. **Mobile (Quest/Pico), needs a device run.** `StationaryLighting.hlsl` uses 512 slots under
    `SHADER_API_MOBILE` and `StationaryLightsService` uses 512 when `Application.isMobilePlatform`. **Verify that the

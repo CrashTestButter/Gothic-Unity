@@ -31,6 +31,13 @@
   arrow (a copy of the arrow, Gothic font) - it moves everything into the hero's inventory at once. Not for knocked out
   NPCs (robbed item by item) nor traders.
 
+**Added 2026-10-18**
+
+- **Plundering** (`60fb9190`, `EnableInvItemBySlot`): an NPC who knocked out the hero takes half his ore and says so
+  (G1 `B_Plunder`). `Npc_GetInvItemBySlot` only found the equipped weapon/armor - with 1000 ore he said "not even
+  ore". Like OpenGothic's `Inventory::findByFlags` it returns the slot-th item of the `INV_*` category from the packed
+  inventory.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
@@ -39,6 +46,8 @@
 2026-10-10/11: `5db3f9fa` lidless containers
 
 2026-10-11/13: `f4439ca6` quick loot
+
+2026-10-18: `60fb9190` plundering takes ore
 
 ## Main files
 
@@ -58,6 +67,8 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 
 2026-10-11/13: `EnableLootTakeAll`
 
+2026-10-18: `EnableInvItemBySlot`
+
 ## Review notes
 
 - ✅ Good layering here: pricing is pure domain code with **unit tests**, trade state is a model, VR only presents.
@@ -73,3 +84,4 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 - G1 Sleeper temple: click an orc mummy, take its items; they stay gone after save/load.
 
 - Kill an NPC, open his loot: the green X takes everything; a knocked out NPC and a trader have no X.
+- G1/MT: get knocked out by a guard - he says he took your ore, half of it is gone.

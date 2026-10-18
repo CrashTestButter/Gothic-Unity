@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-18 (late night): plundering, dialogs, menu pointer
+
+- A guard who knocked you out takes half your ore (he said you had none).
+- An NPC who draws his sword mid-dialog (Lukis, Rust) keeps the dialog until his last line: you can't walk off and can
+  skip his lines by grabbing him.
+- The red pointer line shows on the in-game menu.
+- Marvin: your usual commands (e.g. `cheat god`) can be preset in the developer config.
+
 ## 2026-10-18 (night): one swing, one hit; big monsters
 
 - An NPC's swing hits once: a shadowbeast took your HP 2-3 times in one swing.

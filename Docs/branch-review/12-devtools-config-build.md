@@ -63,6 +63,11 @@
   `MarvinSpawnNpcSymbol`, `MarvinGiveItems` are unused now (the console has these commands) - to be removed; two
   screen message paths (scripts: ours, Marvin: `main`'s overlay) - to be unified.
 
+**Added 2026-10-18**
+
+- **Marvin start commands** (`27aa8bf6`, `MarvinStartCommands`): commands from the developer config (';' separated)
+  are in Marvin's recent list from the start - one click, not run. Recents dedupe ignoring case.
+
 ## Key commits
 
 `bb6e7c4d`/`5959c1ad`/`8ea94468`/`aebea3c9`/`5e898826` Marvin · `e26326bb` build · `7c3afb78` project settings ·
@@ -74,6 +79,8 @@
 2026-10-11/13: `22b00d9a` third party notices · `d3130b8f` licenses in builds · `4d9acf18` merge `main` · `360812b6` changelog
 
 2026-10-16: `f9b48c31` merge `main` (Marvin console, in-game Marvin mode, keyboard, NVorbis package)
+
+2026-10-18: `27aa8bf6` Marvin start commands
 
 ## Main files
 
@@ -105,3 +112,4 @@ Config (2026-10-13): `MarvinCheatFriendsNpcSymbols` (`adf2d34e` Marvin teams)
 - Build PCVR: `LICENSE` and `THIRD_PARTY_NOTICES.md` next to the executable.
 - In game: menu, type `marvin`, close - "testmode on" and the Marvin panel; `cheat god`, `goto forward`,
   `insert ITFO_APPLE 3`, `team helpers`. Save: name typed on the keyboard.
+- Set `MarvinStartCommands` to `cheat god; goto forward` - both show in Marvin's recents; clicking one doesn't add a duplicate.

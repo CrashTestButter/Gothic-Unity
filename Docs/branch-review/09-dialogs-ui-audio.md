@@ -58,6 +58,14 @@ versions - `VRScreenMessages` and `VRMenuBillboard` are gone. Kept on top: the m
 body size, polling HP bars and `VRUiOnTop.CopyTo` for the hero's bars and the chapter screen (the bar fill gets a sprite
 of its material's texture - `main`'s shader samples the Canvas texture, the fill came out white).
 
+**Added 2026-10-18**
+
+- **Dialog until AI_StopProcessInfos** (`17bcdbf0`, `EnableDialogUntilStopProcessInfos`): an NPC drawing his weapon
+  mid-dialog (Lukis, Rust) closed it at once (main) - his last lines ran without the dialog bubble and couldn't be
+  skipped by grabbing him. It stays open while lines or the stop are queued.
+- **Pointer line on top** (`1978c18e`, `EnablePointerLineOnTop`): the red UI pointer line (queue 3000) was hidden by the
+  on-top in-game menu (3900); like the hands it's drawn in 3950 while a menu or dialog is open.
+
 ## Key commits
 
 `ee4dbc2a` dialog bubble · `c1a4c1ad` free movement · `d109a6aa`/`cd10002c` on top · `bf3703ca` subtitles on death ·
@@ -68,6 +76,8 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 · `768d61a8` HUD on top
 
 2026-10-11/13: `fd2195b1` music zones · `dd15ecdc` fresh DirectMusic performance · `03788c08` dialogs per game VM · `08aea420` save name keyboard · `c2d9f34c` menu zoom
+
+2026-10-18: `17bcdbf0` dialog until AI_StopProcessInfos · `1978c18e` pointer line on top
 
 ## Main files
 
@@ -87,6 +97,8 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 
 Removed with the 2026-10-17 merge (`main` has them always on or replaced): `EnableDialogFreeMovement`,
 `DialogMaxDistance`, `EnableDialogAlwaysOnTop`, `EnableScreenMessages`, `EnableMenuZoom`.
+
+2026-10-18: `EnableDialogUntilStopProcessInfos`, `EnablePointerLineOnTop`
 
 ## Review notes
 
@@ -108,3 +120,5 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 - Save the game: the keyboard shows, type a name, OK - the slot shows the name; X saves nothing.
 - After the merge: the hero's HP/mana bars on the wrist have their colors and stay above the other hand; PrintScreen
   texts and the chapter screen follow the head; Diego on the bench talks seated.
+- G1: Lukis (Zollo) draws his sword mid-dialog - you can't walk off, grabbing him skips his lines, then he attacks.
+- In-game menu: the red pointer line reaches the entry you point at.

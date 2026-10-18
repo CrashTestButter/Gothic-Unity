@@ -36,6 +36,8 @@ namespace Gothic.Core.Domain.Vobs
     /// </summary>
     public class VobInitializerDomain
     {
+        private const string _digSpotPlaceholderName = "DigSpotPlaceholder";
+
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly VobSoundCullingService _vobSoundCullingService;
         [Inject] private readonly MeshService _meshService;
@@ -829,9 +831,8 @@ namespace Gothic.Core.Domain.Vobs
             if (loader == null || loader.Container?.Vob != vob)
                 AddOwnVobLoader(vob, go);
 
-            // Two crossed red planks, roughly the size of the original X.
-            CreateDigSpotPlank(go, 45f);
-            CreateDigSpotPlank(go, -45f);
+            // Two crossed red planks (inactive child of the DigSpot prefab), roughly the size of the original X.
+            go.FindChildRecursively(_digSpotPlaceholderName)?.SetActive(true);
 
             Logger.Log($"[DigSpot] '{vob.Name}' has no textured mesh ({vob.GetVisualName()}) - using a placeholder X.",
                 LogCat.Vob);
@@ -874,25 +875,6 @@ namespace Gothic.Core.Domain.Vobs
             var ownLoader = go.AddComponent<VobLoader>();
             ownLoader.Container = new VobContainer(vob) { Go = go };
             ownLoader.IsLoaded = true;
-        }
-
-        private static void CreateDigSpotPlank(GameObject parent, float yaw)
-        {
-            var plank = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            plank.name = "DigSpotPlaceholder";
-            plank.transform.SetParent(parent.transform, false);
-            plank.transform.localPosition = new Vector3(0f, 0.03f, 0f);
-            plank.transform.localRotation = Quaternion.Euler(0f, yaw, 0f);
-            plank.transform.localScale = new Vector3(0.9f, 0.05f, 0.12f);
-
-            // Only visual - VRDigSpot compares bounds, no physics needed.
-            Object.Destroy(plank.GetComponent<Collider>());
-
-            var renderer = plank.GetComponent<Renderer>();
-            var red = new Color(0.6f, 0.05f, 0.05f);
-            renderer.material.color = red;
-            if (renderer.material.HasProperty("_BaseColor"))
-                renderer.material.SetColor("_BaseColor", red);
         }
 
         private GameObject CreateDefaultMesh(IVirtualObject vob, GameObject parent)

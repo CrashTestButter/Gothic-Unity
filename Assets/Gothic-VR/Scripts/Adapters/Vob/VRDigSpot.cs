@@ -23,7 +23,7 @@ namespace Gothic.VR.Adapters.Vob
     /// then we call the same function (self = hero). The script does the rest (Wld_InsertItem, quest variables, XP).
     ///
     /// Hit detection only compares bounds + weapon speed - no colliders, layers or combat code involved.
-    /// Part of the oCMobInterDigSpot prefab (PrefabType.VobInteractableDigSpot).
+    /// Part of the oCMobInter/DigSpot prefab variant (PrefabType.VobInteractableDigSpot).
     /// </summary>
     public class VRDigSpot : MonoBehaviour
     {

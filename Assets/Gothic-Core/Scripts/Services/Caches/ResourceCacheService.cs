@@ -354,17 +354,20 @@ namespace Gothic.Core.Services.Caches
         /// </summary>
         private ZenKit.World LoadWorld(string name, GameVersion? version)
         {
+            var chunkFixedData = TryFixChunkLengths(name);
             try
             {
-                return new ZenKit.World(Vfs, name, version);
+                return chunkFixedData != null
+                    ? new ZenKit.World(new Read(chunkFixedData), version)
+                    : new ZenKit.World(Vfs, name, version);
             }
             catch (Exception e) when (IsZenMaterialCountFix())
             {
-                var node = Vfs.Find(name);
-                if (node == null)
+                var data = chunkFixedData ?? Vfs.Find(name)?.Buffer.Bytes;
+                if (data == null)
                     throw;
 
-                var fixedData = ZenWorldArchiveFixDomain.TryFixMaterialCountHeader(node.Buffer.Bytes, out var reason);
+                var fixedData = ZenWorldArchiveFixDomain.TryFixMaterialCountHeader(data, out var reason);
                 if (fixedData == null)
                 {
                     Logger.LogError($"[ResourceCacheService] World '{name}' failed to load ({e.Message}), header " +
@@ -376,6 +379,29 @@ namespace Gothic.Core.Services.Caches
                                   $"retrying with its materials archive header fixed ({reason})", LogCat.ZenKit);
                 return new ZenKit.World(new Read(fixedData), version);
             }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableZenChunkLengthFix: checked before ZenKit loads a mod's world - a wrong chunk length makes
+        /// it hang, there's no exception to retry on (Renovation 2026's DRAGONISLAND.ZEN froze PreCaching). Only for mods:
+        /// it copies the whole world file, vanilla worlds are fine.
+        /// </summary>
+        [CanBeNull]
+        private byte[] TryFixChunkLengths(string name)
+        {
+            var configService = ReflexProjectInstaller.DIContainer.Resolve<Gothic.Core.Services.Config.ConfigService>();
+            if (!configService.Dev.EnableZenChunkLengthFix || !configService.IsModActive)
+                return null;
+
+            var node = Vfs.Find(name);
+            if (node == null)
+                return null;
+
+            var fixedData = ZenWorldArchiveFixDomain.TryFixMeshChunkLengths(node.Buffer.Bytes, out var reason);
+            if (fixedData != null)
+                Logger.LogWarning($"[ResourceCacheService] World '{name}' has wrong chunk lengths - fixed: {reason}",
+                    LogCat.ZenKit);
+            return fixedData;
         }
 
         private static bool IsZenMaterialCountFix() =>

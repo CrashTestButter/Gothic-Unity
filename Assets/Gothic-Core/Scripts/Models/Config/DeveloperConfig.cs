@@ -1115,6 +1115,11 @@ namespace Gothic.Core.Models.Config
                  "material count's first byte when it's a newline (266 materials: Mroczne Tajemnice's ANCIENTTEMPLE.ZEN).")]
         public bool EnableZenMaterialCountFix = true;
 
+        [Tooltip("V1: A mod's world whose mesh chunks have a wrong stored length gets it fixed before ZenKit loads it - " +
+                 "ZenKit hung on it (Renovation 2026's DRAGONISLAND.ZEN: the materials chunk leaves out its last " +
+                 "material), PreCaching froze.")]
+        public bool EnableZenChunkLengthFix = true;
+
         [Tooltip("V1: A level change whose start VOB isn't a free point spawns at the waypoint/VOB of that name, or next to " +
                  "the trigger back to the old world - Mroczne Tajemnice's temple sends you to a start VOB the mine lacks.")]
         public bool EnableLevelChangeSpawnFallback = true;

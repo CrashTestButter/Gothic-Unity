@@ -257,6 +257,7 @@ MonoBehaviour:
   HandSkinTint: {r: 0.78, g: 0.58, b: 0.48, a: 1}
   EnableVmCacheResetOnLoad: 1
   EnableZenMaterialCountFix: 1
+  EnableZenChunkLengthFix: 1
   EnableLevelChangeSpawnFallback: 1
   EnableHlpGetNpcVariables: 1
   EnableHeroDefeatedAivar: 1

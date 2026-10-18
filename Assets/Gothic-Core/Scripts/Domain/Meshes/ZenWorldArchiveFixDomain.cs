@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace Gothic.Core.Domain.Meshes
@@ -16,6 +17,107 @@ namespace Gothic.Core.Domain.Meshes
         private static readonly byte[] _meshAndBspTag = Encoding.ASCII.GetBytes("[MeshAndBsp");
         private static readonly byte[] _objectsTag = Encoding.ASCII.GetBytes("objects ");
         private static readonly byte[] _endTag = Encoding.ASCII.GetBytes("END\n\n");
+        private static readonly byte[] _asciiFormatTag = Encoding.ASCII.GetBytes("\nASCII\n");
+
+        // Chunks of a world's mesh (0xB0..) and BSP tree (0xC0..) inside the MeshAndBsp entry.
+        private static readonly HashSet<ushort> _meshAndBspChunks = new()
+        {
+            0xB000, 0xB010, 0xB020, 0xB025, 0xB026, 0xB030, 0xB040, 0xB050, 0xB060,
+            0xC000, 0xC010, 0xC040, 0xC045, 0xC050, 0xC0FF
+        };
+        // Last chunk of the BSP tree - the end of the MeshAndBsp entry.
+        private const ushort _bspEndChunk = 0xC0FF;
+        // How far behind a too short chunk the real next one is searched (the missing data is a few hundred bytes).
+        private const int _maxChunkLengthError = 1024 * 1024;
+
+        /// <summary>
+        /// DeveloperConfig.EnableZenChunkLengthFix: a chunk of the world mesh whose stored length is wrong - ZenKit jumps
+        /// to the wrong spot, reads the data there as the next chunk and hangs (no exception: the game froze in
+        /// PreCaching). Renovation 2026's DRAGONISLAND.ZEN: the materials chunk's length leaves out its last material
+        /// (75890 instead of 76067). The engine reads the materials one by one and doesn't notice.
+        /// The chunks are walked; a chunk not followed by a known chunk gets the length up to the next spot from which
+        /// the chain continues. Returns the fixed copy or null when the chain is fine (or the world isn't an ASCII
+        /// archive - the binary ones store the entry differently).
+        /// </summary>
+        public static byte[] TryFixMeshChunkLengths(byte[] data, out string reason)
+        {
+            // BIN_SAFE worlds (vanilla) have "[MeshAndBsp" as a string too, but not the raw chunks right after it.
+            var tag = IndexOf(data, _asciiFormatTag, 0, Math.Min(data.Length, 256)) < 0
+                ? -1
+                : IndexOf(data, _meshAndBspTag, 0, Math.Min(data.Length, 4096));
+            if (tag < 0)
+            {
+                reason = "no ASCII [MeshAndBsp] entry";
+                return null;
+            }
+
+            // The entry's stored size can be wrong as well (DRAGONISLAND.ZEN: short by the same material) - ZenKit
+            // doesn't use it, the chunks are walked up to the BSP's end chunk within the file.
+            var blob = Array.IndexOf(data, (byte)'\n', tag) + 1;
+            var end = data.Length;
+            byte[] fixedData = null;
+            var fixes = new List<string>();
+
+            var chunk = blob + 8;
+            while (chunk + 6 <= end)
+            {
+                var source = fixedData ?? data;
+                var id = BitConverter.ToUInt16(source, chunk);
+                if (id == _bspEndChunk)
+                    break;
+
+                var length = BitConverter.ToInt32(source, chunk + 2);
+                var next = chunk + 6L + length;
+                if (length >= 0 && next + 6 <= end && _meshAndBspChunks.Contains(BitConverter.ToUInt16(source, (int)next)))
+                {
+                    chunk = (int)next;
+                    continue;
+                }
+
+                var realNext = FindChunkChain(source, (int)Math.Min(end, chunk + 6L + Math.Max(0, length)), end);
+                if (realNext < 0)
+                {
+                    reason = $"chunk 0x{id:X4} at {chunk}: stored length {length} leads nowhere, no chunk found behind it";
+                    return null;
+                }
+
+                fixedData ??= (byte[])data.Clone();
+                var realLength = realNext - chunk - 6;
+                BitConverter.GetBytes(realLength).CopyTo(fixedData, chunk + 2);
+                fixes.Add($"chunk 0x{id:X4} length {length} -> {realLength}");
+                chunk = realNext;
+            }
+
+            reason = fixedData == null ? "chunk lengths are fine" : string.Join(", ", fixes);
+            return fixedData;
+        }
+
+        /// <summary>
+        /// A known chunk at the position whose own length leads to another known chunk (or it's the BSP's end chunk).
+        /// </summary>
+        private static bool IsChunkChain(byte[] data, int position, int end)
+        {
+            if (position < 0 || position + 6 > end || !_meshAndBspChunks.Contains(BitConverter.ToUInt16(data, position)))
+                return false;
+            if (BitConverter.ToUInt16(data, position) == _bspEndChunk)
+                return true;
+
+            // long: a garbage length mustn't overflow into a valid looking position.
+            var next = position + 6L + BitConverter.ToInt32(data, position + 2);
+            return next >= position + 6 && next + 6 <= end &&
+                   _meshAndBspChunks.Contains(BitConverter.ToUInt16(data, (int)next));
+        }
+
+        private static int FindChunkChain(byte[] data, int start, int end)
+        {
+            var searchEnd = Math.Min(end - 6, start + _maxChunkLengthError);
+            for (var i = start; i <= searchEnd; i++)
+            {
+                if (data[i + 1] is 0xB0 or 0xC0 && IsChunkChain(data, i, end))
+                    return i;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// The world's bytes with the materials archive header fixed, or null when the world doesn't need it (or isn't

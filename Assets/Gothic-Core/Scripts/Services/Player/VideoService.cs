@@ -40,5 +40,18 @@ namespace Gothic.Core.Services.Player
                 Logger.LogWarning($"No MP4 videos found in the video folder at >{videoFileFolder}<.", LogCat.Loading);
             }
         }
+
+        /// <summary>
+        /// Path of the video a script asks for (name with or without extension), null if missing.
+        /// An MP4 (converted by the player) wins, otherwise the original Bink file is decoded by BinkPlayer.
+        /// </summary>
+        public string FindVideo(string fileName)
+        {
+            var name = Path.GetFileNameWithoutExtension(fileName);
+            return VideoFilePathsMp4
+                       .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name)) ??
+                   VideoFilePathsBik
+                       .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name));
+        }
     }
 }

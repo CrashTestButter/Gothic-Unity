@@ -1,8 +1,5 @@
 #if GOTHIC_HVR_INSTALLED
-using System.IO;
-using System.Linq;
 using Gothic.Core;
-using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Player;
 using Gothic.VR.Adapters.UI;
@@ -29,7 +26,7 @@ namespace Gothic.VR.Services
 
         public void Play(string fileName)
         {
-            var path = FindVideo(fileName);
+            var path = _videoService.FindVideo(fileName);
             if (path == null)
             {
                 Logger.LogWarning($"[VRCinema] '{fileName}' not found in _work/DATA/video/ (.bik/.mp4) - skipped.",
@@ -42,16 +39,6 @@ namespace Gothic.VR.Services
                 _cinema = new GameObject("_Cinema").AddComponent<VRCinema>();
 
             _cinema.Enqueue(path);
-        }
-
-        private string FindVideo(string fileName)
-        {
-            // An MP4 (converted by the player) wins, otherwise the original Bink file is decoded by BinkPlayer.
-            var name = Path.GetFileNameWithoutExtension(fileName);
-            return _videoService.VideoFilePathsMp4
-                       .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name)) ??
-                   _videoService.VideoFilePathsBik
-                       .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name));
         }
     }
 }

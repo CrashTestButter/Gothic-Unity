@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-18 (afternoon): NPCs parry, beaten NPCs
+
+- NPCs react to your swings: they parry, jump back or step aside, also in the middle of their own combo. A parry
+  facing you blocks the hit - the blades clash with a sound and sparks.
+- The weapon trail is half as visible (it was too much right in front of the eyes on every swing).
+- An NPC you beat before fights back when you attack him again; before he drew his sword, put it away and said "I
+  didn't see anything" over and over. As a witness he still turns away and says it once, then forgets it after ~20 s.
+
 ## 2026-10-18: Gothic II Renovation (2026) starts
 
 - The 2026 release of Renovation gets through the first start: pre-caching froze on the mod's Dragon Island world

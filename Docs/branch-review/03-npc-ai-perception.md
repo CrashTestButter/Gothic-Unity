@@ -76,6 +76,13 @@
   states on the lying NPC, `ZS_Unconscious` never started), no waiting for dialog lines. A knocked out NPC gets no
   perception but `PERC_ASSESSMAGIC` until he stands up (what `ZS_Unconscious` enables), also in the frames before the
   state starts.
+- **Beaten NPCs** (`69bb0d3a`): `AI_TurnAway` was a stub - it turns the back to the other NPC now. A human the hero
+  beat before (`AIV_WASDEFEATEDBYSC`) is a coward towards him: `ZS_AssessEnemy` -> `ZS_ProclaimAndPunish` ->
+  `ZS_TurnAway` ("I didn't see anything"). Attacked by the hero himself he drew, put away and looked away in a loop -
+  he fights back now (`EnableDefeatedNpcFightsBack`, opinion). As a witness the enemy perception (no view angle, like
+  `Npc_CanSeeNpcFreeLOS`) restarted `ZS_AssessEnemy` and the 20 s of `ZS_TurnAway` never ran out; in that state the
+  hero isn't an enemy anymore, and when it runs out the hostile temporary attitude goes back to the permanent one like
+  `B_ResetTempAttitude` - nothing in the scripts resets it there.
 - **A state's `_End` runs once** (`fe43a81b`): `ZS_Attack_End` says `$NeverTryThatAgain` and calls
   `AI_StartState(..., 1, ...)` - that took the running `ZS_Attack_End` as the old state's `_End` and ran it again. A
   state in its End/AfterEnd phase passes no `_End` on.
@@ -98,6 +105,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 2026-10-17: `18de3228` AI_StartState runs the old state's _End after a dialog's lines · `0a7f3944` knocked out NPCs
 stay down · `fe43a81b` a state's _End runs once
 
+2026-10-18: `69bb0d3a` AI_TurnAway, beaten NPCs fight back, looking away ends
+
 ## Main files
 
 `Services/Npc/NpcAiService.cs` (+904) · `Services/Npc/HeroPerceptionService.cs` (new) ·
@@ -119,6 +128,8 @@ stay down · `fe43a81b` a state's _End runs once
 2026-10-16: `EnableHlpGetNpcVariables`
 
 2026-10-17: `EnableQueuedStateEnd`, `EnableDownedNpcPerceptions`
+
+2026-10-18: `EnableAiTurnAway`, `EnableDefeatedNpcFightsBack`, `EnableTurnAwayIgnoresEnemyBehind`
 
 ## Review notes
 

@@ -76,6 +76,22 @@
   executed him) gets it set in C#. Dialogs after a lost duel check it - Mroczne Tajemnice's Sheer'Ghar
   (`Info_Sheer_After`) had nothing to say after beating the hero.
 
+**Added 2026-10-18**
+
+- **NPCs react to the hero's swings** (`b34c58ba`), like OpenGothic's `FightAlgo::fillQueue`: the VR swing (the held
+  weapon passing the attack speed) is the hero's "prehit" for 0.4 s (`GlobalEventDispatcher.HeroMeleeSwing`). An NPC
+  within 3 m, both facing each other (NPC 30 degrees, the hero's head 45), picks `FA_ENEMY_STORMPREHIT` (hero running) or
+  `FA_ENEMY_PREHIT` - parry, jump back, strafe. These tables were never used before. The NPC picks a move once per
+  `AI_Attack`, so the swing cuts short a wait/strafe and (`EnableNpcPrehitCancelsAttack`) the NPC's own swing before
+  its hit frame plus its queued combo swings.
+- **Parries block** (`b34c58ba`), like OpenGothic's `Npc::takeDamage`: a parry facing the hero (30 degrees) or a jump
+  back (90 degrees) takes no damage; the whole animation counts (the engine: its `DEF_WINDOW`). Weapons clash with
+  `CS_IAI_<material>_<material>` (G1 has only `CS_IAI_ME_ME`, else `CS_IAI`) and `CPFX_IAI_*` sparks; the hero's
+  material comes from the swung weapon - the held weapon isn't equipped in VR. Fists don't clash.
+- **Weapon trail at half opacity** (`692f18f1`): `WeaponTrailOpacity` scales color, alpha and Gothic/UI's alpha cutoff
+  (0.5 - only the old alpha 0.53 passed it, a lower alpha alone made the trail vanish).
+- ℹ️ Blocking an NPC's hit with the hero's own weapon in VR is still open (no good idea yet).
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
@@ -92,6 +108,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 2026-10-15: `99ca5d27` frozen isn't down · `075f9e69` web crawler melee
 
 2026-10-16: `b53d87e7` AIV_HASDEFEATEDSC for the NPC who beats the hero
+
+2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity
 
 ## Main files
 
@@ -114,6 +132,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 2026-10-15: `EnableFrozenIsNotDown`, `EnableSpellMonsterMelee`
 
 2026-10-16: `EnableHeroDefeatedAivar`
+
+2026-10-18: `EnableNpcPrehitReaction`, `EnableNpcPrehitCancelsAttack`, `EnableNpcParadeBlocksHits`, `WeaponTrailOpacity`
 
 ## Review notes
 
@@ -146,3 +166,5 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 - Mroczne Tajemnice mine: a web crawler casts from afar; once you're frozen or close it runs up and bites (no freeze
   lock); a frozen NPC isn't killed by one hit.
 - Mroczne Tajemnice: lose Sheer'Ghar's duel - after standing up he has the "honor" dialog (log: `AIV_HASDEFEATEDSC`).
+- G1: fight a guard with a sword - he parries or jumps back from your swings, also mid-combo (log `[Prehit]`); a parry
+  clashes with sound and sparks and does no damage (log `parries`). The swing trail is pale.

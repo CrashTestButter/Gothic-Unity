@@ -493,6 +493,10 @@ namespace Gothic.Core.Models.Config
                  "helpers SH (story helper) and CH (character helper). Leave empty to hide the button.")]
         public string MarvinCheatFriendsNpcSymbols = string.Empty;
 
+        [Tooltip("Marvin console commands in its recent list from the start, separated by ';' (e.g. 'cheat god; goto " +
+                 "forward'). Only shown for one click, not run. Leave empty for none.")]
+        public string MarvinStartCommands = string.Empty;
+
         [Tooltip("Items for the Marvin 'Give items' button, comma separated, optional amount: " +
                  "ITRU_FIREBOLT, ITSC_ICEBOLT:3, ITPO_MANA_03:5. Leave empty to hide the button.")]
         [TextArea(2, 6)]

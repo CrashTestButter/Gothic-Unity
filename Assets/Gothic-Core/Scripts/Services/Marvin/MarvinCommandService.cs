@@ -27,6 +27,7 @@ namespace Gothic.Core.Services.Marvin
 
         private readonly MarvinCheatDomain _cheatDomain = new MarvinCheatDomain().Inject();
         private readonly List<string> _recentCommands = new();
+        private bool _isRecentCommandsSeeded;
 
         private MarvinCommandParserDomain _parser;
         private MarvinClosedSetValue _waypointValue;
@@ -35,7 +36,14 @@ namespace Gothic.Core.Services.Marvin
         private HashSet<string> _itemNames = new(StringComparer.Ordinal);
 
         /// <summary>Normalized, most recent first. Session only.</summary>
-        public IReadOnlyList<string> RecentCommands => _recentCommands;
+        public IReadOnlyList<string> RecentCommands
+        {
+            get
+            {
+                SeedRecentCommands();
+                return _recentCommands;
+            }
+        }
 
         public MarvinCommandService()
         {
@@ -123,9 +131,35 @@ namespace Gothic.Core.Services.Marvin
             return true;
         }
 
+        /// <summary>
+        /// DeveloperConfig.MarvinStartCommands: commands in the recent list from the start (not run) - one click instead
+        /// of typing "cheat god", "goto forward" ... again every session.
+        /// </summary>
+        private void SeedRecentCommands()
+        {
+            if (_isRecentCommandsSeeded || _configService == null)
+                return;
+            _isRecentCommandsSeeded = true;
+
+            var commands = _configService.Dev.MarvinStartCommands;
+            if (string.IsNullOrWhiteSpace(commands))
+                return;
+
+            foreach (var command in commands.Split(';'))
+            {
+                var normalized = string.Join(" ",
+                    command.Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+                if (normalized.Length > 0 && !_recentCommands.Exists(c => c.EqualsIgnoreCase(normalized)) &&
+                    _recentCommands.Count < _maxRecentCommands)
+                    _recentCommands.Add(normalized);
+            }
+        }
+
         private void AddRecentCommand(string command)
         {
-            _recentCommands.Remove(command);
+            SeedRecentCommands();
+            // Seeded commands (MarvinStartCommands) may differ in case from the parsed ones.
+            _recentCommands.RemoveAll(c => c.EqualsIgnoreCase(command));
             _recentCommands.Insert(0, command);
             if (_recentCommands.Count > _maxRecentCommands)
                 _recentCommands.RemoveAt(_recentCommands.Count - 1);

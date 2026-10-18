@@ -1,9 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Domain.Vm;
 using Gothic.Core.Extensions;
+using Gothic.Core.Logging;
 using Reflex.Attributes;
 using ZenKit;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Services.Vm
 {
@@ -122,5 +125,68 @@ namespace Gothic.Core.Services.Vm
         // Fight
         //
         public int FightAiMoveMax => _gameStateService.FightVm.GetSymbolByName("MAX_MOVE")!.GetInt(0);
+
+        //
+        // Hero calls
+        //
+
+        /// <summary>
+        /// Calls a Daedalus function with self = hero (like the engine does for mob states). Restores the old self.
+        /// Returns false if the symbol doesn't exist or the script failed (error is logged).
+        /// </summary>
+        public bool CallAsHero(string functionName, LogCat cat)
+        {
+            var vm = _gameStateService.GothicVm;
+            var symbol = vm.GetSymbolByName(functionName);
+            if (symbol == null)
+                return false;
+
+            var oldSelf = vm.GlobalSelf;
+            vm.GlobalSelf = vm.GlobalHero;
+            try
+            {
+                vm.Call(symbol.Index);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"[VmService] '{functionName}' failed: {e.Message}", cat);
+                return false;
+            }
+            finally
+            {
+                vm.GlobalSelf = oldSelf;
+            }
+        }
+
+        /// <summary>
+        /// Same as CallAsHero(), but for functions with a return value. Returns false only if the symbol doesn't exist.
+        /// A script error is logged and leaves result at default.
+        /// </summary>
+        public bool CallAsHero<T>(string functionName, LogCat cat, out T result)
+        {
+            result = default;
+            var vm = _gameStateService.GothicVm;
+            var symbol = vm.GetSymbolByName(functionName);
+            if (symbol == null)
+                return false;
+
+            var oldSelf = vm.GlobalSelf;
+            vm.GlobalSelf = vm.GlobalHero;
+            try
+            {
+                result = vm.Call<T>(symbol.Index);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"[VmService] '{functionName}' failed: {e.Message}", cat);
+            }
+            finally
+            {
+                vm.GlobalSelf = oldSelf;
+            }
+
+            return true;
+        }
     }
 }

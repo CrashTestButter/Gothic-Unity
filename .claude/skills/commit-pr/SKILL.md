@@ -33,7 +33,7 @@ Branch from `main`. Description sections:
 - **What** - player-visible change + main technical points
 - **Why** - bug / issue link
 - **How to test manually** - concrete in-game steps for G1 and/or G2 (where to go, who to talk to, what you should
-  see), and which DeveloperConfig flags must be on
+  see), and which DeveloperConfig flags must be on. Add it as checkboxes like "- [ ] - ..."
 - **Save/load** - what happens to the new state on save + load
 - **Known gaps / follow-ups**
 

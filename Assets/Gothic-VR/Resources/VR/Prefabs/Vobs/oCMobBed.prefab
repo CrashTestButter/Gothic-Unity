@@ -12,8 +12,9 @@ GameObject:
   - component: {fileID: 2274484227514135965}
   - component: {fileID: 2854363553026066547}
   - component: {fileID: 6907302684280751333}
-  m_Layer: 0
-  m_Name: ZM_PC_BED_STRAW
+  - component: {fileID: 2225125317086924068}
+  m_Layer: 6
+  m_Name: BIP01.*|ZM.*
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -112,7 +113,7 @@ MonoBehaviour:
   HandGrabbedClip: {fileID: 0}
   SocketGrabPoints: []
   Rigidbody: {fileID: 0}
-  AutoApplyLayer: 1
+  AutoApplyLayer: 0
   RequireOverlapClearance: 0
   OverlapTimeout: 0.1
   FinalJointMaxAngle: 15
@@ -211,6 +212,18 @@ MonoBehaviour:
   HandGrabbers: []
   Stabbers: []
   Stabbable: {fileID: 0}
+--- !u!114 &2225125317086924068
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5926234300762413270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc7b9870e5ee6804aa346c39e83f17c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Adapters.Vob.VRMobInteraction
 --- !u!1 &6503575194566409312
 GameObject:
   m_ObjectHideFlags: 0

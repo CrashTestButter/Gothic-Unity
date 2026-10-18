@@ -30,7 +30,6 @@ namespace Gothic.VR.Adapters
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly DynamicMaterialService _dynamicMaterialService;
 
-
         private static Camera _mainCamera;
 
         private static bool _featureBrightenUp;
@@ -85,7 +84,8 @@ namespace Gothic.VR.Adapters
                 _cachedObjectRenderer = GetComponentInChildren<Renderer>();
 
             if (_featureBrightenUp)
-                _dynamicMaterialService.SetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness, shaderPropertyFocusBrightnessValue);
+                _dynamicMaterialService.SetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness,
+                    shaderPropertyFocusBrightnessValue);
 
             if (_featureShowName)
                 SetFocusName();
@@ -97,7 +97,8 @@ namespace Gothic.VR.Adapters
         {
             if (_featureBrightenUp)
             {
-                _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness, Constants.ShaderPropertyFocusBrightnessDefault);
+                _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyFocusBrightness,
+                    Constants.ShaderPropertyFocusBrightnessDefault);
             }
 
             _nameCanvas.SetActive(false);
@@ -111,14 +112,14 @@ namespace Gothic.VR.Adapters
 
             // Calculate direction from parent object to camera
             var directionToCamera = (_mainCamera.transform.position - transform.position).normalized;
-            
+
             // Position canvas at the top of bounds, shifted toward camera
             _nameCanvas.transform.position = new Vector3(
                 _cachedObjectRenderer.bounds.center.x,
                 _cachedObjectRenderer.bounds.max.y,
                 _cachedObjectRenderer.bounds.center.z
             );
-        
+
             // Rotate to face camera
             _nameCanvas.transform.rotation = Quaternion.LookRotation(-directionToCamera);
         }
@@ -147,7 +148,8 @@ namespace Gothic.VR.Adapters
             var npcLoader = GetComponentInParent<NpcLoader>();
             if (npcLoader != null)
             {
-                _nameCanvas.GetComponentInChildren<TMP_Text>().text = npcLoader.Npc.GetUserData().PrefabProps.GetFocusName();
+                _nameCanvas.GetComponentInChildren<TMP_Text>().text =
+                    npcLoader.Npc.GetUserData().PrefabProps.GetFocusName();
                 return;
             }
         }

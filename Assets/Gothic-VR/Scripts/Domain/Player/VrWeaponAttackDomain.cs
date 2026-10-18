@@ -453,6 +453,15 @@ namespace Gothic.VR.Domain.Player
             _soundPlayed = _swingSwordSound == null;
 
             _stateMachine.StartAttack();
+
+            // DeveloperConfig.EnableNpcPrehitReaction: the swing is the hero's "prehit" - NPCs can parry or jump back.
+            if (GetOwner()?.PrefabProps?.IsHero() == true)
+            {
+                var item = WeaponVobContainer?.GetItemInstance();
+                var isMeleeWeapon = item != null &&
+                                    ((VmGothicEnums.ItemFlags)item.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) != 0;
+                GlobalEventDispatcher.HeroMeleeSwing.Invoke(isMeleeWeapon ? item.Material : -1);
+            }
         }
 
         private bool CheckIfComboWindowFailed()

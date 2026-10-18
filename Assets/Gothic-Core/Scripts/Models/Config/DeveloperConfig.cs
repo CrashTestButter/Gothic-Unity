@@ -1130,6 +1130,19 @@ namespace Gothic.Core.Models.Config
         [Range(0f, 1f)]
         public float WeaponTrailOpacity = 0.5f;
 
+        [Tooltip("V1: NPCs react to the hero's swing like to an attack animation's prehit (OpenGothic FightAlgo): in " +
+                 "his range and facing each other they pick FA_ENEMY_PREHIT / FA_ENEMY_STORMPREHIT (parry, jump back, " +
+                 "strafe). A wait or strafe is cut short by the swing so they can react in time.")]
+        public bool EnableNpcPrehitReaction = true;
+
+        [Tooltip("V1 (balance): the hero's swing also stops an NPC's own swing before its hit frame and drops its queued " +
+                 "combo swings - tougher NPCs with long combos never parried or jumped back otherwise.")]
+        public bool EnableNpcPrehitCancelsAttack = true;
+
+        [Tooltip("V1: A parrying NPC facing the hero (30 degrees) or one jumping back (90 degrees) takes no damage from his " +
+                 "hit - weapons clash (CS_IAI_ sound, CPFX_IAI_ sparks). Before, a parry was only an animation.")]
+        public bool EnableNpcParadeBlocksHits = true;
+
         [Tooltip("V1: A level change whose start VOB isn't a free point spawns at the waypoint/VOB of that name, or next to " +
                  "the trigger back to the old world - Mroczne Tajemnice's temple sends you to a start VOB the mine lacks.")]
         public bool EnableLevelChangeSpawnFallback = true;

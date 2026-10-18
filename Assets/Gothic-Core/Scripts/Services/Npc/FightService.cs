@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using Gothic.Core.Const;
 using Gothic.Core.Domain.Npc.Actions;
 using Gothic.Core.Domain.Npc.Actions.AnimationActions;
@@ -52,6 +53,143 @@ namespace Gothic.Core.Services.Npc
             GlobalEventDispatcher.FallDamage.AddListener(OnFallDamage);
             GlobalEventDispatcher.RangedHit.AddListener(OnRangedHit);
             GlobalEventDispatcher.FightFinishingMove.AddListener(OnFinishingMove);
+            GlobalEventDispatcher.HeroMeleeSwing.AddListener(OnHeroMeleeSwing);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableNpcPrehitReaction: the hero's swing is his "prehit" for a moment. NPCs fighting him
+        /// stop a wait or strafe (the safe moves to cut short), so their next AI_Attack can parry or jump back - they
+        /// pick a move only once per AI_Attack, and a VR swing is over before a waiting NPC would look again.
+        /// </summary>
+        private void OnHeroMeleeSwing(int weaponMaterial)
+        {
+            var hero = _npcService.GetHeroContainer();
+            if (hero?.Go == null)
+                return;
+            hero.Props.MeleeSwingMaterial = weaponMaterial;
+
+            if (!_configService.Dev.EnableNpcPrehitReaction)
+                return;
+            hero.Props.MeleePrehitUntil = Time.time + FightConst.HeroPrehitSeconds;
+
+            foreach (var npc in _multiTypeCacheService.NpcCache)
+            {
+                if (npc == hero || npc?.Go == null || npc.Props == null || NpcHelperService.IsDown(npc))
+                    continue;
+                var enemy = npc.Props.EnemyNpc ?? npc.Props.TargetNpc;
+                if (enemy == null || enemy.Index != hero.Instance.Index ||
+                    Vector3.Distance(npc.Go.transform.position, hero.Go.transform.position) >
+                    FightConst.HeroPrehitRangeMeters)
+                    continue;
+
+                // DeveloperConfig.EnableNpcPrehitCancelsAttack: an NPC in its own attack (combos of the tougher ones) never
+                // looked at the hero's swings - its queued combo swings go, a swing before its hit frame stops.
+                var queuedSwings = npc.Props.AnimationQueue.Count;
+                var isOnlySwingsQueued = queuedSwings > 0 &&
+                                         npc.Props.AnimationQueue.All(i => i is AttackPlayAni);
+                if (queuedSwings > 0 && !(isOnlySwingsQueued && _configService.Dev.EnableNpcPrehitCancelsAttack))
+                    continue;
+
+                var interrupted = npc.Props.CurrentAction switch
+                {
+                    Wait wait => Interrupt(wait),
+                    AttackPlayAni { Move: FightAiMove.Strafe } strafe => strafe.TryInterruptStrafe(),
+                    AttackPlayAni attack when _configService.Dev.EnableNpcPrehitCancelsAttack =>
+                        attack.TryInterruptSwing() | isOnlySwingsQueued,
+                    _ => false
+                };
+                if (!interrupted)
+                    continue;
+
+                if (isOnlySwingsQueued)
+                    npc.Props.AnimationQueue.Clear();
+                Logger.Log($"[Prehit] {npc.Instance.GetName(NpcNameSlot.Slot0)}: {npc.Props.CurrentAction?.GetType().Name} " +
+                           $"cut short by the hero's swing ({queuedSwings} queued swing(s) dropped)", LogCat.Fight);
+            }
+
+            static bool Interrupt(Wait wait)
+            {
+                wait.Interrupt();
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableNpcParadeBlocksHits: OpenGothic Npc::takeDamage - a parry facing the attacker
+        /// (30 degrees) or a jump back (90 degrees) takes no damage, weapons clash (CS_IAI_ sound + CPFX_IAI_ effect).
+        /// The whole parry/jump back animation counts (the engine: its DEF_WINDOW frames).
+        /// </summary>
+        private bool TryBlockHit(NpcContainer attacker, NpcContainer target)
+        {
+            if (!_configService.Dev.EnableNpcParadeBlocksHits || target.Go == null || attacker.Go == null ||
+                target.Props.CurrentAction is not AttackPlayAni defence)
+                return false;
+
+            var isParry = defence.Move == FightAiMove.Parry &&
+                          Gothic.Core.Domain.Npc.Actions.AnimationActions.Attack.IsInAngle(target.Go.transform,
+                              attacker.Go.transform.position, FightConst.FocusAngle);
+            var isJumpBack = defence.Move == FightAiMove.JumpBack &&
+                             Gothic.Core.Domain.Npc.Actions.AnimationActions.Attack.IsInAngle(target.Go.transform,
+                                 attacker.Go.transform.position, FightConst.JumpBackAngle);
+            if (!isParry && !isJumpBack)
+                return false;
+
+            Logger.Log($"[FightService] {target.Instance.GetName(NpcNameSlot.Slot0)} " +
+                       $"{(isParry ? "parries" : "jumps back from")} {attacker.Instance.GetName(NpcNameSlot.Slot0)}'s hit",
+                LogCat.Fight);
+            if (isParry)
+                PlayWeaponBlockEffect(attacker, target);
+            return true;
+        }
+
+        /// <summary>
+        /// OpenGothic World::addWeaponBlkEffect: "CS_IAI_" + both weapons' materials (item attacks item), the particle
+        /// effect CPFX_IAI_ the same or by the defender's material. Without a weapon on either side there's nothing.
+        /// G1 has only CS_IAI_ME_ME - other pairs take the generic CS_IAI.
+        /// </summary>
+        private void PlayWeaponBlockEffect(NpcContainer attacker, NpcContainer target)
+        {
+            // The hero's held weapon isn't equipped in VR - the material of the swing (-1: fists).
+            var attackerMaterial = attacker.PrefabProps != null && attacker.PrefabProps.IsHero()
+                ? attacker.Props.MeleeSwingMaterial
+                : _npcHelperService.ExtNpcGetEquippedMeleeWeapon(attacker.Instance)?.Material ?? -1;
+            var defenderWeapon = _npcHelperService.ExtNpcGetEquippedMeleeWeapon(target.Instance) ??
+                                 (target.Props.CurrentItem >= 0 ? _vmCacheService.TryGetItemData(target.Props.CurrentItem) : null);
+            if (attackerMaterial < 0 || defenderWeapon == null)
+            {
+                Logger.Log($"[FightService] Parry without a clash: attacker material {attackerMaterial}, " +
+                           $"defender weapon {defenderWeapon?.Name ?? "none"}", LogCat.Fight);
+                return;
+            }
+
+            var from = GetMaterialTag(attackerMaterial);
+            var to = GetMaterialTag(defenderWeapon.Material);
+            var clip = _audioService.GetRandomSoundClip($"CS_IAI_{from}_{to}") ?? _audioService.GetRandomSoundClip("CS_IAI");
+            if (clip != null && target.PrefabProps?.NpcSound != null)
+                target.PrefabProps.NpcSound.PlayOneShot(clip);
+
+            var pfxName = $"CPFX_IAI_{from}_{to}";
+            if (_vmCacheService.TryGetPfxData(pfxName) == null)
+                pfxName = to switch { "WO" => "CPFX_IAI_WOOD", "ST" => "CPFX_IAI_STONE", _ => "CPFX_IAI_METAL" };
+            if (_vmCacheService.TryGetPfxData(pfxName) == null)
+                return;
+
+            var position = target.Go.transform.position + Vector3.up * 1.3f +
+                           (attacker.Go.transform.position - target.Go.transform.position).normalized * 0.4f;
+            _meshService.CreateVobPfx(pfxName, position, Quaternion.identity, destroyAfterPlay: true);
+        }
+
+        private static string GetMaterialTag(int material)
+        {
+            return (VmGothicEnums.ItemMaterial)material switch
+            {
+                VmGothicEnums.ItemMaterial.Wood => "WO",
+                VmGothicEnums.ItemMaterial.Stone => "ST",
+                VmGothicEnums.ItemMaterial.Leather => "LE",
+                VmGothicEnums.ItemMaterial.Clay => "CL",
+                VmGothicEnums.ItemMaterial.Glass => "GL",
+                _ => "ME"
+            };
         }
 
         /// <summary>
@@ -281,6 +419,12 @@ namespace Gothic.Core.Services.Npc
                 return;
             }
 
+            var isHeroAttacker = attacker.PrefabProps != null && attacker.PrefabProps.IsHero();
+
+            // DeveloperConfig.EnableNpcParadeBlocksHits: the hero's hit on a parrying / jumping back NPC.
+            if (!isHero && isHeroAttacker && TryBlockHit(attacker, target))
+                return;
+
             Logger.Log($"[FightService.OnHit] *** {attacker.Instance.GetName(NpcNameSlot.Slot0)} HIT {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
             if (OnHitUpdateHealth(attacker, target, damageOverride, overrideProtectionIndex))
             {
@@ -315,7 +459,6 @@ namespace Gothic.Core.Services.Npc
                 // DeveloperConfig.EnableNpcSwingKeepsOnNpcHit: an NPC's swing isn't cut short by another NPC's hit -
                 // two bandits taking turns kept Cavalorn from ever landing one (stumble before his hit frame).
                 // The hero's hits still interrupt like in Gothic.
-                var isHeroAttacker = attacker.PrefabProps != null && attacker.PrefabProps.IsHero();
                 if (_configService.Dev.EnableNpcSwingKeepsOnNpcHit && !isHeroAttacker &&
                     target.Props.CurrentAction is AttackPlayAni { IsSwingInProgress: true })
                 {

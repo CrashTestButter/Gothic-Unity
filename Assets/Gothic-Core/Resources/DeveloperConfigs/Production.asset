@@ -260,6 +260,9 @@ MonoBehaviour:
   EnableZenChunkLengthFix: 1
   EnableItemDataBySymbol: 1
   WeaponTrailOpacity: 0.5
+  EnableNpcPrehitReaction: 1
+  EnableNpcPrehitCancelsAttack: 1
+  EnableNpcParadeBlocksHits: 1
   EnableLevelChangeSpawnFallback: 1
   EnableHlpGetNpcVariables: 1
   EnableHeroDefeatedAivar: 1

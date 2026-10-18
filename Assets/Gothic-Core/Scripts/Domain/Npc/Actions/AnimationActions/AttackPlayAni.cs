@@ -26,6 +26,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         [Inject] private readonly NpcNavMeshService _npcNavMeshService;
 
         private FightAiMove _move => (FightAiMove)Action.Int0;
+        public FightAiMove Move => _move;
         private NpcContainer _enemy => Action.Instance0.GetUserData();
         private Transform _enemyTransform => _enemy.Go.transform;
         private bool _comboWindowLogged;
@@ -552,6 +553,33 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         /// <summary>
         /// During the reload the one-frame shot animation is already blending out - that must not end the attack.
         /// </summary>
+        /// <summary>
+        /// DeveloperConfig.EnableNpcPrehitCancelsAttack: the NPC's own swing before its hit frame ends when the hero
+        /// swings - the next AI_Attack can parry or jump back instead.
+        /// </summary>
+        public bool TryInterruptSwing()
+        {
+            if (!IsSwingInProgress)
+                return false;
+
+            PrefabProps.AnimationSystem.StopAnimation(Action.String0);
+            IsFinishedFlag = true;
+            return true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableNpcPrehitReaction: a strafe ends when the hero swings - the next AI_Attack reacts.
+        /// </summary>
+        public bool TryInterruptStrafe()
+        {
+            if (IsFinishedFlag || _move != FightAiMove.Strafe)
+                return false;
+
+            PrefabProps.AnimationSystem.StopAnimation(Action.String0);
+            IsFinishedFlag = true;
+            return true;
+        }
+
         protected override void AnimationEnd()
         {
             if ((_isRangedFollowUp || _isRunAttackActive) && ActionTime < ActionEndEventTime)

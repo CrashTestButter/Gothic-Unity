@@ -58,12 +58,20 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return;
 
             var tactic = UpdateSpellMonsterMelee(out var meleeTactic) ? meleeTactic : Vob.FightTactic;
-            var aiFunctionTemplate = FindAiFunctionTemplate();
+            // DeveloperConfig.EnableNpcPrehitReaction: the hero starts a hit - the FA_ENEMY_(STORM)PREHIT table (parry,
+            // jump back, strafe). A tactic without one fights on with its normal table.
+            var prehitTemplate = FindPrehitTemplate();
+            var prehitAi = prehitTemplate != null ? VmCacheService.TryGetFightAiData(prehitTemplate, tactic) : null;
+            var prehitMove = prehitAi?.GetRandomMove() ?? FightAiMove.Nop;
+            var aiFunctionTemplate = prehitMove != FightAiMove.Nop ? prehitTemplate : FindAiFunctionTemplate();
             // Null when the FIGHT VM couldn't be loaded at all (e.g. a mod DAT ZenKit can't parse and
             // no loose fallback existed — see ResourceCacheService.TryGetDaedalusVm). Plain Attack
             // keeps combat functional without move tables, instead of NRE-ing the whole AiHandler.
-            var fightAi = VmCacheService.TryGetFightAiData(aiFunctionTemplate, tactic);
-            _move = fightAi?.GetRandomMove() ?? FightAiMove.Attack;
+            var fightAi = prehitMove != FightAiMove.Nop ? prehitAi : VmCacheService.TryGetFightAiData(aiFunctionTemplate, tactic);
+            _move = prehitMove != FightAiMove.Nop ? prehitMove : fightAi?.GetRandomMove() ?? FightAiMove.Attack;
+            if (prehitMove != FightAiMove.Nop)
+                Logger.Log($"[Prehit] {NpcInstance.GetName(NpcNameSlot.Slot0)} reacts to the hero's swing: " +
+                           $"{string.Format(prehitTemplate, tactic)} -> {_move}", LogCat.Fight);
             Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} move={_move} fightMode={(VmGothicEnums.WeaponState)Vob.FightMode} tactic={tactic}" +
                        (NpcContainer.IsSpellMonsterInMelee ? " (spell monster in melee)" : ""), LogCat.Ai);
             StartAttackAction();
@@ -143,6 +151,46 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         }
 
         private const float _spellMonsterMeleeRangeFactor = 2f;
+
+        /// <summary>
+        /// OpenGothic FightAlgo::fillQueue: the enemy is in his "prehit" (an attack started, before its hit frame), in
+        /// his weapon range, both face each other -> FA_ENEMY_STORMPREHIT while he runs, else FA_ENEMY_PREHIT.
+        /// Only the hero has a prehit here - his swing in VR (GlobalEventDispatcher.HeroMeleeSwing).
+        /// </summary>
+        private string FindPrehitTemplate()
+        {
+            if (!_configService.Dev.EnableNpcPrehitReaction)
+                return null;
+
+            var enemy = _enemy?.GetUserData();
+            if (enemy?.Go == null || enemy.PrefabProps == null || !enemy.PrefabProps.IsHero() ||
+                Time.time > enemy.Props.MeleePrehitUntil)
+                return null;
+
+            if (GetDistance() > FightConst.HeroPrehitRangeMeters)
+                return null;
+
+            var heroFacing = enemy.PrefabProps.Head != null ? enemy.PrefabProps.Head : enemy.Go.transform;
+            if (!IsInAngle(NpcGo.transform, enemy.Go.transform.position, FightConst.FocusAngle) ||
+                !IsInAngle(heroFacing, NpcGo.transform.position, FightConst.HeroFocusAngle))
+                return null;
+
+            return enemy.Props.BodyState == VmGothicEnums.BodyState.BsRun
+                ? FightConst.AttackActions.EnemyStormPrehit
+                : FightConst.AttackActions.EnemyPrehit;
+        }
+
+        /// <summary>
+        /// Horizontal angle between where the transform looks and the target.
+        /// </summary>
+        public static bool IsInAngle(Transform from, Vector3 target, float maxAngle)
+        {
+            var forward = Vector3.ProjectOnPlane(from.forward, Vector3.up);
+            var direction = Vector3.ProjectOnPlane(target - from.position, Vector3.up);
+            if (forward.sqrMagnitude < 0.0001f || direction.sqrMagnitude < 0.0001f)
+                return true;
+            return Vector3.Angle(forward, direction) <= maxAngle;
+        }
 
         private string FindAiFunctionTemplate()
         {

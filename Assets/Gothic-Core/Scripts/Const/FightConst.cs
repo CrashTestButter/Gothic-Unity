@@ -47,5 +47,16 @@ namespace Gothic.Core.Const
         // what the move-selection already allows — a mismatch here silently turns every ranged
         // "Attack" move dispatched beyond melee range into a "miss, target out of reach".
         public const float RangedAttackReachMeters = 30f;
+
+        // DeveloperConfig.EnableNpcPrehitReaction: a VR swing counts as the hero's "prehit" this long - an attack
+        // animation's time before its hit frame (DEF_OPT_FRAME).
+        public const float HeroPrehitSeconds = 0.4f;
+        // The hero's reach for the prehit check (the engine: the attacker's weapon range) - a swung sword plus a step.
+        public const float HeroPrehitRangeMeters = 3f;
+        // OpenGothic FightAlgo: isInFocusAngle 30 degrees, isInJumpBackAngle 90 degrees.
+        public const float FocusAngle = 30f;
+        public const float JumpBackAngle = 90f;
+        // The hero's facing in VR is his head, which turns more than a body - a bit more room than the engine's 30.
+        public const float HeroFocusAngle = 45f;
     }
 }

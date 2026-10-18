@@ -85,6 +85,13 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer, NpcContainer, Vector3> FightHit = new();
 
         /// <summary>
+        /// The hero starts a melee swing (VR: the held weapon got faster than its attack threshold) - the engine's
+        /// "prehit" of an attack animation. NPCs fighting him can parry or jump back (FightService).
+        /// int - the swung weapon's material (ItemMaterial), -1 without a weapon (fists).
+        /// </summary>
+        public static readonly UnityEvent<int> HeroMeleeSwing = new();
+
+        /// <summary>
         /// NpcContainer - caster
         /// NpcContainer - target
         /// Vector3      - hit position

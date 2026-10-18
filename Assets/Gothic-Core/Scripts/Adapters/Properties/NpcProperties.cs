@@ -57,6 +57,11 @@ namespace Gothic.Core.Adapters.Properties
 
         public NpcInstance EnemyNpc;
         public NpcInstance TargetNpc;
+        // DeveloperConfig.EnableNpcPrehitReaction: until when (Time.time) this NPC - the hero - counts as starting a
+        // melee hit (the engine's isPrehit(): an attack animation before its hit frame).
+        public float MeleePrehitUntil = float.MinValue;
+        // The material of the weapon swung last (ItemMaterial, -1 = fists) - the hero's held weapon isn't equipped in VR.
+        public int MeleeSwingMaterial = -1;
         // AI_LookAtNpc target until AI_StopLookAt (Npc_GetLookAtTarget).
         public NpcInstance LookAtTarget;
 

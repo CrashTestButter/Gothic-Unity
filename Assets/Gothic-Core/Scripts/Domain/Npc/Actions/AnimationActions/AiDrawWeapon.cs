@@ -35,6 +35,18 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         {
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableDialogUntilStopProcessInfos: like the engine, the dialog lasts until its
+        /// AI_StopProcessInfos - an info drawing the weapon before its last lines (G1 Lukis/Zollo, Rust: "you'll regret
+        /// this") closed the dialog at once: the remaining 10 s were talked without the dialog bubble, and grabbing him
+        /// couldn't skip them.
+        /// </summary>
+        private bool IsDialogContinuing()
+        {
+            return ConfigService.Dev.EnableDialogUntilStopProcessInfos &&
+                   Props.AnimationQueue.Any(action => action is Output or OutputSvm or StopProcessInfos);
+        }
+
         public override void Start()
         {
             // An item still in the hand from an interrupted routine (Cavalorn's apple) would end up on his back with
@@ -42,7 +54,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             _npcService.RemoveUsedItemFromHand(NpcContainer);
 
             // An NPC that draws its weapon doesn't keep the dialog box open.
-            if (GameStateService.Dialogs.IsInDialog && GameStateService.Dialogs.CurrentDialogNpc == NpcContainer)
+            if (GameStateService.Dialogs.IsInDialog && GameStateService.Dialogs.CurrentDialogNpc == NpcContainer &&
+                !IsDialogContinuing())
             {
                 Logger.Log($"[DrawWeapon] {NpcInstance.GetName(NpcNameSlot.Slot0)} drew a weapon during the dialog " +
                            "- closing the dialog", LogCat.Dialog);

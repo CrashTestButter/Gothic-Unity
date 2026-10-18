@@ -752,6 +752,11 @@ namespace Gothic.Core.Models.Config
                  "menu's edge and you couldn't see where you pointed.")]
         public bool EnablePointerLineOnTop = true;
 
+        [Tooltip("V1: An NPC drawing his weapon in a dialog only closes it when no more lines follow - the dialog lasts " +
+                 "until AI_StopProcessInfos like in the engine. Before, the last lines were talked without the dialog " +
+                 "bubble and couldn't be skipped (G1 Lukis).")]
+        public bool EnableDialogUntilStopProcessInfos = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

@@ -14,7 +14,7 @@ namespace Gothic.Core.Adapters.Vob
     /// </summary>
     public class TriggerWorldStartHandler : MonoBehaviour
     {
-        [Inject] private VobService _vobService;
+        [Inject] private readonly VobService _vobService;
 
         private ITriggerWorldStart _vob;
 
@@ -24,12 +24,14 @@ namespace Gothic.Core.Adapters.Vob
 
         private void Start()
         {
-            if (_vob.FireOnce && _vob.HasFired) return;
+            if (_vob.FireOnce && _vob.HasFired)
+                return;
 
             var target = _vob.Target;
-            if (string.IsNullOrEmpty(target)) return;
+            if (string.IsNullOrEmpty(target))
+                return;
 
-            Logger.Log($"[TriggerWorldStart] '{_vob.Name}' → '{target}' (FireOnce={_vob.FireOnce})", LogCat.Vob);
+            Logger.Log($"[TriggerWorldStart] '{_vob.Name}' -> '{target}' (FireOnce={_vob.FireOnce})", LogCat.Vob);
             _vob.HasFired = true;
             _vobService.DispatchTrigger(target, _vob.Name);
         }

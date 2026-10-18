@@ -14,7 +14,7 @@ namespace Gothic.Core.Adapters.Vob
     /// </summary>
     public class MoverControllerHandler : MonoBehaviour
     {
-        [Inject] private VobService _vobService;
+        [Inject] private readonly VobService _vobService;
 
         private IMoverController _vob;
 
@@ -26,17 +26,22 @@ namespace Gothic.Core.Adapters.Vob
         {
             if (!_vobService.TryGetMovers(_vob.Target, out var containers))
             {
-                Logger.LogWarning($"[MoverController] '{_vob.Name}': target mover '{_vob.Target}' not found", LogCat.Vob);
+                Logger.LogWarning($"[MoverController] '{_vob.Name}': target mover '{_vob.Target}' not found",
+                    LogCat.Vob);
                 return;
             }
 
-            Logger.Log($"[MoverController] '{_vob.Name}' → '{_vob.Target}' msg={_vob.Message} key={_vob.Key}", LogCat.Vob);
+            Logger.Log($"[MoverController] '{_vob.Name}' -> '{_vob.Target}' msg={_vob.Message} key={_vob.Key}",
+                LogCat.Vob);
 
             foreach (var container in containers)
             {
-                if (container?.Go == null) continue;
+                if (container?.Go == null)
+                    continue;
+
                 var adapter = container.Go.GetComponentInChildren<MoverAdapter>();
-                if (adapter == null) continue;
+                if (adapter == null)
+                    continue;
 
                 switch (_vob.Message)
                 {

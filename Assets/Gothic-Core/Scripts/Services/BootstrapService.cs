@@ -199,10 +199,10 @@ namespace Gothic.Core.Services
                 _saveGameService.StoreSpawnedNpcs();
                 _saveGameService.StoreWorldNpcStates();
                 LogicVobSaveState.BeginWorld(worldName);
-                _vobService.PreWorldCreate();
                 _vobMeshCullingService.PreWorldCreate();
                 _npcMeshCullingService.PreWorldCreate();
                 _vobSoundCullingService.PreWorldCreate();
+                _vobService.PreWorldCreate();
                 _npcService.ClearQueues();
             }
             // DeveloperConfig.EnableWorldPointsReset: free points (START, FP_*) and waypoints belong to one world. Never

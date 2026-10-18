@@ -1,9 +1,9 @@
 using System.Collections;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
-using Gothic.Core.Services.World;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
+using Gothic.Core.Services.World;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -11,10 +11,14 @@ using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Adapters.Vob
 {
+    /// <summary>
+    /// Handles zCTriggerList: fires its targets (each with its own delay) all at once, one after the other per
+    /// activation (Next) or a random one.
+    /// </summary>
     public class TriggerListHandler : MonoBehaviour
     {
-        [Inject] private VobService _vobService;
-        [Inject] private ConfigService _configService;
+        [Inject] private readonly VobService _vobService;
+        [Inject] private readonly ConfigService _configService;
 
         private ITriggerList _triggerList;
         private int _activationCount;
@@ -45,11 +49,13 @@ namespace Gothic.Core.Adapters.Vob
         public void Init(ITriggerList triggerList)
         {
             _triggerList = triggerList;
-            if (ReflexProjectInstaller.DIContainer.Resolve<ConfigService>().Dev.EnableLogicVobSaveState &&
-                LogicVobSaveState.TryTake(_triggerList, out var saved))
+            if (_configService == null)
+                this.Inject();
+            if (_configService.Dev.EnableLogicVobSaveState && LogicVobSaveState.TryTake(_triggerList, out var saved))
             {
                 _activationCount = saved.ActivationCount;
-                Logger.Log($"[LogicVobSave] '{_triggerList.Name}' restored from save - fired {_activationCount} time(s)", LogCat.Vob);
+                Logger.Log($"[LogicVobSave] '{_triggerList.Name}' restored from save - fired {_activationCount} time(s)",
+                    LogCat.Vob);
             }
         }
 
@@ -58,6 +64,7 @@ namespace Gothic.Core.Adapters.Vob
             if (!_triggerList.IsEnabled)
                 return;
 
+            // MaxActivationCount: -1 = unlimited, 0 = never, N = fire N times.
             var max = _triggerList.MaxActivationCount;
             if (max == 0)
                 return;
@@ -73,7 +80,8 @@ namespace Gothic.Core.Adapters.Vob
                 return;
             }
 
-            Logger.Log($"[TriggerList] '{_triggerList.Name}' triggered (mode={_triggerList.Mode}, activation={_activationCount})", LogCat.Vob);
+            Logger.Log($"[TriggerList] '{_triggerList.Name}' triggered (mode={_triggerList.Mode}, " +
+                       $"activation={_activationCount})", LogCat.Vob);
 
             switch (_triggerList.Mode)
             {
@@ -81,24 +89,21 @@ namespace Gothic.Core.Adapters.Vob
                     // DeveloperConfig.EnableTriggerListSummedDelays: in the engine every target's delay counts from
                     // the previous one (OpenGothic TriggerList: offset += delay) - not each from the trigger moment.
                     var offset = 0f;
-                    foreach (var t in targets)
+                    foreach (var target in targets)
                     {
-                        var delay = (float)t.Delay.TotalSeconds;
+                        var delay = (float)target.Delay.TotalSeconds;
                         offset = _configService.Dev.EnableTriggerListSummedDelays ? offset + delay : delay;
-                        ScheduleDispatch(t.Name, offset);
+                        ScheduleDispatch(target.Name, offset);
                     }
-                    Logger.Log($"[TriggerList] '{_triggerList.Name}' schedule: " +
-                               string.Join(", ", System.Linq.Enumerable.Select(targets, t => $"{t.Name}+{t.Delay.TotalSeconds:F1}s")),
-                        LogCat.Vob);
                     break;
                 case TriggerBatchMode.Next:
-                    var idx = _triggerList.ActTarget;
-                    ScheduleDispatch(targets[idx].Name, (float)targets[idx].Delay.TotalSeconds);
-                    _triggerList.ActTarget = (byte)((idx + 1) % targets.Count);
+                    var index = _triggerList.ActTarget % targets.Count;
+                    ScheduleDispatch(targets[index].Name, (float)targets[index].Delay.TotalSeconds);
+                    _triggerList.ActTarget = (byte)((index + 1) % targets.Count);
                     break;
                 case TriggerBatchMode.Random:
-                    var rand = Random.Range(0, targets.Count);
-                    ScheduleDispatch(targets[rand].Name, (float)targets[rand].Delay.TotalSeconds);
+                    var randomIndex = Random.Range(0, targets.Count);
+                    ScheduleDispatch(targets[randomIndex].Name, (float)targets[randomIndex].Delay.TotalSeconds);
                     break;
             }
         }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -12,14 +13,21 @@ using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.Core.Adapters.Vob
 {
+    /// <summary>
+    /// Handles zCCodeMaster: a combination/sequence puzzle. Once all its slaves (other VOBs, e.g. switches) triggered
+    /// it - in the right order if Ordered - it fires its Target. A wrong order can fire FailureTarget.
+    /// </summary>
     public class CodeMasterHandler : MonoBehaviour
     {
-        [Inject] private VobService _vobService;
-        [Inject] private ConfigService _configService;
-        [Inject] private GameStateService _gameStateService;
+        [Inject] private readonly VobService _vobService;
+        [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly GameStateService _gameStateService;
 
         private ICodeMaster _codeMaster;
-        private readonly HashSet<string> _triggeredSlaves = new();
+        // Slaves is a native marshal which allocates a new list on every access. Read once.
+        private List<string> _slaves;
+        private HashSet<string> _distinctSlaves;
+        private readonly HashSet<string> _triggeredSlaves = new(StringComparer.OrdinalIgnoreCase);
         private int _nextExpectedIndex;
 
         // DeveloperConfig.EnableEngineCodeMaster: OpenGothic CodeMaster - a key per slave and a press counter.
@@ -34,6 +42,8 @@ namespace Gothic.Core.Adapters.Vob
         public void Init(ICodeMaster codeMaster)
         {
             _codeMaster = codeMaster;
+            _slaves = codeMaster.Slaves;
+            _distinctSlaves = new HashSet<string>(_slaves, StringComparer.OrdinalIgnoreCase);
 
             if (_configService == null)
                 this.Inject();
@@ -60,12 +70,11 @@ namespace Gothic.Core.Adapters.Vob
                 !_configService.Dev.EnableEngineCodeMaster)
                 return;
 
-            var slaves = _codeMaster.Slaves;
-            var usedUp = new bool[slaves.Count];
+            var usedUp = new bool[_slaves.Count];
             var usedUpCount = 0;
-            for (var i = 0; i < slaves.Count; i++)
+            for (var i = 0; i < _slaves.Count; i++)
             {
-                if (GetSlaveActivationCount(slaves[i]) <= 0)
+                if (GetSlaveActivationCount(_slaves[i]) <= 0)
                     continue;
                 usedUp[i] = true;
                 usedUpCount++;
@@ -74,19 +83,19 @@ namespace Gothic.Core.Adapters.Vob
             if (usedUpCount == 0)
                 return;
 
-            if (usedUpCount == slaves.Count)
+            if (usedUpCount == _slaves.Count)
             {
-                for (var i = 0; i < slaves.Count; i++)
-                    ResetSlaveActivationCount(slaves[i]);
-                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all {slaves.Count} slave(s) used up in a save without code " +
-                           "master state - they can fire again", LogCat.Vob);
+                foreach (var slave in _slaves)
+                    ResetSlaveActivationCount(slave);
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all {_slaves.Count} slave(s) used up in a save without " +
+                           "code master state - they can fire again", LogCat.Vob);
                 return;
             }
 
             _keys = usedUp;
             _count = usedUpCount;
-            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': {usedUpCount}/{slaves.Count} slave(s) already fired before " +
-                       "the save - counted (save without code master state)", LogCat.Vob);
+            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': {usedUpCount}/{_slaves.Count} slave(s) already fired " +
+                       "before the save - counted (save without code master state)", LogCat.Vob);
         }
 
         private void ResetSlaveActivationCount(string slaveName)
@@ -132,26 +141,27 @@ namespace Gothic.Core.Adapters.Vob
 
         public void ReceiveTrigger(string senderName)
         {
-            var slaves = _codeMaster.Slaves;
-            var slaveIndex = slaves.FindIndex(s => string.Equals(s, senderName, System.StringComparison.OrdinalIgnoreCase));
-
-            if (slaveIndex < 0)
+            if (!_distinctSlaves.Contains(senderName))
             {
-                Logger.LogWarning($"[CodeMaster] '{_codeMaster.Name}': trigger from unknown slave '{senderName}'", LogCat.Vob);
+                Logger.LogWarning($"[CodeMaster] '{_codeMaster.Name}': trigger from unknown slave '{senderName}'",
+                    LogCat.Vob);
                 return;
             }
 
             if (_configService.Dev.EnableEngineCodeMaster)
             {
-                ReceiveTriggerLikeEngine(slaveIndex, senderName);
+                ReceiveTriggerLikeEngine(senderName);
                 return;
             }
 
             if (_codeMaster.Ordered)
             {
-                if (slaveIndex != _nextExpectedIndex)
+                // Index based (not name lookup), as a slave name can appear multiple times in the sequence.
+                if (_nextExpectedIndex >= _slaves.Count ||
+                    !string.Equals(_slaves[_nextExpectedIndex], senderName, StringComparison.OrdinalIgnoreCase))
                 {
-                    Logger.Log($"[CodeMaster] '{_codeMaster.Name}': wrong order — got slave[{slaveIndex}] '{senderName}', expected [{_nextExpectedIndex}]", LogCat.Vob);
+                    Logger.Log($"[CodeMaster] '{_codeMaster.Name}': wrong order - got '{senderName}', " +
+                               $"expected [{_nextExpectedIndex}]", LogCat.Vob);
                     if (_codeMaster.FirstFalseIsFailure)
                         FireFailure();
                     Reset();
@@ -159,13 +169,20 @@ namespace Gothic.Core.Adapters.Vob
                 }
                 _nextExpectedIndex++;
             }
-
-            _triggeredSlaves.Add(senderName.ToUpper());
-            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': slave '{senderName}' OK ({_triggeredSlaves.Count}/{slaves.Count})", LogCat.Vob);
-
-            if (_triggeredSlaves.Count >= slaves.Count)
+            else
             {
-                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered → '{_codeMaster.Target}'", LogCat.Vob);
+                _triggeredSlaves.Add(senderName);
+            }
+
+            var triggeredCount = _codeMaster.Ordered ? _nextExpectedIndex : _triggeredSlaves.Count;
+            var requiredCount = _codeMaster.Ordered ? _slaves.Count : _distinctSlaves.Count;
+            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': slave '{senderName}' OK " +
+                       $"({triggeredCount}/{requiredCount})", LogCat.Vob);
+
+            if (triggeredCount >= requiredCount)
+            {
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered -> '{_codeMaster.Target}'",
+                    LogCat.Vob);
                 Reset();
                 _vobService.DispatchTrigger(_codeMaster.Target, _codeMaster.Name);
             }
@@ -177,11 +194,19 @@ namespace Gothic.Core.Adapters.Vob
         /// a wrong order spawns monsters and starts over). firstFalseIsFailure fails at the first wrong press.
         /// Before, a wrong press reset at once and the failure target never fired.
         /// </summary>
-        private void ReceiveTriggerLikeEngine(int slaveIndex, string senderName)
+        private void ReceiveTriggerLikeEngine(string senderName)
         {
-            var slaveCount = _codeMaster.Slaves.Count;
+            var slaveCount = _slaves.Count;
             if (_keys == null || _keys.Length != slaveCount)
                 _keys = new bool[slaveCount];
+
+            // Ordered: the press counts at its own place (a slave name can appear more than once in the sequence).
+            int slaveIndex;
+            if (_codeMaster.Ordered && _count < slaveCount &&
+                string.Equals(_slaves[_count], senderName, StringComparison.OrdinalIgnoreCase))
+                slaveIndex = _count;
+            else
+                slaveIndex = _slaves.FindIndex(s => string.Equals(s, senderName, StringComparison.OrdinalIgnoreCase));
 
             if (!_codeMaster.Ordered || _count == slaveIndex)
             {
@@ -207,7 +232,8 @@ namespace Gothic.Core.Adapters.Vob
 
             if (setCount == slaveCount)
             {
-                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered → '{_codeMaster.Target}'", LogCat.Vob);
+                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': all slaves triggered -> '{_codeMaster.Target}'",
+                    LogCat.Vob);
                 ResetEngineState();
                 if (!string.IsNullOrEmpty(_codeMaster.Target))
                     _vobService.DispatchTrigger(_codeMaster.Target, _codeMaster.Name);
@@ -223,7 +249,7 @@ namespace Gothic.Core.Adapters.Vob
         private void ResetEngineState()
         {
             if (_keys != null)
-                System.Array.Clear(_keys, 0, _keys.Length);
+                Array.Clear(_keys, 0, _keys.Length);
             _count = 0;
         }
 
@@ -232,19 +258,20 @@ namespace Gothic.Core.Adapters.Vob
             if (!_codeMaster.UntriggeredCancels)
                 return;
 
-            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': untrigger from '{senderName}' — resetting sequence", LogCat.Vob);
+            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': untrigger from '{senderName}' - resetting sequence",
+                LogCat.Vob);
             Reset();
             ResetEngineState();
         }
 
         private void FireFailure()
         {
-            var ft = _codeMaster.FailureTarget;
-            if (!string.IsNullOrEmpty(ft))
-            {
-                Logger.Log($"[CodeMaster] '{_codeMaster.Name}': firing FailureTarget '{ft}'", LogCat.Vob);
-                _vobService.DispatchTrigger(ft, _codeMaster.Name);
-            }
+            var failureTarget = _codeMaster.FailureTarget;
+            if (string.IsNullOrEmpty(failureTarget))
+                return;
+
+            Logger.Log($"[CodeMaster] '{_codeMaster.Name}': firing FailureTarget '{failureTarget}'", LogCat.Vob);
+            _vobService.DispatchTrigger(failureTarget, _codeMaster.Name);
         }
 
         private void Reset()

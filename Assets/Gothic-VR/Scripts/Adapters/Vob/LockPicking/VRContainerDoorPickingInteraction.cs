@@ -174,16 +174,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                 {
                     GlobalEventDispatcher.LockPickComboFinished.Invoke(_lockPick, _lockable, (int)_handSide);
 
-                    // Reactivate rotation
-                    _hvrPhysicsDoor.Unlock();
-
-                    // Get the door's forward direction in world space
-                    var pushDirection = _hvrPhysicsDoor.transform.forward;
-                    var pushForce = 10f;
-
-                    // Apply force in the door's forward direction
-                    _hvrPhysicsDoor.GetComponent<Rigidbody>().AddForce(pushDirection * pushForce, ForceMode.Impulse);
-                    gameObject.SetActive(false);
+                    UnlockAndPushOpen();
 
                     return DoorLockStatus.Unlocked;
                 }
@@ -207,24 +198,24 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
             }
         }
 
+        /// <summary>
+        /// Like the engine: the door's/chest's key (held in a hand) opens it without picking the lock.
+        /// </summary>
         private void TryUnlockWithKey(Collider other)
         {
             if (string.IsNullOrEmpty(_keyInstance))
                 return;
 
-            var vobLoader = other.gameObject.GetComponentInParent<VobLoader>();
-            if (vobLoader == null || vobLoader.Container == null)
-                return;
-
             // Any VOB can enter the trigger (not only items) - VobAs<IItem>() would throw an InvalidCastException.
-            if (vobLoader.Container.Vob is not IItem vobItem)
+            var vobLoader = other.gameObject.GetComponentInParent<VobLoader>();
+            if (vobLoader?.Container?.Vob is not IItem vobItem)
                 return;
 
             var itemInstance = !string.IsNullOrEmpty(vobItem.Instance) ? vobItem.Instance : vobItem.Name;
             if (!itemInstance.EqualsIgnoreCase(_keyInstance))
                 return;
 
-            // Confirm the player is actively holding the key (not just a dropped/flying item).
+            // The player must actively hold the key (not just a dropped/flying item).
             HVRHandSide hand;
             var leftRoot = _vrPlayerService.GrabbedItemLeft;
             var rightRoot = _vrPlayerService.GrabbedItemRight;
@@ -236,11 +227,21 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                 return;
 
             Logger.Log($"[Lock] Key unlock: '{_keyInstance}' matched.", LogCat.VR);
-            _hapticsService.Vibrate(hand, VrHapticsService.VibrationType.Success);
-            PlaySound("PICKLOCK_UNLOCK", "DOOR_LOCK.WAV");
+            // LockPickComboFinished also gives the success vibration (VrHapticsService).
+            PlaySound(_vmService.PickLockSuccessSoundName, _vmService.DoorLockSoundName);
             GlobalEventDispatcher.LockPickComboFinished.Invoke(vobLoader.Container, _lockable, (int)hand);
+            UnlockAndPushOpen();
+        }
+
+        private void UnlockAndPushOpen()
+        {
+            // Reactivate rotation
             _hvrPhysicsDoor.Unlock();
-            _hvrPhysicsDoor.GetComponent<Rigidbody>().AddForce(_hvrPhysicsDoor.transform.forward * 10f, ForceMode.Impulse);
+
+            // Apply force in the door's forward direction (world space)
+            var pushDirection = _hvrPhysicsDoor.transform.forward;
+            var pushForce = 10f;
+            _hvrPhysicsDoor.GetComponent<Rigidbody>().AddForce(pushDirection * pushForce, ForceMode.Impulse);
             gameObject.SetActive(false);
         }
 
@@ -256,7 +257,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
             if (clip == null)
                 return;
-
+                
             _audioSource.PlayOneShot(clip);
         }
     }

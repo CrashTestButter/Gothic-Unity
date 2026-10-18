@@ -50,7 +50,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 IsDestReached = true;
 
                 // Something (ClearState, AI_StandUp) may have reset it - B_AssessTalk checks BS_SIT to talk seated.
-                if (ConfigService.Dev.EnableMobSeatFix && TargetState >= 0)
+                if (TargetState >= 0)
                     SetBodyState();
 
                 StartMobUseAnimation();
@@ -86,9 +86,6 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         /// </summary>
         private bool IsAlreadySittingOnSameMob()
         {
-            if (!ConfigService.Dev.EnableMobSeatFix)
-                return false;
-
             var current = PrefabProps.CurrentInteractable;
             return current != null && PrefabProps.CurrentInteractableSlot != null &&
                    Props.CurrentInteractableStateId >= 0 &&
@@ -247,10 +244,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             
             PhysicsService.DisablePhysicsForNpc(PrefabProps);
 
-            // The slot is where the NPC stands in front of the mob - the transition animation's root motion moves it onto
-            // the seat (OpenGothic: same). Routines call AI_UseMob(BENCH, 1) again and again: snapping back to the slot
-            // then pulled the seated NPC off the bench into the air in front of it.
-            if (!ConfigService.Dev.EnableMobSeatFix || Props.CurrentInteractableStateId == -1)
+            // The slot is where the NPC stands in front of the mob - the transition animation's root motion moves it
+            // onto the seat (OpenGothic: same). Routines call AI_UseMob(BENCH, 1) again and again: snapping back to
+            // the slot then pulled the seated NPC off the bench into the air in front of it.
+            if (Props.CurrentInteractableStateId == -1)
                 NpcGo.transform.SetPositionAndRotation(_slotGo.transform.position, _slotGo.transform.rotation);
 
             // Already in the demanded state (e.g. a repeated AI_UseMob with the same state):

@@ -43,10 +43,9 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
         public override void Start()
         {
-            // Like the engine (OpenGothic Npc::isRotationAllowed): an NPC using a mob (sitting on a bench, ...), lying or
-            // climbing doesn't turn. Sitting poses are turned around inside the animation (AnimationSystem
-            // _isSittingInverted), so turning the root towards the hero showed him the NPC's back.
-            if (ConfigService.Dev.EnableNoTurnWhileUsingMob && !IsRotationAllowed())
+            // Like the engine (OpenGothic Npc::isRotationAllowed): an NPC using a mob (sitting on a bench, ...) doesn't
+            // turn - turning the root towards the hero pulled a seated NPC off its seat.
+            if (IsUsingMob())
             {
                 IsFinishedFlag = true;
                 return;
@@ -74,11 +73,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             }
         }
 
-        private bool IsRotationAllowed()
+        private bool IsUsingMob()
         {
             // BodyState and CurrentInteractable are set while still walking to the mob already. State -1 = not in use.
-            var isUsingMob = PrefabProps.CurrentInteractable != null && Props.CurrentInteractableStateId >= 0;
-            return !isUsingMob;
+            return PrefabProps.CurrentInteractable != null && Props.CurrentInteractableStateId >= 0;
         }
 
         public override void Tick()

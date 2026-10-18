@@ -57,6 +57,8 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly HeroPerceptionService _heroPerceptionService;
         [Inject] private readonly RoomService _roomService;
 
+        private readonly HashSet<string> _externalsCalledWithoutNpc = new();
+
         // (optional) Some messages from Daedalus are quite spammy. Ignore them.
         private static readonly string[] _spammyMessages = new[]
         {
@@ -660,7 +662,8 @@ namespace Gothic.Core.Domain.Vm
         /// </summary>
         private NpcInstance GetHeroForMissingNpc(string externalName)
         {
-            Logger.LogWarning($"[{externalName}] called with no NPC - using the hero.", LogCat.Dialog);
+            if (_externalsCalledWithoutNpc.Add(externalName))
+                Logger.LogWarning($"[{externalName}] called with no NPC - using the hero.", LogCat.Dialog);
             return (NpcInstance)_gameStateService.GothicVm.GlobalHero;
         }
 
@@ -2166,25 +2169,6 @@ namespace Gothic.Core.Domain.Vm
             return npc != null && _gameStateService.GothicVm.GlobalHero is NpcInstance hero && hero.Index == npc.Index;
         }
 
-        public void Wld_SendTrigger(string vobName)
-        {
-            _vobService.DispatchTrigger(vobName);
-        }
-
-        public void Wld_SendUntrigger(string vobName)
-        {
-            if (!_vobService.TryGetMovers(vobName, out var movers))
-            {
-                Logger.LogWarning($"Wld_SendUntrigger: '{vobName}' not found in VobsMover", LogCat.Vob);
-                return;
-            }
-            foreach (var container in movers)
-            {
-                if (container?.Go == null || !container.Go) continue;
-                container.Go.GetComponentInChildren<MoverAdapter>()?.Close();
-            }
-        }
-
         public void Wld_ExchangeGuildAttitudes(string name)
         {
             var humanGguildAttitudes = _gameStateService.GothicVm.GetSymbolByName(name);
@@ -2243,6 +2227,16 @@ namespace Gothic.Core.Domain.Vm
 
             var ret = _gameStateService.GuildAttitudes[guild1 * _gameStateService.GuildCount + guild2];
             return LogInstantExternal(nameof(Wld_GetGuildAttitude), ret, guild1, guild2);
+        }
+
+        public void Wld_SendTrigger(string vobName)
+        {
+            _vobService.DispatchTrigger(vobName);
+        }
+
+        public void Wld_SendUntrigger(string vobName)
+        {
+            _vobService.DispatchUntrigger(vobName);
         }
 
         #endregion

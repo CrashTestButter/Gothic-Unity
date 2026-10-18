@@ -38,6 +38,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
         protected bool HasMeshCollider = true;
         protected bool UseTextureArray;
         protected bool UseColliderCache;
+        protected bool AllowUntextured;
 
         protected IMultiResolutionMesh Mrm;
         protected IModelHierarchy Mdh;
@@ -49,7 +50,6 @@ namespace Gothic.Core.Domain.Meshes.Builder
         protected string MeshName;
 
         protected bool IsMorphMeshMappingAlreadyCached;
-
 
 
         public abstract GameObject Build();
@@ -188,13 +188,22 @@ namespace Gothic.Core.Domain.Meshes.Builder
             UseColliderCache = useColliderCache;
         }
 
+        /// <summary>
+        /// Render texture-less materials with their color instead of skipping them (e.g. G2's treasure X marks).
+        /// Needs UseTextureArray=false, as there is no texture array slot for them.
+        /// </summary>
+        public void SetAllowUntextured(bool allowUntextured)
+        {
+            AllowUntextured = allowUntextured;
+        }
+
         #endregion
 
 
         protected void BuildViaMrm()
         {
             CheckPreconditions();
-            
+
             var meshFilter = RootGo.TryAddComponent<MeshFilter>();
             var meshRenderer = RootGo.TryAddComponent<MeshRenderer>();
             meshRenderer.material = Constants.LoadingMaterial;
@@ -220,7 +229,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
         protected virtual GameObject[] BuildViaMdmAndMdh()
         {
             CheckPreconditions();
-            
+
             var nodeObjects = new GameObject[Mdh.Nodes.Count];
 
             // Create empty GameObjects from hierarchy
@@ -324,11 +333,11 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 throw new ArgumentNullException("Main GameObject is null. Please provide one or force creation " +
                                                 "of a new one via SetGameObject().");
             }
-            
+
             if (MeshName.IsNullOrEmpty())
             {
                 throw new ArgumentNullException($"No MeshName for >{RootGo.name} provided. " +
-                                            "Please provide a mesh name via SetMeshName() which is used for caching of mesh data at runtime.");
+                                                "Please provide a mesh name via SetMeshName() which is used for caching of mesh data at runtime.");
             }
         }
 
@@ -363,6 +372,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 if (materialData.Texture.IsEmpty()) // No texture to add.
                 {
                     var colorMaterial = CreateUntexturedMaterial(materialData);
+                    if (colorMaterial == null && AllowUntextured)
+                        colorMaterial = GetUntexturedMaterial(materialData.Color);
                     if (colorMaterial != null)
                     {
                         rend.material = colorMaterial;
@@ -458,7 +469,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
         ///  triangles = 0, 2, 3 --> (indices for position items); ATTENTION: index 3 would normally be index 2, but! we can never reuse positions. We always need to create new ones. (Reason: uvs demand the same size as vertices.)
         ///  uvs = [wedge[0].texture], [wedge[2].texture], [wedge[1].texture]
         /// </summary>
-        protected void PrepareMeshFilter(MeshFilter meshFilter, IMultiResolutionMesh mrmData, Renderer meshRenderer, int meshIndex, List<System.Numerics.Vector3> calculatedVertices = null)
+        protected void PrepareMeshFilter(MeshFilter meshFilter, IMultiResolutionMesh mrmData, Renderer meshRenderer,
+            int meshIndex, List<System.Numerics.Vector3> calculatedVertices = null)
         {
             // ISoftSkinMeshes will be prepared before reaching this method. This is due to NPC armors having dedicated offsets per item.
             // A non-null calculatedVertices is also our soft-skin signal: only that overload passes it, and its bone
@@ -487,7 +499,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
 
             if (null == mrmData)
             {
-                Logger.LogError($"No mesh data could be added to filter: {meshFilter.transform.parent.name}", LogCat.Mesh);
+                Logger.LogError($"No mesh data could be added to filter: {meshFilter.transform.parent.name}",
+                    LogCat.Mesh);
                 return;
             }
 
@@ -520,7 +533,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 var textureArrayType = TextureCacheService.TextureArrayTypes.Opaque;
                 if (UseTextureArray)
                 {
-                    TextureCacheService.GetTextureArrayIndex(subMesh.Material, out textureArrayType, out textureArrayIndex, out textureScale, out maxMipLevel, out _);
+                    TextureCacheService.GetTextureArrayIndex(subMesh.Material, out textureArrayType,
+                        out textureArrayIndex, out textureScale, out maxMipLevel, out _);
                     if (!subMeshPerTextureFormat.ContainsKey(textureArrayType))
                     {
                         subMeshPerTextureFormat.Add(textureArrayType, preparedTriangles.Count);
@@ -763,7 +777,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
             _multiTypeCacheService.Meshes[cacheKey] = collisionMesh;
             return collisionMesh;
         }
-        
+
         protected void PrepareCachedCollider(GameObject rootGo, Mesh mesh)
         {
             if (!_staticCacheService.LoadedVobItemColliders.TryGetValue(MeshName, out var colliders) || colliders.Count == 0)
@@ -1019,6 +1033,26 @@ namespace Gothic.Core.Domain.Meshes.Builder
             {
                 return new Material(Constants.ShaderSingleMeshLit);
             }
+        }
+
+        /// <summary>
+        /// The SingleMesh shader only samples _MainTex. A 1x1 texture with the material's color gives the same look.
+        /// Cached per color, as every VOB using it shares the very same material.
+        /// </summary>
+        private Material GetUntexturedMaterial(System.Drawing.Color color)
+        {
+            var unityColor = new Color32(color.R, color.G, color.B, color.A);
+            if (_multiTypeCacheService.UntexturedMaterials.TryGetValue(unityColor, out var material))
+                return material;
+
+            var texture = new Texture2D(1, 1);
+            texture.SetPixel(0, 0, unityColor);
+            texture.Apply();
+
+            material = new Material(Constants.ShaderSingleMeshLit) { mainTexture = texture };
+            _multiTypeCacheService.UntexturedMaterials[unityColor] = material;
+
+            return material;
         }
 
         protected Material GetWaterMaterial()

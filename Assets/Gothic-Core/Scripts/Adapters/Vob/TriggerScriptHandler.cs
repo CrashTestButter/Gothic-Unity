@@ -14,7 +14,7 @@ namespace Gothic.Core.Adapters.Vob
 {
     public class TriggerScriptHandler : MonoBehaviour, IDamageable
     {
-        [Inject] private VmService _vmService;
+        [Inject] private readonly VmService _vmService;
 
         private ITriggerScript _triggerScript;
         private int _activationCount;
@@ -80,7 +80,7 @@ namespace Gothic.Core.Adapters.Vob
 
             _activationCount++;
             var funcName = _triggerScript.Function;
-            Logger.Log($"[TriggerScript] calling '{funcName}' — activation {_activationCount}/{(max < 0 ? "∞" : max.ToString())}", LogCat.Vob);
+            Logger.Log($"[TriggerScript] calling '{funcName}' - activation {_activationCount}/{max}", LogCat.Vob);
             var sym = _vmService.Vm.GetSymbolByName(funcName);
             if (sym == null)
             {
@@ -109,7 +109,8 @@ namespace Gothic.Core.Adapters.Vob
 
             if (!_triggerScript.ReactToOnTouch)
             {
-                Logger.LogWarning($"oCTriggerScript {_triggerScript.Function}: not ReactToOnTouch — other trigger types not implemented", LogCat.Vob);
+                Logger.LogWarning($"oCTriggerScript {_triggerScript.Function}: not ReactToOnTouch - other trigger " +
+                                  "types not implemented", LogCat.Vob);
                 return;
             }
 

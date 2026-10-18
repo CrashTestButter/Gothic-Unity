@@ -31,12 +31,6 @@ namespace Gothic.Core.Services.Npc
         // s_FistWalkL moves only 0.45m per loop) must count, while slow pose drifts (t_Warn) must not.
         private const float _minMovementSpeed = 0.1f; // m/s
 
-        // Gothic bench/throne sitting poses are authored with a flipped Y rotation that must be inverted when
-        // applied. Resolved into AnimationTrack.InvertYAxis once at bake time so the per-frame pose path (and
-        // every PlayAnimation/StopAnimation) needn't string-match. Compared by the (non-alias) animation name.
-        private static readonly HashSet<string> _animationsToInvertYAxis =
-            new(StringComparer.OrdinalIgnoreCase) { "S_BENCH_S1", "S_THRONE_S1" };
-
         // Track cache, two levels: MDS name (as passed by callers, any casing/extension) -> animation name -> track.
         // Both levels ignore case, so the per-PlayAnimation hot path runs without any string normalization
         // allocations (ToLower/extension stripping) - important on mobile chipsets (GC pressure).
@@ -395,8 +389,6 @@ namespace Gothic.Core.Services.Npc
             track.HasEvents = track.EventTags.Count > 0 || track.SoundEffects.Count > 0 ||
                               track.ParticleEffects.Count > 0 || track.MorphAnimations.Count > 0 ||
                               track.ParticleEffectsStop.Count > 0;
-
-            track.InvertYAxis = _animationsToInvertYAxis.Contains(track.Name);
 
             if (bakedSource != null)
             {

@@ -17,6 +17,7 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Adapters.Vob;
 using Gothic.VR.Adapters.Vob.Container;
+using Gothic.Core.Models.Container;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Bags;
 using HurricaneVR.Framework.Core.Grabbers;
@@ -46,10 +47,13 @@ namespace Gothic.VR.Services
         [Inject] private readonly NpcInventoryService _npcInventoryService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly DocService _docService;
-        
-        public VRContextInteractionService VRContextInteractionService => _contextInteractionService.GetImpl<VRContextInteractionService>();
+        [Inject] private readonly MobInteractionService _mobInteractionService;
+
+        public VRContextInteractionService VRContextInteractionService =>
+            _contextInteractionService.GetImpl<VRContextInteractionService>();
+
         public VRPlayerInputs VRPlayerInputs => VRContextInteractionService.GetVRPlayerInputs();
-        
+
         public GameObject GrabbedItemLeft;
         public GameObject GrabbedItemRight;
 
@@ -78,7 +82,7 @@ namespace Gothic.VR.Services
                 // As we already count remote grabbing as "in inventory", we skip it the second time.
                 if (GrabbedItemLeft == grabbable.gameObject)
                     return;
-                
+
                 GrabbedItemLeft = grabbable.gameObject;
             }
             else
@@ -146,294 +150,97 @@ namespace Gothic.VR.Services
         }
 
         /// <summary>
-        /// DeveloperConfig.EnableMobRequiredItem: like the engine (OpenGothic Interactive::checkUseConditions), a mob with
-        /// useWithItem only works when the player has that item, else Player_Mob_Missing_Item is said. G2's Jharkendar
-        /// portal (ItMi_PortalRing_Addon) opened without the ornament ring. Only for mobs with a trigger target - the
-        /// crafting mobs (anvil, stove, ...) are left as they are. The item isn't taken, as in OpenGothic.
+        /// The player collides with VobItems (stuck at a sword in the ground like in Gothic). Items in our hands or
+        /// sockets (hips, back) would push our own CharacterController, so they ignore it while being held.
         /// </summary>
-        private bool IsMissingRequiredItem(IInteractiveObject mob, DaedalusVm vm)
+        public void IgnorePlayerCollision(HVRGrabbable grabbable, bool ignore)
         {
-            if (!_configService.Dev.EnableMobRequiredItem || string.IsNullOrEmpty(mob.Item))
-                return false;
+            var playerController = _contextInteractionService.GetCurrentPlayerController();
+            if (playerController == null)
+                return;
 
-            var itemSymbol = vm.GetSymbolByName(mob.Item);
-            var hero = (NpcInstance)vm.GlobalHero;
-            if (itemSymbol == null || hero == null || _npcInventoryService.ExtNpcHasItems(hero, itemSymbol.Index) > 0)
-                return false;
-
-            Logger.Log($"[VRPlayerService] HandleMobGrab: '{mob.Name}' needs '{mob.Item}' - the hero has none", LogCat.Ai);
-            var missingItemFunc = vm.GetSymbolByName("Player_Mob_Missing_Item");
-            if (missingItemFunc != null)
+            var characterController = playerController.GetComponent<VRPlayerController>().CharacterController;
+            foreach (var itemCollider in grabbable.Colliders)
             {
-                var oldSelf = vm.GlobalSelf;
-                vm.GlobalSelf = vm.GlobalHero;
-                try
-                {
-                    vm.Call(missingItemFunc.Index);
-                }
-                finally
-                {
-                    vm.GlobalSelf = oldSelf;
-                }
+                if (itemCollider != null)
+                    Physics.IgnoreCollision(characterController, itemCollider, ignore);
             }
-            return true;
         }
 
-        public void HandleMobGrab(VobLoader loader)
+        public HVRController GetHand(HVRHandSide side)
         {
-            var mob = loader.Container.VobAs<IInteractiveObject>();
-            if (mob == null) return;
-
-            var vm = _gameStateService.GothicVm;
-            if (vm == null) return;
-
-            var condFunc = mob.ConditionFunction ?? "";
-            Logger.Log($"[VRPlayerService] HandleMobGrab mob={loader.gameObject.name} condFunc={(condFunc.Length > 0 ? condFunc : "empty")}", LogCat.Ai);
-
-            // ConditionFunction is a Daedalus check: returns 0 = interaction denied.
-            if (condFunc.Length > 0)
-            {
-                var symbol = vm.GetSymbolByName(condFunc);
-                if (symbol == null)
-                {
-                    Logger.LogWarning($"[VRPlayerService] ConditionFunction '{condFunc}' not found in VM", LogCat.Ai);
-                    return;
-                }
-                // Like the engine: self = the player. The "missing something/item" reactions of a denied mob
-                // (G2's last door on Irdorath: Player_Mob_Missing_*) talk through self - without it nothing was said.
-                var oldSelf = vm.GlobalSelf;
-                vm.GlobalSelf = vm.GlobalHero;
-                int allowed;
-                try
-                {
-                    allowed = vm.Call<int>(symbol.Index);
-                }
-                finally
-                {
-                    vm.GlobalSelf = oldSelf;
-                }
-                if (allowed == 0)
-                {
-                    Logger.Log($"[VRPlayerService] HandleMobGrab: '{condFunc}' denied (returned 0)", LogCat.Ai);
-                    return;
-                }
-            }
-
-            // DeveloperConfig.EnableFireStates: touching a fireplace/torch lights it or puts it out.
-            if (_configService.Dev.EnableFireStates && mob is IFire &&
-                loader.GetComponentInChildren<VobFireHandler>(true) is { } fire)
-            {
-                fire.Toggle();
-                return;
-            }
-
-            // A container without a lid (mummy) is a plain mob: the click shows/hides a loot backpack like a corpse.
-            // Chests with a lid (VRVobContainer) come here too when their lid is grabbed - they open physically.
-            if (mob is IContainer container && loader.GetComponentInChildren<VRVobContainer>(true) == null)
-            {
-                if (!loader.TryGetComponent<VRStaticContainerLoot>(out var loot))
-                    loot = loader.gameObject.AddComponent<VRStaticContainerLoot>();
-                loot.Toggle(container);
-                return;
-            }
-
-            // Crafting mobs that take their useWithItem into the hand (forge, anvil, ...): items swapped like the engine.
-            if (_configService.Dev.EnableMobItemEvents && string.IsNullOrEmpty(mob.Target) &&
-                TryUseMobWithItemEvents(loader, mob))
-                return;
-
-            // Mobs without a mover target but with an onStateFunc (G2 shrines, alchemy/rune tables, bookstands, ...).
-            if (_configService.Dev.EnableMobsiDialogs && string.IsNullOrEmpty(mob.Target) &&
-                TryUseMobStateFunction(loader, mob))
-                return;
-
-            if (!string.IsNullOrEmpty(mob.Target) && IsMissingRequiredItem(mob, vm))
-                return;
-
-            // Condition passed (or no condition) — trigger the linked mover via mob.Target.
-            var moverTarget = mob.Target;
-            if (string.IsNullOrEmpty(moverTarget))
-            {
-                Logger.LogWarning($"[VRPlayerService] HandleMobGrab: no Target on {loader.gameObject.name}", LogCat.Ai);
-                return;
-            }
-            // Direct mover: Toggle (player physically interacts — can open and close).
-            if (_vobService.TryGetMovers(moverTarget, out var moverVobs))
-            {
-                Logger.Log($"[VRPlayerService] HandleMobGrab: toggling mover '{moverTarget}' ({moverVobs.Count} instance(s))", LogCat.Ai);
-                foreach (var moverVob in moverVobs)
-                {
-                    if (moverVob?.Go == null || !moverVob.Go) continue;
-                    var adapter = moverVob.Go.GetComponentInChildren<MoverAdapter>();
-                    if (adapter != null) adapter.Toggle();
-                }
-                return;
-            }
-            // Target is a CodeMaster, TriggerList, TriggerScript, or chained mover — dispatch through the chain.
-            // Pass the mob's VOB name as sender so CodeMaster can match it against its Slaves list.
-            var senderName = loader.Container.Vob.Name;
-            Logger.Log($"[VRPlayerService] HandleMobGrab: dispatching trigger chain '{moverTarget}' from '{senderName}'", LogCat.Ai);
-            _vobService.DispatchTrigger(moverTarget, senderName);
+            if (side == HVRHandSide.Left)
+                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>()
+                    .LeftHand.Controller;
+            else
+                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>()
+                    .RightHand.Controller;
         }
 
         /// <summary>
-        /// Like the engine reaching mob state 1: call "[onStateFunc]_S1" with self = hero. MOBSI scripts like
-        /// PrayShrine_S1 then open a dialog via AI_ProcessInfos(hero) whose choices are C_INFOs with npc = PC_Hero.
-        /// The dialog box is anchored next to the mob (like at an NPC).
+        /// The hero grabbed a mob (wheel, lever, ...). The logic is platform neutral (MobInteractionService),
+        /// only the dialog anchor next to the mob (and a bookstand's page) is VR specific.
         /// </summary>
-        private bool TryUseMobStateFunction(VobLoader loader, IInteractiveObject mob, bool isItemInHand = false)
+        public void HandleMobGrab(VobLoader loader)
         {
-            if (string.IsNullOrEmpty(mob.OnStateChangeFunction))
+            if (TryCloseMobDocument(loader))
+                return;
+
+            _mobInteractionService.HandleMobGrab(loader,
+                () => CreateMobDialogAnchor(loader, _configService.Dev.EnableMobDialogOwnBounds),
+                () => BeginMobDocument(loader));
+        }
+
+        /// <summary>
+        /// A container without a lid (mummy) is a plain mob: the click shows/hides a loot backpack like a corpse.
+        /// Chests with a lid (VRVobContainer) open physically.
+        /// </summary>
+        public void TryToggleStaticContainerLoot(VobLoader loader, IContainer container)
+        {
+            if (loader.GetComponentInChildren<VRVobContainer>(true) != null)
+                return;
+
+            if (!loader.TryGetComponent<VRStaticContainerLoot>(out var loot))
+                loot = loader.gameObject.AddComponent<VRStaticContainerLoot>();
+            loot.Toggle(container);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMobDocuments: an open page (bookstand) closes on the next touch.
+        /// </summary>
+        private bool TryCloseMobDocument(VobLoader loader)
+        {
+            if (!_configService.Dev.EnableMobDocuments)
                 return false;
 
-            // X marks are dug up by hitting them (VRDigSpot) - grabbing must not dig.
-            if (VRDigSpot.IsDigSpot(loader.Container, _vmCacheService))
+            var openDocument = loader.transform.Find(VRMobDocument.AnchorName);
+            if (openDocument == null)
                 return false;
 
-            var vm = _gameStateService.GothicVm;
-            var functionName = mob.OnStateChangeFunction + "_S1";
-            var symbol = vm.GetSymbolByName(functionName);
-            if (symbol == null)
-            {
-                Logger.Log($"[MobDialog] '{functionName}' not in the scripts - mob '{loader.name}' ignored.", LogCat.Dialog);
-                return false;
-            }
+            UnityEngine.Object.Destroy(openDocument.gameObject);
+            Logger.Log($"[MobDialog] Closed the page of '{loader.name}'.", LogCat.Dialog);
+            return true;
+        }
 
-            // Like the engine: a mob used with an item needs it in the inventory (e.g. a lab flask).
-            // Not when it was already taken into the hand (TryUseMobWithItemEvents).
-            var hero = _playerService.HeroContainer;
-            if (!isItemInHand && !string.IsNullOrEmpty(mob.Item))
-            {
-                var item = _vmCacheService.TryGetItemData(mob.Item);
-                if (item != null && _npcInventoryService.ExtNpcHasItems(hero.Instance, item.Index) <= 0)
-                {
-                    Logger.Log($"[MobDialog] '{loader.name}' needs '{mob.Item}'.", LogCat.Dialog);
-                    PlayMobMissingItemReaction(hero);
-                    return true;
-                }
-            }
+        /// <summary>
+        /// DeveloperConfig.EnableMobDocuments: a page next to the mob for a Doc_Show of its "[onStateFunc]_S1"
+        /// (bookstands). Removed again if the script showed nothing.
+        /// </summary>
+        private Action BeginMobDocument(VobLoader loader)
+        {
+            if (!_configService.Dev.EnableMobDocuments)
+                return null;
 
-            // DeveloperConfig.EnableMobDocuments: an open page (bookstand) closes on the next touch.
-            VRMobDocument document = null;
-            if (_configService.Dev.EnableMobDocuments)
-            {
-                var openDocument = loader.transform.Find(VRMobDocument.AnchorName);
-                if (openDocument != null)
-                {
-                    UnityEngine.Object.Destroy(openDocument.gameObject);
-                    Logger.Log($"[MobDialog] Closed the page of '{loader.name}'.", LogCat.Dialog);
-                    return true;
-                }
-                document = VRMobDocument.Create(loader.gameObject);
-                _docService.PendingItemGo = document.gameObject;
-            }
-
-            _dialogService.PrepareMobDialog(CreateMobDialogAnchor(loader, _configService.Dev.EnableMobDialogOwnBounds));
-
-            var oldSelf = vm.GlobalSelf;
-            vm.GlobalSelf = vm.GlobalHero;
-            try
-            {
-                vm.Call(symbol.Index);
-                Logger.Log($"[MobDialog] Called '{functionName}' for '{loader.name}'.", LogCat.Dialog);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError($"[MobDialog] '{functionName}' failed: {e.Message}", LogCat.Dialog);
-            }
-            finally
-            {
-                vm.GlobalSelf = oldSelf;
-            }
-
-            if (document != null)
+            var document = VRMobDocument.Create(loader.gameObject);
+            _docService.PendingItemGo = document.gameObject;
+            return () =>
             {
                 _docService.PendingItemGo = null;
                 if (document.HasPages)
                     Logger.Log($"[MobDialog] '{loader.name}' shows a page (Doc_Show).", LogCat.Dialog);
                 else
                     UnityEngine.Object.Destroy(document.gameObject);
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// DeveloperConfig.EnableMobItemEvents: like the engine, the human mob animations move the mob's useWithItem
-        /// (HUMANS.MDS events of T_[scheme]_S0_2_S1 / _S1_2_S0): ItemInsert takes one into the hand, ItemExchange swaps
-        /// it, ItemRemove puts it back into the inventory, ItemDestroy uses it up. G2's forge turns raw steel into hot
-        /// steel (BSFIRE), the anvil takes the hot steel before SMITHWEAPON_S1 counts it (Npc_HasItems + 1). Before,
-        /// the forge did nothing and the anvil only said "With what?".
-        /// </summary>
-        private bool TryUseMobWithItemEvents(VobLoader loader, IInteractiveObject mob)
-        {
-            if (string.IsNullOrEmpty(mob.Item) || string.IsNullOrEmpty(mob.Visual?.Name))
-                return false;
-
-            var scheme = mob.Visual.Name.Split('_')[0];
-            var mds = _resourceCacheService.TryGetModelScript("HUMANS", false);
-            var useAnim = mds?.Animations.FirstOrDefault(a => a.Name.EqualsIgnoreCase($"T_{scheme}_S0_2_S1"));
-            if (useAnim == null || useAnim.EventTags.All(e => e.Type != EventType.ItemInsert))
-                return false;
-
-            var hero = _playerService.HeroContainer;
-            var item = _vmCacheService.TryGetItemData(mob.Item);
-            if (item == null || _npcInventoryService.ExtNpcHasItems(hero.Instance, item.Index) <= 0)
-            {
-                Logger.Log($"[MobItem] '{loader.name}' ({scheme}) needs '{mob.Item}'.", LogCat.Ai);
-                PlayMobMissingItemReaction(hero);
-                return true;
-            }
-
-            _playerService.RemoveItem(mob.Item);
-            var handItem = mob.Item;
-            foreach (var tag in useAnim.EventTags)
-            {
-                if (tag.Type == EventType.ItemExchange && !string.IsNullOrEmpty(tag.Item))
-                    handItem = tag.Item;
-            }
-
-            if (!string.IsNullOrEmpty(mob.OnStateChangeFunction))
-                TryUseMobStateFunction(loader, mob, isItemInHand: true);
-
-            var leaveAnim = mds.Animations.FirstOrDefault(a => a.Name.EqualsIgnoreCase($"T_{scheme}_S1_2_S0"));
-            var isPutBack = leaveAnim?.EventTags.Any(e => e.Type == EventType.ItemRemove) ?? false;
-            if (isPutBack)
-                _playerService.AddItem(handItem);
-
-            Logger.Log($"[MobItem] '{loader.name}' ({scheme}): '{mob.Item}' taken" +
-                       (isPutBack ? $", '{handItem}' back into the inventory" : " and used up"), LogCat.Ai);
-            return true;
-        }
-
-        /// <summary>
-        /// Like the engine (OpenGothic printMobMissingItem): G2 scripts have PLAYER_MOB_MISSING_ITEM (missing item text +
-        /// the hero's "$MISSINGITEM" line). G1 has none - nothing to say then.
-        /// </summary>
-        private void PlayMobMissingItemReaction(Gothic.Core.Models.Container.NpcContainer hero)
-        {
-            var vm = _gameStateService.GothicVm;
-            var symbol = vm.GetSymbolByName("PLAYER_MOB_MISSING_ITEM");
-            if (symbol == null)
-                return;
-
-            hero.Props.AnimationQueue.Clear();
-            var oldSelf = vm.GlobalSelf;
-            vm.GlobalSelf = vm.GlobalHero;
-            try
-            {
-                vm.Call(symbol.Index);
-            }
-            catch (Exception e)
-            {
-                Logger.LogWarning($"[MobDialog] PLAYER_MOB_MISSING_ITEM failed: {e.Message}", LogCat.Dialog);
-            }
-            finally
-            {
-                vm.GlobalSelf = oldSelf;
-            }
-
-            _dialogService.RunHeroQueue();
+            };
         }
 
         /// <summary>
@@ -441,18 +248,26 @@ namespace Gothic.VR.Services
         /// </summary>
         private static GameObject CreateMobDialogAnchor(VobLoader loader, bool isOwnBoundsOnly)
         {
-            var cam = Camera.main!.transform;
+            var cam = Camera.main != null ? Camera.main.transform : loader.transform;
 
             var bounds = new Bounds(loader.transform.position, Vector3.one * 0.5f);
             var hasBounds = false;
             foreach (var mobRenderer in loader.GetComponentsInChildren<Renderer>())
             {
-                // DeveloperConfig.EnableMobDialogOwnBounds: VOBs nested below the mob have their own loader. One of MT's
-                // anvils has three more below it - the anchor landed hundreds of meters away ("hero farther than 5 m").
+                // DeveloperConfig.EnableMobDialogOwnBounds: VOBs nested below the mob have their own loader. One of
+                // Mroczne Tajemnice's anvils has three more below it - the anchor landed hundreds of meters away
+                // ("hero farther than 5 m").
                 if (isOwnBoundsOnly && mobRenderer.GetComponentInParent<VobLoader>(true) != loader)
                     continue;
-                if (!hasBounds) { bounds = mobRenderer.bounds; hasBounds = true; }
-                else bounds.Encapsulate(mobRenderer.bounds);
+                if (!hasBounds)
+                {
+                    bounds = mobRenderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(mobRenderer.bounds);
+                }
             }
 
             var right = Vector3.ProjectOnPlane(cam.right, Vector3.up).normalized;
@@ -463,14 +278,6 @@ namespace Gothic.VR.Services
             anchor.transform.position = position;
             new GameObject("DialogMenuRootPos").transform.SetParent(anchor.transform, false);
             return anchor;
-        }
-
-        public HVRController GetHand(HVRHandSide side)
-        {
-            if (side == HVRHandSide.Left)
-                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>().LeftHand.Controller;
-            else
-                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>().RightHand.Controller;
         }
 
         public GameObject GetHandModelGo(HVRHandSide side)

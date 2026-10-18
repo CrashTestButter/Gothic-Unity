@@ -6,9 +6,11 @@ using Gothic.Core.Models.Proxy;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Models.Vm;
 using JetBrains.Annotations;
 using Reflex.Attributes;
 using ZenKit.Daedalus;
+using ZenKit.Vobs;
 
 namespace Gothic.Core.Services.Caches
 {
@@ -25,6 +27,29 @@ namespace Gothic.Core.Services.Caches
         private readonly Dictionary<string, EffectBaseInstance> _vfxDataCache = new();
         private readonly Dictionary<string, ParticleEffectEmitKeyInstance> _vfxEmitKeyCache = new();
         private readonly Dictionary<int, SpellInstance> _spellDataCache = new();
+
+        // DeveloperConfig.EnableDigSpotTreasureOnly: the dig functions - everything else used with a melee tool opens a
+        // mob dialog (Mroczne Tajemnice's anvil SMITHERY with the sledgehammer, G2's Goldhacken/Stomp) and is used like
+        // other mobs.
+        private static readonly string[] _digStateFunctions = { "B_SCGETTREASURE" };
+
+        /// <summary>
+        /// Dig spot: an interactive mob (no door/chest) with an onStateFunc which is used with a melee weapon/tool,
+        /// e.g. G2's treasure X marks + pickaxe. Generic for G2 and mods.
+        /// </summary>
+        public bool IsDigSpot([CanBeNull] IVirtualObject vob)
+        {
+            if (vob is not IInteractiveObject mob || vob is IDoor || vob is IContainer)
+                return false;
+            if (string.IsNullOrEmpty(mob.OnStateChangeFunction) || string.IsNullOrEmpty(mob.Item))
+                return false;
+            if (_configService.Dev.EnableDigSpotTreasureOnly &&
+                Array.FindIndex(_digStateFunctions, f => f.EqualsIgnoreCase(mob.OnStateChangeFunction)) < 0)
+                return false;
+
+            var tool = TryGetItemData(mob.Item);
+            return tool != null && ((VmGothicEnums.ItemFlags)tool.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) != 0;
+        }
 
         /// <summary>
         /// Hint: Instances only need to be initialized once in ZenKit.

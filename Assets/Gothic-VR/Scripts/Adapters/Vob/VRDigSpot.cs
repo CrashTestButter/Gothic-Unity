@@ -5,9 +5,8 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
-using Gothic.Core.Services;
-using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Vm;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
@@ -18,62 +17,38 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.Vob
 {
     /// <summary>
-    /// V1 (DeveloperConfig.EnableDigSpots): mobs you "use with" a melee tool and which have an onStateFunc - e.g. G2's
+    /// Mobs you "use with" a melee tool and which have an onStateFunc - e.g. G2's
     /// treasure X marks (oCMobInter, TREASURE_ADDON_01.ASC, useWithItem ItMw_2H_Axe_L_01 = pickaxe, onStateFunc
-    /// B_SCGetTreasure). In Gothic the hero plays the dig animation and the engine calls "[onStateFunc]_S1" when state 1
-    /// is reached. In VR: hit the mob DigHitsNeeded times with a swung melee weapon, then we call the same function
-    /// (self = hero). The script does the rest (Wld_InsertItem, quest variables, XP, SVM).
+    /// B_SCGetTreasure), see VmCacheService.IsDigSpot. In Gothic the hero plays the dig animation and the engine calls
+    /// "[onStateFunc]_S1" when state 1 is reached. In VR: hit the mob _digHitsNeeded times with a swung melee weapon,
+    /// then we call the same function (self = hero). The script does the rest (Wld_InsertItem, quest variables, XP).
     ///
     /// Hit detection only compares bounds + weapon speed - no colliders, layers or combat code involved.
-    /// Added at runtime by VRFocus.
+    /// Part of the oCMobInter/DigSpot prefab variant (PrefabType.VobInteractableDigSpot).
     /// </summary>
     public class VRDigSpot : MonoBehaviour
     {
         private const int _digHitsNeeded = 3;
+
         // Minimum weapon speed (m/s) for a touch to count as a hit.
         private const float _minSwingSpeed = 1.2f;
+
         // A single swing can overlap for several physics ticks - count it once.
         private const float _hitCooldown = 0.4f;
         private const float _boundsPadding = 0.1f;
         private const string _stateOneSuffix = "_S1";
 
-        // DeveloperConfig.EnableDigSpotTreasureOnly: the dig functions - everything else used with a melee tool opens a
-        // mob dialog (MT's anvil SMITHERY with the sledgehammer, G2's Goldhacken/Stomp) and is used like other mobs.
-        private static readonly string[] _digStateFunctions = { "B_SCGETTREASURE" };
-
+        [Inject] private readonly VmService _vmService;
         [Inject] private readonly ConfigService _configService;
-        [Inject] private readonly GameStateService _gameStateService;
 
         private IInteractiveObject _mob;
         private Renderer[] _renderers;
         private HVRHandGrabber[] _hands;
         private int _hits;
-        private float _lastHitTime = -999f;
-
-
-        /// <summary>
-        /// Generic for G2 and mods: any interactive mob with an onStateFunc which is used with a melee weapon/tool.
-        /// </summary>
-        public static bool IsDigSpot(VobContainer container, VmCacheService vmCacheService)
-        {
-            if (container?.Vob is not IInteractiveObject mob || container.Vob is IDoor || container.Vob is IContainer)
-                return false;
-            if (string.IsNullOrEmpty(mob.OnStateChangeFunction) || string.IsNullOrEmpty(mob.Item))
-                return false;
-
-            var configService = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
-            if (configService.Dev.EnableDigSpotTreasureOnly &&
-                Array.FindIndex(_digStateFunctions, f => f.EqualsIgnoreCase(mob.OnStateChangeFunction)) < 0)
-                return false;
-
-            var tool = vmCacheService.TryGetItemData(mob.Item);
-            return tool != null && ((VmGothicEnums.ItemFlags)tool.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) != 0;
-        }
-
-        private void Awake()
-        {
-            this.Inject();
-        }
+        private float _lastHitTime = float.NegativeInfinity;
+        private HVRGrabbable _lastWeapon;
+        private bool? _isLastWeaponAllowed;
+        private Collider[] _lastWeaponColliders;
 
         private void Start()
         {
@@ -81,8 +56,8 @@ namespace Gothic.VR.Adapters.Vob
             _mob = loader?.Container?.Vob as IInteractiveObject;
             _renderers = loader != null ? loader.GetComponentsInChildren<Renderer>(true) : Array.Empty<Renderer>();
             // DeveloperConfig.EnableDigSpotTreasureOnly: only this VOB's renderers - VOBs nested below it in the world
-            // have their own loader. One of MT's anvils took three more anvils: its bounds covered the whole Old Camp
-            // and every sword swing there counted as a hit.
+            // can have their own loader. One of Mroczne Tajemnice's anvils took three more anvils: its bounds covered
+            // the whole Old Camp and every sword swing there counted as a hit.
             if (loader != null && _configService.Dev.EnableDigSpotTreasureOnly)
                 _renderers = Array.FindAll(_renderers, r => r.GetComponentInParent<VobLoader>(true) == loader);
             _hands = FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None);
@@ -94,7 +69,7 @@ namespace Gothic.VR.Adapters.Vob
 
         private void FixedUpdate()
         {
-            if (_mob == null || !_configService.Dev.EnableDigSpots)
+            if (_mob == null)
                 return;
             if (Time.time - _lastHitTime < _hitCooldown)
                 return;
@@ -104,14 +79,20 @@ namespace Gothic.VR.Adapters.Vob
             foreach (var hand in _hands)
             {
                 var weapon = hand != null ? hand.GrabbedTarget : null;
-                if (weapon == null || !IsAllowedTool(weapon))
+                if (weapon == null)
                     continue;
+
+                CacheWeapon(weapon);
 
                 var rb = weapon.Rigidbody;
                 if (rb == null || rb.linearVelocity.magnitude < _minSwingSpeed)
                     continue;
 
-                if (!IntersectsWeapon(weapon, spotBounds))
+                if (!IntersectsWeapon(spotBounds))
+                    continue;
+
+                // Cheapest checks first: the tool lookup only runs for a fast weapon touching the spot.
+                if (!IsAllowedTool(weapon))
                     continue;
 
                 RegisterHit(weapon);
@@ -119,17 +100,30 @@ namespace Gothic.VR.Adapters.Vob
             }
         }
 
+        private void CacheWeapon(HVRGrabbable weapon)
+        {
+            if (weapon == _lastWeapon)
+                return;
+
+            _lastWeapon = weapon;
+            _isLastWeaponAllowed = null;
+            _lastWeaponColliders = weapon.GetComponentsInChildren<Collider>();
+        }
+
         private bool IsAllowedTool(HVRGrabbable weapon)
+        {
+            _isLastWeaponAllowed ??= CheckAllowedTool(weapon);
+            return _isLastWeaponAllowed.Value;
+        }
+
+        private bool CheckAllowedTool(HVRGrabbable weapon)
         {
             var container = weapon.GetComponentInParent<VobLoader>()?.Container;
             var item = container?.GetItemInstance();
             if (item == null || ((VmGothicEnums.ItemFlags)item.MainFlag & VmGothicEnums.ItemFlags.ItemKatNf) == 0)
                 return false;
 
-            // Default: any melee weapon (easier to test). Vanilla requires the mob's tool (e.g. the pickaxe).
-            if (!_configService.Dev.DigSpotsRequireTool)
-                return true;
-
+            // Like vanilla, only the mob's own tool (e.g. the pickaxe) digs.
             var vobItem = container.VobAs<IItem>();
             var instanceName = !string.IsNullOrEmpty(vobItem.Instance) ? vobItem.Instance : vobItem.Name;
             return instanceName.EqualsIgnoreCase(_mob.Item);
@@ -143,8 +137,15 @@ namespace Gothic.VR.Adapters.Vob
             {
                 if (r == null || !r.enabled || !r.gameObject.activeInHierarchy)
                     continue;
-                if (!hasBounds) { bounds = r.bounds; hasBounds = true; }
-                else bounds.Encapsulate(r.bounds);
+                if (!hasBounds)
+                {
+                    bounds = r.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(r.bounds);
+                }
             }
 
             if (hasBounds)
@@ -152,11 +153,11 @@ namespace Gothic.VR.Adapters.Vob
             return hasBounds;
         }
 
-        private static bool IntersectsWeapon(HVRGrabbable weapon, Bounds spotBounds)
+        private bool IntersectsWeapon(Bounds spotBounds)
         {
-            foreach (var weaponCollider in weapon.GetComponentsInChildren<Collider>())
+            foreach (var weaponCollider in _lastWeaponColliders)
             {
-                if (weaponCollider.enabled && spotBounds.Intersects(weaponCollider.bounds))
+                if (weaponCollider != null && weaponCollider.enabled && spotBounds.Intersects(weaponCollider.bounds))
                     return true;
             }
 
@@ -182,30 +183,11 @@ namespace Gothic.VR.Adapters.Vob
         /// </summary>
         private void Dig()
         {
-            var vm = _gameStateService.GothicVm;
             var functionName = _mob.OnStateChangeFunction + _stateOneSuffix;
-            var symbol = vm.GetSymbolByName(functionName);
-            if (symbol == null)
-            {
-                Logger.LogWarning($"[VRDigSpot] '{functionName}' not found in the scripts.", LogCat.VR);
-                return;
-            }
-
-            var oldSelf = vm.GlobalSelf;
-            vm.GlobalSelf = vm.GlobalHero;
-            try
-            {
-                vm.Call(symbol.Index);
+            if (_vmService.CallAsHero(functionName, LogCat.VR))
                 Logger.Log($"[VRDigSpot] Called '{functionName}'", LogCat.VR);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError($"[VRDigSpot] '{functionName}' failed: {e.Message}", LogCat.VR);
-            }
-            finally
-            {
-                vm.GlobalSelf = oldSelf;
-            }
+            else
+                Logger.LogWarning($"[VRDigSpot] '{functionName}' not found in the scripts or failed.", LogCat.VR);
         }
     }
 }

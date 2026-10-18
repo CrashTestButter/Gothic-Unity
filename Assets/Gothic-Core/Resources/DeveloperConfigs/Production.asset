@@ -54,8 +54,6 @@ MonoBehaviour:
     CullingDistance: 200
   BrightenUpHoveredVOBs: 1
   ShowNamesOnHoveredVOBs: 1
-  MoverSpeedMultiplier: 3.48
-  EnableEngineMoverTiming: 1
   EnableDialogHeroByInstance: 1
   EnableDialogKeepsOutputs: 1
   EnableDeadStateLoop: 1
@@ -147,17 +145,11 @@ MonoBehaviour:
   EnableSmoking: 1
   SmokePuffs: 4
   SmokeStartDelay: 1.5
-  EnableNoTurnWhileUsingMob: 1
-  EnableMobSeatFix: 1
   EnableRuntimeArmorVisuals: 1
-  EnableDigSpots: 1
   EnableDigSpotTreasureOnly: 1
   EnableMobDialogOwnBounds: 1
-  DigSpotsRequireTool: 0
   EnableHudAlwaysOnTop: 1
-  EnableMobsiDialogs: 1
   EnableVrCrossbow: 1
-  EnableChildVobLoaders: 1
   EnableItemColliderFallback: 1
   EnableKeepIdleOnClearAiQueue: 1
   EnableScriptVideos: 1

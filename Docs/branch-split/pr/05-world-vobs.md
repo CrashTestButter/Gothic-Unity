@@ -8,19 +8,24 @@ PlayMode tests, VR editor).
 
 1. **Movers** (`0bd02110`, `fd42bab6`): `MoverAdapter` moves zCMovers keyframe by keyframe at Gothic's speed
    (OpenGothic `movetrigger.cpp`: speed = cm/ms; rotation-only segments in rotations/s), with Gothic's speed curves
-   and open/close sounds; chained target movers follow. Grabbing a wheel/lever (`VRFocus` →
-   `VRPlayerService.HandleMobGrab`) runs the mob's `ConditionFunction` with self = hero (OpenGothic `invokeCond`) and
-   triggers its target. Movers are registered by name (copy-pasted movers share one; `//` prefixes and missing `.3DS`
+   and open/close sounds; chained target movers follow, other targets get a trigger when a move ends. Movers react
+   per behavior (OpenGothic `MoveTrigger::onTrigger/onUntrigger`: Toggle toggles, TriggerControl opens/closes on
+   trigger/untrigger, OpenTime opens, SingleKeys ignores triggers). Grabbing a wheel/lever (`VRFocus` →
+   `MobInteractionService.HandleMobGrab`, Core) runs the mob's `ConditionFunction` with self = hero (OpenGothic
+   `invokeCond`); like OpenGothic the mob keeps its `State`: used from 0 it triggers its target, used again it
+   untriggers it. Movers are registered by name (copy-pasted movers share one; `//` prefixes and missing `.3DS`
    suffixes are tolerated). Doors (HVRPhysicsDoor) and chests (lid physics) don't go through this path; doors are no
    longer in `VobsInteractable`.
 2. **Trigger system** (`ffe58329`, `eda43305`): one handler per VOB type – `zCTriggerList`, `zCCodeMaster`,
    `zCTrigger`, `zCTriggerUntouch`, `zCTriggerWorldStart`, `zCMoverController`, `zCMessageFilter`.
    `oCTriggerScript` can be triggered by other VOBs and respects `MaxActivationCount`.
    `Wld_SendTrigger`/`Wld_SendUntrigger` externals. `VobService.DispatchTrigger`/`DispatchUntrigger` route by name
-   (untrigger: movers close, code masters reset, message filters run OnUntrigger). Chained triggers pass their own
-   VOB name as sender (code master slaves). Chains are capped at 8 levels (synchronous dispatch would recurse forever
+   (untrigger: TriggerControl movers close, code masters reset, message filters run OnUntrigger). Chained triggers
+   pass their own VOB name as sender (code master slaves). Chains are capped at 8 levels (synchronous dispatch would recurse forever
    on self-retriggering scripts, G2 Renovation). Mobs whose target isn't a mover run the chain (sender = mob).
-   All lookups are cleared on `LoadGameStart` (new game, load) and on level changes (`BootstrapService`).
+   All lookups are cleared on `LoadGameStart` (new game, load) and on level changes (`BootstrapService`). Movers and
+   triggers below another VOB get their own `VobLoader` and are registered too (`GameStateService.RegisterNamedVob`).
+   Code masters handle duplicate slave names.
 3. **MOBSI + beds** (`1cb05946`, `0d1f0dfe`): shrines, alchemy/rune tables, bookstands call `[onStateFunc]_S1` with
    self = hero; the dialog opens next to the mob (anchor released again if the script opens no dialog), the hero's
    AI queue runs in `DialogService` meanwhile. Missing mob item → `PLAYER_MOB_MISSING_ITEM`. G2 beds (`BEDHIGH_*`)
@@ -48,12 +53,11 @@ root motion).
 
 ## Config
 
-- Kept (one `[Separator("Movers, triggers and mobs")]` block):
-  - `MoverSpeedMultiplier` – **1 = original Gothic speed**. Production: **1** (the source branch had 3.48: that only
-    compensated a unit error – speed was used as m/s instead of cm/ms, factor 10 – so movers there were still ~3x
-    too slow). `Lab.HVR.Simulator.asset` has no value → default 1, same as Production.
-  - `EnableMobsiDialogs` (on), `EnableDigSpots` (on), `DigSpotsRequireTool` (off = any melee weapon).
-- Dropped (fix always on): `EnableMobSeatFix`, `EnableNoTurnWhileUsingMob`, `EnableChildVobLoaders`.
+- No new flags. Movers always run at original Gothic speed (the source branch's `MoverSpeedMultiplier` 3.48 only
+  compensated a unit error – speed was used as m/s instead of cm/ms, factor 10).
+- Dropped (fix/feature always on): `EnableMobSeatFix`, `EnableNoTurnWhileUsingMob`, `EnableChildVobLoaders`,
+  `MoverSpeedMultiplier`, `EnableMobsiDialogs`, `EnableDigSpots`, `DigSpotsRequireTool` (dig spots now need the
+  mob's own tool, like vanilla: the pickaxe for G2 X marks).
   ⚠ Slice 04 also used `EnableMobSeatFix` – it must use the "on" path without the flag too.
 
 ## Asset changes
@@ -74,7 +78,8 @@ Quick (~5 min, any save):
 
 Short play (~10 min):
 5. G1 Old Camp main gate: grab the winch → the gate opens at its Gothic speed (compare with the original: a few
-   seconds, not instant, not a minute); grab again → closes. Multi-keyframe movers follow their whole path.
+   seconds, not instant, not a minute); grab again → closes (TriggerControl gates too:
+   the second use untriggers). Multi-keyframe movers follow their whole path.
 6. G2: open a gate via a lever; pray at a shrine (dialog next to the shrine, choices work, closes).
 7. G2: alchemy table without a flask → "missing item" text + hero line; with a flask → alchemy dialog.
 8. G2: sleep in a bed in Khorinis (highlights, sleep dialog). G1 Mroczne Tajemnice: sleep in a bed.
@@ -109,9 +114,11 @@ Longer play (~15+ min):
     through `VRFocus` → `HandleMobGrab`.
   - Mover timing rewritten after OpenGothic (per-segment, cm/ms, rotation speed) – the source lerped first → last
     keyframe with m/s and a fixed 0.5 s for rotations. Production multiplier 3.48 → 1.
-  - `HandleMobGrab` calls `DispatchTrigger` directly; conditions run as hero; chests skipped; no-target is a Log.
+  - Mob grab logic lives in Core `MobInteractionService` (source: `VRPlayerService`); VR only creates the dialog
+    anchor. It dispatches directly (trigger/untrigger by mob state); conditions run as hero (`VmService.CallAsHero`);
+    chests skipped; no-target is a Log.
   - `Wld_SendUntrigger` uses `DispatchUntrigger` (also code masters/message filters).
-  - Registration/dispatch/GO creation de-duplicated (`RegisterTriggerVob`, `TryGetTriggerVob`, two generic creation
+  - Registration/dispatch/GO creation de-duplicated (`RegisterNamedVob`, `TryGetTriggerVob`, two generic creation
     helpers), `IsLockPick`, `IsBed`, `VmCacheService.IsDigSpot`.
   - `ClearTriggerVobs` on every world change; `Dispose` also clears `VobsTriggerScript`.
   - Bench/throne yaw-inversion hack deleted (dead with the seat fix always on) and with it the `onBeforeRender`

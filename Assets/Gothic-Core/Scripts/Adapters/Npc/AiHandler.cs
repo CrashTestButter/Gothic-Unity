@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Gothic.Core.Adapters.Properties;
+using Gothic.Core.Adapters.Properties.Vobs;
 using Gothic.Core.Creator;
 using Gothic.Core.Domain.Npc.Actions;
 using Gothic.Core.Domain.Npc.Actions.AnimationActions;
@@ -674,12 +675,12 @@ namespace Gothic.Core.Adapters.Npc
             Properties.CurrentAction = new None(new AnimationAction(), NpcData);
             Properties.StateTime = 0.0f;
 
-            // DeveloperConfig.EnableMobSeatFix: mob usage (sitting on a bench, ...) ends with the respawn at the routine
-            // waypoint - the routine walks there and sits down again. Before, the NPC kept its sitting state and sat in
-            // the air at the respawn point.
-            if (_configService.Dev.EnableMobSeatFix && Properties.CurrentInteractableStateId >= 0)
+            // Mob usage (sitting on a bench, ...) ends with the respawn at the routine waypoint - the routine walks
+            // there and sits down again. Before, the NPC kept its sitting state and sat in the air at the respawn
+            // point.
+            if (Properties.CurrentInteractableStateId >= 0)
             {
-                if (PrefabProps.CurrentInteractable?.Props is Gothic.Core.Adapters.Properties.Vobs.InteractiveProperties mobProps)
+                if (PrefabProps.CurrentInteractable?.Props is InteractiveProperties mobProps)
                     mobProps.State = -1;
 
                 PrefabProps.CurrentInteractable = null;

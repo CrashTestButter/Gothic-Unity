@@ -33,7 +33,6 @@ namespace Gothic.VR.Adapters
         [Inject] private readonly DynamicMaterialService _dynamicMaterialService;
         [Inject] private readonly VRPlayerService _vrPlayerService;
         [Inject] private readonly Gothic.Core.Services.Npc.HeroPerceptionService _heroPerceptionService;
-        [Inject] private readonly Gothic.Core.Services.Caches.VmCacheService _vmCacheService;
 
         private static Camera _mainCamera;
 
@@ -79,14 +78,6 @@ namespace Gothic.VR.Adapters
             grabbable?.Grabbed.AddListener(OnGrabbed);
             grabbable?.Released.AddListener(OnReleased);
             RefreshGrabColliders(grabbable);
-
-            // V1: mobs used with a melee tool (e.g. G2 treasure X marks + pickaxe) can be dug up by hitting them.
-            if (_configService.Dev.EnableDigSpots &&
-                VRDigSpot.IsDigSpot(GetComponentInParent<VobLoader>()?.Container, _vmCacheService) &&
-                GetComponent<VRDigSpot>() == null)
-            {
-                gameObject.AddComponent<VRDigSpot>();
-            }
         }
 
         private void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
@@ -97,21 +88,12 @@ namespace Gothic.VR.Adapters
             // Like the engine using a mob: chest lids and doors too (owners react, B_AssessUseMob).
             _heroPerceptionService.OnHeroUsesMob(mob);
 
-            if (_mobActivated) return;
-
-            // IDoor uses HVRPhysicsDoor for interaction — skip the mover-trigger path.
-            // Beds are oCMobDoors too (BED*/BEDHIGH* visuals), but get used like other mobs (SLEEPABIT_S1).
-            if (vobLoader.Container.Vob is IDoor && !IsBed(vobLoader.Container.Vob)) return;
+            // Using the mob itself (wheels, levers, shrines, beds, ...) is VRMobInteraction's - containers aren't.
+            if (_mobActivated || mob is not IContainer container)
+                return;
 
             _mobActivated = true;
-            Logger.Log($"[VRFocus.OnGrabbed] mob={vobLoader.gameObject.name}", LogCat.Ai);
-            _vrPlayerService.HandleMobGrab(vobLoader);
-        }
-
-        private static bool IsBed(IVirtualObject vob)
-        {
-            var visualName = vob.Visual?.Name;
-            return !string.IsNullOrEmpty(visualName) && visualName.StartsWithIgnoreCase("BED");
+            _vrPlayerService.TryToggleStaticContainerLoot(vobLoader, container);
         }
 
         private void OnReleased(HVRGrabberBase _, HVRGrabbable __)

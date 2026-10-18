@@ -14,20 +14,21 @@ namespace Gothic.Core.Adapters.Vob
     /// </summary>
     public class TriggerUntouchHandler : MonoBehaviour
     {
-        [Inject] private VobService _vobService;
+        [Inject] private readonly VobService _vobService;
 
-        private string _target;
+        private ITriggerUntouch _vob;
 
         private void Awake() => this.Inject();
 
-        public void Init(ITriggerUntouch vob) => _target = vob.Target;
+        public void Init(ITriggerUntouch vob) => _vob = vob;
 
         private void OnTriggerExit(Collider other)
         {
-            if (!other.CompareTag(Constants.PlayerTag)) return;
-            if (string.IsNullOrEmpty(_target)) return;
-            Logger.Log($"[TriggerUntouch] OnTriggerExit → '{_target}'", LogCat.Vob);
-            _vobService.DispatchTrigger(_target);
+            if (!other.CompareTag(Constants.PlayerTag) || string.IsNullOrEmpty(_vob.Target))
+                return;
+
+            Logger.Log($"[TriggerUntouch] '{_vob.Name}' OnTriggerExit -> '{_vob.Target}'", LogCat.Vob);
+            _vobService.DispatchTrigger(_vob.Target, _vob.Name);
         }
     }
 }

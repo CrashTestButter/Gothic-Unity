@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Npc;
 using Gothic.Core.Models.Dialog;
@@ -7,6 +8,8 @@ using Gothic.Core.Models.Vob.WayNet;
 using Gothic.Core.Models.WayNet;
 using ZenKit;
 using ZenKit.Daedalus;
+using ZenKit.Vobs;
+using Logger = Gothic.Core.Logging.Logger;
 using WayPoint = Gothic.Core.Models.Vob.WayNet.WayPoint;
 
 namespace Gothic.Core.Services
@@ -82,13 +85,7 @@ namespace Gothic.Core.Services
             WayPoints.Clear();
             FreePoints.Clear();
             VobsInteractable.Clear();
-            VobsMover.Clear();
-            VobsTriggerScript.Clear();
-            VobsTriggerList.Clear();
-            VobsCodeMaster.Clear();
-            VobsTrigger.Clear();
-            VobsMoverController.Clear();
-            VobsMessageFilter.Clear();
+            ClearTriggerVobs();
         }
 
         public void Dispose()
@@ -99,14 +96,66 @@ namespace Gothic.Core.Services
             WayPoints.Clear();
             FreePoints.Clear();
             VobsInteractable.Clear();
+            ClearTriggerVobs();
+
+            Dialogs.Dispose();
+        }
+
+        /// <summary>
+        /// Registers movers and trigger VOBs (root and child VOBs alike) in their by-name lookups.
+        /// Does nothing for other VOB types or empty names.
+        /// </summary>
+        public void RegisterNamedVob(VobContainer container)
+        {
+            var name = container.Vob.Name;
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            switch (container.Vob.Type)
+            {
+                case VirtualObjectType.zCMover:
+                    var moverKey = name.ToUpper();
+                    if (!VobsMover.TryGetValue(moverKey, out var moverList))
+                        VobsMover[moverKey] = moverList = new();
+                    moverList.Add(container);
+                    return;
+                case VirtualObjectType.oCTriggerScript:
+                    VobsTriggerScript[name.ToUpper()] = container;
+                    break;
+                case VirtualObjectType.zCTriggerList:
+                    VobsTriggerList[name.ToUpper()] = container;
+                    break;
+                case VirtualObjectType.zCCodeMaster:
+                    VobsCodeMaster[name.ToUpper()] = container;
+                    break;
+                case VirtualObjectType.zCTrigger:
+                    VobsTrigger[name.ToUpper()] = container;
+                    break;
+                case VirtualObjectType.zCMoverController:
+                    VobsMoverController[name.ToUpper()] = container;
+                    break;
+                case VirtualObjectType.zCMessageFilter:
+                    VobsMessageFilter[name.ToUpper()] = container;
+                    break;
+                default:
+                    return;
+            }
+
+            Logger.Log($"[GameStateService] Registered {container.Vob.Type}: '{name}'", LogCat.Vob);
+        }
+
+        /// <summary>
+        /// Movers and trigger VOBs are looked up by name - none of them may survive a world change.
+        /// </summary>
+        public void ClearTriggerVobs()
+        {
             VobsMover.Clear();
+            VobsTriggerScript.Clear();
             VobsTriggerList.Clear();
             VobsCodeMaster.Clear();
             VobsTrigger.Clear();
             VobsMoverController.Clear();
             VobsMessageFilter.Clear();
-
-            Dialogs.Dispose();
         }
     }
 }

@@ -11,11 +11,11 @@ namespace Gothic.Core.Adapters.Vob
     /// <summary>
     /// Handles zCMessageFilter: intercepts OnTrigger/OnUntrigger and converts them
     /// to a (possibly different) action on its named Target.
-    /// E.g. receives OnTrigger → forwards as OnTrigger, OnUntrigger, Enable, Disable, or Toggle.
+    /// E.g. receives OnTrigger -> forwards as OnTrigger, OnUntrigger, Enable, Disable, or Toggle.
     /// </summary>
     public class MessageFilterHandler : MonoBehaviour
     {
-        [Inject] private VobService _vobService;
+        [Inject] private readonly VobService _vobService;
 
         private IMessageFilter _vob;
 
@@ -24,18 +24,19 @@ namespace Gothic.Core.Adapters.Vob
         public void Init(IMessageFilter vob)
         {
             _vob = vob;
-            Logger.Log($"[MessageFilter] '{vob.Name}' init — target='{vob.Target}' OnTrigger={vob.OnTrigger} OnUntrigger={vob.OnUntrigger}", LogCat.Vob);
         }
 
         public void Trigger()
         {
-            Logger.Log($"[MessageFilter] '{_vob.Name}' Trigger() → action={_vob.OnTrigger} target='{_vob.Target}'", LogCat.Vob);
+            Logger.Log($"[MessageFilter] '{_vob.Name}' Trigger() -> action={_vob.OnTrigger} target='{_vob.Target}'",
+                LogCat.Vob);
             ExecuteAction(_vob.OnTrigger);
         }
 
         public void Untrigger()
         {
-            Logger.Log($"[MessageFilter] '{_vob.Name}' Untrigger() → action={_vob.OnUntrigger} target='{_vob.Target}'", LogCat.Vob);
+            Logger.Log($"[MessageFilter] '{_vob.Name}' Untrigger() -> action={_vob.OnUntrigger} target='{_vob.Target}'",
+                LogCat.Vob);
             ExecuteAction(_vob.OnUntrigger);
         }
 
@@ -50,14 +51,15 @@ namespace Gothic.Core.Adapters.Vob
                     _vobService.DispatchTrigger(_vob.Target, _vob.Name);
                     break;
                 case MessageFilterAction.Untrigger:
-                    _vobService.DispatchUntrigger(_vob.Target);
+                    _vobService.DispatchUntrigger(_vob.Target, _vob.Name);
                     break;
                 case MessageFilterAction.Enable:
                 case MessageFilterAction.Disable:
                 case MessageFilterAction.Toggle:
                     if (_vobService.DispatchEnable(_vob.Target, action))
                         break;
-                    Logger.LogWarning($"[MessageFilter] '{_vob.Name}' action={action} not yet implemented (target='{_vob.Target}')", LogCat.Vob);
+                    Logger.LogWarning($"[MessageFilter] '{_vob.Name}' action={action} not yet implemented " +
+                                      $"(target='{_vob.Target}')", LogCat.Vob);
                     break;
             }
         }

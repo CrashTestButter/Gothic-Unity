@@ -231,21 +231,18 @@ namespace Gothic.Core.Services.Npc
                 (VmGothicEnums.WeaponState)container.Vob.FightMode == VmGothicEnums.WeaponState.Mage)
                 return;
 
-            // DeveloperConfig.EnableMobSeatFix: like the engine, clearing the queue doesn't break a mob pose.
+            // Like the engine, clearing the queue doesn't break a mob pose.
             // B_AssessTalk clears it right before ZS_Talk: StopAllAnimations popped seated NPCs to standing inside
             // the bench. A running sit-down/stand-up transition finishes (OpenGothic/G1: sit down, then stand up),
             // a seated NPC keeps sitting - ZS_Talk(..., 0) talks seated, ZS_Talk(..., 1) stands up via the old
             // state's _End (AI_UseMob(BENCH, -1)).
-            if (_configService.Dev.EnableMobSeatFix)
-            {
-                if (container.Props.CurrentAction is UseMob)
-                    return;
+            if (container.Props.CurrentAction is UseMob)
+                return;
 
-                if (container.PrefabProps?.CurrentInteractable != null && container.Props.CurrentInteractableStateId >= 0)
-                {
-                    container.Props.CurrentAction = new None(new AnimationAction(), container);
-                    return;
-                }
+            if (container.IsUsingMob())
+            {
+                container.Props.CurrentAction = new None(new AnimationAction(), container);
+                return;
             }
 
             // If an UndrawWeapon is mid-animation when the queue is cleared, sheath the weapon

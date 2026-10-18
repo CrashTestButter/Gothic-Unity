@@ -1,5 +1,4 @@
 ﻿using System;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -66,6 +65,8 @@ namespace Gothic.Core.Services.Vobs
         /// VOBs culled in but not created yet (InitVobCoroutine works them off in batches after the world is entered).
         /// </summary>
         public bool HasPendingVobInits => _objectsToInitQueue.Count > 0;
+        private int _dispatchTriggerDepth;
+        private const int _maxDispatchTriggerDepth = 8;
 
         // Important: All of them are not culled!
         private static readonly VirtualObjectType[] _vobTypesNonLazyLoading =
@@ -108,10 +109,14 @@ namespace Gothic.Core.Services.Vobs
             });
         }
 
+        /// <summary>
+        /// Name lookups of the previous world must not survive a world change: called on LoadGameStart (new game,
+        /// loading a save) and by BootstrapService for level changes (oCTriggerChangeLevel).
+        /// </summary>
         public void PreWorldCreate()
         {
             _gameStateService.VobsInteractable.Clear();
-            _gameStateService.VobsMover.Clear();
+            _gameStateService.ClearTriggerVobs();
         }
 
         /// <summary>
@@ -832,99 +837,49 @@ namespace Gothic.Core.Services.Vobs
                     break;
 
                 case VirtualObjectType.zCMover:
-                    var moverName = container.Vob.Name;
-                    if (!string.IsNullOrEmpty(moverName))
-                    {
-                        var moverKey = moverName.ToUpper();
-                        if (!_gameStateService.VobsMover.TryGetValue(moverKey, out var moverList))
-                            _gameStateService.VobsMover[moverKey] = moverList = new();
-                        moverList.Add(container);
-                    }
-                    break;
-
                 case VirtualObjectType.oCTriggerScript:
-                    // Vob.Name may be empty; GO name = "{GetVisualName()} (Loader)" which matches mob.Target.
-                    var triggerName = container.Go.name.Replace(" (Loader)", "");
-                    if (!string.IsNullOrEmpty(triggerName))
-                    {
-                        _gameStateService.VobsTriggerScript[triggerName.ToUpper()] = container;
-                        Logger.Log($"[VobService] Registered TriggerScript: '{triggerName}'", LogCat.Vob);
-                    }
-                    break;
-
                 case VirtualObjectType.zCTriggerList:
-                    var tlName = container.Vob.Name?.ToUpper();
-                    if (!string.IsNullOrEmpty(tlName))
-                    {
-                        _gameStateService.VobsTriggerList[tlName] = container;
-                        Logger.Log($"[VobService] Registered TriggerList: '{tlName}'", LogCat.Vob);
-                    }
-                    break;
-
                 case VirtualObjectType.zCCodeMaster:
-                    var cmName = container.Vob.Name?.ToUpper();
-                    if (!string.IsNullOrEmpty(cmName))
-                    {
-                        _gameStateService.VobsCodeMaster[cmName] = container;
-                        Logger.Log($"[VobService] Registered CodeMaster: '{cmName}'", LogCat.Vob);
-                    }
-                    break;
-
                 case VirtualObjectType.zCTrigger:
-                    var trigZoneName = container.Vob.Name?.ToUpper();
-                    if (!string.IsNullOrEmpty(trigZoneName))
-                    {
-                        _gameStateService.VobsTrigger[trigZoneName] = container;
-                        Logger.Log($"[VobService] Registered TriggerZone: '{trigZoneName}'", LogCat.Vob);
-                    }
-                    break;
-
                 case VirtualObjectType.zCMoverController:
-                    var mcName = container.Vob.Name?.ToUpper();
-                    if (!string.IsNullOrEmpty(mcName))
-                    {
-                        _gameStateService.VobsMoverController[mcName] = container;
-                        Logger.Log($"[VobService] Registered MoverController: '{mcName}'", LogCat.Vob);
-                    }
-                    break;
-
                 case VirtualObjectType.zCMessageFilter:
-                    var mfName = container.Vob.Name?.ToUpper();
-                    if (!string.IsNullOrEmpty(mfName))
-                    {
-                        _gameStateService.VobsMessageFilter[mfName] = container;
-                        Logger.Log($"[VobService] Registered MessageFilter: '{mfName}'", LogCat.Vob);
-                    }
+                    _gameStateService.RegisterNamedVob(container);
                     break;
             }
         }
 
         /// <summary>
-        /// Fires a named trigger chain: resolves by mover → code master → trigger list → trigger script.
-        /// Used by Wld_SendTrigger, chained movers, and mob-grab targets.
+        /// Fires a named trigger chain: resolves by mover -> code master -> trigger list -> trigger script
+        /// (+ message filter, trigger zone and mover controller of the same name).
+        /// Used by Wld_SendTrigger, trigger VOBs and mob-grab targets.
         /// senderName: name of the VOB that initiated the trigger (needed by CodeMaster slave matching).
         /// </summary>
         public void DispatchTrigger(string name, string senderName = "")
         {
+            if (string.IsNullOrEmpty(name))
+                return;
+
             // See GameStateService.SuppressVobTriggerDispatch: set while RebindNpcAliases() re-runs
             // INIT_ on save-game load, when VOB GameObjects exist but haven't Awake()/DI-injected yet
-            // (still parented under the disabled vobRoot) — dispatching here would NRE on null
+            // (still parented under the disabled vobRoot) - dispatching here would NRE on null
             // [Inject] fields such as TriggerScriptHandler's VmService.
             if (_gameStateService.SuppressVobTriggerDispatch)
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' suppressed (NPC alias rebind in progress)", LogCat.Vob);
+                Logger.Log($"[VobService] DispatchTrigger '{name}' suppressed (NPC alias rebind in progress)",
+                    LogCat.Vob);
                 return;
             }
 
             // Gothic's engine routes trigger messages through an event manager queue (with optional
-            // fireDelay), so a script re-triggering itself is a common timer pattern — it re-fires on
+            // fireDelay), so a script re-triggering itself is a common timer pattern - it re-fires on
             // a later tick. We dispatch synchronously instead, which turns such a cycle into infinite
             // recursion in a single frame (G2 Renovation's INIT triggers crashed the editor this way).
-            // Legit vanilla chains (TriggerList → movers, chained mover targets) are wide, not deep,
+            // Legit vanilla chains (TriggerList -> movers, chained mover targets) are wide, not deep,
             // so a small depth cap only ever cuts true cycles.
-            if (_dispatchTriggerDepth >= MaxDispatchTriggerDepth)
+            if (_dispatchTriggerDepth >= _maxDispatchTriggerDepth)
             {
-                Logger.LogWarning($"[VobService] DispatchTrigger '{name}' dropped — trigger chain deeper than {MaxDispatchTriggerDepth} levels (self-retriggering loop?)", LogCat.Vob);
+                Logger.LogWarning($"[VobService] DispatchTrigger '{name}' dropped - trigger chain deeper than " +
+                                  $"{_maxDispatchTriggerDepth} levels (self-retriggering loop?)", LogCat.Vob);
                 return;
             }
 
@@ -939,72 +894,69 @@ namespace Gothic.Core.Services.Vobs
             }
         }
 
-        private int _dispatchTriggerDepth;
-        private const int MaxDispatchTriggerDepth = 8;
-
         private void DispatchTriggerInternal(string name, string senderName)
         {
-
             if (TryGetMovers(name, out var movers))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' → mover(s) (Toggle)", LogCat.Vob);
-                foreach (var c in movers)
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> mover(s) (OnTrigger)", LogCat.Vob);
+                foreach (var mover in movers)
                 {
-                    if (c?.Go == null || !c.Go) continue;
-                    c.Go.GetComponentInChildren<MoverAdapter>()?.Toggle();
+                    if (mover?.Go == null || !mover.Go)
+                        continue;
+                    mover.Go.GetComponentInChildren<MoverAdapter>()?.OnTrigger();
                 }
                 return;
             }
 
             var key = name.ToUpper();
 
-            if (_gameStateService.VobsCodeMaster.TryGetValue(key, out var cm) && cm?.Go != null && cm.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsCodeMaster, key, out var codeMaster))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' ← '{senderName}' → CodeMaster", LogCat.Vob);
-                cm.Go.GetComponentInChildren<CodeMasterHandler>(true)?.ReceiveTrigger(senderName);
+                Logger.Log($"[VobService] DispatchTrigger '{name}' from '{senderName}' -> CodeMaster", LogCat.Vob);
+                codeMaster.Go.GetComponentInChildren<CodeMasterHandler>(true)?.ReceiveTrigger(senderName);
                 return;
             }
 
-            if (_gameStateService.VobsTriggerList.TryGetValue(key, out var tl) && tl?.Go != null && tl.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsTriggerList, key, out var triggerList))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' → TriggerList", LogCat.Vob);
-                tl.Go.GetComponentInChildren<TriggerListHandler>(true)?.Trigger();
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> TriggerList", LogCat.Vob);
+                triggerList.Go.GetComponentInChildren<TriggerListHandler>(true)?.Trigger();
                 return;
             }
 
-            // TriggerScript and MessageFilter can coexist under the same name — do NOT early-return after TriggerScript.
-            var dispatched = false;
+            // TriggerScript, MessageFilter, TriggerZone and MoverController can share a name - all of them react.
+            var isDispatched = false;
 
-            if (_gameStateService.VobsTriggerScript.TryGetValue(key, out var ts) && ts?.Go != null && ts.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsTriggerScript, key, out var triggerScript))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' → TriggerScript", LogCat.Vob);
-                ts.Go.GetComponentInChildren<TriggerScriptHandler>(true)?.Trigger();
-                dispatched = true;
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> TriggerScript", LogCat.Vob);
+                triggerScript.Go.GetComponentInChildren<TriggerScriptHandler>(true)?.Trigger();
+                isDispatched = true;
             }
 
-            if (_gameStateService.VobsMessageFilter.TryGetValue(key, out var mf) && mf?.Go != null && mf.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsMessageFilter, key, out var messageFilter))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' → MessageFilter", LogCat.Vob);
-                mf.Go.GetComponentInChildren<MessageFilterHandler>(true)?.Trigger();
-                dispatched = true;
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> MessageFilter", LogCat.Vob);
+                messageFilter.Go.GetComponentInChildren<MessageFilterHandler>(true)?.Trigger();
+                isDispatched = true;
             }
 
-            if (_gameStateService.VobsTrigger.TryGetValue(key, out var tz) && tz?.Go != null && tz.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsTrigger, key, out var triggerZone))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' → TriggerZone (OnTrigger)", LogCat.Vob);
-                tz.Go.GetComponentInChildren<TriggerZoneHandler>(true)?.ReceiveTrigger();
-                dispatched = true;
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> TriggerZone (OnTrigger)", LogCat.Vob);
+                triggerZone.Go.GetComponentInChildren<TriggerZoneHandler>(true)?.ReceiveTrigger();
+                isDispatched = true;
             }
 
-            if (_gameStateService.VobsMoverController.TryGetValue(key, out var mc) && mc?.Go != null && mc.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsMoverController, key, out var moverController))
             {
-                Logger.Log($"[VobService] DispatchTrigger '{name}' → MoverController", LogCat.Vob);
-                mc.Go.GetComponentInChildren<MoverControllerHandler>(true)?.Trigger();
-                dispatched = true;
+                Logger.Log($"[VobService] DispatchTrigger '{name}' -> MoverController", LogCat.Vob);
+                moverController.Go.GetComponentInChildren<MoverControllerHandler>(true)?.Trigger();
+                isDispatched = true;
             }
 
-            if (!dispatched)
-                Logger.LogWarning($"[VobService] DispatchTrigger: '{name}' not found in movers, code masters, trigger lists, trigger scripts, trigger zones, message filters, or mover controllers", LogCat.Vob);
+            if (!isDispatched)
+                Logger.LogWarning($"[VobService] DispatchTrigger: no mover or trigger VOB named '{name}'", LogCat.Vob);
         }
 
         /// <summary>
@@ -1017,64 +969,96 @@ namespace Gothic.Core.Services.Vobs
             if (!_configService.Dev.EnableTriggerEnableState || !TryGetMovers(name, out var movers))
                 return false;
 
-            var handled = false;
-            foreach (var c in movers)
+            var isHandled = false;
+            foreach (var container in movers)
             {
-                if (c?.Go == null || !c.Go)
+                if (container?.Go == null || !container.Go)
                     continue;
-                var mover = c.Go.GetComponentInChildren<MoverAdapter>();
+                var mover = container.Go.GetComponentInChildren<MoverAdapter>();
                 if (mover == null)
                     continue;
                 mover.SetEnabled(action);
-                handled = true;
+                isHandled = true;
             }
-            return handled;
+            return isHandled;
         }
 
         /// <summary>
-        /// Fires an untrigger event to the named VOB. Currently handled by CodeMaster (UntriggeredCancels).
+        /// Fires an untrigger event to the named VOB: trigger-controlled movers close, a CodeMaster can reset its
+        /// sequence, a MessageFilter runs its OnUntrigger action.
         /// senderName: VOB that sent the untrigger (for CodeMaster slave matching).
         /// </summary>
         public void DispatchUntrigger(string name, string senderName = "")
         {
+            if (string.IsNullOrEmpty(name))
+                return;
+
             if (TryGetMovers(name, out var movers))
             {
-                Logger.Log($"[VobService] DispatchUntrigger '{name}' → mover(s) (Close)", LogCat.Vob);
-                foreach (var c in movers)
+                Logger.Log($"[VobService] DispatchUntrigger '{name}' -> mover(s) (OnUntrigger)", LogCat.Vob);
+                foreach (var mover in movers)
                 {
-                    if (c?.Go == null || !c.Go) continue;
-                    var mover = c.Go.GetComponentInChildren<MoverAdapter>();
-                    if (mover != null && !mover.IsDisabled)
-                        mover.Close();
+                    if (mover?.Go == null || !mover.Go)
+                        continue;
+                    mover.Go.GetComponentInChildren<MoverAdapter>()?.OnUntrigger();
                 }
                 return;
             }
 
             var key = name.ToUpper();
 
-            if (_gameStateService.VobsCodeMaster.TryGetValue(key, out var cm) && cm?.Go != null && cm.Go)
+            if (TryGetTriggerVob(_gameStateService.VobsCodeMaster, key, out var codeMaster))
             {
-                Logger.Log($"[VobService] DispatchUntrigger '{name}' ← '{senderName}' → CodeMaster", LogCat.Vob);
-                cm.Go.GetComponentInChildren<CodeMasterHandler>(true)?.ReceiveUntrigger(senderName);
+                Logger.Log($"[VobService] DispatchUntrigger '{name}' from '{senderName}' -> CodeMaster", LogCat.Vob);
+                codeMaster.Go.GetComponentInChildren<CodeMasterHandler>(true)?.ReceiveUntrigger(senderName);
                 return;
             }
 
-            Logger.LogWarning($"[VobService] DispatchUntrigger: '{name}' — no handler found", LogCat.Vob);
+            if (TryGetTriggerVob(_gameStateService.VobsMessageFilter, key, out var messageFilter))
+            {
+                Logger.Log($"[VobService] DispatchUntrigger '{name}' -> MessageFilter", LogCat.Vob);
+                messageFilter.Go.GetComponentInChildren<MessageFilterHandler>(true)?.Untrigger();
+                return;
+            }
+
+            Logger.LogWarning($"[VobService] DispatchUntrigger: '{name}' - no handler found", LogCat.Vob);
         }
 
+        private static bool TryGetTriggerVob(Dictionary<string, VobContainer> registry, string key,
+            out VobContainer container)
+        {
+            return registry.TryGetValue(key, out container) && container?.Go != null && container.Go;
+        }
+
+        /// <summary>
+        /// All movers with this name (copy-pasted movers share one, and a trigger moves all of them).
+        /// Mob and trigger targets can carry a "//" path prefix or miss the ".3DS" suffix of mesh movers.
+        /// </summary>
         public bool TryGetMovers(string name, out List<VobContainer> containers)
         {
+            if (string.IsNullOrEmpty(name))
+            {
+                containers = null;
+                return false;
+            }
+
             var start = 0;
             while (start < name.Length && !char.IsLetterOrDigit(name[start]))
                 start++;
             var key = name.Substring(start).ToUpper();
-            if (_gameStateService.VobsMover.TryGetValue(key, out containers)) return true;
+            if (_gameStateService.VobsMover.TryGetValue(key, out containers))
+                return true;
             return _gameStateService.VobsMover.TryGetValue(key + ".3DS", out containers);
         }
+        
 
         public bool TryGetMover(string name, out VobContainer container)
         {
-            if (!TryGetMovers(name, out var list) || list.Count == 0) { container = null; return false; }
+            if (!TryGetMovers(name, out var list) || list.Count == 0)
+            {
+                container = null;
+                return false;
+            }
             container = list[0];
             return true;
         }

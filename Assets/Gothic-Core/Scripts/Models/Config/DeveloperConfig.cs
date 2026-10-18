@@ -206,14 +206,6 @@ namespace Gothic.Core.Models.Config
         public bool ShowNamesOnHoveredVOBs = true;
 
         [Separator("Movers")]
-        [Tooltip("Multiplies zCMover animation speed. 1 = original, 3 = three times faster. Useful when a world mover has a very low speed value in Gothic data.")]
-        [Range(0.1f, 10f)]
-        public float MoverSpeedMultiplier = 1f;
-
-        [Tooltip("V1: Movers go through every keyframe with the engine's timing per segment (translation cm/ms, rotation " +
-                 "as rotations/s) - G2 Irdorath's gate wheels (full turn) didn't move. MoverSpeedMultiplier is ignored.")]
-        public bool EnableEngineMoverTiming = true;
-
         [Tooltip("V1: Mover keyframes are relative to where the VOB stands, like in the engine - only matters for movers " +
                  "whose VOB doesn't stand at the first keyframe.")]
         public bool EnableMoverRelativeKeyframes = true;
@@ -581,21 +573,9 @@ namespace Gothic.Core.Models.Config
         [Min(0f)]
         public float SmokeStartDelay = 1.5f;
 
-        [Tooltip("NPCs using a mob (sitting on a bench, ...) don't turn (AI_TurnToNpc etc.), like the engine. " +
-                 "Before, a sitting NPC turned his back to the hero when talking.")]
-        public bool EnableNoTurnWhileUsingMob = true;
-
-        [Tooltip("A seated NPC's repeated AI_UseMob (routines call it again and again) no longer snaps it back to the " +
-                 "slot in front of the bench/chair - it stays where the sit animation moved it (on the seat).")]
-        public bool EnableMobSeatFix = true;
-
         [Tooltip("AI_EquipArmor / AI_UnequipArmor / AI_EquipBestArmor + armor (un)equips at runtime swap the NPC's body " +
                  "mesh (Greg in Lobart's clothes, Pedro's robe, ...). Also kept after save/load. Read at VM start.")]
         public bool EnableRuntimeArmorVisuals = true;
-
-        [Tooltip("V1: Mobs used with a melee tool + onStateFunc (G2 treasure X marks, pickaxe) are dug up by hitting " +
-                 "them 3 times with a swung melee weapon -> calls [onStateFunc]_S1 like the engine.")]
-        public bool EnableDigSpots = true;
 
         [Tooltip("V1: Only treasure X marks (B_SCGetTreasure) are dug by hitting them, with their own bounds. MT's anvil " +
                  "(used with the sledgehammer) counted as a dig spot: its smithing dialog never opened, the hero stayed " +
@@ -606,27 +586,14 @@ namespace Gothic.Core.Models.Config
                  "hundreds of meters away and the dialog didn't start (\"hero farther than 5 m\").")]
         public bool EnableMobDialogOwnBounds = true;
 
-        [Tooltip("Dig spots only react to their own tool (vanilla: pickaxe). Off = any melee weapon (easier testing).")]
-        public bool DigSpotsRequireTool;
-
         [Tooltip("V1: The hero's HP/mana bars with their numbers and the chapter popup are never cut by the world " +
                  "(VRUiOnTop copied from the menu's). Dialog, subtitles, menus and PrintScreen are always on top (main).")]
         public bool EnableHudAlwaysOnTop = true;
-
-        [Tooltip("V1: Grabbing a mob with an onStateFunc and no mover target (G2 shrines, alchemy/rune tables, " +
-                 "bookstands, ...) calls [onStateFunc]_S1 like the engine. MOBSI dialogs (AI_ProcessInfos(hero)) open " +
-                 "next to the mob.")]
-        public bool EnableMobsiDialogs = true;
 
         [Tooltip("Crossbows (ITEM_CROSSBOW) shoot in VR: aim with the crossbow (one or both hands), trigger fires a " +
                  "bolt (munition from the inventory, 1 per shot, 30 m/s + gravity). Engine damage (G2 DEX + damage - " +
                  "protection). Automatic reload after 1.5 s for now.")]
         public bool EnableVrCrossbow = true;
-
-        [Tooltip("Child vobs (doors/chests/mobs/items placed below another vob) get their own VobLoader - their VR " +
-                 "adapters read the parent's data before (InvalidCastException, 'No door or container found', broken " +
-                 "doors/chests in G2).")]
-        public bool EnableChildVobLoaders = true;
 
         [Tooltip("Items without pre-cached colliders (morph meshes: bows, crossbows) get a box collider from their " +
                  "mesh bounds. Before they had no collider: fell through the ground, no force grab, flew away in hands.")]

@@ -1,10 +1,10 @@
+using System;
 using System.Collections;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
-using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
@@ -16,9 +16,12 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.Core.Adapters.Vob
 {
     /// <summary>
-    /// Drives zCMover movement between ZenKit keyframes.
-    /// Toggle behavior: Open() moves 0→1, Close() moves 1→0.
-    /// Called by wheel/switch state-change propagation via VobService.ActivateMover().
+    /// Drives zCMover movement along its ZenKit keyframes (gates, drawbridges, lifts), segment by segment.
+    /// Open() moves to the last keyframe, Close() back to the first one, Toggle() switches between both.
+    /// Triggered by mobs (wheels, levers) via VRPlayerService.HandleMobGrab and by the trigger system
+    /// (VobService.DispatchTrigger). When it arrives, it opens/closes its chained target mover(s) as well,
+    /// or sends a trigger event if the target isn't a mover.
+    /// Timing follows OpenGothic (common/world/triggers/movetrigger.cpp).
     /// </summary>
     public class MoverAdapter : MonoBehaviour, IDamageable
     {
@@ -26,9 +29,20 @@ namespace Gothic.Core.Adapters.Vob
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly ConfigService _configService;
 
+        // Below this distance (in cm, like Gothic) a segment counts as rotation-only (OpenGothic threshold).
+        private const float _rotationOnlyThresholdCm = 0.01f;
+
+        // OpenGothic: rotation speeds of slow movers are scaled up, otherwise e.g. temple doors take minutes.
+        private const float _lowRotationSpeed = 0.006f;
+        private const float _lowRotationSpeedFactor = 300f;
+
         private IMover _mover;
         private string _chainTarget;
+
         private (Vector3 pos, Quaternion rot)[] _keyframes;
+
+        // Seconds from keyframe i to keyframe i + 1 (cyclic) at original speed.
+        private float[] _segmentSeconds;
         private bool _isOpen;
         private bool _isMoving;
         private int _currentKeyIndex;
@@ -54,7 +68,7 @@ namespace Gothic.Core.Adapters.Vob
 
             _isSavedPosePending = false;
             if (_keyframes != null && _keyframes.Length > 0)
-                SetPose(_keyframes[_currentKeyIndex]);
+                SetPose(_keyframes[_currentKeyIndex].pos, _keyframes[_currentKeyIndex].rot);
         }
 
         private void OnDestroy() => DamageTargets.Unregister(transform);
@@ -83,20 +97,22 @@ namespace Gothic.Core.Adapters.Vob
             if (_configService.Dev.EnableMoverRelativeKeyframes)
                 MakeKeyframesRelativeToVob(mover);
 
+            _segmentSeconds = new float[_keyframes.Length];
+            for (var i = 0; i < _keyframes.Length; i++)
+                _segmentSeconds[i] = CalculateSegmentSeconds(i, (i + 1) % _keyframes.Length, mover.Speed);
+
             _isDisabled = _configService.Dev.EnableTriggerEnableState && !mover.StartEnabled;
             if (_isDisabled)
                 Logger.Log($"[MoverAdapter] {mover.Name} starts disabled (startEnabled=false)", LogCat.Vob);
 
             if (_keyframes.Length > 0)
-                SetPose(_keyframes[0]);
+                SetPose(_keyframes[0].pos, _keyframes[0].rot);
 
             if (_configService.Dev.EnableLogicVobSaveState && LogicVobSaveState.TryTake(mover, out var saved))
                 RestoreState(saved);
 
-            if (_keyframes.Length >= 2)
-                Logger.Log($"[MoverAdapter] {mover.Name} init — kf[0]={_keyframes[0].pos} kf[1]={_keyframes[1].pos} dist={Vector3.Distance(_keyframes[0].pos, _keyframes[1].pos):F2} speed={mover.Speed}", LogCat.Vob);
-            else
-                Logger.Log($"[MoverAdapter] {mover.Name} init — {_keyframes.Length} keyframes, speed={mover.Speed}", LogCat.Vob);
+            Logger.Log($"[MoverAdapter] {mover.Name} init - {_keyframes.Length} keyframes, speed={mover.Speed}",
+                LogCat.Vob);
         }
 
         /// <summary>
@@ -131,8 +147,6 @@ namespace Gothic.Core.Adapters.Vob
             Logger.Log($"[MoverAdapter] {mover.Name} keyframes relative to the VOB - offset {posOffset} " +
                        $"({posOffset.magnitude:F2} m), {rotAngle:F1} deg", LogCat.Vob);
         }
-
-        private void SetPose((Vector3 pos, Quaternion rot) pose) => SetPose(pose.pos, pose.rot);
 
         /// <summary>
         /// DeveloperConfig.EnableNestedMovers: like the engine (OpenGothic MoveTrigger moves the local transform), a mover
@@ -227,33 +241,105 @@ namespace Gothic.Core.Adapters.Vob
                 return;
 
             Logger.Log($"[MoverAdapter] {_mover.Name} hit by a projectile", LogCat.Vob);
-            Toggle();
+            OnTrigger();
+        }
+
+        /// <summary>
+        /// Gothic's mover speed is cm per millisecond for moving segments (OpenGothic: ticks = length / speed).
+        /// Rotation-only segments treat it as rotations per second (slow ones scaled up, see OpenGothic
+        /// scaleRotSpeed - its per-world boat exception isn't ported).
+        /// </summary>
+        private float CalculateSegmentSeconds(int from, int to, float speed)
+        {
+            if (speed <= 0f)
+                return 0f;
+
+            var lengthCm = Vector3.Distance(_keyframes[from].pos, _keyframes[to].pos) * 100f;
+            float milliseconds;
+            if (lengthCm > _rotationOnlyThresholdCm)
+            {
+                milliseconds = lengthCm / speed;
+            }
+            else
+            {
+                var angle = Quaternion.Angle(_keyframes[from].rot, _keyframes[to].rot);
+                var rotationSpeed = speed < _lowRotationSpeed ? speed * _lowRotationSpeedFactor : speed;
+                milliseconds = angle / 360f * 1000f / rotationSpeed;
+            }
+
+            return Mathf.Max(1f, milliseconds) / 1000f;
+        }
+
+        /// <summary>
+        /// Trigger event, behaves per zCMover behavior (OpenGothic MoveTrigger::onTrigger).
+        /// SingleKeys movers ignore it - they are driven by goto messages only (GoToKey*).
+        /// Loop movers toggle only; continuous looping isn't implemented.
+        /// </summary>
+        public void OnTrigger()
+        {
+            if (IsDisabledLogged())
+                return;
+
+            switch (_mover.Behavior)
+            {
+                case MoverBehavior.TriggerControl:
+                case MoverBehavior.OpenTime:
+                    Open();
+                    break;
+                case MoverBehavior.SingleKeys:
+                    break;
+                default: // Toggle, Loop
+                    Toggle();
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Untrigger event: only trigger-controlled movers close again (OpenGothic MoveTrigger::onUntrigger).
+        /// </summary>
+        public void OnUntrigger()
+        {
+            if (IsDisabledLogged())
+                return;
+
+            if (_mover.Behavior == MoverBehavior.TriggerControl)
+                Close();
         }
 
         public void Toggle()
         {
-            Logger.Log($"[MoverAdapter] {_mover?.Name ?? "NULL"} Toggle() on GO='{gameObject.name}' active={gameObject.activeInHierarchy} isMoving={_isMoving} isOpen={_isOpen}", LogCat.Vob);
-            if (_isDisabled)
-            {
-                Logger.Log($"[MoverAdapter] {_mover?.Name} is disabled - trigger ignored", LogCat.Vob);
+            if (_isMoving || IsDisabledLogged())
                 return;
-            }
-            if (_isMoving) return;
-            if (_isOpen) Close(); else Open();
+
+            if (_isOpen)
+                Close();
+            else
+                Open();
+        }
+
+        private bool IsDisabledLogged()
+        {
+            if (_isDisabled)
+                Logger.Log($"[MoverAdapter] {_mover?.Name} is disabled - trigger ignored", LogCat.Vob);
+            return _isDisabled;
         }
 
         public void Open()
         {
-            if (_isMoving) return;
-            if (_isOpen) return;
-            Logger.Log($"[MoverAdapter] {_mover.Name} Open() — kf[{_currentKeyIndex}]→kf[{(_keyframes?.Length ?? 1) - 1}], chainTarget='{_chainTarget}'", LogCat.Vob);
+            if (_isMoving || _isOpen)
+                return;
+
+            Logger.Log($"[MoverAdapter] {_mover.Name} Open(), chainTarget='{_chainTarget}'", LogCat.Vob);
             if (_keyframes != null && _keyframes.Length >= 2)
-                StartCoroutine(MoveTo(_currentKeyIndex, _keyframes.Length - 1, _mover.SfxOpenStart, _mover.SfxOpenEnd, onDone: () =>
+            {
+                var lastIndex = _keyframes.Length - 1;
+                StartCoroutine(MoveTo(_currentKeyIndex, lastIndex, 1, _mover.SfxOpenStart, _mover.SfxOpenEnd, () =>
                 {
-                    _currentKeyIndex = _keyframes.Length - 1;
+                    _currentKeyIndex = lastIndex;
                     _isOpen = true;
                     TriggerChainedMover(opening: true);
                 }));
+            }
             else
             {
                 _currentKeyIndex = _keyframes != null ? _keyframes.Length - 1 : 0;
@@ -264,16 +350,19 @@ namespace Gothic.Core.Adapters.Vob
 
         public void Close()
         {
-            if (_isMoving) return;
-            if (!_isOpen) return;
-            Logger.Log($"[MoverAdapter] {_mover.Name} Close() — kf[{_currentKeyIndex}]→kf[0], chainTarget='{_chainTarget}'", LogCat.Vob);
+            if (_isMoving || !_isOpen)
+                return;
+
+            Logger.Log($"[MoverAdapter] {_mover.Name} Close(), chainTarget='{_chainTarget}'", LogCat.Vob);
             if (_keyframes != null && _keyframes.Length >= 2)
-                StartCoroutine(MoveTo(_currentKeyIndex, 0, _mover.SfxCloseStart, _mover.SfxCloseEnd, onDone: () =>
+            {
+                StartCoroutine(MoveTo(_currentKeyIndex, 0, -1, _mover.SfxCloseStart, _mover.SfxCloseEnd, () =>
                 {
                     _currentKeyIndex = 0;
                     _isOpen = false;
                     TriggerChainedMover(opening: false);
                 }));
+            }
             else
             {
                 _currentKeyIndex = 0;
@@ -284,11 +373,13 @@ namespace Gothic.Core.Adapters.Vob
 
         public void GoToKeyNext()
         {
-            if (_isMoving || _keyframes == null || _keyframes.Length < 2) return;
+            if (_isMoving || _keyframes == null || _keyframes.Length < 2)
+                return;
+
             var from = _currentKeyIndex;
             var to = (_currentKeyIndex + 1) % _keyframes.Length;
-            Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyNext() [{from}]→[{to}]", LogCat.Vob);
-            StartCoroutine(MoveTo(from, to, _mover.SfxOpenStart, _mover.SfxOpenEnd, onDone: () =>
+            Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyNext() [{from}]->[{to}]", LogCat.Vob);
+            StartCoroutine(MoveTo(from, to, 1, _mover.SfxOpenStart, _mover.SfxOpenEnd, () =>
             {
                 _currentKeyIndex = to;
                 _isOpen = to != 0;
@@ -298,11 +389,13 @@ namespace Gothic.Core.Adapters.Vob
 
         public void GoToKeyPrev()
         {
-            if (_isMoving || _keyframes == null || _keyframes.Length < 2) return;
+            if (_isMoving || _keyframes == null || _keyframes.Length < 2)
+                return;
+
             var from = _currentKeyIndex;
             var to = (_currentKeyIndex - 1 + _keyframes.Length) % _keyframes.Length;
-            Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyPrev() [{from}]→[{to}]", LogCat.Vob);
-            StartCoroutine(MoveTo(from, to, _mover.SfxCloseStart, _mover.SfxCloseEnd, onDone: () =>
+            Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyPrev() [{from}]->[{to}]", LogCat.Vob);
+            StartCoroutine(MoveTo(from, to, -1, _mover.SfxCloseStart, _mover.SfxCloseEnd, () =>
             {
                 _currentKeyIndex = to;
                 _isOpen = to != 0;
@@ -312,10 +405,15 @@ namespace Gothic.Core.Adapters.Vob
 
         public void GoToKeyFixed(int key, bool direct)
         {
-            if (_isMoving || _keyframes == null || _keyframes.Length == 0) return;
+            if (_isMoving || _keyframes == null || _keyframes.Length == 0)
+                return;
+
             key = Mathf.Clamp(key, 0, _keyframes.Length - 1);
-            if (key == _currentKeyIndex) return;
-            Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyFixed(key={key}, direct={direct}) from={_currentKeyIndex}", LogCat.Vob);
+            if (key == _currentKeyIndex)
+                return;
+
+            Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyFixed(key={key}, direct={direct}) from={_currentKeyIndex}",
+                LogCat.Vob);
 
             if (direct)
             {
@@ -326,10 +424,11 @@ namespace Gothic.Core.Adapters.Vob
             }
             else
             {
-                var sfxStart = key > _currentKeyIndex ? _mover.SfxOpenStart : _mover.SfxCloseStart;
-                var sfxEnd = key > _currentKeyIndex ? _mover.SfxOpenEnd : _mover.SfxCloseEnd;
+                var isForward = key > _currentKeyIndex;
+                var sfxStart = isForward ? _mover.SfxOpenStart : _mover.SfxCloseStart;
+                var sfxEnd = isForward ? _mover.SfxOpenEnd : _mover.SfxCloseEnd;
                 var targetKey = key;
-                StartCoroutine(MoveTo(_currentKeyIndex, targetKey, sfxStart, sfxEnd, onDone: () =>
+                StartCoroutine(MoveTo(_currentKeyIndex, targetKey, isForward ? 1 : -1, sfxStart, sfxEnd, () =>
                 {
                     _currentKeyIndex = targetKey;
                     _isOpen = targetKey != 0;
@@ -340,98 +439,66 @@ namespace Gothic.Core.Adapters.Vob
 
         private void TriggerChainedMover(bool opening)
         {
-            if (string.IsNullOrEmpty(_chainTarget)) return;
+            if (string.IsNullOrEmpty(_chainTarget))
+                return;
+
             if (!_vobService.TryGetMovers(_chainTarget, out var containers))
             {
-                Logger.LogWarning($"[MoverAdapter] {_mover.Name} → chained target '{_chainTarget}' not found", LogCat.Vob);
+                // Target isn't a mover (trigger list, script, ...): OpenGothic sends it a trigger event whenever
+                // a move ends (MoveTrigger::postProcessTrigger), for opening and closing alike.
+                _vobService.DispatchTrigger(_chainTarget, _mover.Name);
                 return;
             }
+
             foreach (var container in containers)
             {
-                if (container?.Go == null) continue;
+                if (container?.Go == null)
+                    continue;
+
                 var chained = container.Go.GetComponentInChildren<MoverAdapter>();
-                if (chained != null)
-                    if (opening) chained.Open(); else chained.Close();
+                if (chained == null)
+                    continue;
+
+                if (opening)
+                    chained.Open();
+                else
+                    chained.Close();
             }
-        }
-
-        private IEnumerator MoveTo(int fromIdx, int toIdx, string sfxStart, string sfxEnd, System.Action onDone)
-        {
-            if (_configService.Dev.EnableEngineMoverTiming)
-            {
-                yield return MoveThroughKeyframes(fromIdx, toIdx, sfxStart, sfxEnd, onDone);
-                yield break;
-            }
-
-            _isMoving = true;
-            PlaySfx(sfxStart);
-
-            var startPos = _keyframes[fromIdx].pos;
-            var startRot = _keyframes[fromIdx].rot;
-            var endPos = _keyframes[toIdx].pos;
-            var endRot = _keyframes[toIdx].rot;
-
-            var dist = Vector3.Distance(startPos, endPos);
-            var speed = (_mover.Speed > 0 ? _mover.Speed : 1f) * _configService.Dev.MoverSpeedMultiplier;
-            var duration = dist > 0.001f ? dist / speed : 0.5f;
-
-            var elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                var t = Mathf.Clamp01(elapsed / duration);
-                t = ApplySpeedCurve(t, _mover.SpeedType);
-
-                SetPose(Vector3.Lerp(startPos, endPos, t), Quaternion.Slerp(startRot, endRot, t));
-                yield return null;
-            }
-
-            SetPose(endPos, endRot);
-
-            PlaySfx(sfxEnd);
-            _isMoving = false;
-            onDone?.Invoke();
         }
 
         /// <summary>
-        /// DeveloperConfig.EnableEngineMoverTiming: like the engine (OpenGothic MoveTrigger), through every keyframe on
-        /// the way, each segment with its own time - translation: cm / speed (cm per ms), rotation only: the angle with
-        /// the speed as rotations per second (very low speeds scaled up). Before, only the first and the last keyframe
-        /// were used: G2 Irdorath's gate wheels make a full turn (first == last) and never moved, and a translation
-        /// took meters / speed seconds (10x too slow - MoverSpeedMultiplier compensated a part, it's ignored here).
+        /// Moves keyframe by keyframe from fromIdx to toIdx (step +1 or -1, cyclic), each segment with its own
+        /// duration.
         /// </summary>
-        private IEnumerator MoveThroughKeyframes(int fromIdx, int toIdx, string sfxStart, string sfxEnd,
-            System.Action onDone)
+        private IEnumerator MoveTo(int fromIdx, int toIdx, int step, string sfxStart, string sfxEnd, Action onDone)
         {
             _isMoving = true;
             PlaySfx(sfxStart);
 
             var count = _keyframes.Length;
-            // Neighbours (GoToKeyNext/Prev, also wrapping last <-> 0) move one segment, otherwise step towards toIdx.
-            var step = toIdx == (fromIdx + 1) % count ? 1 : toIdx == (fromIdx - 1 + count) % count ? -1 :
-                toIdx > fromIdx ? 1 : -1;
-            var current = fromIdx;
-            while (current != toIdx)
+            var segmentStart = fromIdx;
+            while (segmentStart != toIdx)
             {
-                var next = (current + step + count) % count;
-                var segment = step > 0 ? current : next;
-                var seconds = GetSegmentSeconds(segment);
-                var (startPos, startRot) = _keyframes[current];
-                var (endPos, endRot) = _keyframes[next];
+                var segmentEnd = (segmentStart + step + count) % count;
+                // Moving backwards runs the segment that starts at the lower keyframe in reverse.
+                var segmentIndex = step > 0 ? segmentStart : segmentEnd;
+                var duration = _segmentSeconds[segmentIndex];
+                var isFirstSegment = segmentStart == fromIdx;
+                var isLastSegment = segmentEnd == toIdx;
 
+                var (startPos, startRot) = _keyframes[segmentStart];
+                var (endPos, endRot) = _keyframes[segmentEnd];
                 var elapsed = 0f;
-                while (elapsed < seconds)
+                while (elapsed < duration)
                 {
                     elapsed += Time.deltaTime;
-                    var t = Mathf.Clamp01(elapsed / seconds);
-                    t = GetSegmentCurve(t, current == fromIdx, next == toIdx);
-
+                    var t = ApplySpeedCurve(Mathf.Clamp01(elapsed / duration), isFirstSegment, isLastSegment);
                     SetPose(Vector3.Lerp(startPos, endPos, t), Quaternion.Slerp(startRot, endRot, t));
                     yield return null;
                 }
 
                 SetPose(endPos, endRot);
-                current = next;
+                segmentStart = segmentEnd;
             }
 
             PlaySfx(sfxEnd);
@@ -440,73 +507,43 @@ namespace Gothic.Core.Adapters.Vob
         }
 
         /// <summary>
-        /// Like the engine: Slow* ease the start/end of the whole way (first/last segment), Segment* every segment.
+        /// OpenGothic calcProgress: "slow" types ease only the first/last segment of a move, the Segment* types
+        /// ease every segment.
         /// </summary>
-        private float GetSegmentCurve(float t, bool isFirst, bool isLast)
+        private float ApplySpeedCurve(float t, bool isFirstSegment, bool isLastSegment)
         {
-            var easeStart = _mover.SpeedType is MoverSpeedType.SegmentSlowStart or MoverSpeedType.SegmentSlowStartEnd ||
-                            (isFirst && _mover.SpeedType is MoverSpeedType.SlowStart or MoverSpeedType.SlowStartEnd);
-            var easeEnd = _mover.SpeedType is MoverSpeedType.SegmentSlowEnd or MoverSpeedType.SegmentSlowStartEnd ||
-                          (isLast && _mover.SpeedType is MoverSpeedType.SlowEnd or MoverSpeedType.SlowStartEnd);
-            if (easeStart && easeEnd)
-                return ApplySpeedCurve(t, MoverSpeedType.SlowStartEnd);
-            if (easeStart)
-                return ApplySpeedCurve(t, MoverSpeedType.SlowStart);
-            return easeEnd ? ApplySpeedCurve(t, MoverSpeedType.SlowEnd) : t;
-        }
+            var slowStart = (2 - t) * t * t;
+            var slowEnd = ((1 - t) * t + 1) * t;
+            var slowStartEnd = (3 - 2 * t) * t * t;
 
-        /// <summary>
-        /// Seconds from keyframe i to i+1 (OpenGothic MoveTrigger: ticks in ms).
-        /// </summary>
-        private float GetSegmentSeconds(int index)
-        {
-            var speed = _mover.Speed;
-            if (speed <= 0f)
-                return 0.5f;
-
-            var (pos0, rot0) = _keyframes[index];
-            var (pos1, rot1) = _keyframes[(index + 1) % _keyframes.Length];
-            const float rotationThreshold = 0.01f;
-            var lengthCm = Vector3.Distance(pos0, pos1) * 100f;
-
-            float milliseconds;
-            if (lengthCm > rotationThreshold)
+            switch (_mover.SpeedType)
             {
-                milliseconds = lengthCm / speed;
+                case MoverSpeedType.SlowStartEnd:
+                    if (isFirstSegment && isLastSegment)
+                        return slowStartEnd;
+                    if (isFirstSegment)
+                        return slowStart;
+                    return isLastSegment ? slowEnd : t;
+                case MoverSpeedType.SegmentSlowStartEnd:
+                    return slowStartEnd;
+                case MoverSpeedType.SlowStart:
+                    return isFirstSegment ? slowStart : t;
+                case MoverSpeedType.SegmentSlowStart:
+                    return slowStart;
+                case MoverSpeedType.SlowEnd:
+                    return isLastSegment ? slowEnd : t;
+                case MoverSpeedType.SegmentSlowEnd:
+                    return slowEnd;
+                default:
+                    return t;
             }
-            else
-            {
-                var dot = Quaternion.Dot(rot0, rot1);
-                var theta = 2f * dot * dot - 1f;
-                var angle = Mathf.Acos(Mathf.Clamp(theta, -1f, 1f)) * Mathf.Rad2Deg;
-                milliseconds = angle / 360f * 1000f / ScaleRotationSpeed(speed);
-            }
-
-            return Mathf.Max(1f, milliseconds) / 1000f;
         }
-
-        /// <summary>
-        /// OpenGothic's measurement: rotation speed is rotations per second, very low values are scaled up
-        /// (EVT_RIGHT_WHEEL_01: speed 0.00068, one turn in 5 s).
-        /// </summary>
-        private static float ScaleRotationSpeed(float speed)
-        {
-            const float scaleFactor = 300f;
-            const float lowSpeed = 0.006f;
-            return speed < lowSpeed ? scaleFactor * speed : speed;
-        }
-
-        private static float ApplySpeedCurve(float t, MoverSpeedType type) => type switch
-        {
-            MoverSpeedType.SlowStartEnd => Mathf.SmoothStep(0, 1, t),
-            MoverSpeedType.SlowStart    => t * t,
-            MoverSpeedType.SlowEnd      => t * (2 - t),
-            _                           => t  // Constant
-        };
 
         private void PlaySfx(string sfxName)
         {
-            if (string.IsNullOrEmpty(sfxName)) return;
+            if (string.IsNullOrEmpty(sfxName))
+                return;
+
             var clip = _audioService.GetRandomSoundClip(sfxName);
             if (clip != null)
                 AudioSource.PlayClipAtPoint(clip, transform.position);

@@ -177,6 +177,8 @@ MonoBehaviour:
   EnableChildLogicVobs: 1
   EnableMobColliderRefresh: 1
   EnableHeroPersonalSpace: 1
+  EnableBodyPersonalSpace: 1
+  EnableAnimatedNpcHitbox: 1
   EnableSingleHitPerNpcAttack: 1
   EnableEngineNpcCombo: 1
   EnableNpcLookAtTarget: 1

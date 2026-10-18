@@ -721,6 +721,14 @@ namespace Gothic.Core.Models.Config
                  "camera and pushed the hands with the held weapon. Position only, the AI isn't changed.")]
         public bool EnableHeroPersonalSpace = true;
 
+        [Tooltip("V1: The personal space also counts from the NPC's animated body, not only its root - a shadowbeast's " +
+                 "root is at its hind legs and the head went into the camera, orcs leaning into a swing too.")]
+        public bool EnableBodyPersonalSpace = true;
+
+        [Tooltip("V1: The NPC's weapon hitbox follows its animated body (bones + skin) instead of a fixed box on the " +
+                 "root bone - a shadowbeast's box lay sideways over its hind half, the front with the head couldn't be hit.")]
+        public bool EnableAnimatedNpcHitbox = true;
+
         [Tooltip("V1: An NPC's attack hits once - the next attack with the same animation saw the old track still " +
                  "blending out: its hit frame counted as reached and the action ended at once (a shadowbeast took the " +
                  "hero's HP 3 times in one swing). A combo only restarts an attack with another hit frame (engine).")]

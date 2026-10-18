@@ -21,6 +21,11 @@ namespace Gothic.Core.Adapters.Npc
         private const float _radius = 1.0f;
         private const float _maxHeightDifference = 2f;
 
+        // DeveloperConfig.EnableBodyPersonalSpace: gap between the camera and the NPC's solid body (not only its root).
+        private const float _bodyMargin = 0.3f;
+        // NPCs this close get their animated body bounds (hitbox, personal space).
+        private const float _bodyBoundsDistance = 12f;
+
         private void Awake() => this.Inject();
 
         private static bool IsTalkableHuman(Gothic.Core.Models.Container.NpcContainer npc)
@@ -39,10 +44,17 @@ namespace Gothic.Core.Adapters.Npc
                 return;
 
             var heroPosition = cam.transform.position;
+            var isBodyBoundsUsed = _configService.Dev.EnableAnimatedNpcHitbox ||
+                                   _configService.Dev.EnableBodyPersonalSpace;
             foreach (var npc in _multiTypeCacheService.NpcCache)
             {
                 if (npc?.Go == null || !npc.Go.activeInHierarchy || npc.PrefabProps == null || npc.PrefabProps.IsHero())
                     continue;
+                var bodyBounds = isBodyBoundsUsed &&
+                                 (npc.Go.transform.position - heroPosition).sqrMagnitude <
+                                 _bodyBoundsDistance * _bodyBoundsDistance
+                    ? NpcBodyBounds.Get(npc)
+                    : null;
                 // Dead/knocked out bodies lie where they fell (loot them standing on top).
                 if (npc.Props.BodyState is VmGothicEnums.BodyState.BsDead or VmGothicEnums.BodyState.BsUnconscious)
                     continue;
@@ -58,13 +70,30 @@ namespace Gothic.Core.Adapters.Npc
 
                 offset.y = 0f;
                 var distance = offset.magnitude;
-                if (distance >= _radius)
-                    continue;
+                if (distance < _radius)
+                {
+                    // Exactly on the hero: push it away from where the camera looks.
+                    var direction = distance > 0.001f ? offset / distance : -Flatten(cam.transform.forward);
+                    npcTransform.position += direction * (_radius - distance);
+                }
 
-                // Exactly on the hero: push it away from where the camera looks.
-                var direction = distance > 0.001f ? offset / distance : -Flatten(cam.transform.forward);
-                npcTransform.position += direction * (_radius - distance);
+                PushBodyOut(bodyBounds, npcTransform, heroPosition);
             }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableBodyPersonalSpace: the root is far enough, but the body may not be - a shadowbeast's
+        /// root is at its hind legs, the head 2 m in front went into the camera; an orc leaning into his swing too.
+        /// The solid body (arms excluded - weapons and claws still swing at the hero) keeps _bodyMargin.
+        /// </summary>
+        private void PushBodyOut(NpcBodyBounds bodyBounds, Transform npcTransform, Vector3 heroPosition)
+        {
+            if (!_configService.Dev.EnableBodyPersonalSpace || bodyBounds == null || !bodyBounds.IsReady)
+                return;
+
+            var push = bodyBounds.GetPushOut(heroPosition, _bodyMargin);
+            if (push != Vector3.zero)
+                npcTransform.position += push;
         }
 
         private static Vector3 Flatten(Vector3 vector)

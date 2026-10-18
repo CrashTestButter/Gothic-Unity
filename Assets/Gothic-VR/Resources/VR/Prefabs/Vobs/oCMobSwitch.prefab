@@ -90,6 +90,7 @@ GameObject:
   - component: {fileID: 679654990147876337}
   - component: {fileID: 6429894365401520520}
   - component: {fileID: 2478502802283214804}
+  - component: {fileID: 6762376611792587169}
   m_Layer: 0
   m_Name: BIP01.*
   m_TagString: Untagged
@@ -289,6 +290,18 @@ MonoBehaviour:
   HandGrabbers: []
   Stabbers: []
   Stabbable: {fileID: 0}
+--- !u!114 &6762376611792587169
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8788472130516112289}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc7b9870e5ee6804aa346c39e83f17c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Adapters.Vob.VRMobInteraction
 --- !u!1001 &7374455095753343057
 PrefabInstance:
   m_ObjectHideFlags: 0

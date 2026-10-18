@@ -31,10 +31,12 @@ namespace Gothic.VR.Services
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly PlayerService _playerService;
         [Inject] private readonly MobInteractionService _mobInteractionService;
-        
-        public VRContextInteractionService VRContextInteractionService => _contextInteractionService.GetImpl<VRContextInteractionService>();
+
+        public VRContextInteractionService VRContextInteractionService =>
+            _contextInteractionService.GetImpl<VRContextInteractionService>();
+
         public VRPlayerInputs VRPlayerInputs => VRContextInteractionService.GetVRPlayerInputs();
-        
+
         public GameObject GrabbedItemLeft;
         public GameObject GrabbedItemRight;
 
@@ -63,7 +65,7 @@ namespace Gothic.VR.Services
                 // As we already count remote grabbing as "in inventory", we skip it the second time.
                 if (GrabbedItemLeft == grabbable.gameObject)
                     return;
-                
+
                 GrabbedItemLeft = grabbable.gameObject;
             }
             else
@@ -85,7 +87,7 @@ namespace Gothic.VR.Services
             var instanceName = !string.IsNullOrEmpty(vobItem.Instance) ? vobItem.Instance : vobItem.Name;
             _playerService.AddItem(instanceName, vobItem.Amount);
         }
-        
+
         public void UnsetGrab(HVRGrabberBase grabber, HVRGrabbable grabbable)
         {
             var dualGrabPrev = IsDualGrabbed;
@@ -128,12 +130,32 @@ namespace Gothic.VR.Services
             _playerService.RemoveItem(instanceName, vobItem.Amount);
         }
 
+        /// <summary>
+        /// The player collides with VobItems (stuck at a sword in the ground like in Gothic). Items in our hands or
+        /// sockets (hips, back) would push our own CharacterController, so they ignore it while being held.
+        /// </summary>
+        public void IgnorePlayerCollision(HVRGrabbable grabbable, bool ignore)
+        {
+            var playerController = _contextInteractionService.GetCurrentPlayerController();
+            if (playerController == null)
+                return;
+
+            var characterController = playerController.GetComponent<VRPlayerController>().CharacterController;
+            foreach (var itemCollider in grabbable.Colliders)
+            {
+                if (itemCollider != null)
+                    Physics.IgnoreCollision(characterController, itemCollider, ignore);
+            }
+        }
+
         public HVRController GetHand(HVRHandSide side)
         {
             if (side == HVRHandSide.Left)
-                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>().LeftHand.Controller;
+                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>()
+                    .LeftHand.Controller;
             else
-                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>().RightHand.Controller;
+                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>()
+                    .RightHand.Controller;
         }
 
         /// <summary>

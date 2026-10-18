@@ -36,11 +36,14 @@ namespace Gothic.VR.Adapters.Vob
         private struct OverlapCheckData
         {
             public Axis MaxAxis; // Used for P0 and P1 calculation
-            public  Axis SecondMaxAxis; // Used for radius calculation
-            public  Vector3 Center;
-            public  Vector3 OverlapPoint0; // First point where the sphere will start to draw its closing circle
-            public  Vector3 OverlapPoint1; // Second point with the closing circle calculation. Will be opposite of first one based on mainAxis
-            public  float OverlapRadius; // Radius is calculated as /2 calculation from size of secondMaxAxis
+            public Axis SecondMaxAxis; // Used for radius calculation
+            public Vector3 Center;
+            public Vector3 OverlapPoint0; // First point where the sphere will start to draw its closing circle
+
+            public Vector3
+                OverlapPoint1; // Second point with the closing circle calculation. Will be opposite of first one based on mainAxis
+
+            public float OverlapRadius; // Radius is calculated as /2 calculation from size of secondMaxAxis
         }
 
 
@@ -72,6 +75,9 @@ namespace Gothic.VR.Adapters.Vob
                 return;
             }
 
+            // Held and socketed items must not push our own CharacterController.
+            _vrPlayerService.IgnorePlayerCollision(grabbable, true);
+
             // OnGrabbed is normally called multiple times. Even after an object is already socketed. If so, then let's stop Grab behaviour.
             // If we sock an object on our hips or backpack etc.
             if (grabber is HVRSocket)
@@ -81,11 +87,12 @@ namespace Gothic.VR.Adapters.Vob
             gameObject.layer = Constants.VobItemNoWorldCollision;
 
             // At least until object isn't colliding with anything any longer, the object will be a ghost (i.e. no collision + transparency activated)
-            _dynamicMaterialService.SetDynamicValue(gameObject, Constants.ShaderPropertyTransparency, Constants.ShaderPropertyTransparencyValue);
+            _dynamicMaterialService.SetDynamicValue(gameObject, Constants.ShaderPropertyTransparency,
+                Constants.ShaderPropertyTransparencyValue);
 
             // If we want Item collisions, we just temporarily deactivate them until the item is free of collisions.
             StartCoroutine(ReEnableCollisionRoutine());
-            
+
             _vobMeshCullingService?.StartTrackVobPositionUpdates(gameObject);
             _vrPlayerService.SetGrab(grabber, grabbable);
         }
@@ -104,8 +111,13 @@ namespace Gothic.VR.Adapters.Vob
 
             gameObject.layer = Constants.VobItemLayer; // Back to default
 
+            // Dropped into the world (and not still in the other hand): we get stuck at it again.
+            if (!grabbable.IsBeingHeld)
+                _vrPlayerService.IgnorePlayerCollision(grabbable, false);
+
             // Disable "ghostification" of object.
-            _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency, Constants.ShaderPropertyTransparencyDefault);
+            _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency,
+                Constants.ShaderPropertyTransparencyDefault);
 
             _vobMeshCullingService?.StopTrackVobPositionUpdates(gameObject);
             _vrPlayerService.UnsetGrab(grabber, grabbable);
@@ -132,13 +144,16 @@ namespace Gothic.VR.Adapters.Vob
             switch (overlapData.SecondMaxAxis)
             {
                 case Axis.X:
-                    Gizmos.DrawLine(overlapData.Center, overlapData.Center + new Vector3(overlapData.OverlapRadius, 0, 0));
+                    Gizmos.DrawLine(overlapData.Center,
+                        overlapData.Center + new Vector3(overlapData.OverlapRadius, 0, 0));
                     break;
                 case Axis.Y:
-                    Gizmos.DrawLine(overlapData.Center, overlapData.Center + new Vector3(0, overlapData.OverlapRadius, 0));
+                    Gizmos.DrawLine(overlapData.Center,
+                        overlapData.Center + new Vector3(0, overlapData.OverlapRadius, 0));
                     break;
                 default:
-                    Gizmos.DrawLine(overlapData.Center, overlapData.Center + new Vector3(0, 0, overlapData.OverlapRadius));
+                    Gizmos.DrawLine(overlapData.Center,
+                        overlapData.Center + new Vector3(0, 0, overlapData.OverlapRadius));
                     break;
             }
 
@@ -177,7 +192,8 @@ namespace Gothic.VR.Adapters.Vob
             gameObject.layer = Constants.VobItemLayer;
 
             // Disable "ghostification" of object.
-            _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency, Constants.ShaderPropertyTransparencyDefault);
+            _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency,
+                Constants.ShaderPropertyTransparencyDefault);
         }
 
         /// <summary>

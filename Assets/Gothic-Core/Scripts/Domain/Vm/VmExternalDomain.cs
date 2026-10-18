@@ -733,7 +733,7 @@ namespace Gothic.Core.Domain.Vm
 
         public void AI_TurnAway(NpcInstance npc, NpcInstance target)
         {
-            // Stub — ZS_TurnAway_Loop still works via Npc_GetStateTime > HAI_TIME_TURNAWAY (20s).
+            _npcAiService.ExtAiTurnAway(npc, target);
         }
 
         public void AI_StopPointAt(NpcInstance npc)

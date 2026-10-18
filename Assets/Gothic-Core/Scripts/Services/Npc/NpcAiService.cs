@@ -517,6 +517,19 @@ namespace Gothic.Core.Services.Npc
                 npc.GetUserData()));
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableAiTurnAway: AI_TurnAway turns the NPC's back to the other one (it was a stub).
+        /// </summary>
+        public void ExtAiTurnAway(NpcInstance npc, NpcInstance other)
+        {
+            if (other?.GetUserData()?.Go == null || !_configService.Dev.EnableAiTurnAway)
+                return;
+
+            npc.GetUserData().Props.AnimationQueue.Enqueue(new TurnAwayFromNpc(
+                new AnimationAction(instance0: other),
+                npc.GetUserData()));
+        }
+
         public void ExtAiPlayAniBs(NpcInstance npc, string name, int bodyState)
         {
             npc.GetUserData().Props.AnimationQueue.Enqueue(new PlayAniBs(new AnimationAction(name, bodyState), npc.GetUserData()));

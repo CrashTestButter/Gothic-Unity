@@ -419,7 +419,21 @@ namespace Gothic.Core.Services.Npc
                 return;
             }
 
+            // DeveloperConfig.EnableDefeatedNpcFightsBack: a human the hero beat before is a coward towards him
+            // (AIV_WASDEFEATEDBYSC: ZS_AssessEnemy -> ZS_ProclaimAndPunish -> ZS_TurnAway, "I didn't see anything") - fine
+            // as a witness, but attacked himself he drew, put away and looked away over and over (his temporary
+            // HOSTILE attitude restarts ZS_AssessEnemy through PERC_ASSESSENEMY). Hit by the hero, he fights back.
             var isHeroAttacker = attacker.PrefabProps != null && attacker.PrefabProps.IsHero();
+            if (!isHero && isHeroAttacker && _configService.Dev.EnableDefeatedNpcFightsBack && IsHuman(target))
+            {
+                var aivWasDefeated = _gameStateService.GothicVm.GetSymbolByName("AIV_WASDEFEATEDBYSC")?.GetInt(0) ?? -1;
+                if (aivWasDefeated >= 0 && target.Instance.GetAiVar(aivWasDefeated) != 0)
+                {
+                    target.Instance.SetAiVar(aivWasDefeated, 0);
+                    Logger.Log($"[FightService] {target.Instance.GetName(NpcNameSlot.Slot0)} was beaten by the hero before " +
+                               "- attacked again, he fights back instead of looking away", LogCat.Fight);
+                }
+            }
 
             // DeveloperConfig.EnableNpcParadeBlocksHits: the hero's hit on a parrying / jumping back NPC.
             if (!isHero && isHeroAttacker && TryBlockHit(attacker, target))

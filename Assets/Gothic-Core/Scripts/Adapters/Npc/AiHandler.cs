@@ -196,6 +196,7 @@ namespace Gothic.Core.Adapters.Npc
                         {
                             Properties.CurrentLoopState = NpcProperties.LoopState.End;
                             LogStateLoopEnded();
+                            ForgetHeroAfterLookingAway();
                             _npcAiService.RememberHeroChaseGivenUp(NpcInstance, Properties, Vob.CurrentStateName);
                         }
                         
@@ -368,7 +369,7 @@ namespace Gothic.Core.Adapters.Npc
                 _npcAiService.UpdateEnemyNpc(NpcInstance);
 
                 // FIXME - Throws a lot of errors and warnings when NPCs are nearby monsters (e.g. Bridge guard next to OC)
-                if(Properties.EnemyNpc != null)
+                if(Properties.EnemyNpc != null && !IsLookingAwayFrom(Properties.EnemyNpc))
                 {
                     _npcAiService.ExecutePerception(VmGothicEnums.PerceptionType.AssessEnemy, Properties, NpcInstance,null, Properties.EnemyNpc);
                 }
@@ -502,6 +503,45 @@ namespace Gothic.Core.Adapters.Npc
             
             StartRoutine(action);
         }
+
+        /// <summary>
+        /// DeveloperConfig.EnableTurnAwayIgnoresEnemyBehind: ZS_TurnAway ("I didn't see anything") turns the back to the
+        /// hero and ignores him for HAI_TIME_TURNAWAY (20 s) - but the enemy perception senses without a view angle
+        /// (like OpenGothic) and B_AssessEnemy checks Npc_CanSeeNpcFreeLOS (no angle either): a beaten guard with a
+        /// hostile attitude drew his weapon, put it away and looked away again in a loop, the 20 s never ran out.
+        /// The hero isn't an enemy to him in these states; other enemies (monsters) still are.
+        /// </summary>
+        private bool IsLookingAwayFrom(NpcInstance enemy)
+        {
+            if (!_configService.Dev.EnableTurnAwayIgnoresEnemyBehind || !IsInLookingAwayState())
+                return false;
+
+            return enemy.Index == ((NpcInstance)Vm.GlobalHero)?.Index;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableTurnAwayIgnoresEnemyBehind: when ZS_TurnAway runs out, the hostile temporary attitude
+        /// that sent him there goes back to the permanent one, like B_ResetTempAttitude - nothing in the scripts resets it
+        /// after looking away, and he started all over again whenever he saw the hero.
+        /// </summary>
+        private void ForgetHeroAfterLookingAway()
+        {
+            if (!_configService.Dev.EnableTurnAwayIgnoresEnemyBehind || !IsInLookingAwayState() ||
+                Vob.AttitudeTemp == Vob.Attitude)
+                return;
+
+            Logger.Log($"[AiLoop] {NpcInstance.GetName(NpcNameSlot.Slot0)}: done looking away - temporary attitude " +
+                       $"{(VmGothicEnums.Attitude)Vob.AttitudeTemp} back to {(VmGothicEnums.Attitude)Vob.Attitude}", LogCat.Ai);
+            Vob.AttitudeTemp = Vob.Attitude;
+        }
+
+        private bool IsInLookingAwayState()
+        {
+            return System.Array.IndexOf(_lookingAwayStates, Vob.CurrentStateName?.ToUpperInvariant()) >= 0;
+        }
+
+        // States in which the NPC looks away from the hero on purpose.
+        private static readonly string[] _lookingAwayStates = { "ZS_TURNAWAY" };
 
         public void StartRoutine(int action)
         {

@@ -1143,6 +1143,19 @@ namespace Gothic.Core.Models.Config
                  "hit - weapons clash (CS_IAI_ sound, CPFX_IAI_ sparks). Before, a parry was only an animation.")]
         public bool EnableNpcParadeBlocksHits = true;
 
+        [Tooltip("V1: AI_TurnAway turns the NPC's back to the other one (ZS_TurnAway of a beaten guard) - it was a stub.")]
+        public bool EnableAiTurnAway = true;
+
+        [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
+                 "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
+                 "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]
+        public bool EnableDefeatedNpcFightsBack = true;
+
+        [Tooltip("V1: An NPC looking away (ZS_TurnAway: a beaten guard, \"I didn't see anything\") ignores the hero for " +
+                 "its 20 s and then forgets his hostility (temporary attitude back to the permanent one) - the enemy " +
+                 "perception has no view angle, he drew his weapon, put it away and looked away in a loop.")]
+        public bool EnableTurnAwayIgnoresEnemyBehind = true;
+
         [Tooltip("V1: A level change whose start VOB isn't a free point spawns at the waypoint/VOB of that name, or next to " +
                  "the trigger back to the old world - Mroczne Tajemnice's temple sends you to a start VOB the mine lacks.")]
         public bool EnableLevelChangeSpawnFallback = true;

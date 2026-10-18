@@ -36,8 +36,6 @@ namespace Gothic.Core.Domain.Vobs
     /// </summary>
     public class VobInitializerDomain
     {
-        private const string _digSpotPlaceholderName = "DigSpotPlaceholder";
-
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly VobSoundCullingService _vobSoundCullingService;
         [Inject] private readonly MeshService _meshService;
@@ -803,40 +801,17 @@ namespace Gothic.Core.Domain.Vobs
         }
 
         /// <summary>
-        /// G2's treasure X marks (TREASURE_ADDON_01.ASC) are a single attachment mesh with an untextured, color-only
-        /// material. MeshService skips texture-less models (on purpose for G1's empty ones like the harp or WASH_SLOT),
-        /// so the X - and with it its VRFocus/VRDigSpot - got destroyed: invisible and not diggable. Mobs used with a
-        /// tool that have an onStateFunc are kept with a simple red X instead.
+        /// In G2 the X is a child of the RAKEPLACE decal, which (WIP EnableDecalVisuals) applies the vob's
+        /// position+rotation a second time below its already placed loader. Snap to the loader, upright.
         /// </summary>
-        private bool TryKeepAsDigSpotPlaceholder(IVirtualObject vob, GameObject go, GameObject parent)
+        private static void SnapDigSpotToLoader(GameObject go)
         {
-            if (go == null || !_vmCacheService.IsDigSpot(vob))
-                return false;
-
-            go.name = vob.GetVisualName();
-            if (parent != null)
-                go.transform.SetParent(parent.transform, false);
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = Quaternion.identity;
-
-            // In G2 the X is a child of the RAKEPLACE decal, which (WIP EnableDecalVisuals) applies the vob's
-            // position+rotation a second time below its already placed loader. Snap to the loader, upright.
             var loader = go.GetComponentInParent<VobLoader>();
-            if (loader != null)
-                go.transform.SetPositionAndRotation(loader.transform.position,
-                    Quaternion.Euler(0f, loader.transform.eulerAngles.y, 0f));
+            if (loader == null)
+                return;
 
-            // Child vobs have no VobLoader/VobContainer of their own - GetComponentInParent<VobLoader>() found the
-            // decal's loader, so VRFocus/VRDigSpot saw a zCVob instead of this mob. Give the X its own one.
-            if (loader == null || loader.Container?.Vob != vob)
-                AddOwnVobLoader(vob, go);
-
-            // Two crossed red planks (inactive child of the DigSpot prefab), roughly the size of the original X.
-            go.FindChildRecursively(_digSpotPlaceholderName)?.SetActive(true);
-
-            Logger.Log($"[DigSpot] '{vob.Name}' has no textured mesh ({vob.GetVisualName()}) - using a placeholder X.",
-                LogCat.Vob);
-            return true;
+            go.transform.SetPositionAndRotation(loader.transform.position,
+                Quaternion.Euler(0f, loader.transform.eulerAngles.y, 0f));
         }
 
         /// <summary>
@@ -893,16 +868,17 @@ namespace Gothic.Core.Domain.Vobs
             var mdl = _resourceCacheService.TryGetModel(meshName, false);
             if (mdl != null)
             {
-                var ret = _meshService.CreateVob(meshName, mdl, parent: parent, rootGo: go);
+                // G2's treasure X marks (TREASURE_ADDON_01) are a color-only mesh without texture. MeshService skips
+                // those on purpose (G1's empty harp or WASH_SLOT), but the X needs to be visible and diggable.
+                var isDigSpot = _vmCacheService.IsDigSpot(vob);
+                var ret = _meshService.CreateVob(meshName, mdl, parent: parent, rootGo: go,
+                    useTextureArray: !isDigSpot, allowUntextured: isDigSpot);
 
                 // A few objects are broken and have no meshes. We need to destroy them immediately again.
                 if (ret == null)
-                {
-                    if (TryKeepAsDigSpotPlaceholder(vob, go, parent))
-                        return go;
-
                     Object.Destroy(go);
-                }
+                else if (isDigSpot)
+                    SnapDigSpotToLoader(ret);
 
                 return ret;
             }

@@ -3,7 +3,7 @@
 // itself based on FFmpeg libavcodec/bink.c and binkaudio.c - licensed LGPL 2.1 or later. See README.md in this folder.
 // FFmpeg bink.c: Copyright (c) 2009 Konstantin Shishkov, Copyright (C) 2011 Peter Ross.
 // Copyright (c) 2019 Try (OpenGothic, MIT). FFmpeg code: LGPL-2.1-or-later - copyright holders listed in README.md.
-// Modified: ported from C++ to C# by the Gothic UnZENity contributors, 2026 (see git history for changes).
+// Modified: ported from C++ to C# by the Gothic Unity contributors, 2026 (see git history for changes).
 using System;
 using System.IO;
 using static Gothic.Core.Bink.BinkTables;

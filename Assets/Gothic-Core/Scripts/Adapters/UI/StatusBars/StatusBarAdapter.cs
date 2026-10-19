@@ -37,18 +37,20 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             // Player is spawned before ZenKit (with Gothic version) is bootstrapped.
             if (_isPlayer)
             {
-                // TODO - Keep health bar always active as in G1, potentially only enabling it when a weapon is drawn in the future (immersion update).
-                if (_statusType != StatusType .Health)
-                {
-                    DisableBar();
-                }
+                // Health is visible during gameplay only (as in G1), not in menus or while loading.
+                // TODO - Potentially only show it when a weapon is drawn in the future (immersion update).
+                DisableBar();
 
                 // If we load it for the player, ZenKit is initialized later therefore, we need to delay the startup execution.
                 GlobalEventDispatcher.ZenKitBootstrapped.AddListener(StartInternal);
 
                 // A loaded save replaces the hero.
                 if (_statusType == StatusType.Health)
-                    GlobalEventDispatcher.WorldSceneLoaded.AddListener(RefreshHealth);
+                {
+                    GlobalEventDispatcher.WorldSceneLoaded.AddListener(OnWorldSceneLoaded);
+                    GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(DisableBar);
+                    GlobalEventDispatcher.LoadingSceneLoaded.AddListener(DisableBar);
+                }
             }
             else
             {
@@ -58,6 +60,7 @@ namespace Gothic.Core.Adapters.UI.StatusBars
                 {
                     DisableBar();
                 }
+
                 StartInternal();
             }
         }
@@ -118,6 +121,12 @@ namespace Gothic.Core.Adapters.UI.StatusBars
             RefreshHealth();
         }
 
+        private void OnWorldSceneLoaded()
+        {
+            EnableBar();
+            RefreshHealth();
+        }
+
         private void RefreshHealth()
         {
             var owner = GetOwner();
@@ -153,7 +162,7 @@ namespace Gothic.Core.Adapters.UI.StatusBars
                 else if (_playerService.IsDiving)
                 {
                     SetFillAmount(_playerService.CurrentAir, _playerService.MaxAir);
-                    
+
                     if (!_statusValue.enabled)
                         EnableBar();
                 }

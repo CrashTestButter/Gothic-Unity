@@ -338,7 +338,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -346,6 +345,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!1001 &389902283970083402
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1524,7 +1524,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -1532,6 +1531,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!4 &1465965334603602870 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 930940621509673985, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
@@ -1624,7 +1624,6 @@ MonoBehaviour:
       m_Calls: []
   _grabBag: {fileID: 0}
   GrabBags: []
-  _allowGrabbing: 0
   GrabControl: 0
   GrabDetectionType: 1
   CheckHandOverlap: 0
@@ -1753,7 +1752,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -1761,6 +1759,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!4 &3469872688271879209 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2923976313507361694, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
@@ -2131,6 +2130,7 @@ MonoBehaviour:
   - {fileID: 4253138355794772639}
   - {fileID: 4383562423631724883}
   _onTopMaterial: {fileID: 2100000, guid: 0733e67100959404abf850e406e5cb05, type: 2}
+  _onTopRenderQueue: 3950
 --- !u!114 &3699890743539135334 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3164866306463935697, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
@@ -2229,7 +2229,6 @@ MonoBehaviour:
       m_Calls: []
   _grabBag: {fileID: 0}
   GrabBags: []
-  _allowGrabbing: 0
   GrabControl: 0
   GrabDetectionType: 1
   CheckHandOverlap: 0
@@ -2364,7 +2363,6 @@ MonoBehaviour:
       m_Calls: []
   _grabBag: {fileID: 0}
   GrabBags: []
-  _allowGrabbing: 0
   GrabControl: 0
   GrabDetectionType: 1
   CheckHandOverlap: 0
@@ -2443,7 +2441,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -2451,6 +2448,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!4 &5027004475127813370 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6733158296146905933, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
@@ -2533,7 +2531,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -2541,6 +2538,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!4 &7369524044816577371 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9148698939618798828, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
@@ -2925,11 +2923,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7389606469834037353, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.7
+      value: 0.35
       objectReference: {fileID: 0}
     - target: {fileID: 7389606469834037353, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.7
+      value: 0.35
+      objectReference: {fileID: 0}
+    - target: {fileID: 7389606469834037353, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7389606469834037353, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
       propertyPath: m_LocalPosition.x
@@ -3045,7 +3047,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c3b82e67b17c5e418f879278f9fe524, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Adapters.UI.VRPlaceInFrontOfCamera
-  _distance: 5
+  _distance: 2.5
 --- !u!1001 &4370874130750423189
 PrefabInstance:
   m_ObjectHideFlags: 0

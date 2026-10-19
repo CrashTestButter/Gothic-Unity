@@ -1,15 +1,12 @@
 #if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
-using System.IO;
 using Gothic.Core.Adapters.Video;
 using Gothic.Core.Const;
-using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Shared;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Video;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters.UI
@@ -19,7 +16,7 @@ namespace Gothic.VR.Adapters.UI
     /// renders only a screen (UI layer) on black, the world is muted. Created and fed by VRCinemaService.
     /// Several PlayVideo calls in a row (G1 ending: 3 videos) are queued.
     /// Skip the current video: any trigger or A/X (keyboard Space/Escape).
-    /// Original Bink videos (.bik) are decoded by BinkPlayer; an MP4 with the same name in _work/DATA/video/ wins.
+    /// The original Bink videos (.bik) are decoded by BinkPlayer.
     /// The world is paused (Time.timeScale 0) like in the engine, where the video blocks the game - otherwise dialog
     /// lines queued meanwhile would all play at once after the video.
     /// </summary>
@@ -38,9 +35,6 @@ namespace Gothic.VR.Adapters.UI
         private float _savedTimeScale = 1f;
 
         private GameObject _screen;
-        private VideoPlayer _videoPlayer;
-        private RenderTexture _renderTexture;
-        private Material _videoPlayerMaterial;
         private AudioSource _audioSource;
         private BinkPlayer _binkPlayer;
         private float _playStartTime;
@@ -48,7 +42,7 @@ namespace Gothic.VR.Adapters.UI
 
 
         /// <summary>
-        /// Queues a video file (.bik or .mp4). Only the first one starts the cinema, the others follow.
+        /// Queues a Bink video file. Only the first one starts the cinema, the others follow.
         /// </summary>
         public void Enqueue(string path)
         {
@@ -73,16 +67,7 @@ namespace Gothic.VR.Adapters.UI
             Logger.Log($"[VRCinema] Playing {path}", LogCat.VR);
             _playStartTime = Time.unscaledTime;
             StopBink();
-
-            if (Path.GetExtension(path).EqualsIgnoreCase(".bik"))
-            {
-                PlayBink(path);
-                return;
-            }
-
-            _screen.GetComponent<MeshRenderer>().sharedMaterial = _videoPlayerMaterial;
-            _videoPlayer.url = path;
-            _videoPlayer.Prepare();
+            PlayBink(path);
         }
 
         private void PlayBink(string path)
@@ -134,47 +119,12 @@ namespace Gothic.VR.Adapters.UI
             // Stays where it is (no head following). PlayVideo often comes before the script teleports the hero - the
             // screen is placed anew then.
             _screen.AddComponent<VRPlaceInFrontOfCamera>().Configure(_camera.transform, _screenDistance);
-            _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth * 9f / 16f, 1f);
-
-            var shader = Shader.Find("Universal Render Pipeline/Unlit");
-            var material = new Material(shader != null ? shader : Constants.ShaderSingleMeshLit);
-            _renderTexture = new RenderTexture(1280, 720, 0);
-            material.mainTexture = _renderTexture;
-            _videoPlayerMaterial = material;
-            _screen.GetComponent<MeshRenderer>().sharedMaterial = material;
-
-            _videoPlayer = gameObject.AddComponent<VideoPlayer>();
-            _videoPlayer.playOnAwake = false;
-            _videoPlayer.renderMode = VideoRenderMode.RenderTexture;
-            _videoPlayer.targetTexture = _renderTexture;
-            _videoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
 
             // The world is paused via AudioListener.pause - the video's own source ignores it.
             _audioSource = gameObject.AddComponent<AudioSource>();
             _audioSource.ignoreListenerPause = true;
             _audioSource.spatialBlend = 0f;
-            _videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
-            _videoPlayer.SetTargetAudioSource(0, _audioSource);
-
-            _videoPlayer.prepareCompleted += OnPrepared;
-            _videoPlayer.loopPointReached += _ => PlayNext();
-            _videoPlayer.errorReceived += (_, message) =>
-            {
-                Logger.LogWarning($"[VRCinema] Video error: {message}", LogCat.VR);
-                PlayNext();
-            };
             return true;
-        }
-
-        private void OnPrepared(VideoPlayer player)
-        {
-            // Original videos are 4:3 (640x480) - keep their aspect.
-            if (player.width > 0 && player.height > 0)
-            {
-                var aspect = (float)player.height / player.width;
-                _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth * aspect, 1f);
-            }
-            player.Play();
         }
 
         private void Update()
@@ -185,7 +135,6 @@ namespace Gothic.VR.Adapters.UI
             if (IsSkipPressed())
             {
                 Logger.Log("[VRCinema] Skipped", LogCat.VR);
-                _videoPlayer.Stop();
                 StopBink();
                 PlayNext();
             }
@@ -253,17 +202,6 @@ namespace Gothic.VR.Adapters.UI
             if (_screen != null)
                 Destroy(_screen);
             _screen = null;
-
-            if (_videoPlayerMaterial != null)
-                Destroy(_videoPlayerMaterial);
-            _videoPlayerMaterial = null;
-
-            if (_renderTexture != null)
-            {
-                _renderTexture.Release();
-                Destroy(_renderTexture);
-            }
-            _renderTexture = null;
         }
     }
 }

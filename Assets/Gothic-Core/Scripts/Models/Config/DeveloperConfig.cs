@@ -300,7 +300,7 @@ namespace Gothic.Core.Models.Config
 
         [Separator("Videos")]
         [Tooltip("PlayVideo/PlayVideoEx (intro/chapter videos, G1 ending) play in a dark 'cinema' in front of the VR " +
-                 "head. Original .bik files are decoded by BinkPlayer (an MP4 with the same name wins). The world is " +
+                 "head. The original .bik files are decoded by BinkPlayer. The world is " +
                  "paused meanwhile. Skip: any trigger or A/X (keyboard: Space/Escape). Read at VM start.")]
         public bool EnableScriptVideos = true;
 

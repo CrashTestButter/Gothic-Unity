@@ -29,7 +29,7 @@ namespace Gothic.VR.Services
             var path = _videoService.FindVideo(fileName);
             if (path == null)
             {
-                Logger.LogWarning($"[VRCinema] '{fileName}' not found in _work/DATA/video/ (.bik/.mp4) - skipped.",
+                Logger.LogWarning($"[VRCinema] '{fileName}' not found in _work/DATA/video/ - skipped.",
                     LogCat.VR);
                 return;
             }

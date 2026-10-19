@@ -2989,10 +2989,10 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 6438015706988437683, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6216113394271006606}
+      addedObject: {fileID: 7124583920175634411}
     - targetCorrespondingSourceObject: {fileID: 6438015706988437683, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7124583920175634411}
+      addedObject: {fileID: 843678819706251389}
   m_SourcePrefab: {fileID: 100100000, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
 --- !u!114 &2192772470500779476 stripped
 MonoBehaviour:
@@ -3015,21 +3015,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 6438015706988437683, guid: 962bda2b335a56f48a6f7159a9e824d8, type: 3}
   m_PrefabInstance: {fileID: 4370666150582550914}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &6216113394271006606
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7349826874247373105}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 17ad3bb58e664d64697123bf06fe8acb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _distance: 5
-  _moveSmoothTime: 0.3
-  _rotationSpeed: 6
 --- !u!114 &7124583920175634411
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3048,6 +3033,19 @@ MonoBehaviour:
   _isAppliedAutomatically: 1
   _maxVisibleDistance: 0
   _canvasGroup: {fileID: 0}
+--- !u!114 &843678819706251389
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7349826874247373105}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c3b82e67b17c5e418f879278f9fe524, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Adapters.UI.VRPlaceInFrontOfCamera
+  _distance: 5
 --- !u!1001 &4370874130750423189
 PrefabInstance:
   m_ObjectHideFlags: 0

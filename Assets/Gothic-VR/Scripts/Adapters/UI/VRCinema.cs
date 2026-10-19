@@ -28,8 +28,6 @@ namespace Gothic.VR.Adapters.UI
         private const float _screenDistance = 3f;
         private const float _screenWidth = 3.2f;
         private const float _skipInputDelay = 0.5f;
-        // A bigger jump of the camera is a teleport (e.g. the hero is moved to the chapter start) - face it anew.
-        private const float _teleportDistance = 5f;
 
         private readonly Queue<string> _queue = new();
 
@@ -38,8 +36,6 @@ namespace Gothic.VR.Adapters.UI
         private CameraClearFlags _savedClearFlags;
         private Color _savedBackground;
         private float _savedTimeScale = 1f;
-        private Vector3 _screenForward = Vector3.forward;
-        private Vector3 _lastCameraPosition;
 
         private GameObject _screen;
         private VideoPlayer _videoPlayer;
@@ -135,7 +131,9 @@ namespace Gothic.VR.Adapters.UI
             _screen.layer = Constants.UILayer;
             Destroy(_screen.GetComponent<Collider>());
 
-            FaceCamera();
+            // Stays where it is (no head following). PlayVideo often comes before the script teleports the hero - the
+            // screen is placed anew then.
+            _screen.AddComponent<VRPlaceInFrontOfCamera>().Configure(_camera.transform, _screenDistance);
             _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth * 9f / 16f, 1f);
 
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
@@ -166,35 +164,6 @@ namespace Gothic.VR.Adapters.UI
                 PlayNext();
             };
             return true;
-        }
-
-        /// <summary>
-        /// The screen keeps a fixed direction (turning the head doesn't move it - that would make people sick), but
-        /// follows the head's position: PlayVideo often comes before the script teleports the hero.
-        /// </summary>
-        private void FaceCamera()
-        {
-            var forward = Vector3.ProjectOnPlane(_camera.transform.forward, Vector3.up).normalized;
-            _screenForward = forward == Vector3.zero ? Vector3.forward : forward;
-            _lastCameraPosition = _camera.transform.position;
-            PlaceScreen();
-        }
-
-        private void PlaceScreen()
-        {
-            _screen.transform.position = _camera.transform.position + _screenForward * _screenDistance;
-            _screen.transform.rotation = Quaternion.LookRotation(_screenForward);
-        }
-
-        private void LateUpdate()
-        {
-            if (_screen == null || _camera == null)
-                return;
-
-            if (Vector3.Distance(_camera.transform.position, _lastCameraPosition) > _teleportDistance)
-                FaceCamera();
-            else
-                PlaceScreen();
         }
 
         private void OnPrepared(VideoPlayer player)

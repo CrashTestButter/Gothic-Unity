@@ -1,8 +1,10 @@
 #if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
+using Gothic.Core;
 using Gothic.Core.Adapters.Video;
 using Gothic.Core.Const;
 using Gothic.Core.Logging;
+using Gothic.VR.Adapters.HVROverrides;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Shared;
 using UnityEngine;
@@ -12,9 +14,10 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
-    /// PlayVideo from Daedalus (chapter videos, the G1 ending's Extro/Credits) in a dark "cinema": the VR camera
-    /// renders only a screen (UI layer) on black, the world is muted. Created and fed by VRCinemaService.
-    /// Several PlayVideo calls in a row (G1 ending: 3 videos) are queued.
+    /// Videos (PlayVideo from Daedalus, the logo videos) in a dark "cinema": the VR camera renders only a screen
+    /// (UI layer) on black, the world is muted. Created and fed by VRCinemaService.
+    /// Several videos in a row (G1 ending: 3 videos, logos: 2) are queued.
+    /// The player is locked meanwhile: no movement, turning, crouching, jumping or menu.
     /// Skip the current video: any trigger or A/X (keyboard Space/Escape).
     /// The original Bink videos (.bik) are decoded by BinkPlayer.
     /// The world is paused (Time.timeScale 0) like in the engine, where the video blocks the game - otherwise dialog
@@ -34,12 +37,28 @@ namespace Gothic.VR.Adapters.UI
         private Color _savedBackground;
         private float _savedTimeScale = 1f;
 
+        private VRPlayerController _playerController;
+        private bool _savedMovementEnabled;
+        private bool _savedRotationEnabled;
+        private bool _savedCanCrouch;
+        private bool _savedCanJump;
+        private bool _savedTeleporterEnabled;
+        private bool _savedMenuButtonEnabled;
+
         private GameObject _screen;
         private AudioSource _audioSource;
         private BinkPlayer _binkPlayer;
         private float _playStartTime;
         private bool _isRunning;
 
+
+        /// <summary>
+        /// Player whose controls are locked during the videos. Optional - without it only the view is changed.
+        /// </summary>
+        public void SetPlayerController(VRPlayerController playerController)
+        {
+            _playerController = playerController;
+        }
 
         /// <summary>
         /// Queues a Bink video file. Only the first one starts the cinema, the others follow.
@@ -60,7 +79,10 @@ namespace Gothic.VR.Adapters.UI
             }
 
             if (_screen == null && !Open())
+            {
+                Close();
                 return;
+            }
 
             _isRunning = true;
             var path = _queue.Dequeue();
@@ -110,6 +132,7 @@ namespace Gothic.VR.Adapters.UI
             AudioListener.pause = true;
             _savedTimeScale = Time.timeScale;
             Time.timeScale = 0f;
+            LockPlayer();
 
             _screen = GameObject.CreatePrimitive(PrimitiveType.Quad);
             _screen.name = "_CinemaScreen";
@@ -166,19 +189,60 @@ namespace Gothic.VR.Adapters.UI
 
         private void Close()
         {
-            RestoreWorld();
+            if (_isRunning)
+                RestoreWorld();
             ReleaseResources();
 
             _isRunning = false;
             Destroy(gameObject);
             Logger.Log("[VRCinema] Closed", LogCat.VR);
+            GlobalEventDispatcher.VideoPlaybackFinished.Invoke();
         }
 
         private void RestoreWorld()
         {
             RestoreCamera();
+            UnlockPlayer();
             AudioListener.pause = false;
             Time.timeScale = _savedTimeScale;
+        }
+
+        /// <summary>
+        /// The camera only shows the screen, but HVR still moves/crouches the player and the menu button would open
+        /// the menu. The previous values are kept, as a dialog or seat might have locked the player already.
+        /// </summary>
+        private void LockPlayer()
+        {
+            if (_playerController == null)
+                return;
+
+            _savedMovementEnabled = _playerController.MovementEnabled;
+            _savedRotationEnabled = _playerController.RotationEnabled;
+            _savedCanCrouch = _playerController.CanCrouch;
+            _savedCanJump = _playerController.CanJump;
+            _savedTeleporterEnabled = _playerController.Teleporter.enabled;
+            _savedMenuButtonEnabled = _playerController.VrInputs.IsMenuButtonEnabled;
+
+            _playerController.MovementEnabled = false;
+            _playerController.RotationEnabled = false;
+            _playerController.CanCrouch = false;
+            _playerController.CanJump = false;
+            _playerController.Teleporter.enabled = false;
+            _playerController.VrInputs.IsMenuButtonEnabled = false;
+        }
+
+        private void UnlockPlayer()
+        {
+            if (_playerController == null)
+                return;
+
+            _playerController.MovementEnabled = _savedMovementEnabled;
+            _playerController.RotationEnabled = _savedRotationEnabled;
+            _playerController.CanCrouch = _savedCanCrouch;
+            _playerController.CanJump = _savedCanJump;
+            _playerController.Teleporter.enabled = _savedTeleporterEnabled;
+            _playerController.VrInputs.IsMenuButtonEnabled = _savedMenuButtonEnabled;
+            _playerController = null;
         }
 
         private void RestoreCamera()

@@ -720,7 +720,7 @@ namespace Gothic.Core.Domain.Vm
                 return 0;
 
             Logger.Log($"[PlayVideo] {fileName}", LogCat.Misc);
-            GlobalEventDispatcher.ScriptPlayVideo.Invoke(fileName);
+            GlobalEventDispatcher.PlayVideo.Invoke(fileName);
             return 1;
         }
 

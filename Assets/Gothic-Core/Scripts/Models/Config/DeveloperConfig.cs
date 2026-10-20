@@ -298,12 +298,6 @@ namespace Gothic.Core.Models.Config
         [Tooltip("If filled, then only the selected world and it's data is calculated. (Speeds up caching when testing for a specific world)")]
         public string OnlyCreateCacheForWorld = string.Empty;
 
-        [Separator("Videos")]
-        [Tooltip("PlayVideo/PlayVideoEx (intro/chapter videos, G1 ending) play in a dark 'cinema' in front of the VR " +
-                 "head. The original .bik files are decoded by BinkPlayer. The world is " +
-                 "paused meanwhile. Skip: any trigger or A/X (keyboard: Space/Escape). Read at VM start.")]
-        public bool EnableScriptVideos = true;
-
         [Separator("WIP - Not production ready", true)]
         public bool EnableDecalVisuals;
         public bool EnableParticleEffects;

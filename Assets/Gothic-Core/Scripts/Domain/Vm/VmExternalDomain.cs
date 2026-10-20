@@ -233,8 +233,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<string>("Snd_Play", Snd_Play);
 
             // Video
-            if (_configService.Dev.EnableScriptVideos)
-                RegisterPlayVideo(vm);
+            RegisterPlayVideo(vm);
 
             // Day Routine
             vm.RegisterExternal<NpcInstance, int, int, int, int, int, string>("TA_MIN", TA_MIN);

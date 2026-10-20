@@ -13,7 +13,9 @@ threading).
     follows the audio clock, minus the audio output latency, so picture and sound stay in sync.
 - The Daedalus externals `PlayVideo` and `PlayVideoEx` are implemented. They are registered only if the scripts
   declare them, with or without a return value, to match the DAT symbol.
-- `VRCinema` (VR adapter): the video plays in a dark room in front of the head.
+- `VRCinema` (VR adapter, `Player-Elements/Cinema.prefab`, nested inactive in `HVR - Player` and referenced by
+  `VRPlayerController.Cinema`): the video plays in a dark room in front of the head. Screen distance and width are
+  set on the prefab.
   - The screen keeps a fixed direction and follows teleports.
   - The world is paused while the video runs (the engine blocks the game too).
   - Several videos in a row are queued (G1 ending: Extro + Credits).

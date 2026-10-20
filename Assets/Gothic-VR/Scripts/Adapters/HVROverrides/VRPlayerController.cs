@@ -4,6 +4,7 @@ using Gothic.Core.Adapters.UI.Menus;
 using Gothic.Core.Const;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
+using Gothic.VR.Adapters.UI;
 using HurricaneVR.Framework.Core.Player;
 using MyBox;
 using Reflex.Attributes;
@@ -21,6 +22,7 @@ namespace Gothic.VR.Adapters.HVROverrides
 
         [Separator("Gothic - Settings")]
         public MenuHandler MenuHandler;
+        public VRCinema Cinema;
 
         [SerializeField] private float _characterControllerSwimDiveStepHeight = 1f; // 1m means walking out of water in Xardas' old tower in G1.
 

@@ -4,24 +4,20 @@ using Gothic.Core.Logging;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
 using Gothic.VR.Adapters.HVROverrides;
-using Gothic.VR.Adapters.UI;
 using Reflex.Attributes;
-using UnityEngine;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Services
 {
     /// <summary>
     /// Plays the videos of GlobalEventDispatcher.PlayVideo (PlayVideo/PlayVideoEx from scripts, logo videos) in a
-    /// VRCinema. Keeps the one cinema that is open, so several calls in a row (G1 ending: Extro + Credits) are queued
-    /// instead of opening several cinemas.
+    /// VRCinema. The cinema lives on the player (Cinema.prefab), several calls in a row (G1 ending: Extro + Credits)
+    /// are queued there.
     /// </summary>
     public class VRCinemaService
     {
         [Inject] private readonly VideoService _videoService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
-
-        private VRCinema _cinema;
 
         public void Init()
         {
@@ -38,16 +34,17 @@ namespace Gothic.VR.Services
                 return;
             }
 
-            // The cinema destroys itself after its last video - Unity's null check then creates a new one.
-            if (_cinema == null)
+            var playerController = _contextInteractionService.GetCurrentPlayerController();
+            var cinema = playerController == null ? null : playerController.GetComponent<VRPlayerController>().Cinema;
+            if (cinema == null)
             {
-                _cinema = new GameObject("_Cinema").AddComponent<VRCinema>();
-                var playerController = _contextInteractionService.GetCurrentPlayerController();
-                if (playerController != null)
-                    _cinema.SetPlayerController(playerController.GetComponent<VRPlayerController>());
+                Logger.LogWarning($"[VRCinema] No cinema on the player - '{fileName}' skipped.", LogCat.VR);
+                // Waiting scenes (Logo) continue nevertheless.
+                GlobalEventDispatcher.VideoPlaybackFinished.Invoke();
+                return;
             }
 
-            _cinema.Enqueue(path);
+            cinema.Enqueue(path);
         }
     }
 }

@@ -15,7 +15,8 @@ namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
     /// Videos (PlayVideo from Daedalus, the logo videos) in a dark "cinema": the VR camera renders only a screen
-    /// (UI layer) on black, the world is muted. Created and fed by VRCinemaService.
+    /// (UI layer) on black, the world is muted. Lives as Cinema.prefab on the player (inactive), fed by VRCinemaService.
+    /// It activates itself for the first video and deactivates after the last one.
     /// Several videos in a row (G1 ending: 3 videos, logos: 2) are queued.
     /// The player is locked meanwhile: no movement, turning, crouching, jumping or menu.
     /// Skip the current video: any trigger or A/X (keyboard Space/Escape).
@@ -25,9 +26,23 @@ namespace Gothic.VR.Adapters.UI
     /// </summary>
     public class VRCinema : MonoBehaviour
     {
-        private const float _screenDistance = 3f;
-        private const float _screenWidth = 3.2f;
         private const float _skipInputDelay = 0.5f;
+
+        [Tooltip("Screen the video is rendered on (UI layer, as the camera renders only this layer meanwhile).")]
+        [SerializeField]
+        private MeshRenderer _screen;
+
+        [Tooltip("Places the screen in front of the head when a video starts.")] [SerializeField]
+        private VRPlaceInFrontOfCamera _screenPlacement;
+
+        [Tooltip("Audio of the video. Plays while the world's audio is paused.")] [SerializeField]
+        private AudioSource _audioSource;
+
+        [Tooltip("Distance of the screen in front of the head in meters.")] [SerializeField]
+        private float _screenDistance = 3f;
+
+        [Tooltip("Width of the screen in meters. The height follows the video's aspect ratio.")] [SerializeField]
+        private float _screenWidth = 3.2f;
 
         private readonly Queue<string> _queue = new();
 
@@ -45,20 +60,10 @@ namespace Gothic.VR.Adapters.UI
         private bool _savedTeleporterEnabled;
         private bool _savedMenuButtonEnabled;
 
-        private GameObject _screen;
-        private AudioSource _audioSource;
         private BinkPlayer _binkPlayer;
         private float _playStartTime;
         private bool _isRunning;
 
-
-        /// <summary>
-        /// Player whose controls are locked during the videos. Optional - without it only the view is changed.
-        /// </summary>
-        public void SetPlayerController(VRPlayerController playerController)
-        {
-            _playerController = playerController;
-        }
 
         /// <summary>
         /// Queues a Bink video file. Only the first one starts the cinema, the others follow.
@@ -78,9 +83,10 @@ namespace Gothic.VR.Adapters.UI
                 return;
             }
 
-            if (_screen == null && !Open())
+            if (!_isRunning && !Open())
             {
-                Close();
+                _queue.Clear();
+                GlobalEventDispatcher.VideoPlaybackFinished.Invoke();
                 return;
             }
 
@@ -95,11 +101,12 @@ namespace Gothic.VR.Adapters.UI
         private void PlayBink(string path)
         {
             _binkPlayer = gameObject.AddComponent<BinkPlayer>();
-            if (!_binkPlayer.Play(path, _screen.GetComponent<MeshRenderer>(), _audioSource, PlayNext, out var aspect))
+            if (!_binkPlayer.Play(path, _screen, _audioSource, PlayNext, out var aspect))
             {
                 PlayNext();
                 return;
             }
+
             _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth / aspect, 1f);
         }
 
@@ -118,9 +125,10 @@ namespace Gothic.VR.Adapters.UI
             if (_camera == null)
             {
                 Logger.LogWarning("[VRCinema] No main camera - video skipped.", LogCat.VR);
-                _queue.Clear();
                 return false;
             }
+
+            gameObject.SetActive(true);
 
             // Dark room: only the screen (UI layer) on black.
             _savedCullingMask = _camera.cullingMask;
@@ -134,25 +142,18 @@ namespace Gothic.VR.Adapters.UI
             Time.timeScale = 0f;
             LockPlayer();
 
-            _screen = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            _screen.name = "_CinemaScreen";
-            _screen.layer = Constants.UILayer;
-            Destroy(_screen.GetComponent<Collider>());
-
             // Stays where it is (no head following). PlayVideo often comes before the script teleports the hero - the
             // screen is placed anew then.
-            _screen.AddComponent<VRPlaceInFrontOfCamera>().Configure(_camera.transform, _screenDistance);
+            _screenPlacement.Configure(_camera.transform, _screenDistance);
 
-            // The world is paused via AudioListener.pause - the video's own source ignores it.
-            _audioSource = gameObject.AddComponent<AudioSource>();
+            // The world is paused via AudioListener.pause - the video's own source ignores it. Not serialized by Unity.
             _audioSource.ignoreListenerPause = true;
-            _audioSource.spatialBlend = 0f;
             return true;
         }
 
         private void Update()
         {
-            if (_screen == null || Time.unscaledTime - _playStartTime < _skipInputDelay)
+            if (!_isRunning || Time.unscaledTime - _playStartTime < _skipInputDelay)
                 return;
 
             if (IsSkipPressed())
@@ -175,26 +176,27 @@ namespace Gothic.VR.Adapters.UI
                     HVRController.GetButtonState(side, HVRButtons.Primary).JustActivated)
                     return true;
             }
+
             return false;
         }
 
         private void OnDestroy()
         {
-            // Destroyed without Close (scene change during a video): the VR camera lives in the persistent Player
-            // scene - never leave it dark or the game paused.
+            // Destroyed while running (the player is destroyed, e.g. on quit): the camera might survive - never leave
+            // it dark or the game paused.
             if (_isRunning)
                 RestoreWorld();
-            ReleaseResources();
+            StopBink();
         }
 
         private void Close()
         {
             if (_isRunning)
                 RestoreWorld();
-            ReleaseResources();
+            StopBink();
 
             _isRunning = false;
-            Destroy(gameObject);
+            gameObject.SetActive(false);
             Logger.Log("[VRCinema] Closed", LogCat.VR);
             GlobalEventDispatcher.VideoPlaybackFinished.Invoke();
         }
@@ -207,12 +209,26 @@ namespace Gothic.VR.Adapters.UI
             Time.timeScale = _savedTimeScale;
         }
 
+        private void RestoreCamera()
+        {
+            if (_camera == null)
+                return;
+
+            _camera.cullingMask = _savedCullingMask;
+            _camera.clearFlags = _savedClearFlags;
+            _camera.backgroundColor = _savedBackground;
+            _camera = null;
+        }
+
         /// <summary>
         /// The camera only shows the screen, but HVR still moves/crouches the player and the menu button would open
         /// the menu. The previous values are kept, as a dialog or seat might have locked the player already.
         /// </summary>
         private void LockPlayer()
         {
+            // The cinema is inactive until the first video - no Awake to cache it in before.
+            if (_playerController == null)
+                _playerController = GetComponentInParent<VRPlayerController>(true);
             if (_playerController == null)
                 return;
 
@@ -242,30 +258,6 @@ namespace Gothic.VR.Adapters.UI
             _playerController.CanJump = _savedCanJump;
             _playerController.Teleporter.enabled = _savedTeleporterEnabled;
             _playerController.VrInputs.IsMenuButtonEnabled = _savedMenuButtonEnabled;
-            _playerController = null;
-        }
-
-        private void RestoreCamera()
-        {
-            if (_camera == null)
-                return;
-
-            _camera.cullingMask = _savedCullingMask;
-            _camera.clearFlags = _savedClearFlags;
-            _camera.backgroundColor = _savedBackground;
-            _camera = null;
-        }
-
-        /// <summary>
-        /// Safe to call twice (Close, then OnDestroy of the same cinema).
-        /// </summary>
-        private void ReleaseResources()
-        {
-            StopBink();
-
-            if (_screen != null)
-                Destroy(_screen);
-            _screen = null;
         }
     }
 }

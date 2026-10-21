@@ -44,7 +44,7 @@ namespace Gothic.VR.Adapters.HVROverrides
         {
             base.Update();
 
-            if (VrInputs.IsMenuActivated && IsGameScene())
+            if (VrInputs.IsMenuActivated && IsGameScene() && (Cinema == null || !Cinema.IsBlockingInput))
             {
                 _gameStateService.InGameAndAlive = true;
                 MenuHandler.ToggleVisibility();
@@ -212,7 +212,7 @@ namespace Gothic.VR.Adapters.HVROverrides
         }
 
         /// <summary>
-        /// Game scenes are all the ones where we play. Aka !=MainMenu, !=Loadings, ...
+        /// Game scenes are all the ones where we play. Aka !=MainMenu, !=Loadings, !=Logo videos, ...
         /// </summary>
         private bool IsGameScene()
         {
@@ -220,6 +220,11 @@ namespace Gothic.VR.Adapters.HVROverrides
 
             return activeSceneName switch
             {
+                Constants.SceneBootstrap => false,
+                Constants.ScenePlayer => false,
+                Constants.SceneGameVersion => false,
+                Constants.ScenePreCaching => false,
+                Constants.SceneLogo => false,
                 Constants.SceneMainMenu => false,
                 Constants.SceneLoading => false,
                 _ => true

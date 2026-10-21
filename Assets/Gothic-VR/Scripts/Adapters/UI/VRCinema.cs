@@ -63,7 +63,14 @@ namespace Gothic.VR.Adapters.UI
         private BinkPlayer _binkPlayer;
         private float _playStartTime;
         private bool _isRunning;
+        private int _closedFrame = -1;
 
+
+        /// <summary>
+        /// True while a video plays and in the frame the cinema closed. The input that skipped the last video (e.g.
+        /// Escape) must not open the menu in the same frame, after the menu button got unlocked again.
+        /// </summary>
+        public bool IsBlockingInput => _isRunning || Time.frameCount == _closedFrame;
 
         /// <summary>
         /// Queues a Bink video file. Only the first one starts the cinema, the others follow.
@@ -196,6 +203,7 @@ namespace Gothic.VR.Adapters.UI
             StopBink();
 
             _isRunning = false;
+            _closedFrame = Time.frameCount;
             gameObject.SetActive(false);
             Logger.Log("[VRCinema] Closed", LogCat.VR);
             GlobalEventDispatcher.VideoPlaybackFinished.Invoke();

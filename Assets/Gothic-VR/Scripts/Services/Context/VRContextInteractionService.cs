@@ -34,6 +34,7 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly IVrInput _vrInput;
         [Inject] private readonly IVrUiPointers _vrUiPointers;
         [Inject] private readonly IVrHaptics _vrHaptics;
+        [Inject] private readonly IVrBackend _vrBackend;
 
         private const string _contextName = "VR";
 
@@ -108,19 +109,30 @@ namespace Gothic.VR.Services.Context
             // We call this method once at the very beginning of game start. We can safely assume we are in the Player.unity scene.
             var activeScene = SceneManager.GetActiveScene();
 
-            // VR Player: Gothic part and the backend's rig live on the same GameObject.
-            _player = activeScene.GetComponentInChildren<VRPlayer>(true)!;
-            _rig = _player.GetComponent<IVrRig>();
-            if (_rig == null)
+            // VR Player: Gothic part and the backend's rig live on the same GameObject. The scene contains one
+            // (inactive) player prefab per VR backend. We use the one of the active backend and remove the others, so
+            // that scene-wide lookups (dialog, canvases, ...) find only ours.
+            var players = activeScene.GetRootGameObjects()
+                .SelectMany(i => i.GetComponentsInChildren<VRPlayer>(true))
+                .ToList();
+            _player = players.FirstOrDefault(i => _vrBackend.OwnsRig(i.GetComponent<IVrRig>()));
+            if (_player == null)
             {
-                // e.g., VrInteractionBackend = Xri before the XRI rig exists (HVR phase 1b) and without HVR installed.
-                const string message = "VR player has no IVrRig (rig of the active VR backend). " +
-                                       "Check DeveloperConfig.VrInteractionBackend and the rigs in Player.unity.";
+                var message = $"No VR player with a rig of the active VR backend ({_vrBackend.Name}) found. " +
+                              "Check DeveloperConfig.VrInteractionBackend and the player prefabs in Player.unity.";
                 Logger.LogError(message, LogCat.VR);
                 throw new MissingComponentException(message);
             }
 
-            _player.transform.parent.parent.gameObject.SetActive(true);
+            _rig = _player.GetComponent<IVrRig>();
+            var playerRoot = _player.transform.root.gameObject;
+            foreach (var otherRoot in players.Select(i => i.transform.root.gameObject).Distinct())
+            {
+                if (otherRoot != playerRoot)
+                    Object.Destroy(otherRoot);
+            }
+
+            playerRoot.SetActive(true);
             _defaultStepOffset = _rig.StepOffset;
             ApplyComfortSettings(true);
 
@@ -128,7 +140,8 @@ namespace Gothic.VR.Services.Context
             _vrInput.SetDeviceSimulatorActive(developerConfig.EnableVRDeviceSimulator);
 
             // Marvin Mode
-            _marvinRoot = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!.gameObject;
+            // Searched inside our player only: the other backends' players are destroyed at the end of this frame.
+            _marvinRoot = playerRoot.GetComponentInChildren<MarvinRootHandler>(true)!.gameObject;
             _marvinRoot.SetActive(_marvinService.IsMarvinMode);
 
             // PrintScreen() messages in front of the camera

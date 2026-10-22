@@ -15,6 +15,11 @@ namespace Gothic.VR.Interaction.Backends.Hvr
             containerBuilder.AddSingleton(typeof(HvrUiPointers), typeof(IVrUiPointers));
             containerBuilder.AddSingleton(typeof(HvrSfxPlayer), typeof(IVrSfxPlayer));
         }
+
+        public bool OwnsRig(IVrRig rig)
+        {
+            return rig is HvrRig;
+        }
     }
 }
 #endif

@@ -51,8 +51,8 @@ hand drags the leaf physically. No position tracking of the hand → hinge, whic
 problem. Set `trackRotation = false` so only the position drives the leaf (feels like pushing/pulling a handle).
 
 Alternative if VelocityTracking + HingeJoint feels jittery: kinematic leaf with our own angle solve (project the hand
-movement onto the hinge plane, clamp to the limits). That's how UltimateXR does constrained grabbables
-(`UxrGrabbableObject` rotation constraints, MIT, useful as a reference).
+movement onto the hinge plane, clamp to the limits). (Decision 2026-10-22: nothing from UltimateXR is used, not even
+as a code reference.)
 
 ### Chest
 

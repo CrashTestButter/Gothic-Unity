@@ -6,6 +6,19 @@ hands that don't pass through walls.
 
 **Size:** L-XL (3-5 weeks) · **Depends on:** Phases 1-3 · **Riskiest phase** (see 04, "What we accept")
 
+> **Decision 2026-10-22 (team): Phase 5 is on hold, 5d is skipped.**
+> - **5d physics hands: skipped.** Not part of the HVR replacement. Hands follow the controllers directly (Phase 2
+>   state incl. the interim "parent the hand visual to the held item" fix).
+> - **Hand models: Gothic's own fist meshes**, loaded at runtime via ZenKit like every other asset (future task).
+>   **Nothing is imported or copied from UltimateXR** - no hand meshes, no pose editor, no code. The UXR references
+>   below are history.
+> - 5a-5c are designed for articulated hands. With fist-only meshes, finger curls (5b) and procedural finger posing
+>   (5c) probably don't apply; re-plan them once the Gothic fist meshes are in. Until then the Xri rig shows a simple
+>   placeholder (or no) hand visual.
+> - Phase 6 doesn't wait for Phase 5.
+>
+> The rest of this document is the original plan, kept for reference.
+
 Split into four parts that ship separately. 5a-5c are required, 5d is optional.
 
 | Part | Content | Size |
@@ -13,7 +26,7 @@ Split into four parts that ship separately. 5a-5c are required, 5d is optional.
 | 5a | Hand models + rig + `VRHandsOnTop` | S |
 | 5b | `FingerCurlProvider` (buttons, touches, XR Hands) | S-M |
 | 5c | `ProceduralHandPoser` + few authored poses | M-L |
-| 5d | `PhysicsHand` (joint-driven), ghost hand, teleport handling | L |
+| 5d | ~~`PhysicsHand` (joint-driven), ghost hand, teleport handling~~ **skipped** | L |
 
 ## Exit criteria
 
@@ -89,7 +102,7 @@ UltimateXR Hand Pose Editor (MIT, authored poses).
 `VrHandPose` asset = per-bone local rotations; capture them in the editor from the posed hand (a small "Save pose"
 inspector button) instead of porting a full pose editor.
 
-## 5d - Physics hands (optional, immersion setting)
+## 5d - Physics hands (optional, immersion setting) - SKIPPED (see decision at the top)
 
 Replaces `HVRJointHand` + `HVRHandPhysics` + `HVRGhostHand` + the hand part of `HVRTeleportCollisonHandler`.
 

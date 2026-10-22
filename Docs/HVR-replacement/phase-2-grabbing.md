@@ -100,7 +100,7 @@ HVR ones.
 
 | Risk | Mitigation |
 |------|-----------|
-| Hand and item separate visually (no physics hands until Phase 5) | Accept for now, or attach the hand model to the item while held (`XRGrabInteractable` → parent the hand visual to the attach transform). That's a cheap interim fix worth doing. |
+| Hand and item separate visually (no physics hands: 5d is skipped) | Accept, or attach the hand model to the item while held (`XRGrabInteractable` → parent the hand visual to the attach transform). That's a cheap interim fix worth doing. |
 | VelocityTracking jitter while walking | Turn on rigidbody interpolation for held items and test XRI's visual-smoothing options for velocity-tracked grabs. Test while running. |
 | API names in this doc drift from the pinned XRI version | Names here follow XRI 3.x docs. Verify each one with `unity_reflect` / the package docs before implementing. |
 | Runtime colliders not registered | Register the interactable after `VobItem` creation (see the mapping table). Add a log warning if `colliders.Count == 0` on hover registration. |

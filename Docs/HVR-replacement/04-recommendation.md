@@ -48,6 +48,9 @@ containers/doors), and **borrow selectively from UltimateXR (MIT)**, mainly its 
     the phase most likely to overrun, and keep physics hands optional.
 - During the transition there are two backends. Phase 0 keeps that cheap.
 
+> **Update 2026-10-22:** physics hands (5d) are skipped, hands will be Gothic's own fist meshes, and nothing is
+> taken from UltimateXR. Phase 5 is on hold; see `phase-5-hands.md`.
+
 ## Target architecture
 
 ```
@@ -104,7 +107,7 @@ can run in parallel once Phase 1 has landed.
 | HVR asset | Replacement |
 |-----------|-------------|
 | TechDemo XR rig | New `VR - Player.prefab` from XRI Starter Assets as reference, built through UnityMCP |
-| Hand models / controller models | UXR hands (MIT, keep notice); controller models from XRI / OpenXR render models or none |
+| Hand models / controller models | Gothic's own fist meshes at runtime via ZenKit (future task, decision 2026-10-22; nothing from UXR); controller models none |
 | Socket rings, teleport marker | Simple procedural/CC0 meshes + our URP materials |
 | Backpack prefab + SFX | Gothic asset at runtime (a bag/pouch mesh from the Gothic install, loaded via ZenKit) + Gothic SFX - keeps the "no bundled assets" principle |
 | Input maps, controller offsets | XRI Input Actions asset + per-profile pose offsets (OpenXR grip/aim poses mostly make them unnecessary) |

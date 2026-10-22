@@ -2,7 +2,9 @@ using Gothic.Core.Creator;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.UI;
+using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
+using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
@@ -22,6 +24,7 @@ namespace Gothic.Core.Domain.Marvin
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly GameTimeService _gameTimeService;
+        [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly PlayerService _playerService;
         [Inject] private readonly WayNetService _wayNetService;
@@ -36,6 +39,9 @@ namespace Gothic.Core.Domain.Marvin
         private const float _blinkFloorSearchHeight = 3f;
         private const float _groupDistance = 2.5f;
         private const float _groupArcDegrees = 120f;
+        private const float _killMaxAngle = 15f;
+        private const float _killMaxDistance = 30f;
+        private const int _npcFlagImmortal = 2;
         private const string _messageFont = "FONT_OLD_20_WHITE.TGA";
         private const int _messagePos = 2;
         private const float _messageSeconds = 2f;
@@ -199,6 +205,64 @@ namespace Gothic.Core.Domain.Marvin
 
             _contextInteractionService.TeleportPlayerTo(target, player.transform.rotation);
             Logger.Log($"[MarvinCheatDomain] Blink {_blinkDistance:F0} m forward to {target}", LogCat.Ui);
+            return true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMarvinKill - like Gothic's Marvin "kill" (OpenGothic C_Kill): the focus NPC loses all its
+        /// hit points and dies (never unconscious), unless it's immortal (NPC_FLAG_IMMORTAL, e.g. Diego). The focus is
+        /// the NPC a hand pointed at last (PlayerService.FocusNpc), without one the NPC closest to the view's center
+        /// within _killMaxAngle and _killMaxDistance.
+        /// </summary>
+        public bool KillFocusNpc()
+        {
+            var cam = Camera.main;
+            var hero = _npcService.GetHeroContainer();
+            if (cam == null)
+                return false;
+
+            // The focus first (the NPC a hand pointed at last - VRFocus), the view's center only without one: typing on
+            // the Marvin panel, you look at the panel.
+            var focus = _playerService.FocusNpc;
+            var target = focus?.Go != null && focus != hero && focus.Instance != null &&
+                         focus.Props.BodyState != VmGothicEnums.BodyState.BsDead
+                ? focus
+                : null;
+            var bestAngle = _killMaxAngle;
+            foreach (var npc in _multiTypeCacheService.NpcCache)
+            {
+                if (focus != null && target == focus)
+                    break;
+                if (npc == hero || npc?.Go == null || !npc.Go.activeInHierarchy || npc.Instance == null ||
+                    npc.Props.BodyState == VmGothicEnums.BodyState.BsDead)
+                    continue;
+                var toNpc = npc.Go.transform.position + Vector3.up - cam.transform.position;
+                if (toNpc.magnitude > _killMaxDistance)
+                    continue;
+                var angle = Vector3.Angle(cam.transform.forward, toNpc);
+                if (angle >= bestAngle)
+                    continue;
+                bestAngle = angle;
+                target = npc;
+            }
+
+            if (target == null)
+            {
+                Logger.Log("[MarvinCheatDomain] Kill: no NPC in focus", LogCat.Ui);
+                return false;
+            }
+
+            var name = target.Instance.GetName(NpcNameSlot.Slot0);
+            // Like OpenGothic (Marvin C_Kill: changeAttribute(ATR_HITPOINTS, -max) on the focus NPC, which an immortal
+            // one ignores) - nothing happens, no message.
+            if (((int)target.Instance.Flags & _npcFlagImmortal) != 0)
+            {
+                Logger.Log($"[MarvinCheatDomain] Kill: {name} is immortal", LogCat.Ui);
+                return true;
+            }
+
+            GlobalEventDispatcher.CheatKill.Invoke(target);
+            Logger.Log($"[MarvinCheatDomain] Kill: {name}", LogCat.Ui);
             return true;
         }
 

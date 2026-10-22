@@ -32,6 +32,7 @@ namespace Gothic.VR.Adapters
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly DynamicMaterialService _dynamicMaterialService;
         [Inject] private readonly VRPlayerService _vrPlayerService;
+        [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
         [Inject] private readonly Gothic.Core.Services.Npc.HeroPerceptionService _heroPerceptionService;
 
         private static Camera _mainCamera;
@@ -103,6 +104,16 @@ namespace Gothic.VR.Adapters
 
         public void OnHoverEnter(HVRGrabberBase _, HVRGrabbable __)
         {
+            // The hero's focus (PlayerService.FocusNpc) - e.g. Marvin's "kill" hits the NPC the hand pointed at.
+            if (_isNpc && _configService.Dev.EnableMarvinKill)
+            {
+                var loader = GetComponentInParent<NpcLoader>();
+                var npc = loader != null && loader.Npc != null ? loader.Container : null;
+                if (npc != null)
+                    _playerService.FocusNpc = npc;
+            }
+
+
             OnHoverEnter(_isNpc
                 ? Constants.ShaderPropertyFocusBrightnessNpcValue
                 : Constants.ShaderPropertyFocusBrightnessValue);

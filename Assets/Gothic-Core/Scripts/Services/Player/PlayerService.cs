@@ -27,6 +27,12 @@ namespace Gothic.Core.Services.Player
         /// </summary>
         public bool IsGodMode;
         public NpcContainer HeroContainer { get; private set; }
+
+        /// <summary>
+        /// The hero's focus like Gothic's: the NPC last pointed at (VR: hovered with a hand - VRFocus), kept until another
+        /// one is. Marvin's "kill" (DeveloperConfig.EnableMarvinKill) acts on it.
+        /// </summary>
+        public NpcContainer FocusNpc;
         
         
         [Inject] private readonly VmCacheService _vmCacheService;

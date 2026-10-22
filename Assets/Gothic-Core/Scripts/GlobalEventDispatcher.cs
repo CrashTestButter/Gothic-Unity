@@ -126,6 +126,8 @@ namespace Gothic.Core
         public static readonly UnityEvent GameTimeSkipped = new();
         // NPC landed after a fall higher than FALLDOWN_HEIGHT (damage already minus PROT_FALL).
         public static readonly UnityEvent<NpcContainer, int> FallDamage = new();
+        // Marvin's "kill" (DeveloperConfig.EnableMarvinKill): the NPC dies at once, no killer (no experience).
+        public static readonly UnityEvent<NpcContainer> CheatKill = new();
 
         /// <summary>
         /// Arrow/bolt hit (VR crossbow/bow projectiles).
@@ -147,6 +149,7 @@ namespace Gothic.Core
         /// NpcContainer - the hero, who just got knocked out (BodyState is already BsUnconscious)
         /// </summary>
         public static readonly UnityEvent<NpcContainer> HeroKnockedOut = new();
+
         /// <summary>
         /// NpcContainer - the hero, finished off (AI_FinishingMove) - BodyState is already BsDead
         /// (DeveloperConfig.EnableHeroDeath and the "heroDeath" option).

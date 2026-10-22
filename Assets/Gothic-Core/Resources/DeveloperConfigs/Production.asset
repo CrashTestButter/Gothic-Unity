@@ -120,6 +120,7 @@ MonoBehaviour:
   EnableTimeSkip: 0
   MarvinTeleportWaypoint: 
   EnableMarvinBlink: 1
+  EnableMarvinKill: 1
   EnableMarvinFallRescue: 1
   EnableMarvinGodMode: 1
   MarvinSpawnNpcSymbol: 

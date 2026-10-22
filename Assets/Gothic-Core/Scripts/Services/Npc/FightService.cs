@@ -51,6 +51,7 @@ namespace Gothic.Core.Services.Npc
             GlobalEventDispatcher.SpellHit.AddListener(OnSpellHit);
             GlobalEventDispatcher.SpellSpreadHit.AddListener((caster, pos, damage) => ApplySpreadHit(caster, pos, damage, null));
             GlobalEventDispatcher.FallDamage.AddListener(OnFallDamage);
+            GlobalEventDispatcher.CheatKill.AddListener(OnCheatKill);
             GlobalEventDispatcher.RangedHit.AddListener(OnRangedHit);
             GlobalEventDispatcher.FightFinishingMove.AddListener(OnFinishingMove);
             GlobalEventDispatcher.HeroMeleeSwing.AddListener(OnHeroMeleeSwing);
@@ -208,6 +209,22 @@ namespace Gothic.Core.Services.Npc
             if (hitPoints > 0)
                 return;
 
+            npc.Props.BodyState = VmGothicEnums.BodyState.BsDead;
+            OnDyingChangeAnimation(npc);
+            OnNpcDied(npc, npc);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMarvinKill: Marvin's "kill" - like a fall, the NPC is its own killer (ZS_Dead runs, the
+        /// hero gets no experience).
+        /// </summary>
+        private void OnCheatKill(NpcContainer npc)
+        {
+            if (npc?.Vob == null || npc.Props.BodyState == VmGothicEnums.BodyState.BsDead)
+                return;
+
+            npc.Vob.SetAttribute((int)NpcAttribute.HitPoints, 0);
+            npc.Instance.SetAttribute(NpcAttribute.HitPoints, 0);
             npc.Props.BodyState = VmGothicEnums.BodyState.BsDead;
             OnDyingChangeAnimation(npc);
             OnNpcDied(npc, npc);

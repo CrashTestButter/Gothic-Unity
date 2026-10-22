@@ -196,6 +196,10 @@ namespace Gothic.Core.Services.Marvin
                 root.Add("goto").Add("forward").Describe("4 m forward where you look, through walls")
                     .Runs(_ => _cheatDomain.BlinkForward());
 
+            if (_configService.Dev.EnableMarvinKill)
+                root.Add("kill").Describe("The NPC you look at dies (not immortal ones)")
+                    .Runs(_ => _cheatDomain.KillFocusNpc());
+
             root.Add("goto").Add("waypoint").Describe("Teleport to a waypoint")
                 .Add(_waypointValue).Runs(values => _cheatDomain.TeleportToWaypoint(values[0]));
 

@@ -451,6 +451,9 @@ namespace Gothic.Core.Models.Config
                  "horizontally only - through doors and walls.")]
         public bool EnableMarvinBlink = true;
 
+        [Tooltip("V1: Marvin's \"kill\" like Gothic's - the NPC you look at dies (not immortal ones, e.g. Diego).")]
+        public bool EnableMarvinKill = true;
+
         [Tooltip("MarvinMode only: no floor below the hero for 2 s (fell out of the world) - back to the world's START " +
                  "point.")]
         public bool EnableMarvinFallRescue = true;

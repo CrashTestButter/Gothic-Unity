@@ -8,8 +8,8 @@ using Gothic.Core.Services.Meshes;
 using Gothic.VR.Services;
 using Gothic.Core;
 using Gothic.Core.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -31,6 +31,8 @@ namespace Gothic.VR.Adapters.Vob
         // We pre-allocate enough entries to fetch at least one entry which is not ourselves.
         private readonly Collider[] _overlapColliders = new Collider[1];
         private static int _ignoreLayerCollisionCheck;
+
+        private VrInteractable _interactable;
 
 
         private struct OverlapCheckData
@@ -54,11 +56,24 @@ namespace Gothic.VR.Adapters.Vob
             {
                 _ignoreLayerCollisionCheck = Constants.VobItemNoWorldCollision | Constants.HandLayer;
             }
+
+            _interactable = GetComponent<VrInteractable>();
+            _interactable.Grabbed += OnGrabbed;
+            _interactable.Released += OnReleased;
         }
 
         private void Start()
         {
-            GetComponent<HVRGrabbable>().SetupColliders();
+            _interactable.SetupColliders();
+        }
+
+        private void OnDestroy()
+        {
+            if (_interactable == null)
+                return;
+
+            _interactable.Grabbed -= OnGrabbed;
+            _interactable.Released -= OnReleased;
         }
 
         /// <summary>
@@ -66,21 +81,21 @@ namespace Gothic.VR.Adapters.Vob
         /// 2. Grabbed via HandGrabber (direct grabbing into hand)
         /// 3. Grabbed via Socket (e.g., backpack)
         /// </summary>
-        public void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnGrabbed(VrGrabArgs args)
         {
             // Ignore grabbing once, if MarvinSelectionMode is active.
             if (_marvinService.IsMarvinSelectionMode)
             {
-                _marvinService.MarvinSelectionGO = grabbable.gameObject;
+                _marvinService.MarvinSelectionGO = args.Interactable.gameObject;
                 return;
             }
 
             // Held and socketed items must not push our own CharacterController.
-            _vrPlayerService.IgnorePlayerCollision(grabbable, true);
+            _vrPlayerService.IgnorePlayerCollision(args.Interactable, true);
 
             // OnGrabbed is normally called multiple times. Even after an object is already socketed. If so, then let's stop Grab behaviour.
             // If we sock an object on our hips or backpack etc.
-            if (grabber is HVRSocket)
+            if (args.Kind == VrGrabberKind.Socket)
                 return;
 
             // Stop collisions while being dragged around (at least shortly; otherwise e.g. items might stick inside chests when pulled out).
@@ -94,7 +109,7 @@ namespace Gothic.VR.Adapters.Vob
             StartCoroutine(ReEnableCollisionRoutine());
 
             _vobMeshCullingService?.StartTrackVobPositionUpdates(gameObject);
-            _vrPlayerService.SetGrab(grabber, grabbable);
+            _vrPlayerService.SetGrab(args);
         }
 
         /// <summary>
@@ -102,25 +117,25 @@ namespace Gothic.VR.Adapters.Vob
         /// 2. Grabbed via HandGrabber (direct grabbing into hand)
         /// 3. Grabbed via Socket (e.g., backpack)
         /// </summary>
-        public void OnReleased(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnReleased(VrGrabArgs args)
         {
             // If we release an object from our hips or backpack etc.
             // We then assume, that the item is already with correct values as it was grabbed before (shader, layer, ...)
-            if (grabber is HVRSocket)
+            if (args.Kind == VrGrabberKind.Socket)
                 return;
 
             gameObject.layer = Constants.VobItemLayer; // Back to default
 
             // Dropped into the world (and not still in the other hand): we get stuck at it again.
-            if (!grabbable.IsBeingHeld)
-                _vrPlayerService.IgnorePlayerCollision(grabbable, false);
+            if (!args.Interactable.IsHeld)
+                _vrPlayerService.IgnorePlayerCollision(args.Interactable, false);
 
             // Disable "ghostification" of object.
             _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency,
                 Constants.ShaderPropertyTransparencyDefault);
 
             _vobMeshCullingService?.StopTrackVobPositionUpdates(gameObject);
-            _vrPlayerService.UnsetGrab(grabber, grabbable);
+            _vrPlayerService.UnsetGrab(args);
         }
 
         /// <summary>

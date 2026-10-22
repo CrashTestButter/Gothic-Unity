@@ -8,7 +8,7 @@ using HurricaneVR.Framework.Core.Grabbers;
 using UnityEngine;
 using ZenKit.Daedalus;
 
-namespace Gothic.VR.Adapters.HVROverrides
+namespace Gothic.VR.Interaction.Backends.Hvr
 {
     /// <summary>
     /// Our VobItems have the following structure:
@@ -18,7 +18,7 @@ namespace Gothic.VR.Adapters.HVROverrides
     /// Problem is that HVR assumes the root of an object to be moved is the Grabbable GO. But on our end it's one level higher.
     /// This class therefore overwrites some logic to ensure, that our root with VobLoader (which will be used by e.g. Cullung) is the root.
     /// </summary>
-    public class VRSocket : HVRSocket
+    public class HvrSocket : HVRSocket
     {
         protected override void OnGrabbed(HVRGrabArgs args)
         {

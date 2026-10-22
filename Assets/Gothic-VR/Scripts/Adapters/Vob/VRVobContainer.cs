@@ -8,7 +8,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Services.Caches;
-using HurricaneVR.Framework.Components;
+using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -44,8 +44,8 @@ namespace Gothic.VR.Adapters.Vob
         }
 
         /// <summary>
-        /// Add opening and closing sound to the containers HVR settings.
-        /// The logic about when to play them is provided by HVR itself.
+        /// Add opening and closing sound to the container's hinge (lid).
+        /// The hinge itself decides when to play them.
         /// </summary>
         private void PrepareSounds(IContainer vobContainer)
         {
@@ -75,9 +75,8 @@ namespace Gothic.VR.Adapters.Vob
             }
 
             // We leverage the same "door" script for containers (As it's also just an object to be rotated.
-            var hvrDoor = GetComponentInChildren<HVRPhysicsDoor>();
-            hvrDoor.SFXOpened = _containerOpenedClips[mdsName.ToLower()];
-            hvrDoor.SFXClosed = _containerClosedClips[mdsName.ToLower()];
+            var hinge = GetComponentInChildren<IVrHinge>();
+            hinge.SetSounds(_containerOpenedClips[mdsName.ToLower()], _containerClosedClips[mdsName.ToLower()]);
         }
     }
 }

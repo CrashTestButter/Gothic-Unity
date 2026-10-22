@@ -1,6 +1,7 @@
 #if GOTHIC_HVR_INSTALLED
 using System;
 using Gothic.VR.Interaction.Models;
+using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Core.Player;
 using HurricaneVR.Framework.Shared;
 
@@ -19,6 +20,30 @@ namespace Gothic.VR.Interaction.Backends.Hvr
         public static VrHandSide ToVr(this HVRHandSide side)
         {
             return side == HVRHandSide.Left ? VrHandSide.Left : VrHandSide.Right;
+        }
+
+        public static VrGrabberKind ToVrKind(this HVRGrabberBase grabber)
+        {
+            return grabber switch
+            {
+                HVRHandGrabber => VrGrabberKind.Hand,
+                HVRForceGrabber => VrGrabberKind.Distance,
+                HVRSocket => VrGrabberKind.Socket,
+                _ => VrGrabberKind.Other
+            };
+        }
+
+        /// <summary>
+        /// Hand of a hand or distance grabber. Left for all other grabbers.
+        /// </summary>
+        public static VrHandSide ToVrHandSide(this HVRGrabberBase grabber)
+        {
+            return grabber switch
+            {
+                HVRHandGrabber hand => hand.HandSide.ToVr(),
+                HVRForceGrabber force when force.HandGrabber != null => force.HandGrabber.HandSide.ToVr(),
+                _ => VrHandSide.Left
+            };
         }
 
         public static HVRButtons ToHvr(this VrButton button)

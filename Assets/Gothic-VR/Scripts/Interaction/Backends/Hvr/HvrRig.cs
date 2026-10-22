@@ -1,10 +1,13 @@
 #if GOTHIC_HVR_INSTALLED
 using System;
+using System.Collections.Generic;
+using Gothic.Core.Logging;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
 using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Core.Player;
 using UnityEngine;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Interaction.Backends.Hvr
 {
@@ -15,6 +18,7 @@ namespace Gothic.VR.Interaction.Backends.Hvr
     public class HvrRig : HVRPlayerController, IVrRig
     {
         private Camera _cameraComponent;
+        private List<IVrGrabber> _handGrabbers;
 
         public event Action<Vector3> Teleported;
 
@@ -97,6 +101,22 @@ namespace Gothic.VR.Interaction.Backends.Hvr
 
         float IVrRig.FadeAlpha => ScreenFader ? ScreenFader.CurrentFade : 0f;
 
+        IReadOnlyList<IVrGrabber> IVrRig.HandGrabbers
+        {
+            get
+            {
+                if (_handGrabbers != null)
+                    return _handGrabbers;
+
+                _handGrabbers = new List<IVrGrabber>();
+                AddGrabber(LeftHand);
+                AddGrabber(LeftHand ? LeftHand.ForceGrabber : null);
+                AddGrabber(RightHand);
+                AddGrabber(RightHand ? RightHand.ForceGrabber : null);
+                return _handGrabbers;
+            }
+        }
+
         protected override void Awake()
         {
             base.Awake();
@@ -138,6 +158,17 @@ namespace Gothic.VR.Interaction.Backends.Hvr
         {
             SetGrabbingEnabled(LeftHand, isEnabled);
             SetGrabbingEnabled(RightHand, isEnabled);
+        }
+
+        private void AddGrabber(HVRGrabberBase grabber)
+        {
+            if (grabber == null)
+                return;
+
+            if (grabber.TryGetComponent(out IVrGrabber bridge))
+                _handGrabbers.Add(bridge);
+            else
+                Logger.LogError($"[HVR] {grabber.name} has no HvrGrabberBridge. Its grab events are lost.", LogCat.VR);
         }
 
         private static void SetGrabbingEnabled(HVRHandGrabber hand, bool isEnabled)

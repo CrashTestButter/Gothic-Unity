@@ -5,10 +5,10 @@ using System.Linq;
 using Gothic.Core.Services.Context;
 using Gothic.Core;
 using Gothic.Core.Extensions;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services.Context;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using UnityEngine;
 
@@ -38,6 +38,19 @@ namespace Gothic.VR.Adapters.Player
         private Transform _currentSnapPoint;
 
         private bool _canPlayerSit = true;
+        private VrInteractable _interactable;
+
+        private void Awake()
+        {
+            _interactable = VrInteractable.Find(this);
+            _interactable.Grabbed += OnGrabbed;
+        }
+
+        private void OnDestroy()
+        {
+            if (_interactable != null)
+                _interactable.Grabbed -= OnGrabbed;
+        }
 
         private void GetSnapPoints()
         {
@@ -54,7 +67,7 @@ namespace Gothic.VR.Adapters.Player
             }
         }
 
-        public void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnGrabbed(VrGrabArgs args)
         {
             if (_snapPoints.IsEmpty())
             {

@@ -11,7 +11,8 @@ namespace Gothic.VR.Interaction.Models
         Hand,
 
         /// <summary>
-        /// A hand pulling an object from a distance (remote grab). The same object is grabbed by the Hand afterwards.
+        /// A hand pulling an object from a distance (remote grab). On HVR, the same object is grabbed by the Hand
+        /// afterwards; on XRI, the distance grab is the only grab event.
         /// </summary>
         Distance,
 

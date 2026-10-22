@@ -8,13 +8,45 @@ talking to or looting NPCs.
 
 ## Exit criteria
 
-- [ ] Item pickup by hand and by distance grab adds to the inventory exactly once; two-hand grab doesn't double-count;
-      drop removes.
+- [x] Item pickup by hand and by distance grab adds to the inventory exactly once; two-hand grab doesn't double-count;
+      drop removes. (2a. Note: world items have `Amount = 0` in the ZEN, so `VRPlayerService` adds 0 of them on both
+      backends; verified with `Amount = 1` set at runtime. Pre-existing, not fixed here.)
 - [ ] Melee: weapon velocity detection (`VrWeaponAttackDomain`) triggers hits with the same thresholds as on HVR.
-- [ ] Hover shows the name label and highlight (`VRFocus`).
+- [x] Hover shows the name label and highlight (`VRFocus`). (2a: items. Mobs/NPCs in 2b.)
 - [ ] Grab on NPC = talk / skip line; grab on a dead NPC = loot panel; grab on a mob = use it.
-- [ ] Held/socketed items don't push the player's `CharacterController`.
-- [ ] Swimming disables grabbing and hovering (`IVrRig.SetGrabbingEnabled(false)`).
+- [x] Held/socketed items don't push the player's `CharacterController`. (2a: held items; XRI ignores the
+      CharacterController of the selecting rig on top of `VRPlayerService.IgnorePlayerCollision`. Sockets in phase 3.)
+- [x] Swimming disables grabbing and hovering (`IVrRig.SetGrabbingEnabled(false)`). (2a; UI pointing stays.)
+
+## Split
+
+- **2a - items** (`engine/hvr-replacement-2a`): Near-Far per hand, `GothicGrabInteractable`, `XriInteractableBridge`,
+  `XriGrabberBridge`, `XriLineOfSightFilter`, `oCItem.prefab`, hover, swim toggle.
+- **2b - mobs and NPCs**: `XRSimpleInteractable` + bridge on mobs/`oCNpc` (removes the `ForceRelease()` workaround in
+  `VRNpc.OnGrabbed`), melee velocity tuning, dig spots, `VRMouth` on the XRI camera.
+
+### 2a notes (where reality deviated)
+
+- `Kind` doesn't come from `selectionRegion`: with `farAttachMode = Near` (pull to the hand, like HVR's force grab)
+  a far grab has no attach offset, so Near-Far reports `Near` for it. `XriGrabberBridge` decides by the distance
+  hand → closest collider point at selection (near caster radius + 5 cm). Release events reuse the kind of the grab.
+- `XriGrabberBridge.Kind` is always `Hand` (one interactor per hand does both); the per-event `VrGrabArgs.Kind` says
+  `Hand` or `Distance`. So `VRPlayerWeaponInteraction` (filters grabbers by `Kind == Hand`) also gets distance grabs,
+  which end in the hand on XRI.
+- Prefabs carry both backends. `IVrInteractableBackend.IsActive` (bridges `[Inject] IVrBackend`) picks the bridge;
+  `VrInteractable` uses the active one. `GothicGrabInteractable` is **disabled in `oCItem.prefab`** and only
+  `XriInteractableBridge.Start` enables it on Xri (after collecting the runtime colliders), so the Hvr backend never
+  creates an `XRInteractionManager`. `SetupColliders()` re-collects and re-registers (disable/enable) when not held.
+- `unparentTransformOnGrab = false`: `VRPlayerService` finds the item's `VobLoader` via `GetComponentInParent`.
+- Hover: Near-Far only ever has one valid target (closest). The bridge forwards hovers of hands only and counts
+  them: `HoverEntered` for the first hand, `HoverExited` for the last. Near-Far stops hovering while it selects,
+  so the label goes away once the item is in the hand (same order as HVR: hover, grab, hover exit).
+- Layer masks: near caster `VobItem, VobItemNoWorldCollision, VobNpcOrMonster, VobMovable, Grabbable`; far caster
+  the same + `Default, UI` (far ray also does UI, cast distance 30 m like the 1c UI ray); line of sight blocked by
+  `Default, VobItem, VobNpcOrMonster, VobMovable, Grabbable`, grab/hover range 10 m (`XriLineOfSightFilter`).
+- Held items get `RigidbodyInterpolation.Interpolate` (restored on drop). Throw: XRI defaults (`throwOnDetach`,
+  `throwVelocityScale` 1.5), not tuned against HVR yet.
+- Interim hand visual: a 4 cm sphere (`Hand Placeholder`, URP Lit, no collider) under each Near-Far interactor.
 
 ## Mapping
 

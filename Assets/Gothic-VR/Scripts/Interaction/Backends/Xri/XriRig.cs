@@ -34,6 +34,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [SerializeField] private Transform _leftController;
         [SerializeField] private Transform _rightController;
 
+        [Header("Grabbing")]
+        [Tooltip("Near-Far interactor of the left hand (direct and distance grab, UI).")]
+        [SerializeField] private XriGrabberBridge _leftGrabber;
+
+        [Tooltip("Near-Far interactor of the right hand (direct and distance grab, UI).")]
+        [SerializeField] private XriGrabberBridge _rightGrabber;
+
         [Tooltip("Fade on the camera, driven by Fade(). WallFade on the camera uses it too.")]
         [SerializeField] private ScreenFade _screenFade;
 
@@ -74,9 +81,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [Tooltip("Below this HMD height (m), the Standing setting doesn't scale (no headset, not tracked yet).")]
         [SerializeField] private float _minCalibrationHeight = 0.5f;
 
-        private static readonly IReadOnlyList<IVrGrabber> _noGrabbers = Array.Empty<IVrGrabber>();
-
         private XriInput _xriInput;
+        private List<IVrGrabber> _handGrabbers;
         private Transform _cameraOffset;
         private bool _turnEnabled = true;
         private bool _teleportEnabled = true;
@@ -198,8 +204,22 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         public float FadeAlpha => _screenFade != null ? _screenFade.FadeAlpha : 0f;
 
-        // TODO HVR phase 2: Near-Far interactors.
-        public IReadOnlyList<IVrGrabber> HandGrabbers => _noGrabbers;
+        /// <summary>
+        /// One Near-Far interactor per hand. Resolved lazily, as adapters on this GameObject ask in their Awake.
+        /// </summary>
+        public IReadOnlyList<IVrGrabber> HandGrabbers
+        {
+            get
+            {
+                if (_handGrabbers != null)
+                    return _handGrabbers;
+
+                _handGrabbers = new List<IVrGrabber>();
+                AddGrabber(_leftGrabber, VrHandSide.Left);
+                AddGrabber(_rightGrabber, VrHandSide.Right);
+                return _handGrabbers;
+            }
+        }
 
         private Transform CameraOffset => _cameraOffset ??= _origin.CameraFloorOffsetObject.transform;
 
@@ -385,9 +405,32 @@ namespace Gothic.VR.Interaction.Backends.Xri
             Teleported?.Invoke(_teleportPosition);
         }
 
+        private void AddGrabber(XriGrabberBridge grabber, VrHandSide side)
+        {
+            if (grabber != null)
+                _handGrabbers.Add(grabber);
+            else
+                Logger.LogError($"[XRI] XriRig has no grabber for the {side} hand. Grabbing won't work.", LogCat.VR);
+        }
+
+        /// <summary>
+        /// Grabbing and hovering (direct and distance) of both hands. UI pointing keeps working.
+        /// Objects already held stay in the hand.
+        /// </summary>
         public void SetGrabbingEnabled(bool isEnabled)
         {
-            // NOP until HVR phase 2 (interactors).
+            SetGrabbingEnabled(VrHandSide.Left, isEnabled);
+            SetGrabbingEnabled(VrHandSide.Right, isEnabled);
+        }
+
+        public void SetGrabbingEnabled(VrHandSide side, bool isEnabled)
+        {
+            var grabber = side == VrHandSide.Left ? _leftGrabber : _rightGrabber;
+            if (grabber == null)
+                return;
+
+            grabber.Interactor.allowSelect = isEnabled;
+            grabber.Interactor.allowHover = isEnabled;
         }
 
         public void Fade(float alpha, float speed)

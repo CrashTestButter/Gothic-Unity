@@ -5,6 +5,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Models.Marvin;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
+using Gothic.VR.Interaction.Backends.Hvr;
 using Gothic.VR.Models.Vob;
 using Gothic.VR.Services;
 using HurricaneVR.Framework.Core;
@@ -56,7 +57,7 @@ namespace Gothic.VR.Adapters.Player
             if (itemInstance!.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
                 return;
 
-            _weaponService.OnGrabbed(((HVRHandGrabber)hand).HandSide, vobContainer, GetWeaponPhysicsConfig());
+            _weaponService.OnGrabbed(((HVRHandGrabber)hand).HandSide.ToVr(), vobContainer, GetWeaponPhysicsConfig());
             SyncEquippedWeaponToHero(itemInstance, equip: true);
         }
 
@@ -75,7 +76,7 @@ namespace Gothic.VR.Adapters.Player
             if (itemInstance!.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
                 return;
 
-            _weaponService.OnReleased(((HVRHandGrabber)hand).HandSide, GetWeaponPhysicsConfig());
+            _weaponService.OnReleased(((HVRHandGrabber)hand).HandSide.ToVr(), GetWeaponPhysicsConfig());
             SyncEquippedWeaponToHero(itemInstance, equip: false);
         }
 

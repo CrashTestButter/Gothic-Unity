@@ -5,6 +5,8 @@ using Gothic.Core.Const;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.VR.Adapters.UI;
+using Gothic.VR.Interaction.Backends.Hvr;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Core.Player;
 using MyBox;
 using Reflex.Attributes;
@@ -64,29 +66,35 @@ namespace Gothic.VR.Adapters.HVROverrides
             // We have our player created before Gothic inis are loaded. We therefore need to set some default values.
             if (useDefaultValues)
             {
-                CameraRig.SetSitStandMode(HVRSitStand.PlayerHeight);
-                DirectionStyle = PlayerDirectionMode.Camera;
-                RotationType = RotationType.Snap;
-                SnapAmount = 45f;
-                SmoothTurnSpeed = 90f;
-
+                ApplyComfortSettings(VrSitStand.PlayerHeight, VrMoveDirection.Camera, VrTurnType.Snap, 45f, 90f);
                 return;
             }
 
-            var sitStandSetting =
-                _configService.Gothic.GetInt(VRConstants.IniNames.SitStand, (int)HVRSitStand.PlayerHeight);
-            CameraRig.SetSitStandMode((HVRSitStand)sitStandSetting);
+            var gothicIni = _configService.Gothic;
+            var sitStand = (VrSitStand)gothicIni.GetInt(VRConstants.IniNames.SitStand, (int)VrSitStand.PlayerHeight);
+            var moveDirection =
+                (VrMoveDirection)gothicIni.GetInt(VRConstants.IniNames.MoveDirection, (int)VrMoveDirection.Camera);
+            var turnType = (VrTurnType)gothicIni.GetInt(VRConstants.IniNames.RotationType, (int)VrTurnType.Snap);
 
-            DirectionStyle = (PlayerDirectionMode)_configService.Gothic.GetInt(VRConstants.IniNames.MoveDirection, (int)PlayerDirectionMode.Camera);
-            RotationType = (RotationType)_configService.Gothic.GetInt(VRConstants.IniNames.RotationType, (int)RotationType.Snap);
-
-            var snapSetting = _configService.Gothic.GetInt(VRConstants.IniNames.SnapRotationAmount, VRConstants.SnapRotationDefaultValue);
+            var snapSetting = gothicIni.GetInt(VRConstants.IniNames.SnapRotationAmount, VRConstants.SnapRotationDefaultValue);
             // e.g., 20° = 5° + 3*5°
-            SnapAmount = VRConstants.SnapRotationAmountSettingTickAmount + VRConstants.SnapRotationAmountSettingTickAmount * snapSetting;
-            
-            var smoothSetting = _configService.Gothic.GetFloat(VRConstants.IniNames.SmoothRotationSpeed, VRConstants.SmoothRotationDefaultValue);
+            var snapDegrees = VRConstants.SnapRotationAmountSettingTickAmount + VRConstants.SnapRotationAmountSettingTickAmount * snapSetting;
+
+            var smoothSetting = gothicIni.GetFloat(VRConstants.IniNames.SmoothRotationSpeed, VRConstants.SmoothRotationDefaultValue);
             // e.g., 50 = 5 + 90 * 0.5f
-            SmoothTurnSpeed = VRConstants.SmoothRotationMinSpeed + VRConstants.SmoothRotationMaxAdditionalSpeed * smoothSetting;
+            var smoothSpeed = VRConstants.SmoothRotationMinSpeed + VRConstants.SmoothRotationMaxAdditionalSpeed * smoothSetting;
+
+            ApplyComfortSettings(sitStand, moveDirection, turnType, snapDegrees, smoothSpeed);
+        }
+
+        public void ApplyComfortSettings(VrSitStand sitStand, VrMoveDirection moveDirection, VrTurnType turnType,
+            float snapDegrees, float smoothSpeed)
+        {
+            CameraRig.SetSitStandMode(sitStand.ToHvr());
+            DirectionStyle = moveDirection.ToHvr();
+            RotationType = turnType.ToHvr();
+            SnapAmount = snapDegrees;
+            SmoothTurnSpeed = smoothSpeed;
         }
 
         /// <summary>

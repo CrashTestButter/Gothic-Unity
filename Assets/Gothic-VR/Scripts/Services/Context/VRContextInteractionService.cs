@@ -14,6 +14,8 @@ using Gothic.VR.Adapters.HVROverrides;
 using Gothic.VR.Adapters.Marvin;
 using Gothic.VR.Adapters.Player;
 using Gothic.VR.Adapters.UI;
+using Gothic.VR.Interaction.Backends.Hvr;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Core.UI;
 using HurricaneVRExtensions.Simulator;
 using Reflex.Attributes;
@@ -133,7 +135,7 @@ namespace Gothic.VR.Services.Context
             }
 
             ReflexProjectInstaller.DIContainer.Resolve<VrHapticsService>()
-                .Vibrate(pointer.HandSide, VrHapticsService.VibrationType.Info);
+                .Vibrate(pointer.HandSide.ToVr(), VrHapticPreset.Info);
         }
         
         private void PlayerPrefsUpdated(string key, object value)

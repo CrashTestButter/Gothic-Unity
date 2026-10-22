@@ -1,6 +1,8 @@
 #if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Models.Container;
+using Gothic.VR.Interaction.Backends.Hvr;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 
@@ -8,17 +10,10 @@ namespace Gothic.VR.Services
 {
     public class VrHapticsService
     {
-        public enum VibrationType
-        {
-            Info,
-            Warning,
-            Error,
-            Success
-        }
-
         [Inject] private readonly VRPlayerService _vrPlayerService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
 
+        // Indexed by VrHapticPreset.
         private readonly HapticData[] _vibrationData =
         {
             // Info - e.g., you are inside an interaction collider
@@ -37,42 +32,38 @@ namespace Gothic.VR.Services
         public VrHapticsService()
         {
             // Fight
-            GlobalEventDispatcher.FightWindowAttack.AddListener(combatant => AttackVibration(combatant, VibrationType.Success)); // Attack can happen now
-            GlobalEventDispatcher.FightWindowCombo.AddListener(combatant => AttackVibration(combatant, VibrationType.Info)); // Now you can start another attack
-            GlobalEventDispatcher.FightWindowComboFailed.AddListener(combatant => AttackVibration(combatant, VibrationType.Error)); // Attack window passed
+            GlobalEventDispatcher.FightWindowAttack.AddListener(combatant => AttackVibration(combatant, VrHapticPreset.Success)); // Attack can happen now
+            GlobalEventDispatcher.FightWindowCombo.AddListener(combatant => AttackVibration(combatant, VrHapticPreset.Info)); // Now you can start another attack
+            GlobalEventDispatcher.FightWindowComboFailed.AddListener(combatant => AttackVibration(combatant, VrHapticPreset.Error)); // Attack window passed
 
             // Lock picking
-            GlobalEventDispatcher.LockPickComboWrong.AddListener((_, _, handSide) => Vibrate((HVRHandSide)handSide, VibrationType.Warning));
-            GlobalEventDispatcher.LockPickComboBroken.AddListener((_, _, handSide) => Vibrate((HVRHandSide)handSide, VibrationType.Error));
-            GlobalEventDispatcher.LockPickComboCorrect.AddListener((_, _, handSide) => Vibrate((HVRHandSide)handSide, VibrationType.Success));
-            GlobalEventDispatcher.LockPickComboFinished.AddListener((_, _, handSide) => Vibrate((HVRHandSide)handSide, VibrationType.Success));
+            GlobalEventDispatcher.LockPickComboWrong.AddListener((_, _, handSide) => Vibrate((VrHandSide)handSide, VrHapticPreset.Warning));
+            GlobalEventDispatcher.LockPickComboBroken.AddListener((_, _, handSide) => Vibrate((VrHandSide)handSide, VrHapticPreset.Error));
+            GlobalEventDispatcher.LockPickComboCorrect.AddListener((_, _, handSide) => Vibrate((VrHandSide)handSide, VrHapticPreset.Success));
+            GlobalEventDispatcher.LockPickComboFinished.AddListener((_, _, handSide) => Vibrate((VrHandSide)handSide, VrHapticPreset.Success));
         }
 
-        private void AttackVibration(NpcContainer combatant, VibrationType vibrationType)
+        private void AttackVibration(NpcContainer combatant, VrHapticPreset preset)
         {
             // Resolve which hand holds the weapon for this combatant.
             // For NPCs attacking the player, we don't vibrate — only when it's the player's own attack.
             var handSide = _vrWeaponService.GetHandSideForCombatant(combatant);
 
-            switch (handSide)
+            if (handSide == GlobalEventDispatcher.HandSide.Both)
             {
-                case GlobalEventDispatcher.HandSide.Both:
-                    Vibrate(HVRHandSide.Left, vibrationType);
-                    Vibrate(HVRHandSide.Right, vibrationType);
-                    break;
-                case GlobalEventDispatcher.HandSide.Left:
-                    Vibrate(HVRHandSide.Left, vibrationType);
-                    break;
-                case GlobalEventDispatcher.HandSide.Right:
-                    Vibrate(HVRHandSide.Right, vibrationType);
-                    break;
+                Vibrate(VrHandSide.Left, preset);
+                Vibrate(VrHandSide.Right, preset);
+            }
+            else if (handSide.TryToVrHandSide(out var vrHandSide))
+            {
+                Vibrate(vrHandSide, preset);
             }
         }
 
 
-        public void Vibrate(HVRHandSide handSide, VibrationType type)
+        public void Vibrate(VrHandSide handSide, VrHapticPreset preset)
         {
-            _vrPlayerService.GetHand(handSide).Vibrate(_vibrationData[(int)type]);
+            _vrPlayerService.GetHand(handSide.ToHvr()).Vibrate(_vibrationData[(int)preset]);
         }
     }
 }

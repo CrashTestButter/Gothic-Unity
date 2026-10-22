@@ -119,11 +119,15 @@ Split into four PRs so each one stays reviewable.
 
 ### PR 0a - Models and hand side
 
-- [ ] Add `Interaction/Models/*`.
-- [ ] Replace `HVRHandSide` in `VrWeaponAttackDomain`, `VRWeaponService`, `VRPlayerWeaponInteraction`,
-      `VRContainerDoorPickingInteraction`, `VrHapticsService`, `VRCinema`, `VRPlayerInputs`.
-- [ ] `VRContextMenuService.cs:115` and `VRPlayerController.SetNormalControls`: replace `HVRSitStand`,
-      `PlayerDirectionMode` and `RotationType` with the new enums, converting at the HVR boundary.
+- [x] Add `Interaction/Models/*` (`VrGrabArgs` waits for PR 0c, it needs `VrInteractable`). HVR mapping lives in
+      `Backends/Hvr/HvrEnumExtensions.cs` (`ToHvr()` / `ToVr()`).
+- [x] Replace `HVRHandSide` in `VrWeaponAttackDomain`, `VRWeaponService`, `VRPlayerWeaponInteraction`,
+      `VRContainerDoorPickingInteraction`, `VrHapticsService` (`VibrationType` → `VrHapticPreset`).
+      `VRCinema` and `VRPlayerInputs` only pass it to `HVRController.GetButtonState`, so they move with `IVrInput`
+      in PR 0b.
+- [x] `VRContextMenuService.cs:115` and `VRPlayerController.SetNormalControls`: replace `HVRSitStand`,
+      `PlayerDirectionMode` and `RotationType` with the new enums, converting at the HVR boundary
+      (`VRPlayerController.ApplyComfortSettings`, the later `IVrRig` method).
 
 ### PR 0b - Rig, input, haptics, UI ports
 
@@ -142,6 +146,9 @@ Split into four PRs so each one stays reviewable.
 - [ ] `IVrUiPointers` ← `HvrUiPointers` (`HVRInputModule.UICanvases`, `AddCanvas`, `RemoveCanvas`, `Pointers`).
       Callers: `VRContextInteractionService.InitUIInteraction`, `OnMarvinLogoPoked`, `VirtualKeyboard`.
 - [ ] `VRSeat`: replace the `HVRCanvasFade` lookup with `IVrRig.Fade`.
+- [ ] `SFXPlayer` (HVR's one-shot audio pool, not covered above): `VRWeaponService`, `VrWeaponAttackDomain`,
+      `VRSwimDive` play positional SFX through it. Needs an own replacement (e.g. via `AudioService`) - it's the
+      only reason these files still have `using HurricaneVR.Framework.Core.Utils`.
 
 ### PR 0c - Grab and socket events
 

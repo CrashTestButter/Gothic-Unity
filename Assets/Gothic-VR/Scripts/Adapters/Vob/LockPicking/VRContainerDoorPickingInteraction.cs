@@ -9,8 +9,8 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Vm;
 using Gothic.VR.Services;
 using Gothic.VR.Adapters.Vob.VobItem;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Components;
-using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -33,7 +33,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         private bool _isLocked;
         private string _combination;
         private string _keyInstance;
-        private HVRHandSide _handSide;
+        private VrHandSide _handSide;
         private VobContainer _lockPick;
         private VobContainer _lockable;
 
@@ -101,12 +101,12 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
             if (IsHeldItem(_vrPlayerService.GrabbedItemLeft, other.gameObject))
             {
                 holdingHand = _vrPlayerService.GrabbedItemLeft.transform;
-                _handSide = HVRHandSide.Left;
+                _handSide = VrHandSide.Left;
             }
             else if (IsHeldItem(_vrPlayerService.GrabbedItemRight, other.gameObject))
             {
                 holdingHand = _vrPlayerService.GrabbedItemRight.transform;
-                _handSide = HVRHandSide.Right;
+                _handSide = VrHandSide.Right;
             }
             else
             {
@@ -115,7 +115,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
             _combinationPos = 0;
             PlaySound(_vmService.DoorLockSoundName);
-            _hapticsService.Vibrate(_handSide, VrHapticsService.VibrationType.Info);
+            _hapticsService.Vibrate(_handSide, VrHapticPreset.Info);
 
             // For later event usage.
             _lockPick = other.gameObject.GetComponentInParent<VobLoader>().Container;
@@ -213,13 +213,13 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                 return;
 
             // The player must actively hold the key (not just a dropped/flying item).
-            HVRHandSide hand;
+            VrHandSide hand;
             var leftRoot = _vrPlayerService.GrabbedItemLeft;
             var rightRoot = _vrPlayerService.GrabbedItemRight;
             if (leftRoot != null && leftRoot.GetComponentInParent<VobLoader>() == vobLoader)
-                hand = HVRHandSide.Left;
+                hand = VrHandSide.Left;
             else if (rightRoot != null && rightRoot.GetComponentInParent<VobLoader>() == vobLoader)
-                hand = HVRHandSide.Right;
+                hand = VrHandSide.Right;
             else
                 return;
 

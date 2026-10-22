@@ -119,6 +119,16 @@
   (`EnableRangedFocusIgnoresCover`: facing him within 30 degrees counts). The strafe/run ends once the path is free,
   checked every 0.15 s (`EnableBlockedShotMoveInterrupt`); the run used the 20 m ranged reach as stop distance and
   stopped every frame.
+- **Finishing moves and the hero's death** (`d0cb1968`): `AI_FinishingMove` (G1 `ZS_Attack_End`: hostile/intruder
+  only) killed the target at once and did nothing to the hero. Like OpenGothic (`AiQueue` AI_FinishingMove,
+  `Npc::finishingMove`, `canFinish`) it's queued (`EnableEngineFinishingMove`): walk to `NPC_ATTACK_FINISH_DISTANCE`,
+  turn, a melee weapon drawn (our knockout sheathes it early), `t_1hSFinish`/`t_2hSFinish`; the target dies at the
+  animation's hit frame, `PERC_ASSESSMURDER`. The hero dies (`EnableHeroDeath`, ini option `heroDeath` - off = only
+  knocked out); the knockout recovery doesn't revive him. VR (`EnableHeroFallCamera`, needs `EnableVrHeroBody`): the
+  body plays `T_STAND_2_WOUNDEDB`/`S_WOUNDEDB`, `T_WOUNDEDB_2_STAND`, `S_DEADB`, lies on the floor (lowest bone) with
+  its head under the eyes; the camera follows the animated head's height through `HVRCameraRig.CameraYOffset` (like a
+  transformation) - never sideways, the HMD's rotation stays the player's. Dead, the game menu opens after 4 s. Not
+  saved: a load starts standing, the offset is restored.
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
@@ -141,6 +151,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 
 2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity ·
 `c4c2a8d0` one hit per swing, engine combos · `ccb310bb` animated NPC body (hitbox, personal space)
+
+2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover
@@ -175,6 +187,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 `EnableRangedWeaponNeedsAmmo`, `EnableOutOfAmmoKeepsChasing`, `EnableRangedFocusIgnoresCover`,
 `EnableBlockedShotMoveInterrupt`
 
+2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`
+
 ## Review notes
 
 - ✅ Rules follow the engine (OpenGothic used as reference) and are commented with the "why".
@@ -197,6 +211,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 - G1 MT: Lukis (crossbow) - dodge his bolts, hide behind a pillar: he steps aside to a free shot, then runs closer. Let
   him shoot all bolts: he draws his sword and chases you.
 - An NPC fighting a scavenger (Ratford): he attacks instead of turning around.
+- Get knocked out by a guard: you fall, look around, stand up after ~10 s. By an enemy who finishes (orc, hostile
+  guild): he walks up, stabs, you die and the menu opens. Option "Death" off: only knocked out.
 - G1 Sleeper temple / G2 Irdorath: shoot the switches and bridge targets (green X) with a bow or a spell.
 
 - G2: knock out Buster or anyone - he falls and lies (`S_Wounded`), stands up afterwards. Same in G1.

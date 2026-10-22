@@ -13,6 +13,12 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-23: you can die
+
+- An enemy who knocks you out walks up and finishes you off like in Gothic - you die. Knocked out, you fall on your
+  back and stand up again; the view goes down and up with your body, but you can always look around. Dead, the game
+  menu opens after a moment.
+
 ## 2026-10-22 (late evening): NPC faces
 
 - NPCs move their mouth while talking, blink, and show moods from the scripts: friendly in a talk, angry in a fight,

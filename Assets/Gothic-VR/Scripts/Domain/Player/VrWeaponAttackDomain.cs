@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -586,4 +585,3 @@ namespace Gothic.VR.Domain.Player
         }
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
@@ -166,4 +165,3 @@ namespace Gothic.VR.Adapters.SpeechToText
         }
     }
 }
-#endif

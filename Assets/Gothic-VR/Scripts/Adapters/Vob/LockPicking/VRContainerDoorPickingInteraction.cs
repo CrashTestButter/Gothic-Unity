@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using System.Collections;
+﻿using System.Collections;
 using Gothic.Core;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
@@ -262,5 +261,3 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         }
     }
 }
-#endif
-

@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Vobs;
@@ -65,4 +64,3 @@ namespace Gothic.VR.Adapters.Vob
         }
     }
 }
-#endif

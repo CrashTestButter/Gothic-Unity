@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Models.Container;
 using Gothic.VR.Interaction.Models;
@@ -59,4 +58,3 @@ namespace Gothic.VR.Services
         }
     }
 }
-#endif

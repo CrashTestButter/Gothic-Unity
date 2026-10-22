@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Linq;
 using Gothic.Core;
 using Gothic.Core.Const;
@@ -363,4 +362,3 @@ namespace Gothic.VR.Services.Context
         }
     }
 }
-#endif

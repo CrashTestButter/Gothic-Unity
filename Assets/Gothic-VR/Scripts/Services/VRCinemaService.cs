@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Context;
@@ -48,4 +47,3 @@ namespace Gothic.VR.Services
         }
     }
 }
-#endif

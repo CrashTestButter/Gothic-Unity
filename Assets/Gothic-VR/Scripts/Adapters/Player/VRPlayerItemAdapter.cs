@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core.Manager;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
@@ -56,4 +55,3 @@ namespace Gothic.VR.Adapters.Player
 
     }
 }
-#endif

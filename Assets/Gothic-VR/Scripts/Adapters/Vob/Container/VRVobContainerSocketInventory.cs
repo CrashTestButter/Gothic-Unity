@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using Gothic.Core.Adapters.Vob;
+﻿using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Models.Container;
 using System.Collections.Generic;
 using Gothic.Core.Models.Vm;
@@ -81,4 +80,3 @@ namespace Gothic.VR.Adapters.Vob.Container
         }
     }
 }
-#endif

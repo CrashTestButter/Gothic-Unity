@@ -8,11 +8,13 @@ folder. Nothing changes for the player: HVR still runs everything.
 
 ## Exit criteria
 
-- [ ] No file outside `Gothic-VR/Scripts/Interaction/Backends/Hvr/` has `using HurricaneVR…` or an `HVR*` type.
-- [ ] `#if GOTHIC_HVR_INSTALLED` exists only in the HVR backend folder and in `VRContextBootstrap` (backend selection).
-- [ ] `Gothic.VR` compiles with `GOTHIC_HVR_INSTALLED` removed. Without a backend, VR mode fails at boot with a clear
+- [x] No file outside `Gothic-VR/Scripts/Interaction/Backends/Hvr/` has `using HurricaneVR…` or an `HVR*` type.
+      (Editor tooling about the backend is the exception: `Editor/Backends/Hvr/HurricaneActions.cs` converts the
+      HVR materials by folder path, `Editor/VRContextToolActions.cs` toggles the define. Neither uses HVR types.)
+- [x] `#if GOTHIC_HVR_INSTALLED` exists only in the HVR backend folder and in `VRContextBootstrap` (backend selection).
+- [x] `Gothic.VR` compiles with `GOTHIC_HVR_INSTALLED` removed. Without a backend, VR mode fails at boot with a clear
       log error, not a compile error.
-- [ ] Our prefabs no longer wire HVR UnityEvents to our methods in the inspector; adapters subscribe in code.
+- [x] Our prefabs no longer wire HVR UnityEvents to our methods in the inspector; adapters subscribe in code. (0c)
 - [ ] Playtest on Quest + PCVR shows no behaviour change (see test plan).
 
 ## Proposed structure
@@ -196,17 +198,21 @@ Split into four PRs so each one stays reviewable.
 
 ### PR 0d - Gating and leftovers
 
-- [ ] Remove `#if GOTHIC_HVR_INSTALLED` from the 22 files that don't use HVR (list in 02 §6) and from the 8 that
-      only used our wrappers.
-- [ ] `VRContextBootstrap`: select the backend (`Hvr` for now). If none is available, log
+- [x] Remove `#if GOTHIC_HVR_INSTALLED` from the 22 files that don't use HVR (list in 02 §6) and from the 8 that
+      only used our wrappers. (After 0a-0c this was 49 files under `Gothic-VR/Scripts`, all file-level wrappers.)
+- [x] `VRContextBootstrap`: select the backend (`Hvr` for now). If none is available, log
       `Logger.LogError(…, LogCat.VR)` with a hint to set `GameControls = Flat` or install a backend, then throw as
       today. (Switching to Flat automatically would mean loading the Flat player scene; not worth it for a
-      transitional state.)
-- [ ] `ReflexVRSceneInstaller`: always compiled; registers port implementations from the active backend.
-- [ ] `Gothic-Lab/…/LabFightHandler.cs`: replace the `HurricaneVR.Framework.Core.Utils` helper with our own extension.
-- [ ] `Gothic-Core/Scripts/Const/Constants.cs:113-117`: change the comment "HVR Layers" to "VR layers". Layer names
+      transitional state.) `VRContextBootstrap.SelectBackend()` returns an `IVrBackend` (`HvrBackend`) or null.
+- [x] `ReflexVRSceneInstaller`: always compiled; registers port implementations from the active backend.
+      (`IVrBackend.InstallBindings()`. Without a backend it logs an error and registers no ports; the Player scene
+      is loaded before `InitPhase1()`, so this error comes before the bootstrap error.)
+- [x] `Gothic-Lab/…/LabFightHandler.cs`: replace the `HurricaneVR.Framework.Core.Utils` helper with our own extension.
+      (Its only use was `IsNullOrWhiteSpace()`; replaced by `string.IsNullOrWhiteSpace()`, no extension needed.)
+- [x] `Gothic-Core/Scripts/Const/Constants.cs:113-117`: change the comment "HVR Layers" to "VR layers". Layer names
       stay (`TagManager.asset` unchanged).
-- [ ] Remove the HVR wording from comments in `MobInteractionService`, `VobService` and `NpcHelperService`.
+- [x] Remove the HVR wording from comments in `MobInteractionService`, `VobService` and `NpcHelperService`.
+      (Also `VobInitializerDomain` and `ResourceCacheService`.)
 
 ## Test plan (unchanged behaviour)
 

@@ -232,6 +232,9 @@ namespace Gothic.Core.Domain.Vm
             // Sound
             vm.RegisterExternal<string>("Snd_Play", Snd_Play);
 
+            // Video
+            RegisterPlayVideo(vm);
+
             // Day Routine
             vm.RegisterExternal<NpcInstance, int, int, int, int, int, string>("TA_MIN", TA_MIN);
             vm.RegisterExternal<NpcInstance, int, int, int, string>("TA", Ta);
@@ -681,6 +684,45 @@ namespace Gothic.Core.Domain.Vm
         #endregion
 
         #region Print
+
+        /// <summary>
+        /// G1/G2: int PlayVideo(string), G2: int PlayVideoEx(string, int screenBlend, int exitSession).
+        /// VR plays it in a "cinema" (VRCinema) and pauses the world meanwhile, like the engine blocks the game.
+        /// </summary>
+        private void RegisterPlayVideo(DaedalusVm vm)
+        {
+            try
+            {
+                var playVideo = vm.GetSymbolByName("PlayVideo");
+                if (playVideo != null)
+                {
+                    // Some script versions declare a return value, some don't. It has to match the DAT symbol.
+                    if (playVideo.HasReturn)
+                        vm.RegisterExternal<int, string>("PlayVideo", fileName => PlayVideo(fileName));
+                    else
+                        vm.RegisterExternal<string>("PlayVideo", fileName => PlayVideo(fileName));
+                }
+
+                if (vm.GetSymbolByName("PlayVideoEx") != null)
+                    vm.RegisterExternal<int, string, int, int>("PlayVideoEx",
+                        (fileName, screenBlend, exitSession) => PlayVideo(fileName));
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning($"PlayVideo has an unexpected signature in this game/mod - not registered. " +
+                                  $"{e.Message}", LogCat.ZenKit);
+            }
+        }
+
+        private int PlayVideo(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return 0;
+
+            Logger.Log($"[PlayVideo] {fileName}", LogCat.Misc);
+            GlobalEventDispatcher.PlayVideo.Invoke(fileName);
+            return 1;
+        }
 
         /// <summary>
         /// Real signature in G1 + G2 is (msg, posX, posY, font, seconds) - the externals.d of the MDKs is outdated.

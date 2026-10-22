@@ -11,10 +11,10 @@ namespace Gothic.Core.Services.Player
 {
     public class VideoService
     {
-        public List<string> VideoFileNamesMp4 = new();
-        public List<string> VideoFilePathsMp4 = new();
+        // Original Bink videos - played directly by BinkPlayer (no conversion needed).
+        public List<string> VideoFilePathsBik = new();
 
-        
+
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
 
 
@@ -28,13 +28,23 @@ namespace Gothic.Core.Services.Player
                 return;
             }
 
-            VideoFilePathsMp4 = Directory.EnumerateFiles(videoFileFolder, "*.mp4").ToList();
-            VideoFileNamesMp4 = VideoFilePathsMp4.Select(Path.GetFileName).ToList();
+            VideoFilePathsBik = Directory.EnumerateFiles(videoFileFolder)
+                .Where(i => Path.GetExtension(i).EqualsIgnoreCase(".bik")).ToList();
 
-            if (VideoFilePathsMp4.IsEmpty())
+            if (VideoFilePathsBik.IsEmpty())
             {
-                Logger.LogWarning($"No MP4 videos found in the video folder at >{videoFileFolder}<.", LogCat.Loading);
+                Logger.LogWarning($"No Bink videos found in the video folder at >{videoFileFolder}<.", LogCat.Loading);
             }
+        }
+
+        /// <summary>
+        /// Path of the video a script asks for (name with or without extension), null if missing.
+        /// </summary>
+        public string FindVideo(string fileName)
+        {
+            var name = Path.GetFileNameWithoutExtension(fileName);
+            return VideoFilePathsBik
+                .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name));
         }
     }
 }

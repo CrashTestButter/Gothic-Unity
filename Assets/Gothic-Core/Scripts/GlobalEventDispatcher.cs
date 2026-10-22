@@ -49,6 +49,18 @@ namespace Gothic.Core
 
         public static readonly UnityEvent<INpc> CreateNpc = new();
 
+        /// <summary>
+        /// Plays a Bink video in the platform's cinema (VR: VRCinema). Several calls in a row are queued.
+        /// Sources: PlayVideo/PlayVideoEx from Daedalus (chapter videos, G1 ending "Extro.bik") and the logo videos.
+        /// string = video file name or path.
+        /// </summary>
+        public static readonly UnityEvent<string> PlayVideo = new();
+
+        /// <summary>
+        /// All queued videos are played (or skipped) and the cinema is closed again.
+        /// </summary>
+        public static readonly UnityEvent VideoPlaybackFinished = new();
+
         
         // Fight events
         public enum HandSide

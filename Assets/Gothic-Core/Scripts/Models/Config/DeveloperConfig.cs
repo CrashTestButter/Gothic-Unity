@@ -501,6 +501,14 @@ namespace Gothic.Core.Models.Config
                  "Ratford turned forever towards a scavenger circling him and never hit it.")]
         public bool EnableFightTurnTolerance = true;
 
+        [Tooltip("V1: An archer facing the hero counts him as in focus even behind cover (a pillar) - he steps aside " +
+                 "to a free line of shot instead of only turning and standing still.")]
+        public bool EnableRangedFocusIgnoresCover = true;
+
+        [Tooltip("V1: An archer's step aside / run around cover ends as soon as his shot is free; the run no longer " +
+                 "stops after one frame at the ranged reach (shaking forward in place).")]
+        public bool EnableBlockedShotMoveInterrupt = true;
+
         [Tooltip("Hero attacks deal max HP damage — one hit kills any non-immortal NPC.")]
         public bool EnableOneHitKill;
 

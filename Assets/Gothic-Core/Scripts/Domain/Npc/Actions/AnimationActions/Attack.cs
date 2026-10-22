@@ -19,6 +19,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
     public class Attack : AbstractAnimationAction
     {
         [Inject] private readonly NpcAiService _npcAiService;
+        [Inject] private readonly ProjectileService _projectileService;
         [Inject] private readonly ConfigService _configService;
 
         private NpcInstance _enemy => Props.EnemyNpc ?? Props.StateOther;
@@ -72,6 +73,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             if (prehitMove != FightAiMove.Nop)
                 Logger.Log($"[Prehit] {NpcInstance.GetName(NpcNameSlot.Slot0)} reacts to the hero's swing: " +
                            $"{string.Format(prehitTemplate, tactic)} -> {_move}", LogCat.Fight);
+            _move = AvoidBlockedShot(_move);
             Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} move={_move} fightMode={(VmGothicEnums.WeaponState)Vob.FightMode} tactic={tactic}" +
                        (NpcContainer.IsSpellMonsterInMelee ? " (spell monster in melee)" : ""), LogCat.Ai);
             StartAttackAction();
@@ -203,6 +205,20 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
             // Bow, CBow, Mage: range values are overridden in GetAttackRange() — fight logic is identical.
 
+            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
+            var isRangedWeapon = !NpcContainer.IsSpellMonsterInMelee &&
+                                 weaponState is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow or VmGothicEnums.WeaponState.Mage;
+
+            // DeveloperConfig.EnableRangedFocusIgnoresCover: an archer facing the hero behind a pillar counts him as in
+            // focus - the head-to-head line is blocked, so he only turned (already facing him) and froze. In focus, the
+            // attack move reaches AvoidBlockedShot, which steps aside to a free line of shot. (Before the W-Range check:
+            // bows/crossbows have a 20 m W-Range, so a close archer uses the W tables.)
+            if (weaponState is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow && !isInFocus &&
+                !NpcContainer.IsSpellMonsterInMelee && _configService.Dev.EnableRangedFocusIgnoresCover &&
+                _configService.Dev.EnableNpcPhysicalProjectiles && _enemy?.GetUserData()?.Go != null &&
+                IsInAngle(NpcGo.transform, _enemy.GetUserData().Go.transform.position, _rangedFocusAngle))
+                isInFocus = true;
+
             // NoWeapon behaves like Fist: an NPC attacked before its AI_DrawWeapon finished still needs a fight move.
             if (isInWRange)
                 return isInFocus ? FightConst.AttackActions.MyWFocus : FightConst.AttackActions.MyWNoFocus;
@@ -212,9 +228,6 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             // fight mode (Bow/CBow/Mage) instead casts/shoots from FK_FOCUS_FAR, which is the only
             // table with real Attack entries for ranged combat. Without this, a mage/archer beyond
             // W-Range gets stuck cycling Turn/Strafe forever and can never actually fire.
-            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
-            var isRangedWeapon = !NpcContainer.IsSpellMonsterInMelee &&
-                                 weaponState is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow or VmGothicEnums.WeaponState.Mage;
             if (isRangedWeapon)
                 return isInFocus ? FightConst.AttackActions.MyFkFocusFar : FightConst.AttackActions.MyFkNoFocusFar;
 
@@ -226,8 +239,47 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         }
 
         // FIXME - In the future, we need to handle more information than just playing the attack animations. But fine for the first iteration.
+        // Shots in a row without a free line before the archer runs closer instead of stepping aside.
+        private const int _maxBlockedShotStrafes = 2;
         // Fight turns stop inside the focus angle (30) with this tolerance.
         private const float _fightTurnToleranceDegrees = 20f;
+        // Same angle as the focus check in FindAiFunctionTemplate (ExtNpcCanSeeNpc's fov).
+        private const float _rangedFocusAngle = 30f;
+        // -1 left, 1 right, 0 random - the side a blocked archer steps to.
+        private int _strafeSide;
+
+        /// <summary>
+        /// DeveloperConfig.EnableNpcPhysicalProjectiles: an archer without a free line to the target (the hero behind a
+        /// lantern post) steps aside to get one, after a few tries runs closer - instead of shooting into the post.
+        /// </summary>
+        private FightAiMove AvoidBlockedShot(FightAiMove move)
+        {
+            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
+            if (!_configService.Dev.EnableNpcPhysicalProjectiles ||
+                weaponState is not (VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow) ||
+                move is not (FightAiMove.Attack or FightAiMove.AttackSide or FightAiMove.AttackFront or
+                    FightAiMove.AttackTriple or FightAiMove.AttackWhirl or FightAiMove.AttackMaster))
+                return move;
+
+            var enemy = _enemy?.GetUserData();
+            if (_projectileService.HasLineOfShot(NpcContainer, enemy))
+            {
+                Props.BlockedShotCount = 0;
+                return move;
+            }
+
+            Props.BlockedShotCount++;
+            _strafeSide = _projectileService.FindClearStrafeSide(NpcContainer, enemy);
+            var newMove = _strafeSide != 0 && Props.BlockedShotCount <= _maxBlockedShotStrafes
+                ? FightAiMove.Strafe
+                : FightAiMove.Run;
+            Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} has no free line of shot " +
+                       $"({Props.BlockedShotCount}x) - {newMove}" +
+                       (newMove == FightAiMove.Strafe ? (_strafeSide < 0 ? " left" : " right") : "") + " instead",
+                LogCat.Fight);
+            return newMove;
+        }
+
         private void StartAttackAction()
         {
             // DeveloperConfig.EnableEngineNpcCombo: the combo isn't continued - its animation stops (the engine ends an
@@ -248,7 +300,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                     _npcAiService.PlayAttackAni(NpcInstance, GetAnimName(VmGothicEnums.AnimationType.Attack), _move, _enemy);
                     break;
                 case FightAiMove.Strafe:
-                    if (Random.Range(0, 2) == 0)
+                    // A blocked archer steps to the side with a free line of shot (AvoidBlockedShot).
+                    if (_strafeSide < 0 || (_strafeSide == 0 && Random.Range(0, 2) == 0))
                         _npcAiService.PlayAttackAni(NpcInstance, GetAnimName(VmGothicEnums.AnimationType.MoveL), _move, _enemy);
                     else
                         _npcAiService.PlayAttackAni(NpcInstance, GetAnimName(VmGothicEnums.AnimationType.MoveR), _move, _enemy);

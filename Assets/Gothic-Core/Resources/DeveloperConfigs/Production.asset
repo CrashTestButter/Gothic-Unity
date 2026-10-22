@@ -133,6 +133,8 @@ MonoBehaviour:
   EnableRangedWeaponNeedsAmmo: 1
   EnableOutOfAmmoKeepsChasing: 1
   EnableFightTurnTolerance: 1
+  EnableRangedFocusIgnoresCover: 1
+  EnableBlockedShotMoveInterrupt: 1
   EnableOneHitKill: 0
   EnableOneHitKnockout: 0
   SummonSpawnRangeMultiplier: 0.8

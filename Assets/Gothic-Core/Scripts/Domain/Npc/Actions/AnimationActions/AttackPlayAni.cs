@@ -78,6 +78,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private const float _pathUpdateInterval = 0.2f;
         private const float _unreachableStopDistance = 0.6f;
         private const float _runStepSeconds = 0.5f;
+        // DeveloperConfig.EnableBlockedShotMoveInterrupt: how often a blocked archer's strafe/run checks the shot's path,
+        // and how close his run goes when it never clears (the script switches to melee there).
+        private const float _shotPathCheckSeconds = 0.15f;
+        private const float _blockedShotRunStopDistance = 2f;
+        private float _shotPathCheckTime;
         private float _runStepTime;
         private float _nextPathUpdateTime;
         private bool _hasSteerPoint;
@@ -434,6 +439,20 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             const float minStopDistance = 1.11f;
             var stopDistance = Mathf.Max(GetWeaponReach() + npcVoluminaOffset, minStopDistance);
 
+            // DeveloperConfig.EnableBlockedShotMoveInterrupt: a blocked archer runs closer until he has a free shot -
+            // his ranged reach (20 m) stopped the run after one frame, every frame: he shook forward in place.
+            if (IsBlockedShotMove())
+            {
+                if (HasShotPathCleared())
+                {
+                    Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} has a free line of shot - stops " +
+                               "running", LogCat.Fight);
+                    StopRunning();
+                    return;
+                }
+                stopDistance = _blockedShotRunStopDistance;
+            }
+
             // The strike out of the run starts a bit before the stop distance - the move attack lunges forward.
             if (_isRunAttackPlanned && toTarget.magnitude <= stopDistance + _runAttackLeadDistance &&
                 TryStartRunAttack())
@@ -744,8 +763,41 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             return true;
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableBlockedShotMoveInterrupt: this strafe/run is an archer's way around cover
+        /// (Attack.AvoidBlockedShot).
+        /// </summary>
+        private bool IsBlockedShotMove()
+        {
+            return _configService.Dev.EnableBlockedShotMoveInterrupt && _configService.Dev.EnableNpcPhysicalProjectiles &&
+                   Props.BlockedShotCount > 0 &&
+                   (VmGothicEnums.WeaponState)Vob.FightMode is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow;
+        }
+
+        /// <summary>
+        /// The shot's path to the enemy is free again (checked every _shotPathCheckSeconds).
+        /// </summary>
+        private bool HasShotPathCleared()
+        {
+            _shotPathCheckTime += Time.deltaTime;
+            if (_shotPathCheckTime < _shotPathCheckSeconds)
+                return false;
+            _shotPathCheckTime = 0f;
+            return _projectileService.HasLineOfShot(NpcContainer, _enemy);
+        }
+
         private void StrafeTick()
         {
+            // DeveloperConfig.EnableBlockedShotMoveInterrupt: the step aside ends as soon as the shot is free - the full
+            // step carried Lukis past the gap between a pillar and a tree, behind the tree.
+            if (IsBlockedShotMove() && HasShotPathCleared())
+            {
+                Logger.Log($"[Attack] {NpcInstance.GetName(NpcNameSlot.Slot0)} has a free line of shot - stops " +
+                           "stepping aside", LogCat.Fight);
+                TryInterruptStrafe();
+                return;
+            }
+
             // For rotation speed, we use the guild value for human if any type of human or the monster guild itself.
             var guild = NpcInstance.Guild <= (int)VmGothicEnums.Guild.GIL_SEPERATOR_HUM ? (int)VmGothicEnums.Guild.GIL_HUMAN : NpcInstance.Guild;
 

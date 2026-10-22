@@ -5,7 +5,8 @@ namespace Gothic.VR.Interaction.Components
 {
     /// <summary>
     /// Ring feedback of a VrSocketSlot: while an item hovers the slot, the ring grows and shows the valid (slot is
-    /// free) or invalid (slot is occupied) material. Otherwise, it shows the normal material at its original scale.
+    /// free) or invalid (slot is occupied) material. Otherwise, it shows the normal material at its original scale,
+    /// or nothing (Hide While Idle, e.g. holsters at the hip).
     /// </summary>
     public class VrSocketHoverFeedback : MonoBehaviour
     {
@@ -29,6 +30,9 @@ namespace Gothic.VR.Interaction.Components
 
         [Tooltip("Material while an item hovers an occupied slot.")]
         [SerializeField] private Material _invalidMaterial;
+
+        [Tooltip("Shows the ring only while an item hovers the slot.")]
+        [SerializeField] private bool _isHiddenWhileIdle;
 
         private Vector3 _originalScale;
         private bool _isSubscribed;
@@ -91,6 +95,8 @@ namespace Gothic.VR.Interaction.Components
             var material = !isHovered ? _normalMaterial : _slot.IsOccupied ? _invalidMaterial : _validMaterial;
             if (_ringRenderer != null && material != null)
                 _ringRenderer.sharedMaterial = material;
+            if (_ringRenderer != null && _isHiddenWhileIdle)
+                _ringRenderer.enabled = isHovered;
 
             var scaleTarget = ScaleTarget;
             if (scaleTarget != null)

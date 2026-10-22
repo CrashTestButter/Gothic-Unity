@@ -16,10 +16,12 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Interaction.Components
 {
     /// <summary>
-    /// Backend-neutral slot for one item: hip holster, backpack slot, chest slot, NPC loot slot.
+    /// Backend-neutral slot for one item: hip holster, backpack slot, chest slot, NPC loot slot. Or for one linked
+    /// interactable which isn't an item (the backpack on the shoulder).
     /// Owns the Gothic behaviour:
     /// - Our items are VobLoader -> Grabbable (VrInteractable) -> Mesh. Culling and saving work on the VobLoader, so
     ///   the slot re-parents the VobLoader (not the grabbable child) and restores the previous parent on removal.
+    ///   The linked interactable has no VobLoader and is re-parented itself.
     /// - Rotation by item category, scale-to-fit by the bounds of the item's renderers (cached per item), kinematic
     ///   while inside.
     /// - Sounds (the interactable's socket sounds or the slot's fallbacks) and the IVrSocket events
@@ -34,7 +36,7 @@ namespace Gothic.VR.Interaction.Components
         private const int MaxFitFrames = 5;
         private const float MinExtent = 0.0001f;
 
-        private static readonly ConditionalWeakTable<VobLoader, StrongBox<Bounds>> _boundsCache = new();
+        private static readonly ConditionalWeakTable<Transform, StrongBox<Bounds>> _boundsCache = new();
         private static readonly List<Renderer> _rendererBuffer = new();
 
         [Tooltip("Where the item is put. Empty: this transform.")]
@@ -55,6 +57,10 @@ namespace Gothic.VR.Interaction.Components
 
         [Tooltip("Over-the-shoulder slot (backpack, right shoulder holster). See IVrSocket.IsShoulder.")]
         [SerializeField] private bool _isShoulder;
+
+        [Tooltip("Only this interactable goes into the slot (e.g. the backpack on the shoulder). It needs no " +
+                 "VobLoader. Empty: Gothic items only.")]
+        [SerializeField] private VrInteractable _linkedInteractable;
 
         [Tooltip("Played when an item without own socket sounds is put in.")]
         [SerializeField] private AudioClip _placedSoundFallback;
@@ -82,7 +88,7 @@ namespace Gothic.VR.Interaction.Components
         private bool _isSilent;
 
         private VrInteractable _held;
-        private VobLoader _heldLoader;
+        private Transform _heldRoot;
         private Transform _previousParent;
         private Vector3 _previousScale;
         private Rigidbody _heldRigidbody;
@@ -96,6 +102,7 @@ namespace Gothic.VR.Interaction.Components
         public Transform Transform => transform;
         public bool IsOccupied => _held != null;
         public bool IsShoulder => _isShoulder;
+        public VrInteractable LinkedInteractable => _linkedInteractable;
         public bool IsHovered => _hovered.Count > 0;
         public Transform AttachPoint => _attachPoint != null ? _attachPoint : transform;
 
@@ -190,6 +197,17 @@ namespace Gothic.VR.Interaction.Components
         }
 
         /// <summary>
+        /// True if the interactable belongs into this slot at all: the linked interactable, or else any Gothic item.
+        /// </summary>
+        public bool Accepts(VrInteractable interactable)
+        {
+            if (interactable == null)
+                return false;
+
+            return _linkedInteractable != null ? interactable == _linkedInteractable : IsItem(interactable);
+        }
+
+        /// <summary>
         /// True if the interactable can go into this slot now (free, or it's already inside).
         /// </summary>
         public bool IsValidFor(VrInteractable interactable)
@@ -218,8 +236,8 @@ namespace Gothic.VR.Interaction.Components
             if (interactable == null || IsOccupied)
                 return false;
 
-            var loader = interactable.GetComponentInParent<VobLoader>(true);
-            if (loader == null)
+            var loader = GetLoader(interactable);
+            if (loader == null && interactable != _linkedInteractable)
             {
                 Logger.LogWarning($"[Socket] {interactable.name} has no VobLoader and can't be put into {name}.",
                     LogCat.VR);
@@ -271,8 +289,8 @@ namespace Gothic.VR.Interaction.Components
                 return;
             }
 
-            var loader = interactable.GetComponentInParent<VobLoader>(true);
-            if (loader == null)
+            var loader = GetLoader(interactable);
+            if (loader == null && interactable != _linkedInteractable)
                 return;
 
             BeforeGrabbed?.Invoke(CreateArgs(interactable));
@@ -332,6 +350,14 @@ namespace Gothic.VR.Interaction.Components
             return null;
         }
 
+        /// <summary>
+        /// The item's VobLoader. Null for the linked interactable, which is moved itself.
+        /// </summary>
+        private VobLoader GetLoader(VrInteractable interactable)
+        {
+            return interactable == _linkedInteractable ? null : interactable.GetComponentInParent<VobLoader>(true);
+        }
+
         private VrGrabArgs CreateArgs(VrInteractable interactable)
         {
             return new VrGrabArgs(VrGrabberKind.Socket, VrHandSide.Left, interactable, gameObject);
@@ -339,20 +365,20 @@ namespace Gothic.VR.Interaction.Components
 
         private void Attach(VrInteractable interactable, VobLoader loader)
         {
+            var rootTransform = loader != null ? loader.transform : interactable.transform;
             _held = interactable;
-            _heldLoader = loader;
+            _heldRoot = rootTransform;
             OnBackendHoverExited(interactable);
 
-            var loaderTransform = loader.transform;
-            _previousParent = loaderTransform.parent;
-            _previousScale = loaderTransform.localScale;
+            _previousParent = rootTransform.parent;
+            _previousScale = rootTransform.localScale;
 
             // A hand moved the grabbable child away from its VobLoader. Inside the slot, both are at one place again.
             var grabbableTransform = interactable.transform;
-            if (grabbableTransform != loaderTransform)
+            if (grabbableTransform != rootTransform)
             {
-                if (grabbableTransform.parent != loaderTransform)
-                    grabbableTransform.SetParent(loaderTransform, false);
+                if (grabbableTransform.parent != rootTransform)
+                    grabbableTransform.SetParent(rootTransform, false);
                 grabbableTransform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
             }
 
@@ -369,28 +395,28 @@ namespace Gothic.VR.Interaction.Components
                 _heldRigidbody.isKinematic = true;
             }
 
-            loaderTransform.SetParent(AttachPoint, false);
-            loaderTransform.SetLocalPositionAndRotation(Vector3.zero, GetRotation(loader));
+            rootTransform.SetParent(AttachPoint, false);
+            rootTransform.SetLocalPositionAndRotation(Vector3.zero, GetRotation(loader));
 
             // Meshes of freshly spawned items may come a frame later.
-            if (!TryFitToSlot(loader) && isActiveAndEnabled)
-                _fitRoutine = StartCoroutine(FitWhenMeshesExist(loader));
+            if (!TryFitToSlot(rootTransform) && isActiveAndEnabled)
+                _fitRoutine = StartCoroutine(FitWhenMeshesExist(rootTransform));
         }
 
         private void Remove(bool silent)
         {
             var interactable = _held;
-            var loader = _heldLoader;
+            var root = _heldRoot;
             var args = CreateArgs(interactable);
 
-            Detach(loader);
+            Detach(root);
             PlaySound(interactable != null && interactable.UnsocketedSound != null
                 ? interactable.UnsocketedSound
                 : _removedSoundFallback, silent);
             Released?.Invoke(args);
         }
 
-        private void Detach(VobLoader loader)
+        private void Detach(Transform root)
         {
             if (_fitRoutine != null)
             {
@@ -404,70 +430,68 @@ namespace Gothic.VR.Interaction.Components
             var previousParent = _previousParent;
             var previousScale = _previousScale;
             _held = null;
-            _heldLoader = null;
+            _heldRoot = null;
             _heldRigidbody = null;
             _previousParent = null;
 
             // Skip VobLoaders which are destroyed or being destroyed (deactivated before Destroy()).
-            if (loader == null || !loader.gameObject.activeSelf)
+            if (root == null || !root.gameObject.activeSelf)
                 return;
 
-            var loaderTransform = loader.transform;
-            loaderTransform.SetParent(previousParent, true);
-            loaderTransform.localScale = previousScale;
+            root.SetParent(previousParent, true);
+            root.localScale = previousScale;
         }
 
         private Quaternion GetRotation(VobLoader loader)
         {
-            if (!_shouldRotateByCategory || loader.Container?.Vob == null)
+            if (!_shouldRotateByCategory || loader == null || loader.Container?.Vob == null)
                 return Quaternion.identity;
 
             return GetCategoryRotation(loader.Container.GetItemInstance());
         }
 
-        private IEnumerator FitWhenMeshesExist(VobLoader loader)
+        private IEnumerator FitWhenMeshesExist(Transform root)
         {
             for (var i = 0; i < MaxFitFrames; i++)
             {
                 yield return null;
-                if (loader == null || loader != _heldLoader)
+                if (root == null || root != _heldRoot)
                     yield break;
-                if (TryFitToSlot(loader))
+                if (TryFitToSlot(root))
                     break;
             }
 
             _fitRoutine = null;
         }
 
-        private bool TryFitToSlot(VobLoader loader)
+        private bool TryFitToSlot(Transform root)
         {
             if (!_shouldScaleToFit && !_shouldCenterItem)
                 return true;
-            if (!TryGetLocalBounds(loader, out var bounds))
+            if (!TryGetLocalBounds(root, out var bounds))
                 return false;
 
-            var loaderTransform = loader.transform;
             var extents = bounds.extents;
             var maxExtent = Mathf.Max(extents.x, Mathf.Max(extents.y, extents.z));
             if (_shouldScaleToFit && maxExtent > MinExtent)
-                loaderTransform.localScale = Vector3.one * (_size / maxExtent);
+                root.localScale = Vector3.one * (_size / maxExtent);
 
             if (_shouldCenterItem)
             {
-                var scaledCenter = Vector3.Scale(bounds.center, loaderTransform.localScale);
-                loaderTransform.localPosition = -(loaderTransform.localRotation * scaledCenter);
+                var scaledCenter = Vector3.Scale(bounds.center, root.localScale);
+                root.localPosition = -(root.localRotation * scaledCenter);
             }
 
             return true;
         }
 
         /// <summary>
-        /// Bounds of the item's renderers in the VobLoader's local space (grabbable child at its local origin).
-        /// Cached per VobLoader once meshes exist.
+        /// Bounds of the item's renderers in the local space of its root (the VobLoader with the grabbable child at
+        /// its local origin, or the linked interactable). Cached per root once meshes exist.
         /// </summary>
-        private static bool TryGetLocalBounds(VobLoader loader, out Bounds bounds)
+        private static bool TryGetLocalBounds(Transform root, out Bounds bounds)
         {
-            if (_boundsCache.TryGetValue(loader, out var cached))
+            if (_boundsCache.TryGetValue(root, out var cached))
             {
                 bounds = cached.Value;
                 return true;
@@ -475,9 +499,9 @@ namespace Gothic.VR.Interaction.Components
 
             bounds = default;
             var hasBounds = false;
-            var worldToLoader = loader.transform.worldToLocalMatrix;
+            var worldToLoader = root.worldToLocalMatrix;
 
-            loader.GetComponentsInChildren(true, _rendererBuffer);
+            root.GetComponentsInChildren(true, _rendererBuffer);
             foreach (var itemRenderer in _rendererBuffer)
             {
                 if (itemRenderer is not (MeshRenderer or SkinnedMeshRenderer))
@@ -509,8 +533,8 @@ namespace Gothic.VR.Interaction.Components
 
             if (hasBounds)
             {
-                _boundsCache.Remove(loader);
-                _boundsCache.Add(loader, new StrongBox<Bounds>(bounds));
+                _boundsCache.Remove(root);
+                _boundsCache.Add(root, new StrongBox<Bounds>(bounds));
             }
 
             return hasBounds;

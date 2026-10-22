@@ -13,8 +13,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// <summary>
     /// XRI part of a VrSocketSlot (same GameObject). XRI's socket does the detection (trigger collider), hover and
     /// select. The Gothic part (re-parenting the VobLoader, rotation, scale, sounds, events) is done by VrSocketSlot:
-    /// - Only Gothic items are accepted, and only while a hand holds them or right after a hand released them
-    ///   (items lying around next to a slot are not pulled in).
+    /// - Only what the slot accepts (Gothic items, or its linked interactable like the backpack), and only while a
+    ///   hand holds it or right after a hand released it (items lying around next to a slot are not pulled in).
     /// - XRI must not move the grabbable child: socket snapping and the socket's scale mode are off, and
     ///   GothicGrabInteractable doesn't process (move) itself while only a socket selects it.
     ///
@@ -33,6 +33,11 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private bool _isDetectionEnabled = true;
 
         public bool IsActive => _vrBackend is XriBackend;
+
+        /// <summary>
+        /// Off: nothing is detected, and hands can't take the held interactable out (see SetDetectionEnabled).
+        /// </summary>
+        public bool IsDetectionEnabled => _isDetectionEnabled;
 
         protected override void Awake()
         {
@@ -85,6 +90,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         public void SetDetectionEnabled(bool isEnabled)
         {
             // socketActive off would also release a held item (isSelectActive is false then).
+            // GothicGrabInteractable keeps hands away from the held item meanwhile (like HVR's ParentDisablesGrab).
             _isDetectionEnabled = isEnabled;
         }
 
@@ -94,7 +100,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 return false;
 
             var vrInteractable = GetInteractable(interactable);
-            if (vrInteractable == null || vrInteractable == _slot.Held || !VrSocketSlot.IsItem(vrInteractable))
+            if (vrInteractable == null || vrInteractable == _slot.Held || !_slot.Accepts(vrInteractable))
                 return false;
 
             return IsHeldOrJustReleasedByHand(interactable);
@@ -113,8 +119,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 return false;
 
             var vrInteractable = GetInteractable(interactable);
-            return vrInteractable != null && VrSocketSlot.IsItem(vrInteractable) &&
-                   IsJustReleasedByHand(interactable);
+            return vrInteractable != null && _slot.Accepts(vrInteractable) && IsJustReleasedByHand(interactable);
         }
 
         protected override bool StartSocketSnapping(XRGrabInteractable grabInteractable)

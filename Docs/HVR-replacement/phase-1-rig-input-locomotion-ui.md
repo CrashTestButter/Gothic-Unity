@@ -9,12 +9,18 @@ menus and dialogs, and watch videos, on a headset or in the simulator. Grabbing 
 ## Exit criteria
 
 - [ ] `DeveloperConfig.VrInteractionBackend = Xri` boots Quest, Pico and PCVR builds into the world without HVR
-      installed.
+      installed. (Editor play mode boots into the world on Xri; the project compiles without `GOTHIC_HVR_INSTALLED`.
+      Builds: first run of the CI job `buildWithoutHVR`, then a headset.)
 - [ ] Every comfort setting from the accessibility menu works on the XRI rig, and existing Gothic.ini values load.
+      (Implemented in 1b; snap turn and move speeds checked in the simulator. Needs headset playtests.)
 - [ ] Menus, dialogs, virtual keyboard, cinema, subtitles, print-screen messages and the spectator camera work.
+      (Simulator: in-game menu laser click, dialog choice, video skip. Virtual keyboard, print-screen and spectator
+      camera untested; needs a headset.)
 - [ ] Swimming/diving behaves as on HVR (strokes, gravity, fade with air, walking out of water).
-- [ ] The XR Interaction Simulator replaces the HVR simulator for the Xri backend.
-- [ ] CI builds the Xri backend without the private HVR repo (new job or label).
+      (Simulator: swim mode, gravity, strokes; dive fade via code in 1c. Climbing out and the feel need a headset.)
+- [x] The XR Interaction Simulator replaces the HVR simulator for the Xri backend. (1d)
+- [ ] CI builds the Xri backend without the private HVR repo (new job or label). (1d: job `buildWithoutHVR` added,
+      not run yet.)
 
 ## Packages
 
@@ -263,10 +269,53 @@ Already on `IVrRig` after Phase 0. Check:
   `HVRBodySimulator`.
 - Port the on-screen help from `VRSimulatorControlsGUI` (keys list) as a small `OnGUI`/UGUI overlay.
 
+- [x] Done in 1d. Notes:
+  - Prefab `Gothic-VR/Resources/VR/Prefabs/VR - XR Interaction Simulator.prefab` (copy of the sample prefab:
+    `XRInteractionSimulator`, `SimulatedDeviceLifecycleManager`, `InputActionManager`, `SimulatedHandPlaybackManager`,
+    all package scripts) plus our `XriSimulatorControlsGUI`. Its input actions are copied to `Gothic-VR/Simulator/`
+    (`XR Interaction Simulator Controls`, `XR Interaction Controller Controls`); no reference into `Samples/` is left.
+    Left out: the sample UI prefab (1 MB, sample scripts; replaced by our overlay) and the hand mode (hand controls,
+    expressions and 32 MB of hand recordings; hand tracking capability off, expression lists empty), as the rig
+    uses controllers only.
+  - `Player.unity` and `Lab.unity` hold it inactive next to `HVR - XRDeviceSimulator`. `XriInput.SetDeviceSimulatorActive`
+    (called from `SetupPlayerController` with `EnableVRDeviceSimulator`) enables it; the Hvr backend still toggles the
+    HVR simulator only. `XriInput.IsSimulator` is true while it is active.
+  - The simulator finds controllers only through an `XRInputModalityManager` (our rig has none) and fell back to the
+    camera, so point-and-click aimed the camera. `XriInput` assigns the rig's `Left/Right Controller` to it before
+    enabling it.
+  - Simulated controllers report no velocity, so swim strokes did nothing. While the simulator is active,
+    `XriInput.GetControllerVelocity` derives it from the controller's position change in the tracking space.
+  - `XriSimulatorControlsGUI` (own code, `OnGUI`, F1 toggles): Gothic keys, the simulator's keys and the device it
+    currently drives.
+  - Key conflicts with the simulator, resolved:
+
+    | Gothic key (1a) | Simulator use | Now |
+    |-----------------|---------------|-----|
+    | Esc (menu) | - | unchanged |
+    | Space (jump) | toggle quick action | Space stays jump; quick action moved to **Enter** in our copy of the simulator controls |
+    | Z / X (crouch) | Z: Z-axis constraint, X: action menu of the sample UI (not used) | crouch is **X** only |
+    | Left Shift (sprint) | Shift = buttons/stick go to the left controller | sprint is **F**; walking is Shift + I/J/K/L (left stick) |
+    | T (both grips, `VRPlayer`) | trigger (= UI click) | T is the trigger only on Xri; `IVrInput.UsesBothGripsSimulatorKey` (Hvr true, Xri false). Both grips: `[` and `]` together, then G |
+
+    The Gothic keyboard bindings are in binding group `Simulator`, the controller bindings in `XR`. `XriInput` masks the
+    `Gothic` map to `XR` unless the simulator is active, so the keyboard does nothing on a headset (like on HVR).
+    Before, T in the XRI simulator started speech-to-text recording on every trigger press (and threw in
+    `SpeechToTextHandler.GetMicrophoneDeviceName` without a microphone).
+  - Play mode test (G1, Xri, simulator; keys injected via the Input System, Game view at 919x301), see the test plan
+    section below.
+
 ## CI
 
 - Add a build job that doesn't inject HVR, removes `GOTHIC_HVR_INSTALLED` and sets the backend to `Xri`. Methods
   stay `VRBuilderActions.Perform*Build`.
+
+- [x] Done in 1d: job `buildWithoutHVR` in `.github/workflows/test_and_build.yml` replaces the disabled
+  `testCompileWithoutHVR`. Same matrix (Windows64, Pico, Quest) and build methods as `buildForAllPlatforms`, runs on
+  the label `pipeline-test-build` (together with the HVR build) or `pipeline-test-build-xri` (alone). It removes
+  `GOTHIC_HVR_INSTALLED` from `ProjectSettings.asset` and fails if the define or `Assets/HurricaneVR` is still there,
+  uses its own Library cache key (`Library-Xri-*`) and uploads `Gothic-Unity-<device>-Xri`. The backend isn't set
+  in an asset: `VRContextBootstrap.SelectBackend` falls back to Xri when HVR isn't compiled in (1a). Not run yet (no CI
+  access from here); YAML checked with a parser.
 
 ## Test plan
 
@@ -280,6 +329,20 @@ On Quest 3, Pico 4 and PCVR (Index), backend `Xri`:
 6. Swim and dive; air bar fade; climb out.
 7. Head into a wall → fades.
 8. Simulator on a desktop without a headset: all of the above that applies.
+
+1d results with the simulator (G1 new game, Xri backend, `EnableVRDeviceSimulator`, editor play mode without a
+headset; keys injected into the Input System from editor scripts, not typed by a person):
+- OK: `IsSimulator` true, Gothic keyboard bindings unmasked; intro video skipped with the simulated right primary
+  button (key 1); walk with the simulated left stick (Shift + I, 1.5 m/s, stopped by a rock); sprint (F, move speed
+  3.5 until the stick is released); snap turn (L, 15°); jump (Space, +0.35 m); crouch toggle (X, camera 1.66 -> 0.70
+  m and back); menu (Esc); laser click in the in-game menu (mouse aims the right controller ray, T = trigger opened
+  Options); Diego's start dialog: choice clicked with the ray + T, dialog went on; walking away from a dialog chose
+  END; swim (teleport into 3.3 m deep water -> Swim, gravity 0, jump/crouch off) and strokes (] + hold G + S: hand
+  pulled back, player swam 9 m forward); T no longer triggers both grips/speech-to-text.
+- Not tested in 1d: dive and air fade with the simulator (1c checked them via code), climbing out of water, main
+  menu pages/virtual keyboard/sliders, accessibility settings, subtitles visually, the help overlay visually (only
+  compiled and enabled; OnGUI isn't in MCP screenshots), Lab.unity.
+- Needs a headset: everything on Quest 3 / Pico 4 / PCVR (items 1-7 above), room-scale, comfort settings, haptics.
 
 ## Risks
 

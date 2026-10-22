@@ -14,6 +14,12 @@ namespace Gothic.VR.Interaction.Ports
         /// </summary>
         bool IsSimulator { get; }
 
+        /// <summary>
+        /// In the simulator, VRPlayer.IsBothGripsActive is the T key (HVR simulator: no way to hold both grips).
+        /// The XR Interaction Simulator holds both grips itself ([ and ] together, then G) and uses T as trigger.
+        /// </summary>
+        bool UsesBothGripsSimulatorKey { get; }
+
         VrButtonState GetButton(VrHandSide side, VrButton button);
 
         /// <summary>

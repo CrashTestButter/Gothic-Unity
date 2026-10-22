@@ -25,6 +25,8 @@ namespace Gothic.VR.Interaction.Backends.Hvr
             }
         }
 
+        public bool UsesBothGripsSimulatorKey => true;
+
         public VrButtonState GetButton(VrHandSide side, VrButton button)
         {
             return HVRController.GetButtonState(side.ToHvr(), button.ToHvr()).ToVr();

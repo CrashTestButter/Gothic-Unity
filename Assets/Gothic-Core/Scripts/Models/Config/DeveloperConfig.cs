@@ -489,6 +489,14 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Flying arrows and bolts (hero and NPCs) leave a short streak with the weapon trail's look.")]
         public bool EnableProjectileTrail = true;
 
+        [Tooltip("V1: Npc_HasRangedWeaponWithAmmo counts the munition like the engine - an archer out of arrows/bolts " +
+                 "switches to the melee weapon (B_SelectWeapon) instead of shooting nothing.")]
+        public bool EnableRangedWeaponNeedsAmmo = true;
+
+        [Tooltip("V1: An archer out of arrows/bolts keeps chasing with his melee weapon (G1's AIV_LASTHITBYRANGEDWEAPON) " +
+                 "instead of giving up at 10 m and drawing/putting away his sword in a loop.")]
+        public bool EnableOutOfAmmoKeepsChasing = true;
+
         [Tooltip("V1: The fight's turn move ends once the enemy is in focus (20 of the 30 degrees) or after 2 s - " +
                  "Ratford turned forever towards a scavenger circling him and never hit it.")]
         public bool EnableFightTurnTolerance = true;

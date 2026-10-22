@@ -130,6 +130,8 @@ MonoBehaviour:
   EnableNpcHitDetection: 1
   EnableNpcPhysicalProjectiles: 1
   EnableProjectileTrail: 1
+  EnableRangedWeaponNeedsAmmo: 1
+  EnableOutOfAmmoKeepsChasing: 1
   EnableFightTurnTolerance: 1
   EnableOneHitKill: 0
   EnableOneHitKnockout: 0

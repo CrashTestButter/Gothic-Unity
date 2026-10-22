@@ -44,6 +44,7 @@ namespace Gothic.Core.Domain.Vm
         [Inject] private readonly NpcAiService _npcAiService;
         [Inject] private readonly NpcRoutineService _npcRoutineService;
         [Inject] private readonly NpcInventoryService _npcInventoryService;
+        [Inject] private readonly ProjectileService _projectileService;
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly GameTimeService _gameTimeService;
         [Inject] private readonly StoryService _storyService;
@@ -1664,6 +1665,17 @@ namespace Gothic.Core.Domain.Vm
             if (!_configService.Dev.EnableNpcRangedCombat)
                 return LogInstantExternal(nameof(Npc_HasRangedWeaponWithAmmo), 0, npc);
 
+            // DeveloperConfig.EnableRangedWeaponNeedsAmmo: like the engine, only a ranged weapon with its munition counts -
+            // B_SelectWeapon then switches to the melee weapon when the arrows/bolts are gone (B_FillQuiver refills pure
+            // archers, FAI_HUMAN_RANGED, while they still have some). Before, an archer without bolts kept "shooting".
+            if (_configService.Dev.EnableRangedWeaponNeedsAmmo)
+            {
+                var hasAmmo = _projectileService.HasRangedWeaponWithAmmo(npc.GetUserData());
+                if (!hasAmmo)
+                    KeepChasingOutOfAmmo(npc);
+                return LogInstantExternal(nameof(Npc_HasRangedWeaponWithAmmo), hasAmmo ? 1 : 0, npc);
+            }
+
             // Equipped ranged weapon is sufficient — B_FillQuiver provides ammo via CreateInvItems.
             var equippedRanged = _npcHelperService.ExtNpcGetEquippedRangedWeapon(npc);
             if (equippedRanged != null)
@@ -1684,6 +1696,28 @@ namespace Gothic.Core.Domain.Vm
             }
             catch { }
             return LogInstantExternal(nameof(Npc_HasRangedWeaponWithAmmo), 0, npc);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableOutOfAmmoKeepsChasing: an archer whose arrows/bolts ran out fights on with his melee
+        /// weapon - but G1's ZS_Attack_Loop gives a melee fight up beyond HAI_DIST_ABORT_MELEE (10 m) unless the last
+        /// damage came from a ranged weapon (AIV_LASTHITBYRANGEDWEAPON). Lukis gave up, ZS_AssessEnemy started the fight
+        /// again at once: draw, put away, draw every 2 s. Marked like that, he chases until the script's pursuit limit
+        /// (HAI_TIME_FOLLOW); the next melee hit resets it (B_CombatReactToDamage).
+        /// </summary>
+        private void KeepChasingOutOfAmmo(NpcInstance npc)
+        {
+            if (!_configService.Dev.EnableOutOfAmmoKeepsChasing ||
+                _npcHelperService.ExtNpcGetEquippedRangedWeapon(npc) == null)
+                return;
+
+            var aivar = _gameStateService.GothicVm.GetSymbolByName("AIV_LASTHITBYRANGEDWEAPON")?.GetInt(0) ?? -1;
+            if (aivar < 0 || npc.GetAiVar(aivar) != 0)
+                return;
+
+            npc.SetAiVar(aivar, 1);
+            Logger.Log($"[Projectile] {npc.GetName(NpcNameSlot.Slot0)} is out of ammo - keeps chasing with his melee " +
+                       "weapon (AIV_LASTHITBYRANGEDWEAPON)", LogCat.Fight);
         }
 
         public int Npc_GetDistToWP(NpcInstance npc, string waypoint)

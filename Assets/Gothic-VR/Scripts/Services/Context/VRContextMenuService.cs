@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Model.UI.Menu;
 using Gothic.Core.Model.UI.MenuItem;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Vm;
 using Gothic.Services.UI;
@@ -20,6 +21,7 @@ namespace Gothic.VR.Services.Context
     {
         [Inject] private readonly LocalizationService _localizationService;
         [Inject] private readonly VmService _vmService;
+        [Inject] private readonly ConfigService _configService;
         
         
         /// <summary>
@@ -77,8 +79,65 @@ namespace Gothic.VR.Services.Context
             vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "LIGHT_REFRESH", "Light refresh",
                 "How smoothly a torch's light follows your hand", menuStartY + menuDY * 5));
             vrImmersionMenu.Items.Add(CreateLightRefreshChoice(gameMenu, menuStartY + menuDY * 5));
-            vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * 6));
-            vrImmersionMenu.Items.Add(CreateImmersionBackButton(mainMenu));
+            // DeveloperConfig.EnableHeroDeath: off = an NPC finishing you off only keeps you knocked out.
+            if (_configService.Dev.EnableHeroDeath)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "HERO_DEATH", "Death",
+                    "NPCs can finish you off (off: only knocked out)", menuStartY + menuDY * 6));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HERO_DEATH", Constants.IniNames.HeroDeath,
+                    menuStartY + menuDY * 6, 1));
+            }
+            var restartRow = _configService.Dev.EnableHeroDeath ? 7 : 6;
+            vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
+            var backButton = CreateImmersionBackButton(mainMenu);
+            vrImmersionMenu.Items.Add(backButton);
+            AddScrolling(mainMenu, vrImmersionMenu, menuStartY, backButton.PosY, menuDY);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableMenuScrolling: the option rows (below the headline, above Back) scroll when there are
+        /// more than fit - Up (right, under the headline) / Down (right, next to Back) buttons (AbstractMenu).
+        /// </summary>
+        private void AddScrolling(AbstractMenuInstance mainMenu, MutableMenuInstance menu, int topY, int bottomY,
+            int stepY)
+        {
+            if (!_configService.Dev.EnableMenuScrolling)
+                return;
+
+            menu.ScrollTopY = topY;
+            menu.ScrollBottomY = bottomY;
+            menu.ScrollStepY = stepY;
+            foreach (var item in menu.Items)
+                item.IsScrollable = item.PosY >= topY && !item.Name.EndsWith("_BACK");
+
+            if (menu.Items.Max(i => i.IsScrollable ? i.PosY : 0) < bottomY)
+                return;
+            // Up on the right under the headline, Down on the right next to Back - one above the other.
+            menu.Items.Add(CreateScrollButton(mainMenu, menu.Name + "_SCROLL_UP", "Up", Constants.MenuCommandScrollUp,
+                _scrollButtonX, topY - stepY));
+            menu.Items.Add(CreateScrollButton(mainMenu, menu.Name + "_SCROLL_DOWN", "Down",
+                Constants.MenuCommandScrollDown, _scrollButtonX, bottomY));
+        }
+
+        // Virtual menu X (0...8191) of the scroll buttons, at the right edge.
+        private const int _scrollButtonX = 6300;
+        private const int _scrollButtonWidth = 1600;
+
+        private MutableMenuItemInstance CreateScrollButton(AbstractMenuInstance mainMenu, string name, string text,
+            string command, int posX, int posY)
+        {
+            var someOptionsMenu = mainMenu.FindMenuRecursive("MENU_OPT_GRAPHICS");
+            var buttonReference = someOptionsMenu?.FindMenuItem("MENUITEM_GRA_BACK", out _);
+            var button = new MutableMenuItemInstance(name, buttonReference);
+
+            button.PosX = posX;
+            button.DimX = _scrollButtonWidth;
+            button.PosY = posY;
+            button.SetText(0, text);
+            button.SetOnSelAction(0, MenuItemSelectAction.ExecuteCommand);
+            button.SetOnSelActionS(0, command);
+
+            return button;
         }
 
         // Our own options have no localization entries yet - plain English labels.

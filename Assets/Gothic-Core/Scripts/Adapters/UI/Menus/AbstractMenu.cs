@@ -44,6 +44,13 @@ namespace Gothic.Core.Adapters.UI.Menus
         protected float PixelRatioX;
         protected float PixelRatioY;
 
+        // DeveloperConfig.EnableMenuScrolling: the rows that scroll (with their unscrolled position) and the offset in
+        // virtual menu units.
+        private readonly List<(AbstractMenuItemInstance item, Transform transform, Vector3 basePosition)> _scrollItems =
+            new();
+        private int _scrollOffset;
+        private int _maxScrollOffset;
+
         public virtual void InitializeMenu(AbstractMenuInstance menuInstance)
         {
             MenuHandler = transform.parent.GetComponent<MenuHandler>();
@@ -116,6 +123,7 @@ namespace Gothic.Core.Adapters.UI.Menus
             SetupCanvasSize(backPic);
             ComputePixelRatios(backPic);
             BuildAllMenuItems();
+            SetupScrolling();
 
             var canvasT = Canvas.transform;
             Logger.Log($"[AbstractMenu] '{MenuInstance.Name}' hasRealBackPic={hasRealBackPic} " +
@@ -126,6 +134,61 @@ namespace Gothic.Core.Adapters.UI.Menus
                        $"canvasScale={canvasT.localScale:F6}", LogCat.Ui);
         }
         
+        /// <summary>
+        /// DeveloperConfig.EnableMenuScrolling: a menu with more rows than fit between ScrollTopY and ScrollBottomY
+        /// (our Immersion options) scrolls by rows - Up/Down buttons (MenuCommandScrollUp/Down) or the mouse wheel.
+        /// Rows outside the window are hidden: Gothic's item back pictures are 3D quads a UI mask wouldn't clip.
+        /// </summary>
+        private void SetupScrolling()
+        {
+            _scrollItems.Clear();
+            _scrollOffset = 0;
+            _maxScrollOffset = 0;
+            if (!ConfigService.Dev.EnableMenuScrolling || MenuInstance.ScrollTopY < 0 || MenuInstance.ScrollStepY <= 0)
+                return;
+
+            foreach (var (item, go) in MenuItemCache.Values)
+            {
+                if (item.IsScrollable)
+                    _scrollItems.Add((item, go.transform, go.transform.localPosition));
+            }
+            if (_scrollItems.Count == 0)
+                return;
+
+            var step = MenuInstance.ScrollStepY;
+            var lastRowY = _scrollItems.Max(i => i.item.PosY);
+            var rowsBelow = Mathf.CeilToInt((lastRowY - (MenuInstance.ScrollBottomY - step)) / (float)step);
+            _maxScrollOffset = Mathf.Max(0, rowsBelow) * step;
+            ApplyScroll();
+        }
+
+        protected void Scroll(int rows)
+        {
+            if (_scrollItems.Count == 0)
+                return;
+            _scrollOffset = Mathf.Clamp(_scrollOffset + rows * MenuInstance.ScrollStepY, 0, _maxScrollOffset);
+            ApplyScroll();
+        }
+
+        private void ApplyScroll()
+        {
+            foreach (var (item, itemTransform, basePosition) in _scrollItems)
+            {
+                var posY = item.PosY - _scrollOffset;
+                itemTransform.gameObject.SetActive(posY >= MenuInstance.ScrollTopY && posY < MenuInstance.ScrollBottomY);
+                itemTransform.localPosition = basePosition + Vector3.up * (_scrollOffset / PixelRatioY);
+            }
+        }
+
+        private void Update()
+        {
+            if (_scrollItems.Count == 0 || UnityEngine.InputSystem.Mouse.current == null)
+                return;
+            var wheel = UnityEngine.InputSystem.Mouse.current.scroll.ReadValue().y;
+            if (Mathf.Abs(wheel) > 0.01f)
+                Scroll(wheel > 0f ? -1 : 1);
+        }
+
         private void BuildAllMenuItems()
         {
             foreach (var item in MenuInstance.Items)
@@ -490,6 +553,11 @@ namespace Gothic.Core.Adapters.UI.Menus
                     PlaySound(itemName, commandName);
                     break;
                 case MenuItemSelectAction.ExecuteCommand:
+                    if (commandName == Constants.MenuCommandScrollUp || commandName == Constants.MenuCommandScrollDown)
+                    {
+                        Scroll(commandName == Constants.MenuCommandScrollUp ? -1 : 1);
+                        break;
+                    }
                     ExecuteCommand(itemName, commandName);
                     break;
                 default:

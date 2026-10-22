@@ -1186,6 +1186,9 @@ namespace Gothic.Core.Models.Config
                  "down with its head and up again when he stands up - where you look is never taken from you.")]
         public bool EnableHeroFallCamera = true;
 
+        [Tooltip("V1: Menus with more options than fit scroll (drag, mouse wheel, arrows) - the Immersion menu.")]
+        public bool EnableMenuScrolling = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

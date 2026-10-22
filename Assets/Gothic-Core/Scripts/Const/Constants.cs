@@ -66,6 +66,10 @@ namespace Gothic.Core.Const
         public static readonly float ShaderPropertyTransparencyDefault = 1f;
         public static readonly float ShaderPropertyTransparencyValue = 0.60f;
 
+        // DeveloperConfig.EnableMenuScrolling: commands of the Up/Down buttons of a scrolling menu (AbstractMenu).
+        public const string MenuCommandScrollUp = "MENU_SCROLL_UP";
+        public const string MenuCommandScrollDown = "MENU_SCROLL_DOWN";
+
         public const string SceneBootstrap = "Bootstrap";
         public const string ScenePlayer = "Player";
         public const string SceneGameVersion = "GameVersion";

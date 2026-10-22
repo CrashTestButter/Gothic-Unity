@@ -295,6 +295,7 @@ MonoBehaviour:
   EnableEngineFinishingMove: 1
   EnableHeroDeath: 1
   EnableHeroFallCamera: 1
+  EnableMenuScrolling: 1
   EnableThrowRuneOneHand: 1
   EnableVrFists: 1
   EnableModelScale: 1

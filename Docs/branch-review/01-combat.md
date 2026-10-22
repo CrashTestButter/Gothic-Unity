@@ -128,7 +128,8 @@
   body plays `T_STAND_2_WOUNDEDB`/`S_WOUNDEDB`, `T_WOUNDEDB_2_STAND`, `S_DEADB`, lies on the floor (lowest bone) with
   its head under the eyes; the camera follows the animated head's height through `HVRCameraRig.CameraYOffset` (like a
   transformation) - never sideways, the HMD's rotation stays the player's. Dead, the game menu opens after 4 s. Not
-  saved: a load starts standing, the offset is restored.
+  saved: a load starts standing, the offset is restored. The hero's death scream `SVM_<voice>_DEAD` (`b53715a9`,
+  OpenGothic `emitSoundSVM`). Option "Death" in the Immersion menu (`3d80cb5f`).
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
@@ -152,7 +153,7 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity ·
 `c4c2a8d0` one hit per swing, engine combos · `ccb310bb` animated NPC body (hitbox, personal space)
 
-2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera
+2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera · `b53715a9` death scream
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover

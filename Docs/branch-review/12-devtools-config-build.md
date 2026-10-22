@@ -80,7 +80,20 @@
 
 2026-10-16: `f9b48c31` merge `main` (Marvin console, in-game Marvin mode, keyboard, NVorbis package)
 
+**Added 2026-10-23**
+
+- **Marvin `kill`** (`8ed54eb7`, `EnableMarvinKill`), like OpenGothic's `C_Kill`: the focus NPC loses all hit points
+  and dies (no killer, no experience); immortal ones (`NPC_FLAG_IMMORTAL`) are left alone silently. The focus is the
+  NPC a hand pointed at last (`VRFocus` hover -> `PlayerService.FocusNpc`), else the one in the view's center - typing on
+  the hand panel you look at the panel.
+- **Menu scrolling** (`3d80cb5f`, `EnableMenuScrolling`): a menu with `ScrollTopY`/`ScrollBottomY`/`ScrollStepY` scrolls
+  its `IsScrollable` rows by one row - Up/Down buttons (commands `MENU_SCROLL_UP/DOWN`, handled in `AbstractMenu`) or
+  the mouse wheel; rows outside the window are hidden, as item back pictures are 3D quads. Used by the Immersion menu,
+  which got the "Death" option (`heroDeath`).
+
 2026-10-18: `27aa8bf6` Marvin start commands
+
+2026-10-23: `8ed54eb7` Marvin kill · `3d80cb5f` menu scrolling, Death option
 
 ## Main files
 
@@ -92,6 +105,8 @@ Config flags (2026-10-10/11): `EnableMarvinBlink`, `EnableMarvinFallRescue`, `En
 `MarvinFriendsNpcSymbols`, `EnableEndingReturnsToMenu`
 
 Config (2026-10-13): `MarvinCheatFriendsNpcSymbols` (`adf2d34e` Marvin teams)
+
+Config (2026-10-23): `EnableMarvinKill`, `EnableMenuScrolling`
 
 ## Review notes
 

@@ -111,6 +111,15 @@ namespace Gothic.VR.Services.Context
             // VR Player: Gothic part and the backend's rig live on the same GameObject.
             _player = activeScene.GetComponentInChildren<VRPlayer>(true)!;
             _rig = _player.GetComponent<IVrRig>();
+            if (_rig == null)
+            {
+                // e.g., VrInteractionBackend = Xri before the XRI rig exists (HVR phase 1b) and without HVR installed.
+                const string message = "VR player has no IVrRig (rig of the active VR backend). " +
+                                       "Check DeveloperConfig.VrInteractionBackend and the rigs in Player.unity.";
+                Logger.LogError(message, LogCat.VR);
+                throw new MissingComponentException(message);
+            }
+
             _player.transform.parent.parent.gameObject.SetActive(true);
             _defaultStepOffset = _rig.StepOffset;
             ApplyComfortSettings(true);

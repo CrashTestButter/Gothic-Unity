@@ -1,9 +1,11 @@
-using System;
 using Gothic.Core.Adapters.Context;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Models.Config;
 using Gothic.Core.Models.Context;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
+using Gothic.VR.Interaction.Backends.Xri;
 using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services.Context;
 using Reflex.Attributes;
@@ -25,17 +27,45 @@ namespace Gothic.VR.Adapters.Context
         [Inject] private readonly ContextMenuService _contextMenuService;
         [Inject] private readonly ContextDialogService _contextDialogService;
         [Inject] private readonly ContextTextInputService _contextTextInputService;
+        [Inject] private readonly ConfigService _configService;
+
+#if GOTHIC_HVR_INSTALLED
+        public const bool IsHvrInstalled = true;
+#else
+        public const bool IsHvrInstalled = false;
+#endif
 
         /// <summary>
-        /// Returns the VR backend compiled into this build, or null if none is available.
+        /// Returns the VR backend requested by DeveloperConfig.VrInteractionBackend. Hvr falls back to Xri if HVR
+        /// isn't compiled in (no GOTHIC_HVR_INSTALLED). Xri is always available.
         /// </summary>
-        public static IVrBackend SelectBackend()
+        public static IVrBackend SelectBackend(DeveloperConfig developerConfig)
         {
+            switch (GetEffectiveBackend(developerConfig))
+            {
 #if GOTHIC_HVR_INSTALLED
-            return new HvrBackend();
-#else
-            return null;
+                case VrInteractionBackend.Hvr:
+                    return new HvrBackend();
 #endif
+                default:
+                    return new XriBackend();
+            }
+        }
+
+        /// <summary>
+        /// The backend which SelectBackend() creates. Without a DeveloperConfig (e.g. not set yet), HVR is used if
+        /// installed, otherwise XRI.
+        /// </summary>
+        public static VrInteractionBackend GetEffectiveBackend(DeveloperConfig developerConfig)
+        {
+            var requested = developerConfig == null
+                ? (IsHvrInstalled ? VrInteractionBackend.Hvr : VrInteractionBackend.Xri)
+                : developerConfig.VrInteractionBackend;
+
+            if (requested == VrInteractionBackend.Hvr && !IsHvrInstalled)
+                return VrInteractionBackend.Xri;
+
+            return requested;
         }
 
         protected override void RegisterControlModule(Controls controls)
@@ -43,14 +73,13 @@ namespace Gothic.VR.Adapters.Context
             if (controls != Controls.VR)
                 return;
 
-            var backend = SelectBackend();
-            if (backend == null)
+            var developerConfig = _configService.Dev;
+            var backend = SelectBackend(developerConfig);
+            if (developerConfig != null && developerConfig.VrInteractionBackend == VrInteractionBackend.Hvr &&
+                !IsHvrInstalled)
             {
-                const string message = "VR controls are set, but no VR backend is available. " +
-                                       "Set DeveloperConfig > Controls.GameControls = Flat, or install a VR backend " +
-                                       "(e.g. HVR, plus scripting define >GOTHIC_HVR_INSTALLED<).";
-                Logger.LogError(message, LogCat.VR);
-                throw new ArgumentException(message);
+                Logger.LogWarning("DeveloperConfig.VrInteractionBackend is Hvr, but HVR isn't installed " +
+                                  "(no scripting define >GOTHIC_HVR_INSTALLED<). Falling back to XRI.", LogCat.VR);
             }
 
             Logger.Log($"VR backend: {backend.Name}", LogCat.VR);

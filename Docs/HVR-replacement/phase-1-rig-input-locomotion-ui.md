@@ -18,18 +18,31 @@ menus and dialogs, and watch videos, on a headset or in the simulator. Grabbing 
 
 ## Packages
 
-- Add `com.unity.xr.interaction.toolkit` 3.x. Pin an exact version that is at least 2 weeks old and compatible with
+- [x] Add `com.unity.xr.interaction.toolkit` 3.x. Pin an exact version that is at least 2 weeks old and compatible with
   Unity 6000.3 (check the package manager "compatible" list). `com.unity.inputsystem` and `com.unity.xr.core-utils`
-  come in as dependencies.
-- Import the samples **Starter Assets** (input actions, reference rig) and **XR Interaction Simulator**. Copy what we
+  come in as dependencies. (1a: **3.6.1**, latest stable in the compatible list, published 2026-09-17. Unity's
+  "recommended" for 6000.3 is still 3.3.2. Input System 1.19 and core-utils were already installed. XRI created its
+  settings assets in `Assets/XRI/Settings/`, which are committed.)
+- [x] Import the samples **Starter Assets** (input actions, reference rig) and **XR Interaction Simulator**. Copy what we
   need into `Gothic-VR/` and don't reference the `Samples/` folder from our prefabs, so a sample re-import can't break
-  us.
+  us. (1a: only the input actions are copied so far. `Assets/Samples/` is **git-ignored**: 44 MB of demo content
+  that can be re-imported from the Package Manager, and a fresh clone without it shows any accidental reference as
+  missing. Import both samples locally (Package Manager > XR Interaction Toolkit > Samples) before copying more,
+  e.g. the reference rig (1b) or the simulator prefab (1d). Copied prefabs that use sample scripts need those
+  scripts copied too.)
 - Keep OpenXR 1.16, the Meta Quest feature, `pico-openxr-sdk` and XR Hands 1.7 as they are. XRI uses exactly these.
 
 ## Backend switch
 
-- Add `DeveloperConfig.VrInteractionBackend { Hvr, Xri }`: the C# field **and** the value in the DeveloperConfig
+- [x] Add `DeveloperConfig.VrInteractionBackend { Hvr, Xri }`: the C# field **and** the value in the DeveloperConfig
   asset (see the `feature-checklist` skill). Default `Hvr` while HVR is installed, `Xri` otherwise.
+  (1a: enum `Gothic.Core.Models.Context.VrInteractionBackend` (`Hvr = 0`, `Xri = 1`); `Production.asset` and
+  `Lab.HVR.Simulator.asset` set to `Hvr`. "Xri otherwise" is a runtime fallback: `VRContextBootstrap.SelectBackend()`
+  returns the XRI backend when `Hvr` is requested but `GOTHIC_HVR_INSTALLED` is missing, with a warning.
+  `ReflexVRSceneInstaller` and `VRContextBootstrap` both call `SelectBackend(DeveloperConfig)`; it can't return
+  null any more. `XriBackend` registers `XriInput`, `XriHaptics`, `XriSfxPlayer` (minimal `PlayClipAtPoint`, no
+  pool) and a placeholder `XriUiPointers` that only warns until 1c. Without an `IVrRig` on the player,
+  `SetupPlayerController` now fails with a clear error instead of a NullReferenceException.)
 - `Player.unity` (and `Lab.unity`) contain both rigs, disabled. `VRContextInteractionService.SetupPlayerController`
   enables the one matching the backend (today it already enables `transform.parent.parent`).
 - The Xri backend files carry no define, since XRI is free and always installed. The Hvr backend stays behind
@@ -87,12 +100,35 @@ Start from the Starter Assets actions and add Gothic actions per hand:
 `XriInput : IVrInput` reads the actions and keeps a `VrButtonState` per hand/button (pressed this frame / held /
 released this frame). `IsSimulator` is true when the simulator is active.
 
+- [x] Done in 1a. `GothicVR.inputactions` = the Starter Assets actions (without the mobile-AR maps "Touchscreen
+  Gestures" and "Android Mouse Interaction") plus three own maps:
+  - `Gothic Left` / `Gothic Right`: `Grip`, `Trigger`, `Primary`, `Secondary`, `Menu`, `Joystick Button` (bound via
+    the generic `<XRController>{Hand}/{Usage}` paths, order = `VrButton`), `Velocity` (`deviceVelocity` or
+    `devicePose/velocity`, for swimming) and `Haptic` (pass-through on the device, for `XriHaptics`).
+  - `Gothic`: `Menu`, `Jump`, `Crouch`, `Sprint` with the controller bindings and simulator keys from the table.
+    Read by the XRI rig via `XriInput.GetGothicAction(XriGothicAction)`. The keyboard bindings are always active
+    (not only in the simulator); 1d should check them against the simulator's own keys. Vive trackpad-up crouch is
+    not bound.
+  - BothGrips and SkipVideo stay derived in `VRPlayer` / `VRCinema` from `IVrInput.GetButton`, no own actions.
+  - `XriInput` enables only the three `Gothic*` maps. The `XRI *` maps are left for the rig's components (1b),
+    e.g. via an `InputActionManager` on the rig.
+  - `VrButtonState` comes from `InputAction.IsPressed()` / `WasPressedThisFrame()` / `WasReleasedThisFrame()`.
+  - `IsSimulator` / `SetDeviceSimulatorActive` look for an `XRInteractionSimulator` in the active scene (warning if
+    missing until 1d).
+
 ## Haptics
 
 `XriHaptics : IVrHaptics` uses one `HapticImpulsePlayer` per controller. Map the presets from `VrHapticsService`
 (amplitude/duration/frequency as today: Info 0.15/0.25/30, Warning 0.25/0.5/100, Error 0.4/0.8/175,
 Success 0.5/0.6/80). Note: HVR's `HapticData(duration, amplitude, frequency)` argument order. Check it and keep the
 same perceived strength.
+
+- [x] Done in 1a. Checked: `HapticData`'s constructor is `(duration, amplitude, frequency)`, so the values listed
+  above (written as amplitude/duration/frequency in `HvrHaptics`) were really sent as amplitude 0.25/0.5/0.8/0.6 and
+  duration 0.15/0.25/0.4/0.5 s. `XriHaptics` sends exactly those (frequencies unchanged), so perceived strength stays
+  the same. The `HvrHaptics` comment is misleading but left untouched (Hvr backend unchanged).
+  Deviation: no `HapticImpulsePlayer` component; `XriHaptics` builds an `XRInputHapticImpulseProvider` per hand
+  from the `Gothic Left/Right/Haptic` actions (what the player does internally), so it needs nothing on the rig.
 
 ## UI
 

@@ -147,6 +147,11 @@ namespace Gothic.Core
         /// NpcContainer - the hero, who just got knocked out (BodyState is already BsUnconscious)
         /// </summary>
         public static readonly UnityEvent<NpcContainer> HeroKnockedOut = new();
+        /// <summary>
+        /// NpcContainer - the hero, finished off (AI_FinishingMove) - BodyState is already BsDead
+        /// (DeveloperConfig.EnableHeroDeath and the "heroDeath" option).
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer> HeroDied = new();
 
         /// <summary>
         /// Daedalus Npc_RemoveInvItem(s) only (not our own VR inventory syncs).

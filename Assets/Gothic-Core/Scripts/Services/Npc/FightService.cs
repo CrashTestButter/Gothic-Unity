@@ -1018,6 +1018,11 @@ namespace Gothic.Core.Services.Npc
         private void OnFinishingMove(NpcContainer attacker, NpcContainer target)
         {
             var isHero = target.PrefabProps != null && target.PrefabProps.IsHero();
+            if (isHero && IsHeroDeathOn())
+            {
+                OnHeroDied(target, attacker);
+                return;
+            }
             if (isHero)
             {
                 // No respawn system yet — treat as extended knockout so the player can reload.
@@ -1033,9 +1038,42 @@ namespace Gothic.Core.Services.Npc
             OnNpcDied(target, attacker);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableHeroDeath + the "heroDeath" option (Immersion menu, on by default): an NPC finishing
+        /// the knocked out hero off kills him like in Gothic. Off: he only stays knocked out.
+        /// </summary>
+        private bool IsHeroDeathOn()
+        {
+            return _configService.Dev.EnableHeroDeath &&
+                   _configService.Gothic.GetInt(Constants.IniNames.HeroDeath, 1) == 1;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableHeroDeath: like the engine (OpenGothic Npc::finishingMove - hit points 0, then
+        /// PERC_ASSESSMURDER). The hero stays locked; the VR body falls dead and the menu opens (VRHeroBody).
+        /// </summary>
+        private void OnHeroDied(NpcContainer hero, NpcContainer attacker)
+        {
+            if (hero.Props.BodyState == VmGothicEnums.BodyState.BsDead)
+                return;
+
+            hero.Props.BodyState = VmGothicEnums.BodyState.BsDead;
+            hero.Vob.SetAttribute((int)NpcAttribute.HitPoints, 0);
+            hero.Instance.SetAttribute(NpcAttribute.HitPoints, 0);
+            _contextInteractionService.LockPlayerInPlace(_configService.Dev.EnableKnockoutTurning);
+            Logger.LogWarning($"[FightService] Hero finished off by {attacker.Instance.GetName(NpcNameSlot.Slot0)} - " +
+                              "DEAD", LogCat.Fight);
+
+            BroadcastDownPerception(hero, attacker, VmGothicEnums.PerceptionType.AssessMurder);
+            GlobalEventDispatcher.HeroDied.Invoke(hero);
+        }
+
         private IEnumerator KnockoutRecovery(NpcContainer hero)
         {
             yield return new WaitForSeconds(10f);
+            // Finished off in the meantime (EnableHeroDeath) - the dead don't stand up.
+            if (hero.Props.BodyState == VmGothicEnums.BodyState.BsDead)
+                yield break;
             hero.Props.BodyState = VmGothicEnums.BodyState.BsStand;
             _contextInteractionService.UnlockPlayer();
             Logger.Log("[FightService] Hero recovered from knockout", LogCat.Fight);

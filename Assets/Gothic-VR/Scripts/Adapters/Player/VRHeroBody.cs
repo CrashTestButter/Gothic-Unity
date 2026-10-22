@@ -4,6 +4,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Npc;
@@ -33,6 +34,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VRPlayerService _vrPlayerService;
         [Inject] private readonly VRTransformService _vrTransformService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
+        [Inject] private readonly ConfigService _configService;
 
         private const float _torsoBackOffset = 0.15f;
         private const float _hiddenBoneScale = 0.001f;
@@ -90,6 +92,28 @@ namespace Gothic.VR.Adapters.Player
         private const string _walkBackAnimation = "S_WALKBL";
         private const string _fallAnimation = "S_FALLDN";
 
+        // DeveloperConfig.EnableHeroFallCamera: knocked out / dead body and camera (UpdateDown).
+        private enum DownPhase
+        {
+            None,
+            Knockout,
+            Dead,
+            Rising
+        }
+
+        private const float _downFloorMargin = 0.03f;
+        private const float _minDownEyeHeight = 0.2f;
+        private const float _deathMenuDelay = 4f;
+        private DownPhase _downPhase;
+        private readonly Queue<string> _downAnimations = new();
+        private string _downAnimation;
+        private Vector3 _downForward;
+        private float _downBaseCameraOffset;
+        private float _downStartEyeHeight = -1f;
+        private float _deathTime;
+        private bool _isDeathMenuOpened;
+        private Transform[] _bodyBones;
+
 
         /// <summary>
         /// The body's skinned mesh - spell effects with shpType MESH emit from it (teleport silhouette).
@@ -114,7 +138,158 @@ namespace Gothic.VR.Adapters.Player
 
         private void OnDestroy()
         {
+            EndDown();
             DestroyCreatedMeshes();
+        }
+
+        private void OnDisable()
+        {
+            EndDown();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableHeroFallCamera: knocked out (BsUnconscious) or dead (BsDead) the body falls on its back
+        /// (T_STAND_2_WOUNDEDB, S_WOUNDEDB / T_DEADB, S_DEADB) and stands up again (T_WOUNDEDB_2_STAND). The camera
+        /// follows the animated head down and up - only its height (HVRCameraRig.CameraYOffset, like a transformation);
+        /// the body lies out from under it, so the view never moves sideways and where you look stays yours. Dead, the
+        /// game menu opens after a moment (load a save, like Gothic). True while it drives the body.
+        /// </summary>
+        private bool UpdateDown(NpcContainer hero, Transform head, float feetY)
+        {
+            var bodyState = hero.Props.BodyState;
+            var isDown = bodyState is VmGothicEnums.BodyState.BsUnconscious or VmGothicEnums.BodyState.BsDead;
+            if (!_configService.Dev.EnableHeroFallCamera || _animator == null || !_animator.IsValid ||
+                _headBone == null || _standingScale <= 0f)
+            {
+                EndDown();
+                return false;
+            }
+
+            if (_downPhase == DownPhase.None)
+            {
+                if (!isDown)
+                    return false;
+                StartDown(head);
+            }
+
+            if (bodyState == VmGothicEnums.BodyState.BsDead && _downPhase != DownPhase.Dead)
+            {
+                SetDownAnimations(_downPhase == DownPhase.Knockout
+                    ? new[] { "T_WOUNDEDB_2_DEADB", "S_DEADB" }
+                    : new[] { "T_DEADB", "S_DEADB" });
+                _downPhase = DownPhase.Dead;
+                _deathTime = Time.time;
+            }
+            else if (bodyState == VmGothicEnums.BodyState.BsUnconscious && _downPhase == DownPhase.Rising)
+            {
+                SetDownAnimations("T_STAND_2_WOUNDEDB", "S_WOUNDEDB");
+                _downPhase = DownPhase.Knockout;
+            }
+            else if (!isDown && _downPhase == DownPhase.Knockout)
+            {
+                SetDownAnimations("T_WOUNDEDB_2_STAND");
+                _downPhase = DownPhase.Rising;
+            }
+
+            if (_downAnimation != null && _animator.IsDone(_downAnimation) && _downAnimations.Count > 0)
+            {
+                _downAnimation = _downAnimations.Dequeue();
+                _animator.Play(_downAnimation);
+            }
+            if (_downPhase == DownPhase.Rising && (_downAnimation == null || _animator.IsDone(_downAnimation)))
+            {
+                EndDown();
+                return false;
+            }
+
+            // The pose: the body keeps its size and direction, lies on the floor (lowest bone), the head under the eyes.
+            var scale = _standingScale;
+            _body.transform.localScale = Vector3.one * scale;
+            _body.transform.SetPositionAndRotation(new Vector3(head.position.x, feetY, head.position.z),
+                Quaternion.LookRotation(_downForward));
+            _animator.Update(Time.deltaTime);
+
+            if (_bodyBones == null || _bodyBones.Length == 0 || _bodyBones[0] == null)
+                _bodyBones = _body.GetComponentsInChildren<Transform>();
+            var lowestY = float.MaxValue;
+            foreach (var bone in _bodyBones)
+            {
+                if (bone != null && bone != _body.transform)
+                    lowestY = Mathf.Min(lowestY, bone.position.y);
+            }
+            var headPosition = _headBone.position;
+            _body.transform.position += new Vector3(head.position.x - headPosition.x,
+                lowestY < float.MaxValue ? feetY + _downFloorMargin * scale - lowestY : 0f,
+                head.position.z - headPosition.z);
+
+            // The eyes go with the animated head, relative to where they were when he fell.
+            var eyeHeight = _headBone.position.y + _neckBelowEyes * scale - feetY;
+            if (_downStartEyeHeight < 0f)
+                _downStartEyeHeight = eyeHeight;
+            var rig = _playerController != null ? _playerController.CameraRig : null;
+            if (rig != null)
+                rig.CameraYOffset = _downBaseCameraOffset +
+                                    Mathf.Max(eyeHeight, _minDownEyeHeight) - _downStartEyeHeight;
+
+            _leftArm.Solve(_vrPlayerService.GetHandModelGo(HVRHandSide.Left), _body.transform);
+            _rightArm.Solve(_vrPlayerService.GetHandModelGo(HVRHandSide.Right), _body.transform);
+
+            if (_downPhase == DownPhase.Dead && !_isDeathMenuOpened && Time.time - _deathTime >= _deathMenuDelay)
+            {
+                _isDeathMenuOpened = true;
+                var menu = _playerController != null ? _playerController.MenuHandler : null;
+                if (menu != null && !menu.gameObject.activeSelf)
+                    menu.ToggleVisibility();
+                Logger.Log("[VRHeroBody] Hero is dead - game menu opened", LogCat.VR);
+            }
+            return true;
+        }
+
+        private void StartDown(Transform head)
+        {
+            _downForward = Vector3.ProjectOnPlane(_body.transform.forward, Vector3.up);
+            if (_downForward.sqrMagnitude < 0.0001f)
+                _downForward = Vector3.ProjectOnPlane(head.forward, Vector3.up);
+            _downForward = _downForward.sqrMagnitude < 0.0001f ? Vector3.forward : _downForward.normalized;
+
+            var rig = _playerController != null ? _playerController.CameraRig : null;
+            _downBaseCameraOffset = rig != null ? rig.CameraYOffset : 0f;
+            _downStartEyeHeight = -1f;
+            _isDeathMenuOpened = false;
+            _bodyBones = null;
+            _downPhase = DownPhase.Knockout;
+            SetDownAnimations("T_STAND_2_WOUNDEDB", "S_WOUNDEDB");
+            Logger.Log("[VRHeroBody] Hero down - body falls, camera follows its head", LogCat.VR);
+        }
+
+        private void SetDownAnimations(params string[] animations)
+        {
+            _downAnimations.Clear();
+            foreach (var animation in animations)
+            {
+                if (_animator.HasAnimation(animation))
+                    _downAnimations.Enqueue(animation);
+            }
+            _downAnimation = _downAnimations.Count > 0 ? _downAnimations.Dequeue() : null;
+            if (_downAnimation != null)
+                _animator.Play(_downAnimation);
+        }
+
+        /// <summary>
+        /// Back to the normal body; the camera height as before the fall.
+        /// </summary>
+        private void EndDown()
+        {
+            if (_downPhase == DownPhase.None)
+                return;
+
+            _downPhase = DownPhase.None;
+            _downAnimation = null;
+            _downAnimations.Clear();
+            var rig = _playerController != null ? _playerController.CameraRig : null;
+            if (rig != null)
+                rig.CameraYOffset = _downBaseCameraOffset;
+            Logger.Log("[VRHeroBody] Hero up again - camera height restored", LogCat.VR);
         }
 
         private void LateUpdate()
@@ -148,6 +323,8 @@ namespace Gothic.VR.Adapters.Player
 
             _playerController ??= _contextInteractionService.GetCurrentPlayerController()?.GetComponent<VRPlayerController>();
             var feetY = _playerController != null ? _playerController.transform.position.y : head.position.y - _modelHeadHeight;
+            if (UpdateDown(hero, head, feetY))
+                return;
             // Crouching (sneaking) lowers the head, not the body size - keep the standing scale then.
             var isCrouching = _playerController != null && _playerController.IsCrouching;
             if (!isCrouching || _standingScale <= 0f)

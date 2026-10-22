@@ -87,6 +87,8 @@ namespace Gothic.Core.Const
             public const string HitNumbersSize = "hitNumbersSize";
             // Choice 0 Low / 1 Medium / 2 High: how often moving lights (torch, Light spell) update the world shader.
             public const string LightRefresh = "lightRefresh";
+            // 1 (default) = an NPC finishing off the knocked out hero kills him like in Gothic, 0 = only knocked out.
+            public const string HeroDeath = "heroDeath";
             public const float HitNumbersMaxScale = 3f;
         }
 

@@ -81,6 +81,17 @@ namespace Gothic.VR.Adapters.Player
 
         public bool HasAnimation(string animationName) => GetTrack(animationName) != null;
 
+        /// <summary>
+        /// The animation is the current one and played to its end (a one-shot like T_STAND_2_WOUNDEDB holds its last
+        /// frame then).
+        /// </summary>
+        public bool IsDone(string animationName)
+        {
+            var track = GetTrack(animationName);
+            return track != null && _layers.Count > 0 && _layers[^1].Track == track && !track.IsLooping &&
+                   _layers[^1].Time >= track.Duration;
+        }
+
         private AnimationTrack GetTrack(string animationName) =>
             animationName == null ? null : _animationService.GetTrack(animationName, _mdsBase, MdsOverlay);
 

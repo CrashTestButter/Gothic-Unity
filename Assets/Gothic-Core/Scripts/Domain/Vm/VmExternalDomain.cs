@@ -476,6 +476,13 @@ namespace Gothic.Core.Domain.Vm
             if (target.Props.BodyState == VmGothicEnums.BodyState.BsDead) return;
 
             Logger.Log($"[VmExternalDomain.AI_FinishingMove] {self.GetName(NpcNameSlot.Slot0)} executes {other.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
+
+            // DeveloperConfig.EnableEngineFinishingMove: queued like the engine - walk there, turn, the finishing stab.
+            if (_configService.Dev.EnableEngineFinishingMove)
+            {
+                _npcAiService.ExtAiFinishingMove(self, other);
+                return;
+            }
             GlobalEventDispatcher.FightFinishingMove.Invoke(attacker, target);
         }
 

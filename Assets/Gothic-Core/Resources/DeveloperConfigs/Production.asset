@@ -291,6 +291,9 @@ MonoBehaviour:
   EnableLevelChangeSpawnFallback: 1
   EnableHlpGetNpcVariables: 1
   EnableHeroDefeatedAivar: 1
+  EnableEngineFinishingMove: 1
+  EnableHeroDeath: 1
+  EnableHeroFallCamera: 1
   EnableThrowRuneOneHand: 1
   EnableVrFists: 1
   EnableModelScale: 1

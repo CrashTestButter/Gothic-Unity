@@ -1171,6 +1171,18 @@ namespace Gothic.Core.Models.Config
                  "Tajemnice's Sheer'Ghar won the duel and had nothing to say afterwards.")]
         public bool EnableHeroDefeatedAivar = true;
 
+        [Tooltip("V1: AI_FinishingMove like the engine - the NPC walks to the unconscious target, turns, draws a melee " +
+                 "weapon and plays t_1hSFinish/t_2hSFinish; the target dies with the stab. Before, it died at once.")]
+        public bool EnableEngineFinishingMove = true;
+
+        [Tooltip("V1: An NPC finishing off the knocked out hero kills him like in Gothic (the 'Death' option in the " +
+                 "Immersion menu can turn it off - then he only stays knocked out).")]
+        public bool EnableHeroDeath = true;
+
+        [Tooltip("V1 (VR): Knocked out / dead, the VR hero body falls (T_Stand_2_WoundedB, T_DeadB) and the camera goes " +
+                 "down with its head and up again when he stands up - where you look is never taken from you.")]
+        public bool EnableHeroFallCamera = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

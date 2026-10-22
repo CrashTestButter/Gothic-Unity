@@ -291,6 +291,32 @@ namespace Gothic.Core.Services.Npc
                 npcContainer));
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableEngineFinishingMove: AI_FinishingMove like OpenGothic's AiQueue - beyond
+        /// NPC_ATTACK_FINISH_DISTANCE (180 cm) walk to the target, turn to it, a melee weapon drawn (our knockout puts
+        /// it away early: FightService.OnHeroKnockedOut), then the finishing stab (FinishingMove).
+        /// </summary>
+        public void ExtAiFinishingMove(NpcInstance self, NpcInstance other)
+        {
+            var container = self.GetUserData();
+            var target = other?.GetUserData();
+            if (container?.Go == null || target?.Go == null)
+                return;
+
+            var finishDistance = (_gameStateService.GothicVm.GetSymbolByName("NPC_ATTACK_FINISH_DISTANCE")?.GetInt(0) ??
+                                  _defaultFinishDistanceCm) / 100f;
+            if (Vector3.Distance(container.Go.transform.position, target.Go.transform.position) > finishDistance)
+                ExtAiGoToNpc(self, other);
+            ExtAiTurnToNpc(self, other);
+            if ((VmGothicEnums.WeaponState)container.Vob.FightMode is not (VmGothicEnums.WeaponState.W1H or
+                VmGothicEnums.WeaponState.W2H))
+                ExtAiDrawWeapon(self);
+
+            container.Props.AnimationQueue.Enqueue(new FinishingMove(new AnimationAction(instance0: other), container));
+        }
+
+        private const int _defaultFinishDistanceCm = 180;
+
         public void ExtAiGoToNpc(NpcInstance self, NpcInstance other)
         {
             if (other == null)

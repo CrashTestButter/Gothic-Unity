@@ -329,7 +329,7 @@ namespace Gothic.VR.Adapters.Player
                 });
 
                 vobContainer.Go.GetComponentInChildren<Rigidbody>().isKinematic = false; // Get rid of isKinematic warnings as the Grab is done "physically".
-                _socketContainer.TryAdd(vobContainer.Go.GetComponentInChildren<VrInteractable>());
+                _socketContainer.TryPlace(vobContainer.Go.GetComponentInChildren<VrInteractable>());
             }
         }
 

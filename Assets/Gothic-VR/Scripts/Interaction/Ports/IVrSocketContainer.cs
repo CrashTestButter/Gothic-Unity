@@ -16,8 +16,14 @@ namespace Gothic.VR.Interaction.Ports
         bool TryFindFree(VrInteractable interactable, out IVrSocket socket);
 
         /// <summary>
-        /// Places the interactable into the first free socket which accepts it (with sound).
+        /// Places the interactable into the first free socket which accepts it.
         /// </summary>
-        bool TryAdd(VrInteractable interactable);
+        /// <param name="silent">If true, no "placed" sound is played.</param>
+        bool TryPlace(VrInteractable interactable, bool silent = false);
+
+        /// <summary>
+        /// While silent, the sockets play no placed/removed sounds (e.g. while spawning the content of a chest).
+        /// </summary>
+        void SetSilent(bool isSilent);
     }
 }

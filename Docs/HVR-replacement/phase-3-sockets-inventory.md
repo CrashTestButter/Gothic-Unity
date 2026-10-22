@@ -5,6 +5,10 @@
 
 **Size:** L (2-3 weeks) · **Depends on:** Phases 0-2 · **Parallel with:** Phase 4
 
+Split into three PRs: **3a** socket core (slot, container, hover feedback, drop zone, XRI bridge, prefab and assets,
+PlayMode test), **3b** backpack + shoulder socket + hip holsters + HeadRelativeInventory on the XRI rig, **3c** chests
+(VrChestSlots, drop zone) + NPC loot.
+
 ## Exit criteria
 
 - [ ] Backpack: grab from the shoulder, browse categories/pages, take items out, put items in; the inventory and the
@@ -81,17 +85,33 @@ as HVR's head-relative inventory). `VRBackpack.OnItemPutIntoHolster/OutOfHolster
 
 ## Work items
 
-- [ ] `VrSocketSlot`, `VrSocketContainer`, `VrSocketHoverFeedback`, `VrContainerDropZone` (backend-neutral).
-- [ ] `XriSocketBridge`, filter, attach override.
-- [ ] Move the logic of `VRSocket` / `VRShoulderSocket` into `VrSocketSlot`. The HVR versions stay in
-      `Backends/Hvr` until Phase 6.
+- [x] `VrSocketSlot`, `VrSocketContainer`, `VrSocketHoverFeedback`, `VrContainerDropZone` (backend-neutral). (3a)
+      `VrSocketSlot` implements `IVrSocket` itself; its backend part is the new port `IVrSocketBackend` (same
+      GameObject, reports back via `VrSocketSlot.OnBackend*`). Programmatic `TryPlace` attaches and raises the events
+      synchronously (like HVR's `TryGrab`), the backend selection may follow a frame later (items enable their XRI
+      interactable in `Start`). Additionally to the spec: the item is centered on the attach point by its bounds,
+      the grabbable child is reset to its VobLoader's origin, the Rigidbody is kinematic inside and restored on
+      removal. Per-item socket sounds now live on `VrInteractable` (`SocketedSound`/`UnsocketedSound`), so
+      `XriInteractableBridge.SetSocketSounds` has nothing to do. `IVrSocketContainer.TryAdd` became
+      `TryPlace(interactable, silent = false)` + `SetSilent(bool)` (HVR bridge: nulls/restores fallback clips).
+- [x] `XriSocketBridge`, filter, attach override. (3a) Accepts only Gothic items (`VrSocketSlot.IsItem`: VobLoader
+      of an oCItem) and only while a hand holds them or within 0.5 s after a hand released them (items lying next
+      to a slot are never pulled in). Socket snapping, XRI's scale mode and hover meshes are off;
+      `GothicGrabInteractable` doesn't process (move) itself and doesn't unparent while only a socket selects it,
+      and a hand grab first releases the item from the socket (HVR order). Disabled in the prefab, enables itself
+      on the Xri backend only.
+- [x] Move the logic of `VRSocket` / `VRShoulderSocket` into `VrSocketSlot`. The HVR versions stay in
+      `Backends/Hvr` until Phase 6. (3a; `HvrSocket` now uses `VrSocketSlot.GetCategoryRotation`, same table.)
 - [ ] `VRBackpack`: uses `IVrSocketContainer` (already after Phase 0), handles page refresh with
       `TryPlace(…, raiseEvents: false)` instead of `_tempIgnoreSocketing` if possible.
 - [ ] `VRVobContainerPhysicsChest`: split into `VrChestLid` (Phase 4) + `VrChestSlots` (this phase: resize slots to the
       chest mesh, as today's `AlignSockets` logic, bulk spawn silently, pagination still TODO as logged today).
 - [ ] `VRNpcLoot`: create `VrSocketSlot`s at runtime instead of `HVRSocket`s; `Removed` → `OnItemTakenFromLoot`.
 - [ ] `VRVobContainerSocketInventory`: subscribe to container events.
-- [ ] **Assets (UnityMCP):** new `VR Socket Slot.prefab` (replaces `VRBackpack(Large)InventorySlot` + HVR's
+- [ ] **Assets (UnityMCP):** (3a done: `Resources/VR/Prefabs/Player-Elements/VR Socket Slot.prefab` - slot,
+      XriSocketBridge, sphere trigger r=0.07, hover feedback, GameObjectSelfInjector; `Gothic-VR/Meshes/SocketRing.asset`
+      procedural torus; `Gothic-VR/Materials/SocketRing(-Valid/-Invalid).mat` URP Unlit transparent. Rest: 3b/3c)
+      new `VR Socket Slot.prefab` (replaces `VRBackpack(Large)InventorySlot` + HVR's
       `LargeInventorySlot` / `SocketOval`), ring mesh (simple torus, our own) + `SocketRing/Valid/Invalid` URP materials,
       add slots to `oCMobContainer.prefab` and the backpack prefab, shoulder + hip anchors on the XRI rig.
 - [ ] Remove `GUZ-VR-Socketables.asset` usage on the Xri path (keep the file until Phase 6).
@@ -108,6 +128,10 @@ as HVR's head-relative inventory). `VRBackpack.OnItemPutIntoHolster/OutOfHolster
 6. Take an item, put it back by dropping it into the open chest.
 7. Kill a bandit, loot: equipped weapon shows `[E]`, taking it removes the weapon mesh from the corpse.
 8. Hover an item over a full slot → invalid feedback; over a free slot → valid.
+
+PlayMode test (3a, no Gothic install needed): `Gothic-Tests/PlayMode/VrSocketSlotTest.cs` checks the VobLoader
+hierarchy, scale-to-fit, centering and kinematic state after place/remove without backend and on XRI (programmatic
+place, slot moved, ForceRelease, a hand interactor taking the item out).
 
 ## Risks
 

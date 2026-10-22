@@ -29,6 +29,12 @@ namespace Gothic.VR.Interaction.Components
         /// </summary>
         public bool IsHeld => Backend != null && Backend.IsHeld;
 
+        /// <summary>
+        /// A grab only "uses" the object (talk, use a mob) and doesn't hold it.
+        /// See IVrInteractableBackend.IsSelectOnly.
+        /// </summary>
+        public bool IsSelectOnly => Backend != null && Backend.IsSelectOnly;
+
         public IReadOnlyList<Collider> Colliders => Backend != null ? Backend.Colliders : Array.Empty<Collider>();
 
         private IVrInteractableBackend Backend

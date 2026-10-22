@@ -13,8 +13,9 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Interaction.Backends.Xri
 {
     /// <summary>
-    /// Sits next to an XRI interactable (GothicGrabInteractable for items) and its VrInteractable. Forwards XRI's
-    /// hover/select events synchronously to the VrInteractable and executes its commands on the interactable.
+    /// Sits next to an XRI interactable (GothicGrabInteractable for items, XRSimpleInteractable for mobs and NPCs)
+    /// and its VrInteractable. Forwards XRI's hover/select events synchronously to the VrInteractable and executes
+    /// its commands on the interactable.
     ///
     /// Prefabs carry the components of both backends. The XRI interactable is disabled in the prefab and only this
     /// bridge enables it, if XRI is the active backend. Otherwise, it stays disabled and never looks for (or
@@ -34,6 +35,11 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         public bool IsActive => _vrBackend is XriBackend;
         public bool IsHeld => _xrInteractable != null && _xrInteractable.isSelected;
+
+        /// <summary>
+        /// Mobs and NPCs carry an XRSimpleInteractable (select = use/talk), items a GothicGrabInteractable.
+        /// </summary>
+        public bool IsSelectOnly => _xrInteractable != null && _xrInteractable is not XRGrabInteractable;
 
         public IReadOnlyList<Collider> Colliders => _xrInteractable != null
             ? _xrInteractable.colliders

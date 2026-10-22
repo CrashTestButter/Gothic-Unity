@@ -13,6 +13,12 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-22: main merged - lighting and videos
+
+- `main`'s lighting (PR #400) and Bink videos (PR #401) are in. Caves, houses and the night look as before; the
+  video cinema, its skip label and the return to the menu after the ending still work.
+- Known: in mines the VR hands are black (indoor darkness + hand lighting) - left as is, HVR is about to be replaced.
+
 ## 2026-10-18 (late night): plundering, dialogs, menu pointer
 
 - A guard who knocked you out takes half your ore (he said you had none).

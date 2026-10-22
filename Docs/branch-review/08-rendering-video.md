@@ -4,6 +4,12 @@
 
 ## What changed
 
+> **2026-10-22: main's PR #400 (lighting) and PR #401 (Bink) merged** ([merge notes](merge-2026-10-22.md)). The base is
+> main's now: every world light pooled, night from Gothic's sky colors, `BinkPlaybackDomain`, the prefab cinema fed by
+> `VRCinemaService`. On top of it from this branch: the dynamic light slot 0 (torch, Light spell), world lightmaps and
+> VOB world light, indoor darkness, the cinema's skip label, spectator camera and return to the menu after the ending,
+> stereo instancing for the video shader.
+
 **Lights**
 - Static lights in light mapped areas (caves, huts) light the walls — Gothic used lightmaps there, which we don't
   render. Light mapped polygons are marked while building the world mesh.
@@ -89,10 +95,12 @@
 
 ## Config flags
 
-`EnableStaticLightsInLightMappedAreas`, `StaticLightPoolSize`, `EnablePooledStationaryLights`,
-`StationaryLightMaxDistance`, `StationaryLightPoolRefreshSeconds`, `EnableDayNightWorldLight`,
-`DayNightLightStrength`, `EnableAnimationPfx`, `EnablePfxMinimumEmission`, `EnablePfxFullRateLoops`,
-`EnableWldPlayEffect`, `EnableScriptVideos`, `EnableCinemaSkipHint`.
+`EnableAnimationPfx`, `EnablePfxMinimumEmission`, `EnablePfxFullRateLoops`, `EnableWldPlayEffect`,
+`EnableCinemaSkipHint`.
+
+Removed with the 2026-10-22 merge (always on in main / constants): `EnableStaticLightsInLightMappedAreas`,
+`StaticLightPoolSize`, `EnablePooledStationaryLights`, `StationaryLightMaxDistance`,
+`StationaryLightPoolRefreshSeconds`, `EnableDayNightWorldLight`, `DayNightLightStrength`, `EnableScriptVideos`.
 
 2026-10-10/11: —
 
@@ -107,6 +115,8 @@
 
 - ✅ Shader loops are unchanged (still max 32 lights per renderer); the pool only decides *which* lights get slots.
 - ✅ Bink decoder is self-contained, no Unity dependency, licensed and attributed (see its `README.md`).
+- ⚠️ In indoor worlds (mines) the VR hands are black with `EnableIndoorWorldDarkness` - not fixed, the HVR hands
+  are about to be replaced.
 - ⚠️ **Mobile untested.** 512 slots, the decoder thread and the extra light work need a Quest/Pico run.
 - ⚠️ Lights are still assigned to renderers once at creation (existing limitation): lazily loaded VOB meshes are
   not lit by lights that were already active.

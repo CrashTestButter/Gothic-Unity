@@ -8,9 +8,9 @@ using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Player;
 using Gothic.VR.Domain.Player;
 using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Models.Vob;
 using Gothic.Core.Extensions;
-using HurricaneVR.Framework.Core.Utils;
 using Reflex.Attributes;
 using UnityEngine;
 
@@ -28,6 +28,7 @@ namespace Gothic.VR.Services
 
         [Inject] private AudioService _audioService;
         [Inject] private PlayerService _playerService;
+        [Inject] private IVrSfxPlayer _vrSfxPlayer;
 
         private readonly VrWeaponAttackDomain _firstAttackDomain = new VrWeaponAttackDomain().Inject();
         private readonly VrWeaponAttackDomain _secondAttackDomain = new VrWeaponAttackDomain().Inject();
@@ -74,11 +75,11 @@ namespace Gothic.VR.Services
             {
                  case VmGothicEnums.ItemMaterial.Metal:
                      var clipMetal = _audioService.CreateAudioClip(DaedalusConst.SoundDrawMetal);
-                     SFXPlayer.Instance.PlaySFX(clipMetal, weapon.Go.transform.position);
+                     _vrSfxPlayer.Play(clipMetal, weapon.Go.transform.position);
                      break;
                  case VmGothicEnums.ItemMaterial.Wood:
                      var clipWood = _audioService.CreateAudioClip(DaedalusConst.SoundDrawWood);
-                     SFXPlayer.Instance.PlaySFX(clipWood, weapon.Go.transform.position);
+                     _vrSfxPlayer.Play(clipWood, weapon.Go.transform.position);
                      break;
                  // All others will be ignored as they're e.g., a bow.
                  default:
@@ -95,11 +96,11 @@ namespace Gothic.VR.Services
             {
                 case VmGothicEnums.ItemMaterial.Metal:
                     var clipMetal = _audioService.CreateAudioClip(DaedalusConst.SoundUndrawMetal);
-                    SFXPlayer.Instance.PlaySFX(clipMetal, weapon.Go.transform.position);
+                    _vrSfxPlayer.Play(clipMetal, weapon.Go.transform.position);
                     break;
                 case VmGothicEnums.ItemMaterial.Wood:
                     var clipWood = _audioService.CreateAudioClip(DaedalusConst.SoundUndrawWood);
-                    SFXPlayer.Instance.PlaySFX(clipWood, weapon.Go.transform.position);
+                    _vrSfxPlayer.Play(clipWood, weapon.Go.transform.position);
                     break;
                 // All others will be ignored as they're e.g., a bow.
                 default:

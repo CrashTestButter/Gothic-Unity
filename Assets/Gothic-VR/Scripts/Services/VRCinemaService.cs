@@ -3,7 +3,7 @@ using Gothic.Core;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Adapters.Player;
 using Reflex.Attributes;
 using Logger = Gothic.Core.Logging.Logger;
 
@@ -35,7 +35,7 @@ namespace Gothic.VR.Services
             }
 
             var playerController = _contextInteractionService.GetCurrentPlayerController();
-            var cinema = playerController == null ? null : playerController.GetComponent<VRPlayerController>().Cinema;
+            var cinema = playerController == null ? null : playerController.GetComponent<VRPlayer>().Cinema;
             if (cinema == null)
             {
                 Logger.LogWarning($"[VRCinema] No cinema on the player - '{fileName}' skipped.", LogCat.VR);

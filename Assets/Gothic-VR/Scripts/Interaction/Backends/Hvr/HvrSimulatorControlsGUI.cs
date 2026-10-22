@@ -2,13 +2,13 @@
 using HurricaneVRExtensions.Simulator;
 using UnityEngine;
 
-namespace Gothic.VR.Adapters.HVROverrides
+namespace Gothic.VR.Interaction.Backends.Hvr
 {
     /// <summary>
     /// Overwritten to update some GUI elements.
     /// Unfortunately every method and property was private inside. We therefore need to overwrite everything.
     /// </summary>
-    public class VRSimulatorControlsGUI : HVRSimulatorControlsGUI
+    public class HvrSimulatorControlsGUI : HVRSimulatorControlsGUI
     {
         private HVRBodySimulator _vrBodySimulator;
         private HVRHandsSimulator _vrHandsSimulator;

@@ -1499,6 +1499,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2923976313076319325, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3523100539866759593}
+    - targetCorrespondingSourceObject: {fileID: 2923976313076319325, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 201725255711756182}
     - targetCorrespondingSourceObject: {fileID: 2923976313507361695, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}
       insertIndex: -1
       addedObject: {fileID: 3789326534228044634}
@@ -1905,9 +1908,6 @@ MonoBehaviour:
   MouseSensitivityX: 1
   IsGrounded: 0
   _actualVelocity: 0
-  MenuHandler: {fileID: 2192772470500779476}
-  Cinema: {fileID: 8331837288116874071}
-  _characterControllerSwimDiveStepHeight: 1
 --- !u!114 &6929123780788603430
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1975,25 +1975,6 @@ MonoBehaviour:
   UseWASD: 0
   IsMouseDown: 0
   MouseAxis: {x: 0, y: 0}
-  IsMenuActivated: 0
-  MenuState:
-    Active: 0
-    JustActivated: 0
-    JustDeactivated: 0
-    Value: 0
-  IsMenuButtonEnabled: 1
-  BothGripsActivatedState:
-    Active: 0
-    JustActivated: 0
-    JustDeactivated: 0
-    Value: 0
-  IsBothGripsActivated: 0
-  IsBothGripsActive: 0
-  BothGripsActiveState:
-    Active: 0
-    JustActivated: 0
-    JustDeactivated: 0
-    Value: 0
 --- !u!82 &4890979928761266796
 AudioSource:
   m_ObjectHideFlags: 0
@@ -2123,8 +2104,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4722222ff5b643658bd19ac210dbf94b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _playerController: {fileID: 1958783043908878430}
-  _playerInputs: {fileID: 6929123780788603430}
   _waterBobAmplitude: 0.001
   _waterBobFrequency: 2.5
   _swimStartDiveVerticalVelocity: -1
@@ -2167,8 +2146,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94f83c78c0664d83b28cbaed370379c1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _playerController: {fileID: 1958783043908878430}
-  _playerInputs: {fileID: 6929123780788603430}
   _leftHandModel: {fileID: 2989725703437136398}
   _rightHandModel: {fileID: 3179937809927698473}
   _leftHandRigidbody: {fileID: 7701449421344543976}
@@ -2202,6 +2179,22 @@ MonoBehaviour:
   - {fileID: 4383562423631724883}
   _onTopMaterial: {fileID: 2100000, guid: 0733e67100959404abf850e406e5cb05, type: 2}
   _onTopRenderQueue: 3950
+--- !u!114 &201725255711756182
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3469872688444955626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae71b0be15a534849b5249a3e671a43f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Adapters.Player.VRPlayer
+  MenuHandler: {fileID: 2192772470500779476}
+  Cinema: {fileID: 8331837288116874071}
+  SwimDiveStepHeight: 1
+  IsMenuButtonEnabled: 1
 --- !u!114 &3699890743539135334 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 3164866306463935697, guid: c43ac1b5fbd2fc24ea40fb28bae6be3e, type: 3}

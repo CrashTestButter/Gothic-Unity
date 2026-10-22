@@ -4,7 +4,6 @@ using Gothic.Core.Logging;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vobs;
-using Gothic.VR.Adapters.HVROverrides;
 using Gothic.VR.Services.Context;
 using Gothic.Core;
 using Gothic.Core.Services;
@@ -15,7 +14,6 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
-using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -34,8 +32,6 @@ namespace Gothic.VR.Services
 
         public VRContextInteractionService VRContextInteractionService =>
             _contextInteractionService.GetImpl<VRContextInteractionService>();
-
-        public VRPlayerInputs VRPlayerInputs => VRContextInteractionService.GetVRPlayerInputs();
 
         public GameObject GrabbedItemLeft;
         public GameObject GrabbedItemRight;
@@ -136,26 +132,15 @@ namespace Gothic.VR.Services
         /// </summary>
         public void IgnorePlayerCollision(HVRGrabbable grabbable, bool ignore)
         {
-            var playerController = _contextInteractionService.GetCurrentPlayerController();
-            if (playerController == null)
+            var characterController = VRContextInteractionService.Rig?.CharacterController;
+            if (characterController == null)
                 return;
 
-            var characterController = playerController.GetComponent<VRPlayerController>().CharacterController;
             foreach (var itemCollider in grabbable.Colliders)
             {
                 if (itemCollider != null)
                     Physics.IgnoreCollision(characterController, itemCollider, ignore);
             }
-        }
-
-        public HVRController GetHand(HVRHandSide side)
-        {
-            if (side == HVRHandSide.Left)
-                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>()
-                    .LeftHand.Controller;
-            else
-                return _contextInteractionService.GetCurrentPlayerController().GetComponent<VRPlayerController>()
-                    .RightHand.Controller;
         }
 
         /// <summary>

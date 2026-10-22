@@ -109,7 +109,8 @@ sits next to it, translates framework events into `VrGrabArgs` and forwards them
 `ForceRelease()`, `TryFindFree(VrInteractable, out IVrSocket)`, `Placed` / `Removed` events, plus audio fallback
 clips. That covers everything `VRBackpack`, `VRNpcLoot` and `VRVobContainerPhysicsChest` call today.
 
-Registration: `IVrInput`, `IVrHaptics` and `IVrUiPointers` as Reflex singletons in `ReflexVRSceneInstaller`.
+Registration: `IVrInput`, `IVrHaptics`, `IVrUiPointers` and `IVrSfxPlayer` as Reflex singletons in
+`ReflexVRSceneInstaller`.
 `IVrRig` is resolved from the scene by `VRContextInteractionService.SetupPlayerController` and exposed through it
 (as `VRPlayerController` is today).
 
@@ -131,24 +132,28 @@ Split into four PRs so each one stays reviewable.
 
 ### PR 0b - Rig, input, haptics, UI ports
 
-- [ ] `IVrRig` ← implemented by `VRPlayerController` (moved to `Backends/Hvr/HvrRig.cs`, still subclassing
-      `HVRPlayerController`).
-- [ ] Callers switch from `VRPlayerController` to `IVrRig`: `VRContextInteractionService`, `VRSwimDive` (Gravity,
-      speeds, `CharacterController.Move`, hand transforms, `CameraRig` → `Root`, `ScreenFader` → `Fade`),
-      `VRSpectatorCamera` (`Teleporter.PositionUpdate` → `Teleported`), `VRCinema`, `VRCinemaService`,
-      `VRFollowCamera`, `VRPlaceInFrontOfCamera`, `SpeechToTextHandler`, `VRContextDialogService`,
-      `VRHandVelocityDebugger`.
-- [ ] `IVrInput` ← `HvrInput` (wraps `HVRController.GetButtonState`). `VRPlayerInputs` keeps its Gothic-specific
-      derived inputs (menu, both grips), but reads them through `IVrInput`. The simulator check moves to
-      `IVrInput.IsSimulator`.
-- [ ] `IVrHaptics` ← `HvrHaptics`. `VrHapticsService` keeps the event→preset mapping and calls the port.
-      `VRPlayerService.GetHand` goes away.
-- [ ] `IVrUiPointers` ← `HvrUiPointers` (`HVRInputModule.UICanvases`, `AddCanvas`, `RemoveCanvas`, `Pointers`).
-      Callers: `VRContextInteractionService.InitUIInteraction`, `OnMarvinLogoPoked`, `VirtualKeyboard`.
-- [ ] `VRSeat`: replace the `HVRCanvasFade` lookup with `IVrRig.Fade`.
-- [ ] `SFXPlayer` (HVR's one-shot audio pool, not covered above): `VRWeaponService`, `VrWeaponAttackDomain`,
-      `VRSwimDive` play positional SFX through it. Needs an own replacement (e.g. via `AudioService`) - it's the
-      only reason these files still have `using HurricaneVR.Framework.Core.Utils`.
+- [x] `IVrRig` ← `HvrRig` (was `VRPlayerController`, moved with its GUID, still subclassing
+      `HVRPlayerController`). Added to the sketch above: `TrackingSpace` (HVR's `CameraRig`; controller velocities
+      are relative to it, so it can't be `Root`) and `FadeAlpha` (`VRSeat` waits for the fade).
+- [x] Gothic logic left the HVR subclass: new `Adapters/Player/VRPlayer` (on the same GameObject, wired in
+      `HVR - Player.prefab`) holds `MenuHandler`, `Cinema`, the swim step height, `IsMenuButtonEnabled` and the
+      menu / both-grips inputs. Control modes (locked, walking, water, swim, dive) and the Gothic.ini comfort
+      settings moved to `VRContextInteractionService`, which exposes `Rig` and `Player`.
+- [x] Callers switch to `IVrRig`/`VRPlayer`: `VRContextInteractionService`, `VRSwimDive`, `VRSpectatorCamera`,
+      `VRCinema`, `VRCinemaService`, `VRFollowCamera`, `VRPlaceInFrontOfCamera`, `SpeechToTextHandler`,
+      `VRHandVelocityDebugger`, `VrWeaponAttackDomain`, `VRPlayerService.IgnorePlayerCollision`.
+      (`VRContextDialogService` only had "HVR" in a comment.)
+- [x] `IVrInput` ← `HvrInput`. `VRPlayerInputs` became `Backends/Hvr/HvrPlayerInputs` (only HVR's keyboard
+      overrides for jump/crouch/sprint). Swimming reads `Grip` button states (identical to HVR's
+      `IsLeftGrabActivated`/`IsLeftGripHoldActive`) plus the new `IVrInput.GetControllerVelocity`.
+      The device simulator toggle moved to `IVrInput.SetDeviceSimulatorActive`.
+- [x] `IVrHaptics` ← `HvrHaptics` (owns the preset table). `VRPlayerService.GetHand` is gone.
+- [x] `IVrUiPointers` ← `HvrUiPointers`. Callers: `VRContextInteractionService`, `VirtualKeyboard`.
+- [x] `VRSeat`: `IVrRig.Fade` / `FadeAlpha` instead of the `HVRCanvasFade` lookup; HVR's `FindChildRecursive`
+      replaced by our `FindChildRecursively`.
+- [x] `SFXPlayer`: new port `IVrSfxPlayer` ← `HvrSfxPlayer` (still HVR's pool from `HVRGlobal.prefab`; an own
+      pool is a later phase). Callers: `VRWeaponService`, `VrWeaponAttackDomain`, `VRSwimDive`.
+- [x] `VRSimulatorControlsGUI` moved to `Backends/Hvr/HvrSimulatorControlsGUI` (GUID kept).
 
 ### PR 0c - Grab and socket events
 

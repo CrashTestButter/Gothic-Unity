@@ -5,11 +5,10 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Models.Marvin;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
-using Gothic.VR.Interaction.Backends.Hvr;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Models.Vob;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -41,10 +40,38 @@ namespace Gothic.VR.Adapters.Player
         [SerializeField] private float _velocityCheckDuration = 0.5f;
         [SerializeField] private int _velocitySampleCount = 5;
 
+        private IVrRig _rig;
 
-        public void OnGrabbed(HVRGrabberBase hand, HVRGrabbable item)
+
+        private void Awake()
         {
-            var vobItem = item.GetComponentInParent<VobLoader>();
+            _rig = GetComponent<IVrRig>();
+            foreach (var grabber in _rig.HandGrabbers)
+            {
+                // Melee weapons are handled once they're in a hand, not while being pulled by distance.
+                if (grabber.Kind != VrGrabberKind.Hand)
+                    continue;
+
+                grabber.Grabbed += OnGrabbed;
+                grabber.Released += OnReleased;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_rig == null)
+                return;
+
+            foreach (var grabber in _rig.HandGrabbers)
+            {
+                grabber.Grabbed -= OnGrabbed;
+                grabber.Released -= OnReleased;
+            }
+        }
+
+        private void OnGrabbed(VrGrabArgs args)
+        {
+            var vobItem = args.Interactable != null ? args.Interactable.GetComponentInParent<VobLoader>() : null;
             var vobContainer = vobItem?.Container;
 
             // We grab something not handled as VobItem.
@@ -57,13 +84,13 @@ namespace Gothic.VR.Adapters.Player
             if (itemInstance!.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
                 return;
 
-            _weaponService.OnGrabbed(((HVRHandGrabber)hand).HandSide.ToVr(), vobContainer, GetWeaponPhysicsConfig());
+            _weaponService.OnGrabbed(args.HandSide, vobContainer, GetWeaponPhysicsConfig());
             SyncEquippedWeaponToHero(itemInstance, equip: true);
         }
 
-        public void OnReleased(HVRGrabberBase hand, HVRGrabbable item)
+        private void OnReleased(VrGrabArgs args)
         {
-            var vobItem = item.GetComponentInParent<VobLoader>();
+            var vobItem = args.Interactable != null ? args.Interactable.GetComponentInParent<VobLoader>() : null;
             var vobContainer = vobItem?.Container;
 
             // We grab something not handled as VobItem.
@@ -76,7 +103,7 @@ namespace Gothic.VR.Adapters.Player
             if (itemInstance!.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
                 return;
 
-            _weaponService.OnReleased(((HVRHandGrabber)hand).HandSide.ToVr(), GetWeaponPhysicsConfig());
+            _weaponService.OnReleased(args.HandSide, GetWeaponPhysicsConfig());
             SyncEquippedWeaponToHero(itemInstance, equip: false);
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Gothic.VR.Interaction.Models;
 using UnityEngine;
 
@@ -54,6 +55,11 @@ namespace Gothic.VR.Interaction.Ports
         /// Current screen fade. 0 = clear, 1 = black.
         /// </summary>
         float FadeAlpha { get; }
+
+        /// <summary>
+        /// Direct (Hand) and distance grabbers of both hands.
+        /// </summary>
+        IReadOnlyList<IVrGrabber> HandGrabbers { get; }
 
         /// <summary>
         /// Raised with the new feet position whenever the player is teleported.

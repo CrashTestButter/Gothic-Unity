@@ -157,22 +157,42 @@ Split into four PRs so each one stays reviewable.
 
 ### PR 0c - Grab and socket events
 
-- [ ] Add `VrInteractable`, `HvrInteractableBridge`, `IVrSocket(Container)`, `HvrSocketBridge`.
-- [ ] Change adapter signatures from `(HVRGrabberBase, HVRGrabbable)` to `(VrGrabArgs)` and subscribe in
+- [x] Add `VrInteractable`, `HvrInteractableBridge`, `IVrSocket(Container)`, `HvrSocketBridge`.
+      Added on the way: `VrGrabArgs`, `VrGrabberKind.Other` (e.g. HVR's chest collector, which the old code treated
+      as "neither hand nor socket"), `IVrGrabber` + `HvrGrabberBridge` for the hand and force grabbers (HVRGrabbable
+      has no `BeforeGrabbed` event, only the grabber has; the grabber bridge also raises
+      `VrInteractable.BeforeGrabbed`), `IVrRig.HandGrabbers`, `IVrInteractableBackend` (contract between
+      `VrInteractable` and its bridge) and `HvrGrabArgsFactory`. `IVrSocket` extends `IVrGrabber`, so "placed" /
+      "removed" are its `Grabbed` / `Released` events. `TryPlace(interactable, silent)` keeps HVR's "no grab sound"
+      flag (the old `TryGrab(g, true, true)` calls). Grabbables without a `VrInteractable` get one at runtime
+      (warning log).
+- [x] Change adapter signatures from `(HVRGrabberBase, HVRGrabbable)` to `(VrGrabArgs)` and subscribe in
       `Awake/OnEnable` instead of inspector bindings: `VRVobItem`, `VRPlayerItemAdapter`, `VRPlayerWeaponInteraction`,
       `VRFocus`, `VRNpc`, `VRNpcMarvinAdapter`, `VRMobInteraction`, `VRSeat`, `VRBackpack`,
       `VRVobContainerSocketInventory`, `VRNpcLoot`.
-- [ ] `VRPlayerService.SetGrab/UnsetGrab/IgnorePlayerCollision`: branch on `VrGrabArgs.Kind`, use
+      Subscribed in `Awake` / unsubscribed in `OnDestroy` (persistent calls also fired for disabled components).
+      `VRMobInteraction` and `VRNpcMarvinAdapter` subscribe in `Start`, so `VRSeat` / `VRNpc` still run first.
+      Cross-hierarchy wiring is serialized as GameObject lists: `VRBackpack._holsterSockets` / `_inventorySockets`,
+      `VRVobContainerSocketInventory._additionalSockets` (holsters; its own child sockets are found in code).
+      The NPC health bar hover (`StatusBarAdapter.EnableBar/DisableBar`, Gothic.Core) moved into `VRNpc`.
+- [x] `VRPlayerService.SetGrab/UnsetGrab/IgnorePlayerCollision`: branch on `VrGrabArgs.Kind`, use
       `VrInteractable.Colliders`.
-- [ ] `VRDigSpot`: replace `FindObjectsByType<HVRHandGrabber>` + `GrabbedTarget` with a query on
+- [x] `VRDigSpot`: replace `FindObjectsByType<HVRHandGrabber>` + `GrabbedTarget` with a query on
       `VRPlayerService` (`GrabbedItemLeft/Right` already exist).
-- [ ] `VRVobContainerPhysicsChest` subclasses `HVRPhysicsDoor`. For now move it under `Backends/Hvr`; Phase 4
-      replaces it. The socket part goes through `IVrSocketContainer`.
-- [ ] `VRVobDoor`, `VRVobContainer` (door SFX), `VRContainerDoorPickingInteraction` (`Lock/Unlock`): add a small
+- [x] `VRVobContainerPhysicsChest` subclasses `HVRPhysicsDoor`. For now move it under `Backends/Hvr`; Phase 4
+      replaces it. The socket part goes through `IVrSocketContainer`. (Renamed to `HvrPhysicsChest`, GUID kept.
+      `VRSocket` / `VRShoulderSocket` moved to `Backends/Hvr/HvrSocket` / `HvrShoulderSocket`, GUIDs kept.
+      `HvrSocket` still re-implements parts of `HVRSocket`; rewrite it with the own socket in a later phase.)
+- [x] `VRVobDoor`, `VRVobContainer` (door SFX), `VRContainerDoorPickingInteraction` (`Lock/Unlock`): add a small
       `IVrHinge` port (`Lock()`, `Unlock()`, `SetSounds(open, close)`) implemented by an HVR bridge.
-- [ ] **Prefabs (UnityMCP only):** in all 11 VR prefabs, add `VrInteractable` + bridge next to `HVRGrabbable` and
+      (`HvrHingeBridge`; also exposes `Transform` and `Rigidbody` for the push after unlocking. The lock picking
+      finds the hinge via the VobLoader instead of a serialized `HVRPhysicsDoor` reference.)
+- [x] **Prefabs (UnityMCP only):** in all 11 VR prefabs, add `VrInteractable` + bridge next to `HVRGrabbable` and
       remove the inspector UnityEvent bindings to our methods (17× `OnBeforeGrabbed`, 18× `OnReleased`, 10×
       `OnHoverEnter/Exit`, holster/backpack callbacks, …). If UnityMCP isn't connected, stop and report (CLAUDE.md).
+      Bridges were added next to every `HVRGrabbable`, `HVRSocket`, `HVRSocketContainer`, `HVRPhysicsDoor` and the
+      hand/force grabbers. Effective persistent calls from HVR events to Gothic methods: 0 (UI button bindings stay).
+      Dead overrides on a removed TechDemo component in `HVR - Player.prefab` were dropped as well.
 
 ### PR 0d - Gating and leftovers
 

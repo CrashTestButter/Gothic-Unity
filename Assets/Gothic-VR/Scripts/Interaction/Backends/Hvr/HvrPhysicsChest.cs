@@ -12,6 +12,8 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Vobs;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Ports;
 using HurricaneVR.Framework.Components;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Sockets;
@@ -22,9 +24,13 @@ using ZenKit.Daedalus;
 using ZenKit.Vobs;
 using Logger = Gothic.Core.Logging.Logger;
 
-namespace Gothic.VR.Adapters.Vob.Container
+namespace Gothic.VR.Interaction.Backends.Hvr
 {
-    public class VRVobContainerPhysicsChest : HVRPhysicsDoor
+    /// <summary>
+    /// Chest lid (HVR physics door) which fills the chest's sockets with its content when opened for the first time.
+    /// Temporarily in the HVR backend as it subclasses HVRPhysicsDoor. The sockets are used via IVrSocketContainer.
+    /// </summary>
+    public class HvrPhysicsChest : HVRPhysicsDoor
     {
         [Inject] private readonly MeshService _meshService;
         [Inject] private readonly VobService _vobService;
@@ -45,6 +51,7 @@ namespace Gothic.VR.Adapters.Vob.Container
         [SerializeField] private HVRSocketContainer _socketContainer;
         [SerializeField] private BoxCollider _collectorCollider;
         private IContainer _vobContainer;
+        private IVrSocketContainer _sockets;
 
         // Flags to ensure we always call On*() once, everytime open/close status changes.
         private bool _openingForTheFirstTime = true;
@@ -64,7 +71,8 @@ namespace Gothic.VR.Adapters.Vob.Container
         public override void Start()
         {
             base.Start();
-            
+
+            _sockets = _socketContainer.GetComponent<IVrSocketContainer>();
             _socketContainer.gameObject.SetActive(false);
             
             _vobContainer =  _rootGo.GetComponentInParent<VobLoader>().Container.VobAs<IContainer>();
@@ -114,7 +122,7 @@ namespace Gothic.VR.Adapters.Vob.Container
         /// </summary>
         private void AlignSockets()
         {
-            var sockets = _socketContainer.Sockets;
+            var sockets = _sockets.Sockets;
 
             // We need to dynamically fetch the bounding box of main mesh as some chests have the correct one inside BIP01 "CHEST_*_0" and others inside "ZM_CHEST*"
             var meshFilters = _rootGo
@@ -172,7 +180,7 @@ namespace Gothic.VR.Adapters.Vob.Container
                 // _socketRadius - Location is based on a 50% shift into the desired area as the drawing of a circle starts centered
                 // middleAlignment* - Centered location within a grid for an element
                 // min.x - Start point to calculate from left top
-                socket.transform.localPosition = new (
+                socket.Transform.localPosition = new (
                     _socketCollectionMargin + _socketRadius + middleAlignmentX + centeredMainBound.min.x + rowWidth * currentColumn,
                     0,
                     _socketCollectionMargin + _socketRadius + middleAlignmentZ + centeredMainBound.min.z + rowDepth * currentRow
@@ -237,20 +245,20 @@ namespace Gothic.VR.Adapters.Vob.Container
         private void PreSpawnContent(out AudioClip grabAudio, out AudioClip releaseAudio)
         {
             // We assume that all Slots have the same sound. Therefore fetching first only.
-            var firstSocket = _socketContainer.Sockets.First();
-            grabAudio = firstSocket.AudioGrabbedFallback;
-            releaseAudio = firstSocket.AudioReleasedFallback;
+            var firstSocket = _sockets.Sockets.First();
+            grabAudio = firstSocket.PlacedSoundFallback;
+            releaseAudio = firstSocket.RemovedSoundFallback;
             
-            foreach (var socket in _socketContainer.Sockets)
+            foreach (var socket in _sockets.Sockets)
             {
-                socket.AudioGrabbedFallback = null;
-                socket.AudioReleasedFallback = null;
+                socket.PlacedSoundFallback = null;
+                socket.RemovedSoundFallback = null;
             }
         }
 
         private IEnumerator SpawnContent(List<ContentItem> contentItems)
         {
-            var sockets = _socketContainer.Sockets;
+            var sockets = _sockets.Sockets;
 
             if (contentItems.Count > sockets.Count)
             {
@@ -282,10 +290,10 @@ namespace Gothic.VR.Adapters.Vob.Container
 
         private void PlaceObjectIntoContainer(VobContainer vobContainer)
         {
-            var grabbable = vobContainer.Go.GetComponentInChildren<HVRGrabbable>(true);
-            if (_socketContainer.TryFindAvailableSocket(grabbable, out var socket))
+            var interactable = vobContainer.Go.GetComponentInChildren<VrInteractable>(true);
+            if (_sockets.TryFindFree(interactable, out var socket))
             {
-                socket.TryGrab(grabbable, true, true);
+                socket.TryPlace(interactable, true);
                 // We need to reset position as the element won't be placed inside it's parent in the chest.
                 vobContainer.Go.transform.localPosition = Vector3.zero;
             }
@@ -296,10 +304,10 @@ namespace Gothic.VR.Adapters.Vob.Container
             // We wait for some time to ensure the objects are automatically snapped into place.
             yield return new WaitForSeconds(1f);
             
-            foreach (var socket in _socketContainer.Sockets)
+            foreach (var socket in _sockets.Sockets)
             {
-                socket.AudioGrabbedFallback = grabAudio;
-                socket.AudioReleasedFallback = releaseAudio;
+                socket.PlacedSoundFallback = grabAudio;
+                socket.RemovedSoundFallback = releaseAudio;
             }
         }
         

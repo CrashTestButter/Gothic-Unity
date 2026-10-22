@@ -226,6 +226,8 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         }
 
         // FIXME - In the future, we need to handle more information than just playing the attack animations. But fine for the first iteration.
+        // Fight turns stop inside the focus angle (30) with this tolerance.
+        private const float _fightTurnToleranceDegrees = 20f;
         private void StartAttackAction()
         {
             // DeveloperConfig.EnableEngineNpcCombo: the combo isn't continued - its animation stops (the engine ends an
@@ -256,7 +258,10 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                     break;
                 case FightAiMove.Turn:
                 case FightAiMove.TurnToHit:
-                    _npcAiService.ExtAiTurnToNpc(NpcInstance, _enemy);
+                    if (_configService.Dev.EnableFightTurnTolerance)
+                        _npcAiService.ExtAiTurnToNpcInFight(NpcInstance, _enemy, _fightTurnToleranceDegrees);
+                    else
+                        _npcAiService.ExtAiTurnToNpc(NpcInstance, _enemy);
                     break;
                 // Some attacks have no action. Therefore TryGetFightAiData() returns Nop as fallback.
                 case FightAiMove.Nop:

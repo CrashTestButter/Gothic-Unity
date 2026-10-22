@@ -502,6 +502,20 @@ namespace Gothic.Core.Services.Npc
             container.Props.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(string0: stateName), container));
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableFightTurnTolerance: the fight's turn move (FA tables MOVE_TURN) ends once the enemy is
+        /// within toleranceDegrees (the focus check is 30) or after 2 s - not 1 degree on a moving target.
+        /// </summary>
+        public void ExtAiTurnToNpcInFight(NpcInstance npc, NpcInstance other, float toleranceDegrees)
+        {
+            if (other == null)
+                return;
+
+            npc.GetUserData().Props.AnimationQueue.Enqueue(new TurnToNpc(
+                new AnimationAction(instance0: other, float0: toleranceDegrees),
+                npc.GetUserData()));
+        }
+
         public void ExtAiTurnToNpc(NpcInstance npc, NpcInstance other)
         {
             if (other == null)

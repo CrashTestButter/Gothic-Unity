@@ -481,6 +481,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Enable proximity + FOV hit detection in AttackPlayAni. Disable to watch animations without dealing damage.")]
         public bool EnableNpcHitDetection = true;
 
+        [Tooltip("V1: The fight's turn move ends once the enemy is in focus (20 of the 30 degrees) or after 2 s - " +
+                 "Ratford turned forever towards a scavenger circling him and never hit it.")]
+        public bool EnableFightTurnTolerance = true;
+
         [Tooltip("Hero attacks deal max HP damage — one hit kills any non-immortal NPC.")]
         public bool EnableOneHitKill;
 

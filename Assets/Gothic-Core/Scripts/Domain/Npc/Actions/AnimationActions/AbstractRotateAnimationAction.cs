@@ -79,12 +79,30 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             return PrefabProps.CurrentInteractable != null && Props.CurrentInteractableStateId >= 0;
         }
 
+        /// <summary>
+        /// The turn is done below this angle (degrees).
+        /// </summary>
+        protected virtual float FinishAngle => 1f;
+
+        /// <summary>
+        /// The turn gives up after this many seconds (0 = never) - e.g. a fight turn towards a target circling around.
+        /// </summary>
+        protected virtual float MaxSeconds => 0f;
+
         public override void Tick()
         {
             base.Tick();
 
             if (IsFinishedFlag)
                 return;
+
+            if (MaxSeconds > 0f && ActionTime > MaxSeconds)
+            {
+                if (_rotationAnimationName != null)
+                    PrefabProps.AnimationSystem.StopAnimation(_rotationAnimationName);
+                IsFinishedFlag = true;
+                return;
+            }
 
             // Re-fetch every tick instead of reusing the Start() snapshot — the destination can be a
             // moving NPC (TurnToNpc tracking a VR player who keeps repositioning). A stale one-time
@@ -108,7 +126,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 Quaternion.RotateTowards(npcTransform.rotation, _finalRotation, Time.deltaTime * turnSpeed);
 
             // Check if rotation is done.
-            if (Quaternion.Angle(npcTransform.rotation, _finalRotation) < 1f)
+            if (Quaternion.Angle(npcTransform.rotation, _finalRotation) < FinishAngle)
             {
                 if (_rotationAnimationName != null)
                     PrefabProps.AnimationSystem.StopAnimation(_rotationAnimationName);

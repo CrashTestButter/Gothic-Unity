@@ -1035,6 +1035,15 @@ namespace Gothic.Core.Adapters.Animations
 
             foreach (var morph in morphEvents)
             {
+                // DeveloperConfig.EnableFaceAnimations: any face animation by name (T_HURT loops - held a moment).
+                if (_configService.Dev.EnableFaceAnimations)
+                {
+                    if (PrefabProps.HeadMorph != null)
+                        PrefabProps.HeadMorph.StartFaceAnimation(morph.Animation, 1f,
+                            HeadMorph.EventFaceAnimationSeconds);
+                    continue;
+                }
+
                 var type = PrefabProps.HeadMorph.GetAnimationTypeByName(morph.Animation);
 
                 PrefabProps.HeadMorph.StartAnimation(Properties.BodyData.Head, type);
@@ -1060,16 +1069,35 @@ namespace Gothic.Core.Adapters.Animations
             DisableObject();
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableFaceAnimations: the talking mouth (VISEME, loops) during an NPC's line.
+        /// </summary>
         public void PlayHeadAnimation(HeadMorph.HeadMorphType viseme)
         {
-            // FIXME - Implement
-            Logger.LogWarning("PlayHeadAnimation not yet implemented.", LogCat.Animation);
+            if (!_configService.Dev.EnableFaceAnimations)
+            {
+                // FIXME - Implement
+                Logger.LogWarning("PlayHeadAnimation not yet implemented.", LogCat.Animation);
+                return;
+            }
+
+            var headMorph = PrefabProps.HeadMorph;
+            if (headMorph != null)
+                headMorph.StartFaceAnimation(headMorph.GetAnimationNameByType(viseme), 1f, -1f);
         }
 
         public void StopHeadAnimation(HeadMorph.HeadMorphType viseme)
         {
-            // FIXME - Implement
-            Logger.LogWarning("StopHeadAnimation not yet implemented.", LogCat.Animation);
+            if (!_configService.Dev.EnableFaceAnimations)
+            {
+                // FIXME - Implement
+                Logger.LogWarning("StopHeadAnimation not yet implemented.", LogCat.Animation);
+                return;
+            }
+
+            var headMorph = PrefabProps.HeadMorph;
+            if (headMorph != null)
+                headMorph.StopFaceAnimation(headMorph.GetAnimationNameByType(viseme));
         }
 
         /// <summary>

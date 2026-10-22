@@ -314,6 +314,11 @@ namespace Gothic.Core.Models.Config
         [Tooltip("WIP - Not production ready.")]
         [ConditionalField(fieldToCheck: nameof(EnableNpcs), compareValues: true)]
         public bool EnableNpcEyeBlinking;
+
+        [Tooltip("V1: NPC faces like the engine - the mouth moves while talking (VISEME), Mdl_StartFaceAni moods " +
+                 "(S_FRIENDLY, S_ANGRY, S_FRIGHTENED...) and blinking, blended on top of each other with the MMB's " +
+                 "blend in/out. Before, talking showed nothing and each morph replaced the whole face.")]
+        public bool EnableFaceAnimations = true;
         
         [Separator("Distances")]
         [Tooltip("How close an NPC stops when walking toward the player for dialog (GoToNpc). Default 1.3m.")]

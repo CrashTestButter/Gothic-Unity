@@ -87,6 +87,7 @@ MonoBehaviour:
   SpawnMonsterInstances:
     Value: 
   EnableNpcEyeBlinking: 0
+  EnableFaceAnimations: 1
   NpcDialogStopDistance: 1.3
   NpcAttackApproachSpread: 1.3
   NpcAttackArrivalThreshold: 0.2

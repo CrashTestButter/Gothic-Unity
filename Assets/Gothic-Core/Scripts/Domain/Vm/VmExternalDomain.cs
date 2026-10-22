@@ -201,6 +201,12 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<NpcInstance, string>("Mdl_RemoveOverlayMDS", Mdl_RemoveOverlayMDS);
             vm.RegisterExternal<NpcInstance, string, string>("Mdl_ApplyRandomAni", Mdl_ApplyRandomAni);
             vm.RegisterExternal<NpcInstance, string, float>("Mdl_ApplyRandomAniFreq", Mdl_ApplyRandomAniFreq);
+            if (_configService.Dev.EnableFaceAnimations)
+            {
+                vm.RegisterExternal<NpcInstance, string, float, float>("Mdl_StartFaceAni", Mdl_StartFaceAni);
+                vm.RegisterExternal<NpcInstance, string, float, float, float, float, float>("Mdl_ApplyRandomFaceAni",
+                    Mdl_ApplyRandomFaceAni);
+            }
 
             // Mission
 
@@ -1006,6 +1012,33 @@ namespace Gothic.Core.Domain.Vm
             if (!_isLoggedOnceRemoveOverlayMds)
                 Logger.LogWarning("Method >Mdl_RemoveOverlayMDS< not yet implemented in DaedalusVM. Logging once only!", LogCat.ZenKit);
             _isLoggedOnceRemoveOverlayMds = true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableFaceAnimations: a face animation on the NPC's head morph (MMB), e.g. ZS_Talk's
+        /// S_NEUTRAL, ZS_Flee's S_FRIGHTENED, ZS_Attack's S_ANGRY. holdTime -1 = until another mood replaces it.
+        /// </summary>
+        public void Mdl_StartFaceAni(NpcInstance npc, string name, float intensity, float holdTime)
+        {
+            var headMorph = npc.GetUserData()?.PrefabProps?.HeadMorph;
+            if (headMorph == null)
+                return;
+            headMorph.StartFaceAnimation(name, intensity, holdTime);
+            Logger.Log($"[FaceAni] {npc.GetName(NpcNameSlot.Slot0)}: {name} ({intensity:0.##}, hold {holdTime:0.##})",
+                LogCat.Animation);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableFaceAnimations: a face animation played again and again (G1/G2's commented
+        /// R_EyesBlink example) - HeadMorph's random animations.
+        /// </summary>
+        public void Mdl_ApplyRandomFaceAni(NpcInstance npc, string name, float timeMin, float timeMinVar, float timeMax,
+            float timeMaxVar, float probMin)
+        {
+            var headMorph = npc.GetUserData()?.PrefabProps?.HeadMorph;
+            if (headMorph == null)
+                return;
+            headMorph.ApplyRandomFaceAnimation(name, timeMin, timeMinVar, timeMax, timeMaxVar, probMin);
         }
 
         #endregion

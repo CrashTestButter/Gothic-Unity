@@ -200,7 +200,12 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 // Killed/knocked out while talking - the line stopped, so does its subtitle.
                 PrefabProps.NpcSubtitles?.HideSubtitles();
                 if (_randomDialogAnimationName != null)
+                {
                     PrefabProps.AnimationSystem.StopAnimation(_randomDialogAnimationName);
+                    // DeveloperConfig.EnableFaceAnimations: the mouth stops with the line.
+                    if (_configService.Dev.EnableFaceAnimations)
+                        PrefabProps.AnimationSystem.StopHeadAnimation(HeadMorph.HeadMorphType.Viseme);
+                }
             }
         }
 

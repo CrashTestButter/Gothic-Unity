@@ -1221,7 +1221,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             light.color = GetSpellLightColor(mfxName);
 
             var homingTarget = _isThrowHoming ? FindHomingTarget(hero, origin, direction, range) : null;
-            var projectile = projectileGo.AddComponent<VRProjectile>();
+            var projectile = projectileGo.AddComponent<Projectile>();
             projectile.Owner = hero;
             projectile.Velocity = direction * Mathf.Max(speed, _droppedSpellSpeed);
             projectile.UseGravity = _throwGravityScale > 0f;

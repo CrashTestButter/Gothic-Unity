@@ -481,6 +481,14 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Enable proximity + FOV hit detection in AttackPlayAni. Disable to watch animations without dealing damage.")]
         public bool EnableNpcHitDetection = true;
 
+        [Tooltip("V1: NPC archers shoot real arrows/bolts like the engine - aimed ballistically from the hand, flying " +
+                 "with gravity, hitting whatever they meet (dodge, take cover). The hit chance (G1 dexterity, G2 talent, " +
+                 "by distance) aims a miss past the target. Before, a bow shot hit instantly when the target was in front.")]
+        public bool EnableNpcPhysicalProjectiles = true;
+
+        [Tooltip("V1: Flying arrows and bolts (hero and NPCs) leave a short streak with the weapon trail's look.")]
+        public bool EnableProjectileTrail = true;
+
         [Tooltip("V1: The fight's turn move ends once the enemy is in focus (20 of the 30 degrees) or after 2 s - " +
                  "Ratford turned forever towards a scavenger circling him and never hit it.")]
         public bool EnableFightTurnTolerance = true;

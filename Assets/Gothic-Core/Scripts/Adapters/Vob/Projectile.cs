@@ -1,22 +1,23 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using System.Collections.Generic;
 using Gothic.Core.Adapters.Npc;
-using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Const;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Logging;
+using Gothic.Core.Services.Npc;
 using UnityEngine;
 using Logger = Gothic.Core.Logging.Logger;
 
-namespace Gothic.VR.Adapters.Vob.VobItem
+namespace Gothic.Core.Adapters.Vob
 {
     /// <summary>
     /// Flying arrow/bolt/spell, like the engine's "bullet" (OpenGothic world/bullet.cpp): moves itself (optional gravity,
     /// optional homing - Gothic's TARGET trajectory) and sphere-casts each step against the world and NPC hitboxes, so
     /// fast projectiles (30 m/s) can't tunnel through thin colliders. The shooter decides what a hit means (callbacks).
+    /// Shot by the VR hero (bow, crossbow, spells) and by NPCs (ProjectileService.ShootAtTarget) - an NPC's projectile
+    /// also hits the hero's body (Player layer), which has no NPC hitbox.
     /// </summary>
-    public class VRProjectile : MonoBehaviour
+    public class Projectile : MonoBehaviour
     {
         public NpcContainer Owner;
         public Vector3 Velocity;
@@ -52,6 +53,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private readonly HashSet<IDamageable> _damaged = new();
         private float _travelled;
         private bool _isDone;
+
+        // The hero, if someone else shot this - his body (Player layer) can be hit. Null for the hero's own shots.
+        private NpcContainer _heroTarget;
+        private bool _isHeroTargetChecked;
 
 
         private void Update()
@@ -147,7 +152,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
 
             HomingDegreesPerSecond = Mathf.Max(HomingDegreesPerSecond, _autoAimDegreesPerSecond);
-            Logger.Log($"[VRProjectile] Auto-aim at '{_homingVobTarget.name}' (reacts to hits)", LogCat.VR);
+            Logger.Log($"[Projectile] Auto-aim at '{_homingVobTarget.name}' (reacts to hits)", LogCat.Vob);
         }
 
         private void ApplyHoming(float deltaTime)
@@ -180,6 +185,17 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// Nearest hit along the step: NPC hitboxes (triggers on VobHitbox) or solid world geometry (Default).
         /// The shooter's own hitbox and other trigger volumes are skipped.
         /// </summary>
+        private NpcContainer GetHeroTarget()
+        {
+            if (_isHeroTargetChecked)
+                return _heroTarget;
+            _isHeroTargetChecked = true;
+
+            var hero = ReflexProjectInstaller.DIContainer.Resolve<NpcService>().GetHeroContainer();
+            _heroTarget = hero != null && hero != Owner ? hero : null;
+            return _heroTarget;
+        }
+
         private bool TryGetHit(Vector3 direction, float distance, out RaycastHit nearest, out NpcContainer npc)
         {
             nearest = default;
@@ -188,6 +204,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             // Ignore Raycast only for VOBs that react to damage (oCTriggerScript, mover meshes) - never stops the flight.
             var mask = (1 << Constants.DefaultLayer) | (1 << Constants.VobHitbox) | (1 << Constants.IgnoreRaycastLayer);
+            var heroTarget = GetHeroTarget();
+            if (heroTarget != null)
+                mask |= 1 << Constants.PlayerLayer;
             var count = Physics.SphereCastNonAlloc(transform.position, Radius, direction, _hits, distance, mask,
                 QueryTriggerInteraction.Collide);
 
@@ -202,6 +221,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     hitNpc = hit.collider.GetComponentInParent<NpcLoader>()?.Container;
                     if (hitNpc == null || hitNpc == Owner)
                         continue;
+                }
+                else if (hit.collider.gameObject.layer == Constants.PlayerLayer)
+                {
+                    // The hero's body (CharacterController, hands) - only when someone else shot.
+                    if (heroTarget == null || hit.collider.isTrigger)
+                        continue;
+                    hitNpc = heroTarget;
                 }
                 else if (hit.collider.isTrigger || hit.collider.gameObject.layer == Constants.IgnoreRaycastLayer)
                 {
@@ -225,4 +251,3 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
     }
 }
-#endif

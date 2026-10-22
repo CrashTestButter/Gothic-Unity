@@ -128,6 +128,8 @@ MonoBehaviour:
   MarvinGiveItems: 
   EnableNpcCombatCombos: 1
   EnableNpcHitDetection: 1
+  EnableNpcPhysicalProjectiles: 1
+  EnableProjectileTrail: 1
   EnableFightTurnTolerance: 1
   EnableOneHitKill: 0
   EnableOneHitKnockout: 0

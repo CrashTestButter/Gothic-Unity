@@ -24,6 +24,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly Gothic.Core.Services.Meshes.ParticleService _particleService;
         [Inject] private readonly NpcNavMeshService _npcNavMeshService;
+        [Inject] private readonly ProjectileService _projectileService;
 
         private FightAiMove _move => (FightAiMove)Action.Int0;
         public FightAiMove Move => _move;
@@ -797,6 +798,17 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             if (Gothic.Core.Services.Npc.NpcHelperService.IsDown(target))
                 return;
 
+            // DeveloperConfig.EnableNpcPhysicalProjectiles: like the engine, a bow/crossbow shot is a flying arrow/bolt
+            // (ProjectileService) that hits whatever it meets - the target can dodge or take cover. Without ammo nothing
+            // flies; B_SelectWeapon switches to the melee weapon (Npc_HasRangedWeaponWithAmmo).
+            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
+            if (_configService.Dev.EnableNpcPhysicalProjectiles &&
+                weaponState is VmGothicEnums.WeaponState.Bow or VmGothicEnums.WeaponState.CBow)
+            {
+                _projectileService.ShootAtTarget(NpcContainer, target);
+                return;
+            }
+
             // NPC vs NPC hit: check weapon reach + forward arc so the target can dodge by
             // stepping out of range or to the side. The +0.3m buffer accounts for body volume.
             // Real bone-collider detection (DEF_HIT_LIMB) should replace this once implemented.
@@ -822,7 +834,6 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
 
             Logger.LogWarning($"[AttackPlayAni] HIT: {NpcInstance.GetName(NpcNameSlot.Slot0)} → {target.Instance.GetName(NpcNameSlot.Slot0)} dist={toTarget.magnitude:F2}m angle={angle:F0}°", LogCat.Fight);
 
-            var weaponState = (VmGothicEnums.WeaponState)Vob.FightMode;
             // DeveloperConfig.EnableSpellMonsterMelee: the web crawler bites its frozen/close target instead.
             if (weaponState == VmGothicEnums.WeaponState.Mage && !NpcContainer.IsSpellMonsterInMelee)
             {

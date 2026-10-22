@@ -1064,8 +1064,32 @@ namespace Gothic.Core.Services.Npc
             Logger.LogWarning($"[FightService] Hero finished off by {attacker.Instance.GetName(NpcNameSlot.Slot0)} - " +
                               "DEAD", LogCat.Fight);
 
+            PlayDeathScream(hero);
             BroadcastDownPerception(hero, attacker, VmGothicEnums.PerceptionType.AssessMurder);
             GlobalEventDispatcher.HeroDied.Invoke(hero);
+        }
+
+        /// <summary>
+        /// Like the engine (OpenGothic Npc's death: emitSoundSVM("SVM_%d_DEAD")) - the hero's death scream (G1: voice 15).
+        /// From the hero's own voice source (Output plays his lines there).
+        /// </summary>
+        private void PlayDeathScream(NpcContainer hero)
+        {
+            if (hero.Instance.Voice <= 0)
+                return;
+            var clip = _audioService.GetRandomSoundClip($"SVM_{hero.Instance.Voice}_DEAD");
+            if (clip == null)
+            {
+                Logger.LogWarning($"[FightService] No SVM_{hero.Instance.Voice}_DEAD for the hero's death", LogCat.Fight);
+                return;
+            }
+
+            var heroGo = _npcService.GetHeroGameObject();
+            var source = heroGo != null ? heroGo.GetComponent<AudioSource>() : null;
+            if (source == null && hero.PrefabProps != null)
+                source = hero.PrefabProps.NpcSound;
+            if (source != null)
+                source.PlayOneShot(clip);
         }
 
         private IEnumerator KnockoutRecovery(NpcContainer hero)

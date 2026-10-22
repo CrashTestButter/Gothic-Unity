@@ -103,6 +103,24 @@
   (`EnableBodyPersonalSpace`) follow the bones + skin instead of the root bone - a shadowbeast's BIP01 is at its hind
   legs, the hitbox on the rotated bone lay sideways over its hind half, the head went into the camera. Fight ranges stay
   Gothic's: `FIGHT_RANGE_BASE` is "BIP01 to bbox", it already counts the body.
+- **NPC archers shoot real projectiles** (`df525fb4`, `EnableNpcPhysicalProjectiles`), like OpenGothic
+  `World::shootBullet`: from the right hand, ballistic aim (30 m/s, gravity), the arrow/bolt flies and hits whatever it
+  meets (`Projectile`, moved from `Gothic-VR` to Core; `ProjectileService` holds the ammo/shot logic shared with the VR
+  bow and crossbow). The hit chance (`DamageCalculator`: G1 dexterity, G2 talent, by distance up to 45 m) aims a miss
+  0.7-1.6 m past the target. Before, a shot hit instantly when the target was in front. Streak behind flying
+  projectiles (`EnableProjectileTrail`), stopped once stuck in a body.
+- **Ammo like the engine** (`36bfce77`): `Npc_HasRangedWeaponWithAmmo` counts the munition
+  (`EnableRangedWeaponNeedsAmmo`) - `B_SelectWeapon` switches to melee when it's gone; `B_FillQuiver` refills only pure
+  archers. G1's `ZS_Attack_Loop` gives a melee fight up beyond 10 m unless `AIV_LASTHITBYRANGEDWEAPON` - an archer out
+  of ammo gets it set and keeps chasing (`EnableOutOfAmmoKeepsChasing`).
+- **Archers get around cover** (`c1eb596c`): the shot's ballistic path is sphere-cast in 8 segments; blocked, the
+  archer strafes to the side whose test position (1.5 m) has a free path, after 2 tries runs closer. The focus check
+  needs a free head-to-head line, so the hero behind a pillar was "not in focus" - turn only, the archer froze
+  (`EnableRangedFocusIgnoresCover`: facing him within 30 degrees counts). The strafe/run ends once the path is free,
+  checked every 0.15 s (`EnableBlockedShotMoveInterrupt`); the run used the 20 m ranged reach as stop distance and
+  stopped every frame.
+- **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
+  2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
 ## Key commits
 
@@ -124,11 +142,15 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity ·
 `c4c2a8d0` one hit per swing, engine combos · `ccb310bb` animated NPC body (hitbox, personal space)
 
+2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
+archers get around cover
+
 ## Main files
 
 `Services/Npc/FightService.cs` (+878) · `Domain/Npc/Actions/AnimationActions/AttackPlayAni.cs` (+522) ·
 `Attack.cs` · `AiDrawWeapon.cs` · `UndrawWeapon.cs` · `Adapters/Animations/AnimationSystem.cs` ·
-VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
+`Adapters/Vob/Projectile.cs` · `Services/Npc/ProjectileService.cs` ·
+VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 
 ## Config flags
 
@@ -149,6 +171,10 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 2026-10-18: `EnableNpcPrehitReaction`, `EnableNpcPrehitCancelsAttack`, `EnableNpcParadeBlocksHits`, `WeaponTrailOpacity`,
 `EnableSingleHitPerNpcAttack`, `EnableEngineNpcCombo`, `EnableAnimatedNpcHitbox`, `EnableBodyPersonalSpace`
 
+2026-10-22: `EnableFightTurnTolerance`, `EnableNpcPhysicalProjectiles`, `EnableProjectileTrail`,
+`EnableRangedWeaponNeedsAmmo`, `EnableOutOfAmmoKeepsChasing`, `EnableRangedFocusIgnoresCover`,
+`EnableBlockedShotMoveInterrupt`
+
 ## Review notes
 
 - ✅ Rules follow the engine (OpenGothic used as reference) and are commented with the "why".
@@ -168,6 +194,9 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRProjectile.cs`, `VRRangedService.cs`, `VRWea
 - VR bow and crossbow on a target; pick up the missed arrow.
 - Let a wolf or an orc run at you: about every second attack lands out of the run.
 - NPC archer: one shot, reload, next shot. Run 25+ m away: it stops and goes back.
+- G1 MT: Lukis (crossbow) - dodge his bolts, hide behind a pillar: he steps aside to a free shot, then runs closer. Let
+  him shoot all bolts: he draws his sword and chases you.
+- An NPC fighting a scavenger (Ratford): he attacks instead of turning around.
 - G1 Sleeper temple / G2 Irdorath: shoot the switches and bridge targets (green X) with a bow or a spell.
 
 - G2: knock out Buster or anyone - he falls and lies (`S_Wounded`), stands up afterwards. Same in G1.

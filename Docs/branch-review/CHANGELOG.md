@@ -13,6 +13,16 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-22 (evening): NPC archers shoot real arrows
+
+- NPC archers shoot real arrows and bolts: they fly in an arc and hit whatever is in the way, so you can dodge them or
+  hide behind a pillar. A miss flies past you. Arrows and bolts leave a short streak (yours too).
+- Archers run out of arrows/bolts like in Gothic: then they take their sword and keep chasing you (Lukis put his
+  crossbow away and drew it again in a loop).
+- An archer whose shot is blocked steps aside to a free line of shot, stops there as soon as he can hit you, and after
+  two tries runs closer (he stood still behind the pillar, or shook forward in place).
+- An NPC fighting a monster that circles him (Ratford and a scavenger) attacks instead of turning forever.
+
 ## 2026-10-22: main merged - lighting and videos
 
 - `main`'s lighting (PR #400) and Bink videos (PR #401) are in. Caves, houses and the night look as before; the

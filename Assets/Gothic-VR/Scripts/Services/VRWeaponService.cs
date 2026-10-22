@@ -7,10 +7,10 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Player;
 using Gothic.VR.Domain.Player;
+using Gothic.VR.Interaction.Models;
 using Gothic.VR.Models.Vob;
 using Gothic.Core.Extensions;
 using HurricaneVR.Framework.Core.Utils;
-using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
 
@@ -45,7 +45,7 @@ namespace Gothic.VR.Services
             _secondAttackDomain.FixedUpdate();
         }
 
-        public void OnGrabbed(HVRHandSide handSide, VobContainer vobContainer, WeaponPhysicsConfig weaponConfig)
+        public void OnGrabbed(VrHandSide handSide, VobContainer vobContainer, WeaponPhysicsConfig weaponConfig)
         {
             var heroContainer = _playerService.HeroContainer;
 
@@ -56,7 +56,7 @@ namespace Gothic.VR.Services
             }
         }
 
-        public void OnReleased(HVRHandSide handSide, WeaponPhysicsConfig weaponConfig)
+        public void OnReleased(VrHandSide handSide, WeaponPhysicsConfig weaponConfig)
         {
             if (!_firstAttackDomain.TryUnHandle(weaponConfig, handSide))
             {

@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core.Services.Context;
 using Gothic.VR.Services.Context;
 using Reflex.Attributes;
@@ -82,4 +81,3 @@ namespace Gothic.VR.Adapters.UI
         }
     }
 }
-#endif

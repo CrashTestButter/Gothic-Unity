@@ -5,7 +5,7 @@ using UnityEditor.Rendering;
 using UnityEditor.Rendering.Universal;
 using UnityEngine;
 
-namespace Gothic.VR.Editor
+namespace Gothic.VR.Editor.Backends.Hvr
 {
     public class HurricaneActions
     {
@@ -24,6 +24,9 @@ namespace Gothic.VR.Editor
             
             foreach (var folder in _hvrMaterialFolders)
             {
+                if (!Directory.Exists(folder))
+                    continue;
+
                 materialFiles.AddRange(Directory.GetFiles(folder, "*.mat"));
             }
 

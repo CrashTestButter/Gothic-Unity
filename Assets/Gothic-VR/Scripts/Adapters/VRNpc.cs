@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using Gothic.Core.Adapters.Npc;
+﻿using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Adapters.UI.StatusBars;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
@@ -98,4 +97,3 @@ namespace Gothic.VR.Adapters
         }
     }
 }
-#endif

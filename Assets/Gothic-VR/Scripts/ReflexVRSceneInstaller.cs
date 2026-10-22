@@ -1,10 +1,10 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
-using Gothic.VR.Interaction.Backends.Hvr;
-using Gothic.VR.Interaction.Ports;
+using Gothic.Core.Logging;
+using Gothic.VR.Adapters.Context;
 using Gothic.VR.Services;
 using Reflex.Core;
 using UnityEngine;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR
 {
@@ -17,11 +17,13 @@ namespace Gothic.VR
         {
             containerBuilder.OnContainerBuilt += (container) => ReflexProjectInstaller.DIContainer = container;
 
-            // VR backend (IVrRig lives on the player prefab, see VRContextInteractionService.Rig)
-            containerBuilder.AddSingleton(typeof(HvrInput), typeof(IVrInput));
-            containerBuilder.AddSingleton(typeof(HvrHaptics), typeof(IVrHaptics));
-            containerBuilder.AddSingleton(typeof(HvrUiPointers), typeof(IVrUiPointers));
-            containerBuilder.AddSingleton(typeof(HvrSfxPlayer), typeof(IVrSfxPlayer));
+            // VR ports (IVrInput, IVrHaptics, ...) come from the active backend.
+            // Without a backend, nothing is registered and VRContextBootstrap fails the boot with a clear error.
+            var backend = VRContextBootstrap.SelectBackend();
+            if (backend == null)
+                Logger.LogError("No VR backend available. VR ports aren't registered.", LogCat.VR);
+            else
+                backend.InstallBindings(containerBuilder);
 
             containerBuilder.AddSingleton(typeof(VRPlayerService));
             containerBuilder.AddSingleton(typeof(VRWeaponService));
@@ -31,4 +33,3 @@ namespace Gothic.VR
         }
     }
 }
-#endif

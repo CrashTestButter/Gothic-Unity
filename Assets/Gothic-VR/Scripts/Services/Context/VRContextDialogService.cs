@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Const;
 using Gothic.Core.Models.Dialog;
@@ -69,4 +68,3 @@ namespace Gothic.VR.Services.Context
         }
     }
 }
-#endif

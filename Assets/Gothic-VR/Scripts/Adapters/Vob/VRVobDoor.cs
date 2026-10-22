@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Manager;
@@ -70,4 +69,3 @@ namespace Gothic.VR.Adapters.Vob
         }
     }
 }
-#endif

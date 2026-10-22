@@ -14,8 +14,8 @@ using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
 using Gothic.VR.Models.Vob;
 using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core.Utils;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit;
@@ -29,9 +29,10 @@ namespace Gothic.VR.Domain.Player
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly VRPlayerService _vrPlayerService;
         [Inject] private readonly AudioService _audioService;
+        [Inject] private readonly IVrSfxPlayer _vrSfxPlayer;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
 
-        private CharacterController _characterController => _vrPlayerService.VRContextInteractionService.GetVRPlayerController().CharacterController;
+        private CharacterController _characterController => _vrPlayerService.VRContextInteractionService.Rig.CharacterController;
 
         private const int _twoHandedFlags = (int)VmGothicEnums.ItemFlags.Item2HdAxe | (int)VmGothicEnums.ItemFlags.Item2HdSwd;
 
@@ -423,7 +424,7 @@ namespace Gothic.VR.Domain.Player
             if (_swingSwordSound == null)
                 return;
 
-            SFXPlayer.Instance.PlaySFX(_audioService.CreateAudioClip(_swingSwordSound.GetRandomSound()), _weaponRigidbody.position);
+            _vrSfxPlayer.Play(_audioService.CreateAudioClip(_swingSwordSound.GetRandomSound()), _weaponRigidbody.position);
         }
 
         private void HandleInitialWindow()

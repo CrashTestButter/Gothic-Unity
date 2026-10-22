@@ -5,7 +5,7 @@ using Gothic.Core.Manager;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Adapters.Player;
 using Gothic.VR.Adapters.UI;
 using Gothic.VR.Services.Context;
 using Reflex.Attributes;
@@ -32,7 +32,7 @@ namespace Gothic.VR.Adapters.SpeechToText
         private const int _maxRecordingLength = 30;
         private const int _recordingSampleRate = 16000;
 
-        private VRPlayerInputs _playerInputs;
+        private VRPlayer _player;
 
         // Unity's Microphone API will always store output in an AudioClip.
         private AudioClip _recordedClip;
@@ -63,7 +63,7 @@ namespace Gothic.VR.Adapters.SpeechToText
                 return;
             }
             
-            _playerInputs = _contextInteractionService.GetImpl<VRContextInteractionService>().GetVRPlayerInputs();
+            _player = _contextInteractionService.GetImpl<VRContextInteractionService>().Player;
             _state = State.Idle;
         }
 
@@ -79,9 +79,9 @@ namespace Gothic.VR.Adapters.SpeechToText
 
         private void CheckRecordingState()
         {
-            if (_playerInputs.IsBothGripsActive && _state == State.Idle)
+            if (_player.IsBothGripsActive && _state == State.Idle)
                 StartRecording();
-            else if (!_playerInputs.IsBothGripsActive && _state == State.Recording)
+            else if (!_player.IsBothGripsActive && _state == State.Recording)
                 StopAndProcessRecording();
         }
 

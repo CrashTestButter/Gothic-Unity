@@ -28,7 +28,7 @@ namespace Gothic.VR.Services.Context
                     scene = SceneManager.GetActiveScene();
                 }
                 
-                // We need to look through all RootGOs and fetch the first matching HVRDialog Component.
+                // We need to look through all RootGOs and fetch the first matching VRDialog Component.
                 _dialogComponent = scene.GetRootGameObjects()
                     .Select(i => i.GetComponentInChildren<VRDialog>(true))
                     .First(i => i != null);

@@ -24,6 +24,8 @@ namespace Gothic.Core.Adapters.UI.StatusBars
         [Inject] private readonly NpcService _npcService;
 
         private NpcContainer _owner;
+        private bool _isInWorld;
+        private bool _isVideoPlaying;
 
         private enum StatusType
         {
@@ -48,8 +50,12 @@ namespace Gothic.Core.Adapters.UI.StatusBars
                 if (_statusType == StatusType.Health)
                 {
                     GlobalEventDispatcher.WorldSceneLoaded.AddListener(OnWorldSceneLoaded);
-                    GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(DisableBar);
-                    GlobalEventDispatcher.LoadingSceneLoaded.AddListener(DisableBar);
+                    GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(OnMenuOrLoadingSceneLoaded);
+                    GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnMenuOrLoadingSceneLoaded);
+
+                    // Videos (new game intro, chapter videos) are watched without the bar.
+                    GlobalEventDispatcher.PlayVideo.AddListener(OnPlayVideo);
+                    GlobalEventDispatcher.VideoPlaybackFinished.AddListener(OnVideoPlaybackFinished);
                 }
             }
             else
@@ -123,8 +129,29 @@ namespace Gothic.Core.Adapters.UI.StatusBars
 
         private void OnWorldSceneLoaded()
         {
-            EnableBar();
+            _isInWorld = true;
+            if (!_isVideoPlaying)
+                EnableBar();
             RefreshHealth();
+        }
+
+        private void OnMenuOrLoadingSceneLoaded()
+        {
+            _isInWorld = false;
+            DisableBar();
+        }
+
+        private void OnPlayVideo(string fileName)
+        {
+            _isVideoPlaying = true;
+            DisableBar();
+        }
+
+        private void OnVideoPlaybackFinished()
+        {
+            _isVideoPlaying = false;
+            if (_isInWorld)
+                EnableBar();
         }
 
         private void RefreshHealth()

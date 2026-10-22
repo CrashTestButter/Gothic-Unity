@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using Gothic.Core.Bink;
+using Gothic.Core.Domain.Video;
 using Gothic.Core.Logging;
 using UnityEngine;
 using Logger = Gothic.Core.Logging.Logger;
@@ -10,76 +8,21 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.Core.Adapters.Video
 {
     /// <summary>
-    /// Plays an original Gothic Bink video (.bik) without any conversion: BinkVideo decodes raw YUV frames + PCM
-    /// audio, this uploads the 3 planes into R8 textures ("Gothic/Bink YUV" converts to RGB on the GPU) and streams
-    /// the audio into a streaming AudioClip. The picture follows the audio clock (or real time if silent).
-    /// Decoding runs on its own thread - in the editor (Mono, debug) a frame took longer than 40 ms on the main thread.
+    /// Plays an original Gothic Bink video (.bik) without any conversion: BinkPlaybackDomain decodes raw YUV frames +
+    /// PCM audio, this uploads the 3 planes into R8 textures ("Gothic/Bink YUV" converts to RGB on the GPU) and streams
+    /// the audio into a streaming AudioClip.
     /// </summary>
     public class BinkPlayer : MonoBehaviour
     {
-        private const int _framesAhead = 12;
-        private const float _ringSeconds = 4f;
-        private const int _decoderIdleMs = 2;
-
-        private class DecodedFrame
-        {
-            public int Index;
-            // Position (sample frames) in the audio stream where this frame's audio starts - the frame is shown when
-            // that sample is heard. Exact even if a frame's audio packet isn't 1/fps long (e.g. pre-roll).
-            public long AudioStart;
-            public readonly byte[][] Planes = new byte[3][];
-        }
-
-        private Stream _stream;
-        private BinkVideo _video;
+        private BinkPlaybackDomain _playback;
         private Action _onFinished;
         private AudioSource _audioSource;
 
         private readonly Texture2D[] _textures = new Texture2D[3];
-        // Shared with the decoder thread - always under _frameLock.
-        private readonly object _frameLock = new();
-        private readonly Queue<DecodedFrame> _decoded = new();
-        private readonly Stack<DecodedFrame> _pool = new();
-        private float _startTime;
+        private Material _material;
+        private AudioClip _clip;
 
-        // The video clock runs on real time and is pulled gently towards the audio play head (AudioSource.timeSamples).
-        // Counting the samples Unity pulled from OnAudioRead was ~280 ms ahead and jumpy (it reads big chunks ahead):
-        // the clock re-synced every second and skipped 12-18 frames per second. Hard re-sync only after a real hiccup.
-        private const double _clockResyncSeconds = 1.0;
-        private const double _clockCorrectionPerSecond = 0.5;
-        private double _videoClock;
-        // timeSamples is the position handed to the mixer - it's heard after the DSP buffers. The picture waits for it
-        // (video was slightly ahead of the sound).
-        private double _audioOutputLatency;
-
-        // Diagnostics: once per second how many frames were shown/skipped and how full the decoded queue was.
-        private const float _statsIntervalSeconds = 1f;
-        private float _statsTime;
-        private int _statsShown;
-        private int _statsSkipped;
-        private int _statsMinQueue = int.MaxValue;
-        private double _statsMaxDrift;
         private bool _isFinished;
-
-        private Thread _decoderThread;
-        private volatile bool _isDecoderRunning;
-        private volatile bool _isDecodingDone;
-        private volatile string _decodeError;
-        private int _frameCount;
-        private double _fps;
-
-        // Audio ring buffer, read on the audio thread (OnAudioRead).
-        private readonly object _audioLock = new();
-        private float[] _ring;
-        private int _ringRead;
-        private int _ringCount;
-        private long _samplesPlayed;
-        private long _audioPushedFrames; // decoder thread
-        private const int _loggedAudioPackets = 3;
-        private int _sampleRate;
-        private int _channels;
-        private bool _hasAudio;
-        private bool _isAudioStarted;
 
         /// <summary>
         /// Starts the video on the screen renderer. onFinished is called at the end (also on decode errors).
@@ -93,8 +36,7 @@ namespace Gothic.Core.Adapters.Video
 
             try
             {
-                _stream = new BufferedStream(File.OpenRead(path), 1 << 16);
-                _video = new BinkVideo(_stream);
+                _playback = new BinkPlaybackDomain(path, audioSource != null);
             }
             catch (Exception e)
             {
@@ -103,19 +45,15 @@ namespace Gothic.Core.Adapters.Video
                 return false;
             }
 
-            aspect = (float)_video.Width / _video.Height;
-            _frameCount = (int)_video.FrameCount;
-            _fps = _video.Fps;
+            aspect = (float)_playback.Width / _playback.Height;
             CreateTextures(screen);
-            SetupAudio();
+            var audioOutputLatency = SetupAudio();
 
-            Logger.Log($"[BinkPlayer] {Path.GetFileName(path)}: {_video.Width}x{_video.Height} @ {_video.Fps:F2} fps, " +
-                       $"{_video.FrameCount} frames, audio={(_hasAudio ? $"{_sampleRate} Hz x{_channels}" : "none")}", LogCat.Loading);
+            var audioInfo = _playback.HasAudio ? $"{_playback.SampleRate} Hz x{_playback.Channels}" : "none";
+            Logger.Log($"[BinkPlayer] {Path.GetFileName(path)}: {_playback.Width}x{_playback.Height} " +
+                       $"@ {_playback.Fps:F2} fps, {_playback.FrameCount} frames, audio={audioInfo}", LogCat.Loading);
 
-            _startTime = Time.unscaledTime;
-            _isDecoderRunning = true;
-            _decoderThread = new Thread(DecodeLoop) { IsBackground = true, Name = "BinkDecoder" };
-            _decoderThread.Start();
+            _playback.Start(Time.unscaledTime, audioOutputLatency);
             return true;
         }
 
@@ -127,23 +65,25 @@ namespace Gothic.Core.Adapters.Video
 
         private void CreateTextures(Renderer screen)
         {
-            var lumaStride = (_video.Width + 15) / 16 * 16;
-            var lumaHeight = (_video.Height + 15) / 16 * 16;
-            var chromaStride = (_video.Width / 2 + 15) / 16 * 16;
-            var chromaHeight = (_video.Height / 2 + 15) / 16 * 16;
+            var width = _playback.Width;
+            var height = _playback.Height;
+            var lumaStride = (width + 15) / 16 * 16;
+            var lumaHeight = (height + 15) / 16 * 16;
+            var chromaStride = (width / 2 + 15) / 16 * 16;
+            var chromaHeight = (height / 2 + 15) / 16 * 16;
 
             _textures[0] = CreatePlaneTexture(lumaStride, lumaHeight);
             _textures[1] = CreatePlaneTexture(chromaStride, chromaHeight);
             _textures[2] = CreatePlaneTexture(chromaStride, chromaHeight);
 
-            var material = new Material(Shader.Find("Gothic/Bink YUV"));
-            material.SetTexture("_TexY", _textures[0]);
-            material.SetTexture("_TexU", _textures[1]);
-            material.SetTexture("_TexV", _textures[2]);
-            material.SetVector("_ScaleY", new Vector4((float)_video.Width / lumaStride, (float)_video.Height / lumaHeight));
-            material.SetVector("_ScaleUV",
-                new Vector4((float)(_video.Width / 2) / chromaStride, (float)(_video.Height / 2) / chromaHeight));
-            screen.sharedMaterial = material;
+            _material = new Material(Shader.Find("Gothic/Bink YUV"));
+            _material.SetTexture("_TexY", _textures[0]);
+            _material.SetTexture("_TexU", _textures[1]);
+            _material.SetTexture("_TexV", _textures[2]);
+            _material.SetVector("_ScaleY", new Vector4((float)width / lumaStride, (float)height / lumaHeight));
+            _material.SetVector("_ScaleUV",
+                new Vector4((float)(width / 2) / chromaStride, (float)(height / 2) / chromaHeight));
+            screen.sharedMaterial = _material;
         }
 
         private static Texture2D CreatePlaneTexture(int width, int height)
@@ -155,262 +95,53 @@ namespace Gothic.Core.Adapters.Video
             };
         }
 
-        private void SetupAudio()
+        /// <summary>
+        /// Returns the audio output latency (seconds from AudioSource.timeSamples until the sample is heard).
+        /// </summary>
+        private double SetupAudio()
         {
-            if (_video.AudioTracks.Count == 0 || _audioSource == null)
-                return;
+            if (!_playback.HasAudio)
+                return 0;
 
-            var track = _video.AudioTracks[0];
-            _sampleRate = track.SampleRate;
-            _channels = track.IsStereo ? 2 : 1;
-            _ring = new float[(int)(_sampleRate * _channels * _ringSeconds)];
-            _hasAudio = true;
-
-            var lengthFrames = (int)Math.Ceiling(_video.FrameCount / _video.Fps * _sampleRate) + _sampleRate;
-            var clip = AudioClip.Create("Bink", lengthFrames, _channels, _sampleRate, true, OnAudioRead);
-            _audioSource.clip = clip;
+            _clip = AudioClip.Create("Bink", _playback.AudioLengthFrames, _playback.Channels, _playback.SampleRate,
+                true, _playback.ReadAudio);
+            _audioSource.clip = _clip;
             _audioSource.loop = false;
 
             AudioSettings.GetDSPBufferSize(out var bufferLength, out var bufferCount);
-            _audioOutputLatency = (double)bufferLength * bufferCount / AudioSettings.outputSampleRate;
-            Logger.Log($"[BinkPlayer] Audio output latency {_audioOutputLatency * 1000:F0} ms " +
-                       $"({bufferCount} x {bufferLength} samples @ {AudioSettings.outputSampleRate} Hz)", LogCat.Loading);
+            return (double)bufferLength * bufferCount / AudioSettings.outputSampleRate;
         }
 
         private void Update()
         {
-            if (_video == null || _isFinished)
+            if (_playback == null || _isFinished)
                 return;
 
-            if (_decodeError != null)
+            if (_playback.DecodeError != null)
             {
-                Logger.LogWarning($"[BinkPlayer] Decoding stopped: {_decodeError}", LogCat.Loading);
+                Logger.LogWarning($"[BinkPlayer] Decoding stopped: {_playback.DecodeError}", LogCat.Loading);
                 Finish();
                 return;
             }
 
-            int decodedCount;
-            lock (_frameLock)
-                decodedCount = _decoded.Count;
-
-            // Start the sound once a few frames are buffered - the picture follows the sound from then on.
-            if (_hasAudio && !_isAudioStarted && (decodedCount >= _framesAhead || _isDecodingDone))
-            {
-                _isAudioStarted = true;
-                _startTime = Time.unscaledTime;
+            if (_playback.TryStartAudio(Time.unscaledTime))
                 _audioSource.Play();
+
+            long? audioPlayHead = _audioSource != null && _audioSource.isPlaying ? _audioSource.timeSamples : null;
+            var frame = _playback.Update(Time.unscaledTime, Time.unscaledDeltaTime, audioPlayHead);
+            if (frame != null)
+            {
+                for (var plane = 0; plane < 3; plane++)
+                {
+                    _textures[plane].LoadRawTextureData(frame.Planes[plane]);
+                    _textures[plane].Apply(false);
+                }
+
+                _playback.ReleaseFrame(frame);
             }
 
-            UpdateVideoClock();
-            ShowCurrentFrame();
-
-            if (_isDecodingDone && decodedCount == 0 && GetPlaybackTime() * _fps >= _frameCount)
+            if (_playback.IsFinished)
                 Finish();
-        }
-
-        /// <summary>
-        /// Decoder thread: keeps up to _framesAhead frames (and their audio) ready. Touches no Unity API.
-        /// </summary>
-        private void DecodeLoop()
-        {
-            try
-            {
-                while (_isDecoderRunning && _video.CurrentFrame < _video.FrameCount)
-                {
-                    DecodedFrame decoded = null;
-                    lock (_frameLock)
-                    {
-                        if (_decoded.Count < _framesAhead)
-                            decoded = _pool.Count > 0 ? _pool.Pop() : new DecodedFrame();
-                    }
-
-                    if (decoded == null || !HasAudioRoom())
-                    {
-                        if (decoded != null)
-                        {
-                            lock (_frameLock)
-                                _pool.Push(decoded);
-                        }
-                        Thread.Sleep(_decoderIdleMs);
-                        continue;
-                    }
-
-                    decoded.Index = (int)_video.CurrentFrame;
-                    var frame = _video.NextFrame();
-                    for (var plane = 0; plane < 3; plane++)
-                    {
-                        var source = frame.Planes[plane].Data;
-                        if (decoded.Planes[plane] == null || decoded.Planes[plane].Length != source.Length)
-                            decoded.Planes[plane] = new byte[source.Length];
-                        Buffer.BlockCopy(source, 0, decoded.Planes[plane], 0, source.Length);
-                    }
-
-                    decoded.AudioStart = _audioPushedFrames;
-                    if (_hasAudio)
-                    {
-                        var samples = frame.Audio[0];
-                        PushAudio(samples);
-                        _audioPushedFrames += samples.Count / _channels;
-                        if (decoded.Index < _loggedAudioPackets)
-                            Logger.Log($"[BinkPlayer] frame {decoded.Index}: audio {samples.Count / _channels} samples " +
-                                       $"(1/fps = {_sampleRate / _fps:F0})", LogCat.Loading);
-                    }
-
-                    lock (_frameLock)
-                        _decoded.Enqueue(decoded);
-                }
-            }
-            catch (Exception e)
-            {
-                if (_isDecoderRunning)
-                    _decodeError = $"frame {_video?.CurrentFrame}: {e.Message}";
-            }
-            finally
-            {
-                _isDecodingDone = true;
-            }
-        }
-
-        private bool HasAudioRoom()
-        {
-            if (!_hasAudio)
-                return true;
-            // One video frame of samples (with margin) has to fit into the ring.
-            var frameSamples = (int)(_sampleRate * _channels / _fps) * 2;
-            lock (_audioLock)
-                return _ring.Length - _ringCount >= frameSamples;
-        }
-
-        private void ShowCurrentFrame()
-        {
-            if (_hasAudio && !_isAudioStarted)
-                return;
-
-            var playbackTime = GetPlaybackTime();
-            var targetIndex = (int)(playbackTime * _fps);
-            // With sound: the frame whose audio is being heard. Behind -> older frames are skipped, ahead -> it waits.
-            var heardSample = (long)(playbackTime * _sampleRate);
-            DecodedFrame toShow = null;
-            lock (_frameLock)
-            {
-                _statsMinQueue = Math.Min(_statsMinQueue, _decoded.Count);
-                while (_decoded.Count > 0 && (_hasAudio
-                           ? _decoded.Peek().AudioStart <= heardSample
-                           : _decoded.Peek().Index <= targetIndex))
-                {
-                    if (toShow != null)
-                    {
-                        _pool.Push(toShow);
-                        _statsSkipped++;
-                    }
-                    toShow = _decoded.Dequeue();
-                }
-            }
-            LogStats(targetIndex);
-
-            if (toShow == null)
-                return;
-
-            _statsShown++;
-            for (var plane = 0; plane < 3; plane++)
-            {
-                _textures[plane].LoadRawTextureData(toShow.Planes[plane]);
-                _textures[plane].Apply(false);
-            }
-
-            lock (_frameLock)
-                _pool.Push(toShow);
-        }
-
-        private void LogStats(int targetIndex)
-        {
-            _statsTime += Time.unscaledDeltaTime;
-            if (_statsTime < _statsIntervalSeconds)
-                return;
-
-            Logger.Log($"[BinkPlayer] frame {targetIndex}: shown={_statsShown} skipped={_statsSkipped} " +
-                       $"minQueue={_statsMinQueue} maxDrift={_statsMaxDrift * 1000:F0} ms " +
-                       $"latency={_audioOutputLatency * 1000:F0} ms " +
-                       $"fps(render)={1f / Mathf.Max(Time.unscaledDeltaTime, 0.0001f):F0}", LogCat.Loading);
-            _statsTime = 0f;
-            _statsShown = 0;
-            _statsSkipped = 0;
-            _statsMinQueue = int.MaxValue;
-            _statsMaxDrift = 0;
-        }
-
-        private double GetPlaybackTime()
-        {
-            return _hasAudio
-                ? Math.Max(0.0, _videoClock - _audioOutputLatency)
-                : Time.unscaledTime - _startTime;
-        }
-
-        private void UpdateVideoClock()
-        {
-            if (!_hasAudio || !_isAudioStarted)
-                return;
-
-            double audioTime;
-            if (_audioSource.isPlaying)
-            {
-                audioTime = (double)_audioSource.timeSamples / _sampleRate;
-            }
-            else
-            {
-                lock (_audioLock)
-                    audioTime = (double)_samplesPlayed / (_sampleRate * _channels);
-            }
-
-            var deltaTime = Time.unscaledDeltaTime;
-            _videoClock += deltaTime;
-            var drift = audioTime - _videoClock;
-            _statsMaxDrift = Math.Max(_statsMaxDrift, Math.Abs(drift));
-            if (Math.Abs(drift) > _clockResyncSeconds)
-                _videoClock = audioTime;
-            else
-                _videoClock += drift * Math.Min(1.0, _clockCorrectionPerSecond * deltaTime);
-        }
-
-        private void PushAudio(List<float> samples)
-        {
-            lock (_audioLock)
-            {
-                foreach (var sample in samples)
-                {
-                    if (_ringCount == _ring.Length)
-                        break; // buffer full - should not happen with a few frames ahead
-                    _ring[(_ringRead + _ringCount) % _ring.Length] = sample;
-                    _ringCount++;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Audio thread. Missing samples (decoder behind) are silence.
-        /// </summary>
-        private void OnAudioRead(float[] data)
-        {
-            lock (_audioLock)
-            {
-                for (var i = 0; i < data.Length; i++)
-                {
-                    if (_ringCount > 0)
-                    {
-                        data[i] = _ring[_ringRead];
-                        _ringRead = (_ringRead + 1) % _ring.Length;
-                        _ringCount--;
-                        _samplesPlayed++;
-                    }
-                    else
-                    {
-                        data[i] = 0f;
-                        // Keep the clock running at the end so the last frames are shown.
-                        if (_isDecodingDone)
-                            _samplesPlayed++;
-                    }
-                }
-            }
         }
 
         private void Finish()
@@ -422,22 +153,34 @@ namespace Gothic.Core.Adapters.Video
             _onFinished?.Invoke();
         }
 
+        /// <summary>
+        /// Safe to call twice (Stop, then OnDestroy).
+        /// </summary>
         private void Close()
         {
-            _isDecoderRunning = false;
-            if (_decoderThread != null && _decoderThread != Thread.CurrentThread)
-                _decoderThread.Join(500);
-            _decoderThread = null;
+            _playback?.Dispose();
+            _playback = null;
 
             if (_audioSource != null)
-                _audioSource.Stop();
-            _stream?.Dispose();
-            _stream = null;
-            _video = null;
-            foreach (var texture in _textures)
             {
-                if (texture != null)
-                    Destroy(texture);
+                _audioSource.Stop();
+                if (_audioSource.clip == _clip)
+                    _audioSource.clip = null;
+            }
+
+            if (_clip != null)
+                Destroy(_clip);
+            _clip = null;
+
+            if (_material != null)
+                Destroy(_material);
+            _material = null;
+
+            for (var plane = 0; plane < _textures.Length; plane++)
+            {
+                if (_textures[plane] != null)
+                    Destroy(_textures[plane]);
+                _textures[plane] = null;
             }
         }
 

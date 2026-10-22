@@ -651,6 +651,15 @@ namespace Gothic.Core.Domain.Meshes.Builder
                         ? polygon.LightMapIndex
                         : -1;
 
+                    // Gothic lit these (caves, houses) with lightmaps from static lights, which we don't render.
+                    // Their static lights are shown as runtime stationary lights instead (StationaryLightsService).
+                    if (polygon.LightMapIndex >= 0 && positionIndices.Count > 0)
+                    {
+                        var corner = _mesh.GetPosition(positionIndices[0]);
+                        lightMappedCells.Add(StationaryLightsService.ToCell(
+                            new Vector3(corner.X, corner.Y, corner.Z) / 100f));
+                    }
+
                     void AddCorner(int fanIndex)
                     {
                         var key = (positionIndices[fanIndex], featureIndices[fanIndex], materialIndex, lightMapIndex);
@@ -701,9 +710,10 @@ namespace Gothic.Core.Domain.Meshes.Builder
                                     NormalX = ToSnorm16(feature.Normal.X),
                                     NormalY = ToSnorm16(feature.Normal.Y),
                                     NormalZ = ToSnorm16(feature.Normal.Z),
-                                    // Outdoor (vertex lit) polygons follow the time of day (Lit-World
-                                    // _DayLightColor), light mapped rooms and caves keep their light. G1's
-                                    // polygons have no outdoor flag set.
+                                    // Outdoor flag: SNorm16 w = 1 (short.MaxValue) on vertex lit (outdoor)
+                                    // polygons, 0 on light mapped ones (rooms, caves). Lit-World.shader reads
+                                    // normal.w to scale only outdoor light with the time of day (_DayLightColor).
+                                    // G1's polygons have no outdoor flag set.
                                     NormalW = polygon.LightMapIndex < 0 ? short.MaxValue : (short)0,
                                     // Gothic's baked vertex light, kept untouched: ARGB int -> RGBA byte order.
                                     Color = ((light >> 16) & 0xFF) | (((light >> 8) & 0xFF) << 8) |

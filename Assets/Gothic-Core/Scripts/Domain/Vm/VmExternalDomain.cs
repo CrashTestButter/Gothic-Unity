@@ -317,8 +317,7 @@ namespace Gothic.Core.Domain.Vm
             vm.RegisterExternal<string>("Snd_Play", Snd_Play);
 
             // Video
-            if (_configService.Dev.EnableScriptVideos)
-                RegisterPlayVideo(vm);
+            RegisterPlayVideo(vm);
 
             if (_configService.Dev.EnableQuickWinExternals)
                 RegisterQuickWinExternals(vm);
@@ -1023,6 +1022,7 @@ namespace Gothic.Core.Domain.Vm
                 var playVideo = vm.GetSymbolByName("PlayVideo");
                 if (playVideo != null)
                 {
+                    // Some script versions declare a return value, some don't. It has to match the DAT symbol.
                     if (playVideo.HasReturn)
                         vm.RegisterExternal<int, string>("PlayVideo", fileName => PlayVideo(fileName));
                     else
@@ -1035,7 +1035,8 @@ namespace Gothic.Core.Domain.Vm
             }
             catch (Exception e)
             {
-                Logger.LogWarning($"PlayVideo has an unexpected signature in this game/mod - not registered. {e.Message}", LogCat.ZenKit);
+                Logger.LogWarning($"PlayVideo has an unexpected signature in this game/mod - not registered. " +
+                                  $"{e.Message}", LogCat.ZenKit);
             }
         }
 
@@ -1044,8 +1045,8 @@ namespace Gothic.Core.Domain.Vm
             if (string.IsNullOrWhiteSpace(fileName))
                 return 0;
 
-            Logger.Log($"[PlayVideo] {fileName}", LogCat.Dialog);
-            GlobalEventDispatcher.ScriptPlayVideo.Invoke(fileName);
+            Logger.Log($"[PlayVideo] {fileName}", LogCat.Misc);
+            GlobalEventDispatcher.PlayVideo.Invoke(fileName);
             return 1;
         }
 

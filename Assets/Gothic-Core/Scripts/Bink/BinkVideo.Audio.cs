@@ -4,6 +4,7 @@
 // FFmpeg binkaudio.c: Copyright (c) 2007-2011 Peter Ross, Copyright (c) 2009 Daniel Verkamp; FFT/RDFT/DCT:
 // Fabrice Bellard, Loren Merritt, Alex Converse, Peter Ross, Vitor Sessak.
 // Copyright (c) 2019 Try (OpenGothic, MIT). FFmpeg code: LGPL-2.1-or-later - copyright holders listed in README.md.
+// Modified: ported from C++ to C# by the Gothic Unity contributors, 2026 (see git history for changes).
 using System;
 using System.Collections.Generic;
 using static Gothic.Core.Bink.BinkTables;
@@ -477,7 +478,8 @@ namespace Gothic.Core.Bink
             Butterflies(z, a0, a1, a2, a3, z[a2 * 2], z[a2 * 2 + 1], z[a3 * 2], z[a3 * 2 + 1]);
         }
 
-        private static void Butterflies(float[] z, int a0, int a1, int a2, int a3, float t1, float t2, float t5, float t6)
+        private static void Butterflies(float[] z, int a0, int a1, int a2, int a3,
+            float t1, float t2, float t5, float t6)
         {
             var t3 = t5 - t1;
             t5 += t1;

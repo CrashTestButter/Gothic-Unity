@@ -13,14 +13,20 @@ threading).
     follows the audio clock, minus the audio output latency, so picture and sound stay in sync.
 - The Daedalus externals `PlayVideo` and `PlayVideoEx` are implemented. They are registered only if the scripts
   declare them, with or without a return value, to match the DAT symbol.
-- `VRCinema` (VR adapter): the video plays in a dark room in front of the head.
+- `VRCinema` (VR adapter, `Player-Elements/Cinema.prefab`, nested inactive in `HVR - Player` and referenced by
+  `VRPlayerController.Cinema`): the video plays in a dark room in front of the head. Screen distance and width are
+  set on the prefab.
   - The screen keeps a fixed direction and follows teleports.
   - The world is paused while the video runs (the engine blocks the game too).
   - Several videos in a row are queued (G1 ending: Extro + Credits).
   - Skip with a trigger or A/X (keyboard: Space/Escape).
-  - An MP4 with the same name in `_work/DATA/video/` is played instead of the `.bik`.
+  - The player is locked meanwhile: no movement, turning, crouching, jumping or menu button. The previous values
+    are restored afterwards.
 - `VRCinemaService` (new VR scene singleton) owns the open cinema and listens to the new
-  `GlobalEventDispatcher.ScriptPlayVideo` event.
+  `GlobalEventDispatcher.PlayVideo` event. `GlobalEventDispatcher.VideoPlaybackFinished` fires when the cinema closes.
+- The Logo scene plays the logo videos through the same cinema (same screen size and height, player locked,
+  skippable) and loads the main menu on `VideoPlaybackFinished`. Its own screen, audio source and black box are gone.
+- VR main menu: moved from 5m to 2.5m and scaled to 0.35, the same size as the in-game menu.
 - `VideoService` also lists the `.bik` files.
 - `GothicBinkYUV.shader` is added to *Always Included Shaders* because it's loaded with `Shader.Find`.
 
@@ -29,9 +35,8 @@ On `main`, `PlayVideo` isn't implemented, so chapter videos and the G1 ending do
 converting the videos to MP4, is an extra manual step for every player.
 
 ## Config
-- Kept flag: `EnableScriptVideos`. It is a feature switch, under a new `[Separator("Videos")]`, and is `1` in
-  `Production.asset`.
-- Dropped flags: none.
+- Kept flags: none. Videos are always on, so there is no `EnableScriptVideos` switch.
+- Dropped flags: `EnableScriptVideos` (added and removed in this branch). `PlayVideo` is always registered.
 
 ## How to test (VR, ~10 min)
 1. G1, new game: when the intro video is scripted, it plays in the dark cinema with sound, in sync.
@@ -39,13 +44,16 @@ converting the videos to MP4, is an extra manual step for every player.
 2. Press a trigger or A/X after 0.5 s: the video is skipped and the world continues.
 3. G1 chapter change (e.g. via Marvin/console to chapter 2): the chapter video plays, the world is paused, and the
    hero is teleported while the screen follows.
-4. Put an MP4 with the same name next to a `.bik`: the MP4 plays instead.
+4. Logo videos (`playLogoVideos=1` in Gothic.ini): they play in the black cinema at the same size as in-game
+   videos. Crouch, jump, moving and the menu button do nothing. A trigger or A/X skips to the next logo, then the
+   main menu loads.
 5. Look at a video for a while: no stutter, and sound and picture stay in sync.
 6. Log: `[BinkPlayer] <file>: 640x480 @ ... fps` once per video. No per-frame or per-second spam.
 7. Change the world during a video (e.g. via a teleport or level change while one plays): afterwards the world is
    rendered normally (not black with only UI), time and sound run.
 8. Play several videos in a row (G1 ending or repeated chapter videos): memory doesn't grow per video (Profiler:
    no leftover `Bink` AudioClips, `Gothic/Bink YUV` materials or 1280x720 RenderTextures).
+9. Main menu: same size as the in-game menu. Opening the tutorial via the Gothic-Unity box needs no big head turn.
 
 ## Licensing (maintainers decide)
 - The decoder (`Assets/Gothic-Core/Scripts/Bink/`, 6 files) is a C# port of OpenGothic `common/bink`

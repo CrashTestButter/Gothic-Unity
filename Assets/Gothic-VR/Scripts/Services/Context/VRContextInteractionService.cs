@@ -39,8 +39,7 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly VRWeaponService _vrWeaponService;
-        [Inject] private readonly AudioService _audioService;
-        [Inject] private readonly VideoService _videoService;
+        [Inject] private readonly VRCinemaService _vrCinemaService;
         [Inject] private readonly MarvinService _marvinService;
 
         private const string _contextName = "VR";
@@ -59,8 +58,8 @@ namespace Gothic.VR.Services.Context
             this.Inject();
 
             _vrWeaponService.Init();
+            _vrCinemaService.Init();
 
-            GlobalEventDispatcher.ScriptPlayVideo.AddListener(fileName => VRCinema.Play(_videoService, fileName));
             // DeveloperConfig.EnableVrHeroBody: the hero's own body + arms under the VR head (one per world scene).
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>
             {
@@ -76,7 +75,6 @@ namespace Gothic.VR.Services.Context
                 // DeveloperConfig.EnableMarvinFallRescue (checked at runtime, Marvin mode only): out of the world -> START.
                 new UnityEngine.GameObject("_MarvinFallRescue").AddComponent<Gothic.VR.Adapters.Marvin.MarvinFallRescue>();
             });
-            GlobalEventDispatcher.ScriptExitGame.AddListener(VRCinema.QuitAfterVideos);
             // DeveloperConfig.EnableVrTrade: the trade counter between the hero and the trader.
             GlobalEventDispatcher.TradeStarted.AddListener(session =>
                 Gothic.VR.Adapters.Trade.VRTradeCounter.Spawn(session, _playerController.Camera));

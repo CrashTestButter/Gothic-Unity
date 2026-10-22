@@ -3,6 +3,8 @@
 Plays Gothic's original `.bik` videos (intro, chapter videos, endings) without converting them to MP4.
 
 - `BinkVideo` decodes the frames as raw YUV420 planes and the audio as float PCM. It has no Unity dependencies.
+- `Gothic.Core.Domain.Video.BinkPlaybackDomain` runs the decoder on its own thread, buffers frames + audio and keeps
+  the picture in sync with the sound. It has no Unity dependencies either.
 - `Gothic.Core.Adapters.Video.BinkPlayer` uploads the planes to textures (shader `Gothic/Bink YUV`) and streams the
   audio into an `AudioClip`.
 
@@ -12,8 +14,8 @@ to describe the file format.
 
 ## Origin and licenses
 
-The decoder files in this folder (`BinkVideo.cs`, `BinkVideo.Audio.cs`, `BinkBitStream.cs`, `BinkFrame.cs`,
-`BinkTables.cs`) are a C# port of:
+The decoder files in this folder (`BinkVideo.cs`, `BinkVideo.Audio.cs`, `BinkBitStream.cs`, `BinkException.cs`,
+`BinkFrame.cs`, `BinkTables.cs`) are a C# port of:
 
 - **OpenGothic** `common/bink` - https://github.com/Try/OpenGothic/tree/master/common/bink
   - Copyright (c) 2019 Try. Repository license: MIT (full text below).
@@ -31,8 +33,14 @@ The decoder files in this folder (`BinkVideo.cs`, `BinkVideo.Audio.cs`, `BinkBit
     Copyright (c) 2010 Vitor Sessak
   - `libavcodec/wma_freqs.c` (`ff_wma_critical_freqs` table): the FFmpeg project
 
-So these five files are **LGPL-2.1-or-later**. Gothic UnZENity itself is GPLv3. Using LGPL 2.1+ code in a GPLv3
-project is allowed: LGPL 2.1 section 3 permits applying the GNU GPL (version 2 or later) to the code instead.
+So these six files are **LGPL-2.1-or-later** (the MIT notice additionally covers Try's own contributions). A C#
+port counts as a modification: LGPL 2.1 section 0 includes works "translated straightforwardly into another
+language". The files keep their LGPL-2.1-or-later license - we do not convert them to the GPL via LGPL 2.1
+section 3. Each file carries a notice of the modification and its date (LGPL 2.1 section 2b).
+
+Gothic UnZENity itself is GPLv3. Combining LGPL-2.1+ code with it is allowed: the FSF license list states that
+LGPLv2.1 "is compatible with GPLv2 and GPLv3" (https://www.gnu.org/licenses/license-list.html#LGPLv2.1), and the
+"or later" clause also permits LGPLv3, which is GPLv3-compatible. The game as a whole is distributed under GPLv3.
 The LGPL 2.1 text: https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html - the GPLv3 text is the project's
 `LICENSE` file.
 
@@ -43,7 +51,8 @@ Please keep:
 
 The tables in `BinkTables.cs` are the codec's constant tables, generated 1:1 from the OpenGothic source.
 
-The Unity side (`BinkPlayer`, the `Gothic/Bink YUV` shader, `VRCinema`) is our own code under the project license.
+The playback and Unity side (`BinkPlaybackDomain`, `BinkPlayer`, the `Gothic/Bink YUV` shader, `VRCinema`) is our
+own code under the project license.
 The YUV->RGB constants follow OpenGothic's `shader/bink/bink.frag` (BT.601).
 
 ## OpenGothic license (MIT)

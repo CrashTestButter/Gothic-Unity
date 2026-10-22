@@ -1,41 +1,35 @@
 #if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+using Gothic.Core;
 using Gothic.Core.Adapters.Video;
 using Gothic.Core.Const;
-using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Config;
-using Gothic.Core.Services.Player;
 using Gothic.Services.UI;
+using Gothic.VR.Adapters.HVROverrides;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Shared;
-using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Video;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters.UI
 {
     /// <summary>
-    /// V1 (DeveloperConfig.EnableScriptVideos): PlayVideo from Daedalus (chapter videos, the G1 ending's Extro/Credits)
-    /// in a dark "cinema": the VR camera renders only a screen (UI layer) on black, the world is muted.
-    /// Several PlayVideo calls in a row (G1 ending: 3 videos) are queued.
+    /// Videos (PlayVideo from Daedalus, the logo videos) in a dark "cinema": the VR camera renders only a screen
+    /// (UI layer) on black, the world is muted. Lives as Cinema.prefab on the player (inactive), fed by VRCinemaService.
+    /// It activates itself for the first video and deactivates after the last one.
+    /// Several videos in a row (G1 ending: 3 videos, logos: 2) are queued.
+    /// The player is locked meanwhile: no movement, turning, crouching, jumping or menu.
     /// Skip the current video: any trigger or A/X (keyboard Space/Escape).
-    /// Original Bink videos (.bik) are decoded by BinkPlayer; an MP4 with the same name in _work/DATA/video/ wins.
+    /// The original Bink videos (.bik) are decoded by BinkPlayer.
     /// The world is paused (Time.timeScale 0) like in the engine, where the video blocks the game - otherwise dialog
     /// lines queued meanwhile would all play at once after the video.
     /// </summary>
     public class VRCinema : MonoBehaviour
     {
-        private const float _screenDistance = 3f;
-        private const float _screenWidth = 3.2f;
         private const float _skipInputDelay = 0.5f;
-        // A bigger jump of the camera is a teleport (e.g. the hero is moved to the chapter start) - face it anew.
-        private const float _teleportDistance = 5f;
         private const float _skipHintGap = 0.2f;
         private const float _skipHintScale = 0.2f;
         private const float _skipHintAlpha = 0.6f;
@@ -45,12 +39,23 @@ namespace Gothic.VR.Adapters.UI
         private const string _skipHintButton = "(Trigger) ";
         private const string _skipHintFallback = "skip";
 
-        private static VRCinema _instance;
-        private static bool _isQuitAfterVideos;
-        private readonly Queue<string> _queue = new();
+        [Tooltip("Screen the video is rendered on (UI layer, as the camera renders only this layer meanwhile).")]
+        [SerializeField]
+        private MeshRenderer _screen;
 
-        [Inject] private readonly ConfigService _configService;
-        [Inject] private readonly LocalizationService _localizationService;
+        [Tooltip("Places the screen in front of the head when a video starts.")] [SerializeField]
+        private VRPlaceInFrontOfCamera _screenPlacement;
+
+        [Tooltip("Audio of the video. Plays while the world's audio is paused.")] [SerializeField]
+        private AudioSource _audioSource;
+
+        [Tooltip("Distance of the screen in front of the head in meters.")] [SerializeField]
+        private float _screenDistance = 3f;
+
+        [Tooltip("Width of the screen in meters. The height follows the video's aspect ratio.")] [SerializeField]
+        private float _screenWidth = 3.2f;
+
+        private readonly Queue<string> _queue = new();
 
         private Camera _camera;
         private int _savedCullingMask;
@@ -60,81 +65,41 @@ namespace Gothic.VR.Adapters.UI
         private readonly List<(Camera camera, int cullingMask, CameraClearFlags clearFlags, Color background)>
             _savedSpectatorCameras = new();
         private float _savedTimeScale = 1f;
-        private Vector3 _screenForward = Vector3.forward;
-        private Vector3 _lastCameraPosition;
 
-        private GameObject _screen;
         private GameObject _skipHint;
         private TMP_Text _skipHintText;
         private float _skipHintStartTime;
-        private VideoPlayer _videoPlayer;
-        private RenderTexture _renderTexture;
-        private Material _videoPlayerMaterial;
-        private AudioSource _audioSource;
+
+        private VRPlayerController _playerController;
+        private bool _savedMovementEnabled;
+        private bool _savedRotationEnabled;
+        private bool _savedCanCrouch;
+        private bool _savedCanJump;
+        private bool _savedTeleporterEnabled;
+        private bool _savedMenuButtonEnabled;
+
         private BinkPlayer _binkPlayer;
         private float _playStartTime;
         private bool _isRunning;
+        private int _closedFrame = -1;
 
-
-        public static void Play(VideoService videoService, string fileName)
-        {
-            var path = FindVideo(videoService, fileName);
-            if (path == null)
-            {
-                Logger.LogWarning($"[VRCinema] '{fileName}' not found in _work/DATA/video/ (.bik/.mp4) - skipped.", LogCat.VR);
-                return;
-            }
-
-            if (_instance == null)
-                _instance = new GameObject("_Cinema").AddComponent<VRCinema>();
-
-            // Scripts call PlayVideo several times in a row (G1 ending) - only the first one starts the cinema.
-            _instance._queue.Enqueue(path);
-            if (!_instance._isRunning)
-                _instance.PlayNext();
-        }
 
         /// <summary>
-        /// ExitGame/ExitSession (ending): quit once the queued videos (Extro, Credits) are over - right away if none play.
+        /// True while a video plays and in the frame the cinema closed. The input that skipped the last video (e.g.
+        /// Escape) must not open the menu in the same frame, after the menu button got unlocked again.
         /// </summary>
-        public static void QuitAfterVideos()
-        {
-            if (_instance != null && _instance._isRunning)
-            {
-                _isQuitAfterVideos = true;
-                return;
-            }
-            Quit();
-        }
+        public bool IsBlockingInput => _isRunning || Time.frameCount == _closedFrame;
 
-        private static void Quit()
-        {
-            // DeveloperConfig.EnableEndingReturnsToMenu: after the ending's videos and credits back to the start (game
-            // profiles / main menu) like the engine's ExitSession - the game just closed.
-            var configService = Gothic.Core.ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
-            if (configService.Dev.EnableEndingReturnsToMenu)
-            {
-                Logger.Log("[VRCinema] Game ended (ExitGame/ExitSession) - back to the main menu.", LogCat.VR);
-                Gothic.Core.Domain.GameRestartDomain.Restart();
-                return;
-            }
+        public bool IsRunning => _isRunning;
 
-            Logger.Log("[VRCinema] Game ended (ExitGame/ExitSession) - quitting.", LogCat.VR);
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
-
-        private static string FindVideo(VideoService videoService, string fileName)
+        /// <summary>
+        /// Queues a Bink video file. Only the first one starts the cinema, the others follow.
+        /// </summary>
+        public void Enqueue(string path)
         {
-            // An MP4 (converted by the player) wins, otherwise the original Bink file is decoded by BinkPlayer.
-            var name = Path.GetFileNameWithoutExtension(fileName);
-            return videoService.VideoFilePathsMp4
-                       .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name)) ??
-                   videoService.VideoFilePathsBik
-                       .FirstOrDefault(i => Path.GetFileNameWithoutExtension(i).EqualsIgnoreCase(name));
+            _queue.Enqueue(path);
+            if (!_isRunning)
+                PlayNext();
         }
 
         private void PlayNext()
@@ -145,34 +110,31 @@ namespace Gothic.VR.Adapters.UI
                 return;
             }
 
-            if (_screen == null && !Open())
+            if (!_isRunning && !Open())
+            {
+                _queue.Clear();
+                GlobalEventDispatcher.VideoPlaybackFinished.Invoke();
                 return;
+            }
 
             _isRunning = true;
             var path = _queue.Dequeue();
             Logger.Log($"[VRCinema] Playing {path}", LogCat.VR);
             _playStartTime = Time.unscaledTime;
+            ResetSkipHintFade();
             StopBink();
-
-            if (Path.GetExtension(path).EqualsIgnoreCase(".bik"))
-            {
-                PlayBink(path);
-                return;
-            }
-
-            _screen.GetComponent<MeshRenderer>().sharedMaterial = _videoPlayerMaterial;
-            _videoPlayer.url = path;
-            _videoPlayer.Prepare();
+            PlayBink(path);
         }
 
         private void PlayBink(string path)
         {
             _binkPlayer = gameObject.AddComponent<BinkPlayer>();
-            if (!_binkPlayer.Play(path, _screen.GetComponent<MeshRenderer>(), _audioSource, PlayNext, out var aspect))
+            if (!_binkPlayer.Play(path, _screen, _audioSource, PlayNext, out var aspect))
             {
                 PlayNext();
                 return;
             }
+
             _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth / aspect, 1f);
         }
 
@@ -191,9 +153,10 @@ namespace Gothic.VR.Adapters.UI
             if (_camera == null)
             {
                 Logger.LogWarning("[VRCinema] No main camera - video skipped.", LogCat.VR);
-                _queue.Clear();
                 return false;
             }
+
+            gameObject.SetActive(true);
 
             // Dark room: only the screen (UI layer) on black.
             _savedCullingMask = _camera.cullingMask;
@@ -206,82 +169,19 @@ namespace Gothic.VR.Adapters.UI
             AudioListener.pause = true;
             _savedTimeScale = Time.timeScale;
             Time.timeScale = 0f;
+            LockPlayer();
 
-            _screen = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            _screen.name = "_CinemaScreen";
-            _screen.layer = Constants.UILayer;
-            Destroy(_screen.GetComponent<Collider>());
+            // Stays where it is (no head following). PlayVideo often comes before the script teleports the hero - the
+            // screen is placed anew then.
+            _screenPlacement.Configure(_camera.transform, _screenDistance);
 
-            if (_configService.Dev.EnableCinemaSkipHint)
-                CreateSkipHint();
-            FaceCamera();
-            _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth * 9f / 16f, 1f);
-
-            var shader = Shader.Find("Universal Render Pipeline/Unlit");
-            var material = new Material(shader != null ? shader : Constants.ShaderSingleMeshLit);
-            _renderTexture = new RenderTexture(1280, 720, 0);
-            material.mainTexture = _renderTexture;
-            _videoPlayerMaterial = material;
-            _screen.GetComponent<MeshRenderer>().sharedMaterial = material;
-
-            _videoPlayer = gameObject.AddComponent<VideoPlayer>();
-            _videoPlayer.playOnAwake = false;
-            _videoPlayer.renderMode = VideoRenderMode.RenderTexture;
-            _videoPlayer.targetTexture = _renderTexture;
-            _videoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
-
-            // The world is paused via AudioListener.pause - the video's own source ignores it.
-            _audioSource = gameObject.AddComponent<AudioSource>();
+            // The world is paused via AudioListener.pause - the video's own source ignores it. Not serialized by Unity.
             _audioSource.ignoreListenerPause = true;
-            _audioSource.spatialBlend = 0f;
-            _videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
-            _videoPlayer.SetTargetAudioSource(0, _audioSource);
 
-            _videoPlayer.prepareCompleted += OnPrepared;
-            _videoPlayer.loopPointReached += _ => PlayNext();
-            _videoPlayer.errorReceived += (_, message) =>
-            {
-                Logger.LogWarning($"[VRCinema] Video error: {message}", LogCat.VR);
-                PlayNext();
-            };
+            var configService = ReflexProjectInstaller.DIContainer.Resolve<ConfigService>();
+            if (configService.Dev.EnableCinemaSkipHint && _skipHint == null)
+                CreateSkipHint();
             return true;
-        }
-
-        /// <summary>
-        /// The screen keeps a fixed direction (turning the head doesn't move it - that would make people sick), but
-        /// follows the head's position: PlayVideo often comes before the script teleports the hero.
-        /// </summary>
-        private void FaceCamera()
-        {
-            var forward = Vector3.ProjectOnPlane(_camera.transform.forward, Vector3.up).normalized;
-            _screenForward = forward == Vector3.zero ? Vector3.forward : forward;
-            _lastCameraPosition = _camera.transform.position;
-            PlaceScreen();
-        }
-
-        private void PlaceScreen()
-        {
-            _screen.transform.position = _camera.transform.position + _screenForward * _screenDistance;
-            _screen.transform.rotation = Quaternion.LookRotation(_screenForward);
-
-            if (_skipHint == null)
-                return;
-            // Under the screen's right corner, its right edge in line with the screen's.
-            var screenT = _screen.transform;
-            var corner = screenT.position + screenT.right * (screenT.localScale.x / 2f) -
-                         Vector3.up * (screenT.localScale.y / 2f + _skipHintGap);
-            _skipHint.transform.SetPositionAndRotation(corner, screenT.rotation);
-        }
-
-        private void UpdateSkipHintFade()
-        {
-            if (_skipHintText == null)
-                return;
-            var progress = Mathf.Clamp01((Time.unscaledTime - _skipHintStartTime - _skipHintFadeDelay) /
-                                         _skipHintFadeSeconds);
-            var color = _skipHintText.color;
-            color.a = _skipHintAlpha * progress * progress;
-            _skipHintText.color = color;
         }
 
         /// <summary>
@@ -292,91 +192,49 @@ namespace Gothic.VR.Adapters.UI
         {
             _skipHint = new GameObject("_CinemaSkipHint");
             _skipHint.layer = Constants.UILayer;
+            _skipHint.transform.SetParent(transform, false);
             _skipHint.transform.localScale = Vector3.one * _skipHintScale;
 
             var text = _skipHint.AddComponent<TextMeshPro>();
             VRGothicText.Apply(text);
-            var localized = _localizationService.GetText("cinema.skip");
+            var localized = ReflexProjectInstaller.DIContainer.Resolve<LocalizationService>().GetText("cinema.skip");
             text.text = _skipHintButton + (string.IsNullOrEmpty(localized) || localized.Contains("cinema.skip")
                 ? _skipHintFallback
                 : localized);
             text.fontSize = 12;
             text.alignment = TextAlignmentOptions.Right;
             text.textWrappingMode = TextWrappingModes.NoWrap;
-            // Fades in (UpdateSkipHintFade) - the world is paused, so unscaled time.
-            text.color = new Color(1f, 1f, 1f, 0f);
-            _skipHintText = text;
-            _skipHintStartTime = Time.unscaledTime;
             // Pivot at the right edge, so the text ends at the screen's corner.
             text.rectTransform.pivot = new Vector2(1f, 0.5f);
+            _skipHintText = text;
+            ResetSkipHintFade();
+        }
+
+        private void ResetSkipHintFade()
+        {
+            if (_skipHintText == null)
+                return;
+            // Fades in (UpdateSkipHint) - the world is paused, so unscaled time.
+            _skipHintText.color = new Color(1f, 1f, 1f, 0f);
+            _skipHintStartTime = Time.unscaledTime;
         }
 
         private void LateUpdate()
         {
-            if (_screen == null || _camera == null)
+            if (!_isRunning || _skipHint == null)
                 return;
 
-            UpdateSkipHintFade();
-            if (Vector3.Distance(_camera.transform.position, _lastCameraPosition) > _teleportDistance)
-                FaceCamera();
-            else
-                PlaceScreen();
-        }
+            // Under the screen's right corner, its right edge in line with the screen's.
+            var screenTransform = _screen.transform;
+            var corner = screenTransform.position + screenTransform.right * (screenTransform.lossyScale.x / 2f) -
+                         Vector3.up * (screenTransform.lossyScale.y / 2f + _skipHintGap);
+            _skipHint.transform.SetPositionAndRotation(corner, screenTransform.rotation);
 
-        private void OnPrepared(VideoPlayer player)
-        {
-            // Original videos are 4:3 (640x480) - keep their aspect.
-            if (player.width > 0 && player.height > 0)
-            {
-                var aspect = (float)player.height / player.width;
-                _screen.transform.localScale = new Vector3(_screenWidth, _screenWidth * aspect, 1f);
-            }
-            player.Play();
-        }
-
-        private void Update()
-        {
-            if (_screen == null || Time.unscaledTime - _playStartTime < _skipInputDelay)
-                return;
-
-            if (IsSkipPressed())
-            {
-                Logger.Log("[VRCinema] Skipped", LogCat.VR);
-                _videoPlayer.Stop();
-                StopBink();
-                PlayNext();
-            }
-        }
-
-        private static bool IsSkipPressed()
-        {
-            var keyboard = Keyboard.current;
-            if (keyboard != null && (keyboard.spaceKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
-                return true;
-
-            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
-            {
-                if (HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated ||
-                    HVRController.GetButtonState(side, HVRButtons.Primary).JustActivated)
-                    return true;
-            }
-            return false;
-        }
-
-        private void Awake()
-        {
-            gameObject.Inject();
-        }
-
-        private void OnDestroy()
-        {
-            // Destroyed without Close (scene change during a video) - never leave the game paused.
-            if (!_isRunning)
-                return;
-            RestoreSpectatorCameras();
-            Time.timeScale = _savedTimeScale;
-            AudioListener.pause = false;
-            _instance = null;
+            var progress = Mathf.Clamp01((Time.unscaledTime - _skipHintStartTime - _skipHintFadeDelay) /
+                                         _skipHintFadeSeconds);
+            var color = _skipHintText.color;
+            color.a = _skipHintAlpha * progress * progress;
+            _skipHintText.color = color;
         }
 
         /// <summary>
@@ -386,7 +244,7 @@ namespace Gothic.VR.Adapters.UI
         private void DarkenSpectatorCameras()
         {
             _savedSpectatorCameras.Clear();
-            foreach (var spectator in FindObjectsByType<Gothic.VR.Adapters.Player.VRSpectatorCamera>(FindObjectsSortMode.None))
+            foreach (var spectator in FindObjectsByType<Player.VRSpectatorCamera>(FindObjectsSortMode.None))
             {
                 if (!spectator.TryGetComponent<Camera>(out var spectatorCamera) || spectatorCamera == _camera)
                     continue;
@@ -412,36 +270,115 @@ namespace Gothic.VR.Adapters.UI
             _savedSpectatorCameras.Clear();
         }
 
+        private void Update()
+        {
+            if (!_isRunning || Time.unscaledTime - _playStartTime < _skipInputDelay)
+                return;
+
+            if (IsSkipPressed())
+            {
+                Logger.Log("[VRCinema] Skipped", LogCat.VR);
+                StopBink();
+                PlayNext();
+            }
+        }
+
+        private static bool IsSkipPressed()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null && (keyboard.spaceKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
+                return true;
+
+            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
+            {
+                if (HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated ||
+                    HVRController.GetButtonState(side, HVRButtons.Primary).JustActivated)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void OnDestroy()
+        {
+            // Destroyed while running (the player is destroyed, e.g. on quit): the camera might survive - never leave
+            // it dark or the game paused.
+            if (_isRunning)
+                RestoreWorld();
+            StopBink();
+        }
+
         private void Close()
         {
-            if (_camera != null)
-            {
-                _camera.cullingMask = _savedCullingMask;
-                _camera.clearFlags = _savedClearFlags;
-                _camera.backgroundColor = _savedBackground;
-            }
-            RestoreSpectatorCameras();
-            AudioListener.pause = false;
-            Time.timeScale = _savedTimeScale;
+            if (_isRunning)
+                RestoreWorld();
             StopBink();
 
-            if (_screen != null)
-                Destroy(_screen);
-            if (_skipHint != null)
-                Destroy(_skipHint);
-            if (_renderTexture != null)
-                _renderTexture.Release();
-
             _isRunning = false;
-            Destroy(gameObject);
-            _instance = null;
+            _closedFrame = Time.frameCount;
+            gameObject.SetActive(false);
             Logger.Log("[VRCinema] Closed", LogCat.VR);
+            GlobalEventDispatcher.VideoPlaybackFinished.Invoke();
+        }
 
-            if (_isQuitAfterVideos)
-            {
-                _isQuitAfterVideos = false;
-                Quit();
-            }
+        private void RestoreWorld()
+        {
+            RestoreCamera();
+            RestoreSpectatorCameras();
+            UnlockPlayer();
+            AudioListener.pause = false;
+            Time.timeScale = _savedTimeScale;
+        }
+
+        private void RestoreCamera()
+        {
+            if (_camera == null)
+                return;
+
+            _camera.cullingMask = _savedCullingMask;
+            _camera.clearFlags = _savedClearFlags;
+            _camera.backgroundColor = _savedBackground;
+            _camera = null;
+        }
+
+        /// <summary>
+        /// The camera only shows the screen, but HVR still moves/crouches the player and the menu button would open
+        /// the menu. The previous values are kept, as a dialog or seat might have locked the player already.
+        /// </summary>
+        private void LockPlayer()
+        {
+            // The cinema is inactive until the first video - no Awake to cache it in before.
+            if (_playerController == null)
+                _playerController = GetComponentInParent<VRPlayerController>(true);
+            if (_playerController == null)
+                return;
+
+            _savedMovementEnabled = _playerController.MovementEnabled;
+            _savedRotationEnabled = _playerController.RotationEnabled;
+            _savedCanCrouch = _playerController.CanCrouch;
+            _savedCanJump = _playerController.CanJump;
+            _savedTeleporterEnabled = _playerController.Teleporter.enabled;
+            _savedMenuButtonEnabled = _playerController.VrInputs.IsMenuButtonEnabled;
+
+            _playerController.MovementEnabled = false;
+            _playerController.RotationEnabled = false;
+            _playerController.CanCrouch = false;
+            _playerController.CanJump = false;
+            _playerController.Teleporter.enabled = false;
+            _playerController.VrInputs.IsMenuButtonEnabled = false;
+        }
+
+        private void UnlockPlayer()
+        {
+            if (_playerController == null)
+                return;
+
+            _playerController.MovementEnabled = _savedMovementEnabled;
+            _playerController.RotationEnabled = _savedRotationEnabled;
+            _playerController.CanCrouch = _savedCanCrouch;
+            _playerController.CanJump = _savedCanJump;
+            _playerController.Teleporter.enabled = _savedTeleporterEnabled;
+            _playerController.VrInputs.IsMenuButtonEnabled = _savedMenuButtonEnabled;
         }
     }
 }

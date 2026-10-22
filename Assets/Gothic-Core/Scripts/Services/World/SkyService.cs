@@ -28,15 +28,20 @@ namespace Gothic.Core.Services.World
 
         // DeveloperConfig.EnableIndoorWorldDarkness: the light of indoor worlds (no sun, no fog) - like the night.
         private static readonly Color _indoorLight = new(0.25f, 0.25f, 0.3f);
-        private bool? _isIndoorWorld;
-        
-        
+
         private Vector3 _sunDirection;
         private bool _isRaining;
 
         private float _masterTime;
         private bool _noSky = true;
+
         private List<SkyState> _stateList = new();
+
+        // Last interpolated sky polyColor, re-applied by SetShaderProperties() so it doesn't reset the night.
+        private Color _polyColor = Color.white;
+
+        // World's BSP tree is indoor (dungeons, mines): the time of day doesn't darken it, see SetDayLight().
+        private bool _isIndoorWorld;
 
         private static readonly int _sunDirectionShaderId = Shader.PropertyToID("_SunDirection");
         private static readonly int _sunColorShaderId = Shader.PropertyToID("_SunColor");
@@ -86,11 +91,14 @@ namespace Gothic.Core.Services.World
             GlobalEventDispatcher.GameTimeSecondChangeCallback.AddListener(Interpolate);
             GlobalEventDispatcher.GameTimeHourChangeCallback.AddListener(UpdateRainTime);
 
+            _isIndoorWorld = _saveGameService.CurrentWorldData?.BspTree?.Type == ZenKit.BspTreeType.Indoor;
+            Logger.Log($"[Sky] Indoor world: {_isIndoorWorld} - day/night light is " +
+                       $"{(_isIndoorWorld ? "off" : "on")}.", LogCat.Loading);
+
             RenderSettings.skybox = Object.Instantiate(_textureService.SkyMaterial);
-            _isIndoorWorld = null;
             InitRainGo();
             InitSky();
-            if (IsIndoorWorld())
+            if (IsIndoorDarkness)
             {
                 RenderSettings.fog = false;
                 Logger.Log("[Sky] Indoor world - no sun, no fog", LogCat.Vob);
@@ -101,24 +109,7 @@ namespace Gothic.Core.Services.World
         /// DeveloperConfig.EnableIndoorWorldDarkness: an indoor BSP world (Old Mine, Free Mine, Orc Temple, mod caves).
         /// The engine's indoor sky controller has no sun and no fog there - our sun lit the mines like the day.
         /// </summary>
-        private bool IsIndoorWorld()
-        {
-            if (_isIndoorWorld.HasValue)
-                return _isIndoorWorld.Value;
-            if (!_configService.Dev.EnableIndoorWorldDarkness)
-                return false;
-
-            try
-            {
-                _isIndoorWorld = _saveGameService.CurrentWorldData?.BspTree?.Type == ZenKit.BspTreeType.Indoor;
-            }
-            catch (Exception)
-            {
-                // No world loaded yet (menu) - ask again later.
-                return false;
-            }
-            return _isIndoorWorld.Value;
-        }
+        private bool IsIndoorDarkness => _isIndoorWorld && _configService.Dev.EnableIndoorWorldDarkness;
 
         /// <summary>
         /// We need to initialize sky with its colors to show mesh textures.
@@ -153,7 +144,7 @@ namespace Gothic.Core.Services.World
             });
 
 
-            RenderSettings.fog = !IsIndoorWorld();
+            RenderSettings.fog = !IsIndoorDarkness;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.ambientMode = AmbientMode.Flat;
             InitRainState();
@@ -179,7 +170,7 @@ namespace Gothic.Core.Services.World
                 Logger.LogError(e.ToString(), LogCat.Mesh);
                 return;
             }
-            
+
             var fogColor = new Vector3(colorValues[0], colorValues[1], colorValues[2]);
 
             foreach (var state in _stateList)
@@ -188,14 +179,14 @@ namespace Gothic.Core.Services.World
                 {
                     continue;
                 }
-                
+
                 state.Layer[0].TEXName = "SKYDAY_LAYER0_A" + day % 2 + ".TGA";
-                
+
                 if (!(state.Time < 0.3) || !(state.Time > 0.7))
                 {
                     continue;
                 }
-                
+
                 state.Layer[1].TEXName = "SKYDAY_LAYER1_A" + day % 2 + ".TGA";
                 state.FogColor = fogColor;
                 state.DomeColor0 = fogColor;
@@ -253,9 +244,12 @@ namespace Gothic.Core.Services.World
             var newFogColor = newState.FogColor.ToUnityColor(255) / 255f;
 
             var polyColor = Color.Lerp(oldPolyColor, newPolyColor, lerpFraction);
-            RenderSettings.ambientLight = polyColor;
+            // Indoor worlds don't follow the sky: hands keep day light, fog stays dark (a bright day fog lit caves up).
+            RenderSettings.ambientLight = _isIndoorWorld ? Color.white : polyColor;
             SetDayLight(polyColor);
-            RenderSettings.fogColor = Color.Lerp(oldFogColor, newFogColor, lerpFraction);
+            RenderSettings.fogColor = _isIndoorWorld
+                ? Color.black
+                : Color.Lerp(oldFogColor, newFogColor, lerpFraction);
 
             // Old sky layer 1.
             if (!string.IsNullOrEmpty(lastState.Layer[0].TEXName))
@@ -321,30 +315,19 @@ namespace Gothic.Core.Services.World
         }
 
         /// <summary>
-        /// DeveloperConfig.EnableDayNightWorldLight: Gothic's sky polyColor (bright by day, dark blue at night) scales
-        /// the outdoor world's baked light and the sun/ambient of VOBs and NPCs - like the hands (URP ambient) did alone.
-        /// Fires and torches (stationary lights) are added after it and stay bright.
+        /// Gothic's sky polyColor (bright by day, dark blue at night) scales the outdoor world's baked light and the
+        /// sun/ambient of VOBs and NPCs. Fires and torches (stationary lights) are added after it and stay bright.
         /// </summary>
-        private Color _loggedDayLight = Color.white;
-        private Color _polyColor = Color.white;
-
         private void SetDayLight(Color polyColor)
         {
             _polyColor = polyColor;
-            var dayLight = _configService.Dev.EnableDayNightWorldLight
-                ? Color.Lerp(Color.white, polyColor, _configService.Dev.DayNightLightStrength)
-                : Color.white;
-            var isIndoor = IsIndoorWorld();
-            if (isIndoor)
-                dayLight = _indoorLight;
+            // Indoor worlds (e.g. G1's Old Mine, Orc Temple) have no day/night - like in Gothic.
+            // DeveloperConfig.EnableIndoorWorldDarkness: and no sun - the engine's indoor sky lit the mines like the night.
+            var dayLight = _isIndoorWorld ? (IsIndoorDarkness ? _indoorLight : Color.white) : polyColor;
 
             Shader.SetGlobalColor(_dayLightColorShaderId, dayLight);
-            if (Mathf.Abs(dayLight.r - _loggedDayLight.r) + Mathf.Abs(dayLight.b - _loggedDayLight.b) > 0.1f)
-            {
-                _loggedDayLight = dayLight;
-                Logger.Log($"[Sky] Day light {dayLight}", LogCat.Vob);
-            }
-            Shader.SetGlobalColor(_sunColorShaderId, isIndoor ? Color.black : _configService.Dev.SunLightColor * dayLight);
+            Shader.SetGlobalColor(_sunColorShaderId,
+                IsIndoorDarkness ? Color.black : _configService.Dev.SunLightColor * dayLight);
             Shader.SetGlobalColor(_ambientShaderId, _configService.Dev.AmbientLightColor * dayLight);
         }
 
@@ -354,11 +337,12 @@ namespace Gothic.Core.Services.World
             // InterpolateSky calls this right after SetDayLight - keep its sky color (white overwrote the night).
             SetDayLight(_polyColor);
             Shader.SetGlobalFloat(_pointLightIntensityShaderId, _configService.Dev.SunLightIntensity);
-            
+
             // TODO - Could be moved to another Service as Sky handling for dive color is not 100% true ;-)
             // TODO - We can also outsource this value to an Ini file if gamers want to have more control over its color.
             var underwaterColor = new Color(0.15f, 0.23f, 0.7f);
-            Shader.SetGlobalVector(_underwaterColorShaderId, new Vector3(underwaterColor.r, underwaterColor.g, underwaterColor.b));
+            Shader.SetGlobalVector(_underwaterColorShaderId,
+                new Vector3(underwaterColor.r, underwaterColor.g, underwaterColor.b));
         }
 
         private void InitRainGo()

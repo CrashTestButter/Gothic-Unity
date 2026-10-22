@@ -17,6 +17,8 @@ MonoBehaviour:
   PreSelectMod: 0
   ModIni: 
   ModPath: 
+  EnableGameProfiles: 0
+  GameProfiles: []
   FallbackLanguage: 
   GameControls: 0
   EnableVRDeviceSimulator: 0
@@ -36,6 +38,9 @@ MonoBehaviour:
   SaveSlotToLoad: 0
   PreselectWorldToSpawn: 0
   SpawnAtWaypoint: 
+  EnableEmptyVobContainerChildren: 1
+  EnableWorldSpaceChildVobs: 1
+  DebugTraceVobVisual: 
   EnableSaveLoadSystem: 0
   EnableNpcRangedCombat: 0
   SpeedUpLoading: 0
@@ -54,9 +59,6 @@ MonoBehaviour:
     CullingDistance: 200
   BrightenUpHoveredVOBs: 1
   ShowNamesOnHoveredVOBs: 1
-  EnableDialogHeroByInstance: 1
-  EnableDialogKeepsOutputs: 1
-  EnableDeadStateLoop: 1
   EnableMoverRelativeKeyframes: 1
   EnableTriggerEnableState: 1
   EnableTriggerListSummedDelays: 1
@@ -101,11 +103,6 @@ MonoBehaviour:
   SunLightIntensity: 1
   SunUpdateInterval: 1
   AmbientLightColor: {r: 0.1, g: 0.1, b: 0.1, a: 1}
-  EnableStaticLightsInLightMappedAreas: 1
-  StaticLightPoolSize: 1023
-  EnablePooledStationaryLights: 1
-  StationaryLightMaxDistance: 80
-  StationaryLightPoolRefreshSeconds: 2
   StartTimeHour: 8
   StartTimeMinute: 0
   TimeSpeedMultiplier: 1
@@ -124,8 +121,10 @@ MonoBehaviour:
   EnableMarvinBlink: 1
   EnableMarvinFallRescue: 1
   EnableMarvinGodMode: 1
-  EnableEndingReturnsToMenu: 1
   MarvinSpawnNpcSymbol: 
+  MarvinFriendsNpcSymbols: 
+  MarvinCheatFriendsNpcSymbols: 
+  MarvinStartCommands: 
   MarvinGiveItems: 
   EnableNpcCombatCombos: 1
   EnableNpcHitDetection: 1
@@ -152,7 +151,8 @@ MonoBehaviour:
   EnableVrCrossbow: 1
   EnableItemColliderFallback: 1
   EnableKeepIdleOnClearAiQueue: 1
-  EnableScriptVideos: 1
+  EnableCinemaSkipHint: 1
+  EnableEndingReturnsToMenu: 1
   EnableHeroMoveBodyState: 1
   EnableCrossbowMasterOneHand: 1
   EnableFasterChaseGiveUp: 1
@@ -200,6 +200,9 @@ MonoBehaviour:
   EnableItemRandomAnis: 1
   EnableImportantInfoOrder: 1
   EnableDialogRangeByBodySize: 1
+  EnableDialogKeepsOutputs: 1
+  EnableDialogHeroByInstance: 1
+  EnableDeadStateLoop: 1
   EnableNpcTargetIsEnemy: 1
   EnableAiAttackDrawsWeapon: 1
   EnableRoutineHolstersWeapon: 1
@@ -209,7 +212,18 @@ MonoBehaviour:
   EnableNpcPerceptionsWithoutHero: 1
   EnableAssessBodyPerception: 1
   EnableMurderDefeatPerceptions: 1
+  EnableNpcSwingKeepsOnNpcHit: 1
+  EnableEngineUnconsciousRule: 1
+  EnableNpcHitAtOptimalFrame: 1
+  EnableEnemyOverrideNextTarget: 1
+  EnableNpcsIgnoreHeroSummons: 1
+  EnableHeroSneakBodyState: 1
+  EnableUseMobPerception: 1
+  EnableFootstepQuietSound: 1
+  EnableEnterRoomPerception: 1
+  EnableFloorRoomLookup: 1
   EnableVrTrade: 1
+  EnableTradeGoodsTable: 1
   EnableSpellTimePerMana: 1
   MinSpellCastSeconds: 2
   EnableSpellReleaseCheck: 1
@@ -228,14 +242,15 @@ MonoBehaviour:
   EnableTextureArraySubmeshMaterials: 1
   EnableMaterialCollisionFilter: 1
   EnableFireVobChildren: 1
+  EnableNpcComboLimit: 1
   EnableSummonSpellWithoutTarget: 1
   EnableOnlyBadSpellsDamage: 1
   EnableSpellThrowPhysics: 1
   SpellThrowSpeedMultiplier: 0.5
   EnableEscortSensesHero: 1
   EnableHitStopsWalking: 1
-  EnableFireTreeRelativePositions: 1
   EnableFastWaypointPath: 1
+  EnableFireTreeRelativePositions: 1
   EnablePersonalAttitudeOnlyForHero: 1
   EnableFireStates: 1
   EnableRainFollowsPlayer: 1
@@ -269,7 +284,6 @@ MonoBehaviour:
   EnableHlpGetNpcVariables: 1
   EnableHeroDefeatedAivar: 1
   EnableThrowRuneOneHand: 1
-  EnableNpcComboLimit: 1
   EnableVrFists: 1
   EnableModelScale: 1
   EnableMapPlayerMarker: 1

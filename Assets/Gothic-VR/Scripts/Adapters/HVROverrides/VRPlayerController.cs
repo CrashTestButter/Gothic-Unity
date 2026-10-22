@@ -6,6 +6,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
+using Gothic.VR.Adapters.UI;
 using HurricaneVR.Framework.Core.Player;
 using MyBox;
 using Reflex.Attributes;
@@ -24,6 +25,7 @@ namespace Gothic.VR.Adapters.HVROverrides
 
         [Separator("Gothic - Settings")]
         public MenuHandler MenuHandler;
+        public VRCinema Cinema;
 
         [SerializeField] private float _characterControllerSwimDiveStepHeight = 1f; // 1m means walking out of water in Xardas' old tower in G1.
 
@@ -65,7 +67,7 @@ namespace Gothic.VR.Adapters.HVROverrides
         {
             base.Update();
 
-            if (VrInputs.IsMenuActivated && IsGameScene())
+            if (VrInputs.IsMenuActivated && IsGameScene() && (Cinema == null || !Cinema.IsBlockingInput))
             {
                 _gameStateService.InGameAndAlive = true;
                 MenuHandler.ToggleVisibility();
@@ -326,7 +328,7 @@ namespace Gothic.VR.Adapters.HVROverrides
         }
 
         /// <summary>
-        /// Game scenes are all the ones where we play. Aka !=MainMenu, !=Loadings, ...
+        /// Game scenes are all the ones where we play. Aka !=MainMenu, !=Loadings, !=Logo videos, ...
         /// </summary>
         private bool IsGameScene()
         {
@@ -334,6 +336,11 @@ namespace Gothic.VR.Adapters.HVROverrides
 
             return activeSceneName switch
             {
+                Constants.SceneBootstrap => false,
+                Constants.ScenePlayer => false,
+                Constants.SceneGameVersion => false,
+                Constants.ScenePreCaching => false,
+                Constants.SceneLogo => false,
                 Constants.SceneMainMenu => false,
                 Constants.SceneLoading => false,
                 _ => true

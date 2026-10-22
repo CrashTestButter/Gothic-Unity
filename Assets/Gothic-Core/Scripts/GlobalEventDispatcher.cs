@@ -50,6 +50,18 @@ namespace Gothic.Core
 
         public static readonly UnityEvent<INpc> CreateNpc = new();
 
+        /// <summary>
+        /// Plays a Bink video in the platform's cinema (VR: VRCinema). Several calls in a row are queued.
+        /// Sources: PlayVideo/PlayVideoEx from Daedalus (chapter videos, G1 ending "Extro.bik") and the logo videos.
+        /// string = video file name or path.
+        /// </summary>
+        public static readonly UnityEvent<string> PlayVideo = new();
+
+        /// <summary>
+        /// All queued videos are played (or skipped) and the cinema is closed again.
+        /// </summary>
+        public static readonly UnityEvent VideoPlaybackFinished = new();
+
         
         // Fight events
         public enum HandSide
@@ -159,10 +171,6 @@ namespace Gothic.Core
         public static readonly UnityEvent<Gothic.Core.Models.Trade.TradeSession> TradeCommitted = new();
         public static readonly UnityEvent<Gothic.Core.Models.Trade.TradeSession> TradeClosed = new();
 
-        /// <summary>
-        /// PlayVideo/PlayVideoEx from Daedalus (chapter videos, G1 ending "Extro.bik"). string = video file name.
-        /// </summary>
-        public static readonly UnityEvent<string> ScriptPlayVideo = new();
         // ExitGame (G1 ending) / ExitSession (G2 ending): the game ends after the queued videos (credits).
         public static readonly UnityEvent ScriptExitGame = new();
         // Mdl_ApplyOverlayMDSTimed on the hero (overlay name, seconds) - e.g. speed potions (HUMANS_SPRINT.MDS).

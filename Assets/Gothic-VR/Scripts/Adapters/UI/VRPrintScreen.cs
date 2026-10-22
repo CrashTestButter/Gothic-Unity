@@ -98,7 +98,10 @@ namespace Gothic.VR.Adapters.UI
             rect.anchorMin = anchor;
             rect.anchorMax = anchor;
             rect.pivot = new Vector2(isCenteredX ? 0.5f : 0f, isCenteredY ? 0.5f : 1f);
-            rect.sizeDelta = new Vector2(_screen.rect.width, text.fontSize * 2);
+            // The text is large (readable in VR). Long lines wrap inside the remaining width instead of leaving view.
+            text.textWrappingMode = TextWrappingModes.Normal;
+            var width = isCenteredX ? _screen.rect.width : _screen.rect.width * (1f - message.PosX / 100f);
+            rect.sizeDelta = new Vector2(Mathf.Max(width, text.fontSize), text.fontSize * 2);
             rect.anchoredPosition = Vector2.zero;
         }
 

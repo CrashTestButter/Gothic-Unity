@@ -13,6 +13,11 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-22 (late evening): NPC faces
+
+- NPCs move their mouth while talking, blink, and show moods from the scripts: friendly in a talk, angry in a fight,
+  frightened when fleeing, a pained face when hit.
+
 ## 2026-10-22 (evening): NPC archers shoot real arrows
 
 - NPC archers shoot real arrows and bolts: they fly in an arc and hit whatever is in the way, so you can dodge them or

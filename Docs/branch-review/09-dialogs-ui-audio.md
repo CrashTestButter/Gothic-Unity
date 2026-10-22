@@ -66,6 +66,16 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 - **Pointer line on top** (`1978c18e`, `EnablePointerLineOnTop`): the red UI pointer line (queue 3000) was hidden by the
   on-top in-game menu (3900); like the hands it's drawn in 3950 while a menu or dialog is open.
 
+**Added 2026-10-22**
+
+- **NPC faces** (`e077c111`, `EnableFaceAnimations`): the talking mouth was a stub (`PlayHeadAnimation` FIXME) and
+  `Mdl_StartFaceAni` / `Mdl_ApplyRandomFaceAni` weren't registered. Head morphs are now blended like the engine: each
+  running MMB animation adds its offset from the rest pose, weighted by intensity and its blend in/out (MMB values are
+  weight per ms - a mood fades in over 1 s, a blink in 40 ms), one animation per MMB layer (moods/T_EAT/T_HURT 1,
+  VISEME 2, R_EYESBLINK 4). Before, each morph set the whole mesh, so a blink wiped the mouth - that's why blinking
+  (`EnableNpcEyeBlinking`) was WIP and off; with the flag the head blinks on its own. VISEME loops for an NPC's line,
+  MDS morph events (T_HURT loops) are held 1 s. `VobAnimateMorph` keeps the old path.
+
 ## Key commits
 
 `ee4dbc2a` dialog bubble · `c1a4c1ad` free movement · `d109a6aa`/`cd10002c` on top · `bf3703ca` subtitles on death ·
@@ -78,6 +88,8 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 2026-10-11/13: `fd2195b1` music zones · `dd15ecdc` fresh DirectMusic performance · `03788c08` dialogs per game VM · `08aea420` save name keyboard · `c2d9f34c` menu zoom
 
 2026-10-18: `17bcdbf0` dialog until AI_StopProcessInfos · `1978c18e` pointer line on top
+
+2026-10-22: `e077c111` NPC faces (talking mouth, moods, blinking)
 
 ## Main files
 
@@ -100,6 +112,8 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 
 2026-10-18: `EnableDialogUntilStopProcessInfos`, `EnablePointerLineOnTop`
 
+2026-10-22: `EnableFaceAnimations`
+
 ## Review notes
 
 - ⚠️ **`VRScreenMessages` and `VRCinema` use static `_instance` singletons** instead of DI. They should be
@@ -111,6 +125,8 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 ## How to test
 
 - Talk to an NPC and walk around; walk away during choices. Kill an NPC mid-sentence.
+- Look at an NPC's face up close: the mouth moves while he talks and stops after, he blinks; angry in a fight,
+  frightened when fleeing (G1 MT: Drax from scavengers), pained for a moment when hit.
 - A mod with Ogg dubbing (G2 New Balance) — voices play.
 - G2: talk to a dragon (Irdorath: undead dragon) - his lines are heard with subtitles.
 - Immersion settings: hit numbers and HP numbers on, hit an NPC and get hit.

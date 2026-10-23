@@ -123,7 +123,8 @@
   only) killed the target at once and did nothing to the hero. Like OpenGothic (`AiQueue` AI_FinishingMove,
   `Npc::finishingMove`, `canFinish`) it's queued (`EnableEngineFinishingMove`): walk to `NPC_ATTACK_FINISH_DISTANCE`,
   turn, a melee weapon drawn (our knockout sheathes it early), `t_1hSFinish`/`t_2hSFinish`; the target dies at the
-  animation's hit frame, `PERC_ASSESSMURDER`. The hero dies (`EnableHeroDeath`, ini option `heroDeath` - off = only
+  animation's hit frame - they have none, so at its sound event (`FIG_SwordFinal`, frame 35 of 139,
+  `EnableFinishWithStabSound`, `3c23821d`; before: at the end, the scream long after the stab), `PERC_ASSESSMURDER`. The hero dies (`EnableHeroDeath`, ini option `heroDeath` - off = only
   knocked out); the knockout recovery doesn't revive him. VR (`EnableHeroFallCamera`, needs `EnableVrHeroBody`): the
   body plays `T_STAND_2_WOUNDEDB`/`S_WOUNDEDB`, `T_WOUNDEDB_2_STAND`, `S_DEADB`, lies on the floor (lowest bone) with
   its head under the eyes; the camera follows the animated head's height through `HVRCameraRig.CameraYOffset` (like a
@@ -154,7 +155,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 2026-10-18: `b34c58ba` parry/jump back from the hero's swings, parries block · `692f18f1` weapon trail opacity ·
 `c4c2a8d0` one hit per swing, engine combos · `ccb310bb` animated NPC body (hitbox, personal space)
 
-2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera · `b53715a9` death scream
+2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera · `b53715a9` death scream · `3c23821d` kill with the
+stab's sound
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover
@@ -189,7 +191,7 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 `EnableRangedWeaponNeedsAmmo`, `EnableOutOfAmmoKeepsChasing`, `EnableRangedFocusIgnoresCover`,
 `EnableBlockedShotMoveInterrupt`
 
-2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`
+2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`, `EnableFinishWithStabSound`
 
 ## Review notes
 

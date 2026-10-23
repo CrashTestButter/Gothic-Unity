@@ -22,6 +22,8 @@ Link), not on Quest/Pico standalone.
 - Marvin: `kill` kills the NPC your hand pointed at last (not immortal ones like Diego).
 - Death screams and pain sounds sound like in the original game again (they played other recordings, and always the
   same pain scream); the hero makes a pain sound when hit. Getting up after a knockout no longer counts as sneaking.
+- Finished off, you scream right with the sword's stab, not once the enemy's animation is over.
+- Walk behind an NPC you talk to and he turns around to face you (his feet step along); his head keeps following you.
 
 ## 2026-10-22 (late evening): NPC faces
 

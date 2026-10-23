@@ -606,6 +606,9 @@ namespace Gothic.Core.Services.Vobs
             SpawnItemVob(instanceName, wp.Position.ToZkVector(), wp.Rotation.ToZkMatrix());
         }
 
+        // Collides with the world only (DynamicsManager: TransparentFX - Default, not Player/Hand/VobHitbox).
+        private static readonly int _dropColliderLayer = LayerMask.NameToLayer("TransparentFX");
+
         /// <summary>
         /// Spawns an item VOB at a given world position with physics — used for weapon drops on NPC death/knockout.
         /// </summary>
@@ -647,7 +650,17 @@ namespace Gothic.Core.Services.Vobs
             // for weapons picked directly from the ground.
             if (container.Go != null)
             {
-                var col = container.Go.AddComponent<BoxCollider>();
+                // DeveloperConfig.EnableDroppedItemColliderLayer: on a child on TransparentFX - it rests on the world
+                // (Default) but neither blocks the hero (Player, Hand) nor stops arrows/bolts. On the loader (Default) an
+                // archer's missed bolts lay in the ground in front of the hero, blocked his way and the next bolts hit
+                // them - they piled up in one spot. Grabbing uses the item mesh's own colliders.
+                var colliderGo = container.Go;
+                if (_configService.Dev.EnableDroppedItemColliderLayer)
+                {
+                    colliderGo = new GameObject("DropCollider") { layer = _dropColliderLayer };
+                    colliderGo.transform.SetParent(container.Go.transform, false);
+                }
+                var col = colliderGo.AddComponent<BoxCollider>();
                 col.size = new Vector3(0.1f, 0.06f, 0.5f);
                 col.center = new Vector3(0f, 0.03f, 0f);
 

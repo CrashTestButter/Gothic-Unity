@@ -299,6 +299,7 @@ MonoBehaviour:
   EnableEngineFinishingMove: 1
   EnableFinishWithStabSound: 1
   EnableVrStabFinish: 1
+  EnableDroppedItemColliderLayer: 1
   EnableHeroDeath: 1
   EnableHeroFallCamera: 1
   EnableMenuScrolling: 1

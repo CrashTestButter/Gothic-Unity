@@ -1202,6 +1202,10 @@ namespace Gothic.Core.Models.Config
                  "picks) instead of any slash - the 'Finishing' option in the Immersion menu (off: any hit).")]
         public bool EnableVrStabFinish = true;
 
+        [Tooltip("V1: A dropped item (also a missed arrow/bolt lying in the ground) rests on the world but doesn't block " +
+                 "the hero or stop arrows - an archer's missed bolts blocked the hero's way and piled up in one spot.")]
+        public bool EnableDroppedItemColliderLayer = true;
+
         [Tooltip("V1: An NPC finishing off the knocked out hero kills him like in Gothic (the 'Death' option in the " +
                  "Immersion menu can turn it off - then he only stays knocked out).")]
         public bool EnableHeroDeath = true;

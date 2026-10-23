@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Gothic.VR.Interaction.Ports
@@ -12,6 +13,16 @@ namespace Gothic.VR.Interaction.Ports
         /// Whether this hinge belongs to the active VR backend.
         /// </summary>
         bool IsActive { get; }
+
+        /// <summary>
+        /// Raised once when the hinge leaves the closed position.
+        /// </summary>
+        event Action Opened;
+
+        /// <summary>
+        /// Raised once when the hinge is back in the closed position.
+        /// </summary>
+        event Action Closed;
 
         Transform Transform { get; }
         Rigidbody Rigidbody { get; }

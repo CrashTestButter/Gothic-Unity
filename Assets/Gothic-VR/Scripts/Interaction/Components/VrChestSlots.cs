@@ -17,8 +17,8 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Interaction.Components
 {
     /// <summary>
-    /// Content of a chest (oCMobContainer), independent of the lid: the lid (HvrPhysicsChest on HVR,
-    /// VrChestLidToggle on XRI until VrHinge in Phase 4) calls Open()/Close().
+    /// Content of a chest (oCMobContainer), independent of the lid: the lid (IVrHinge of the active
+    /// backend: HvrHingeBridge or VrHinge) opens and closes it by its Opened/Closed events.
     /// - The prefab carries one slot inventory (IVrSocketContainer) per VR backend. The active one is used, the
     ///   others stay hidden.
     /// - First open: the slots are laid out to the size of the chest mesh and the content (IContainer.Contents) is
@@ -48,6 +48,7 @@ namespace Gothic.VR.Interaction.Components
         private bool _isResolved;
         private bool _isContentSpawned;
         private bool _isSpawning;
+        private IVrHinge _hinge;
         private bool _isOpen;
 
         public bool IsOpen => _isOpen;
@@ -69,6 +70,25 @@ namespace Gothic.VR.Interaction.Components
             Resolve();
             if (!_isOpen && _inventoryGo != null)
                 _inventoryGo.SetActive(false);
+
+            _hinge = VrHinges.FindActive(this);
+            if (_hinge == null)
+            {
+                Logger.LogWarning($"[Chest] {name} has no active lid hinge. It can't be opened.", LogCat.VR);
+                return;
+            }
+
+            _hinge.Opened += Open;
+            _hinge.Closed += Close;
+        }
+
+        private void OnDestroy()
+        {
+            if (_hinge == null)
+                return;
+
+            _hinge.Opened -= Open;
+            _hinge.Closed -= Close;
         }
 
         public void Open()

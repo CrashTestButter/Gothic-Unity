@@ -43,8 +43,15 @@ menus and dialogs, and watch videos, on a headset or in the simulator. Grabbing 
   null any more. `XriBackend` registers `XriInput`, `XriHaptics`, `XriSfxPlayer` (minimal `PlayClipAtPoint`, no
   pool) and a placeholder `XriUiPointers` that only warns until 1c. Without an `IVrRig` on the player,
   `SetupPlayerController` now fails with a clear error instead of a NullReferenceException.)
-- `Player.unity` (and `Lab.unity`) contain both rigs, disabled. `VRContextInteractionService.SetupPlayerController`
+- [x] `Player.unity` (and `Lab.unity`) contain both rigs, disabled. `VRContextInteractionService.SetupPlayerController`
   enables the one matching the backend (today it already enables `transform.parent.parent`).
+  (1b: both scenes have `HVR - Player` and `VR - Player XRI` as inactive root prefab instances; `HVR - XRDeviceSimulator`
+  is inactive too, `IVrInput.SetDeviceSimulatorActive` switches it as before. The backend is registered in DI as
+  `IVrBackend` (`ReflexVRSceneInstaller`), and `IVrBackend.OwnsRig(IVrRig)` picks the `VRPlayer` whose rig belongs to
+  it. Its scene root (`transform.root`) is enabled, the other player roots are **destroyed**, so scene-wide lookups
+  (`VRDialog`, `RegisterAllCanvases`, ...) only find the active player; the Marvin menu is looked up inside the active
+  player only, because `Destroy` finishes at the end of the frame. On Hvr the HVR player is now activated in
+  `SetupPlayerController` (same frame as the scene load, before `Start`) instead of being active in the scene.)
 - The Xri backend files carry no define, since XRI is free and always installed. The Hvr backend stays behind
   `GOTHIC_HVR_INSTALLED`.
 
@@ -68,6 +75,44 @@ VR - Player XRI
 ```
 
 `XriRig : MonoBehaviour, IVrRig` maps the port onto these components.
+
+- [x] Done in 1b (prefab `Gothic-VR/Resources/VR/Prefabs/VR - Player XRI.prefab`, built via UnityMCP). Notes:
+  - Made from a copy of `HVR - Player.prefab` with `UIManager`, `HVRGlobal` and `TechDemoXRRigOpenXR` removed, so the
+    nested Gothic prefabs keep their overrides: `Rain`, `Menu-Dialog`, `MenuHandler` (inactive), `Cinema` (inactive),
+    `Spectator Camera` (now pointing at the XRI camera). `Menu-MarvinMode` moved to `Left Controller` with its pose
+    relative to the HVR physics hand (check its placement on a headset).
+  - `XR Origin` (layer/tag Player) carries `CharacterController` (values of the HVR one), `AudioSource`,
+    `NpcPrefabProperties`, `VRPlayer`, `VRSwimDive`, `VRPlayerWeaponInteraction`, `VRPlayerItemAdapter`,
+    `VRHandsOnTop` (no hand renderers until phase 2), `XROrigin` (Floor), `XRBodyTransformer`, `LocomotionMediator`,
+    `InputActionManager` (GothicVR asset, enables all its maps) and `XriRig`. `Main Camera` (tag MainCamera) has the
+    HVR camera's `Camera`/URP data/`AudioListener` plus `TrackedPoseDriver` (XRI Head). Controllers: `TrackedPoseDriver`
+    with `XRI Left/Right` Position/Rotation/Tracking State. No hand visuals, interactors, ray or teleport interactors
+    yet; `WallFade`/`ScreenFade` are 1c, `ClimbProvider` phase 4.
+  - Providers on `Locomotion`: move = `XRI Left Locomotion/Move`, snap turn = `XRI Right Locomotion/Snap Turn`,
+    smooth turn = `XRI Right Locomotion/Turn` (turn-around off for both), jump = `Gothic/Jump` (0.46 m = HVR's
+    3 m/s jump velocity), teleportation (delay 0), gravity (terminal velocity 20).
+  - `MoveSpeed`/`RunSpeed` 1.5/3.5 as HVR. Sprint (`Gothic/Sprint`): a click sprints until the stick is released,
+    holding the key sprints too. Crouch (`Gothic/Crouch`) toggles; the camera offset moves down until the camera is at
+    0.7 m (HVR's `CrouchHeight`). The `CharacterController` height follows the camera height on its next move
+    (XRI's `CharacterControllerBodyManipulator`), so it shrinks only once the player moves.
+  - `Gravity` maps to `GravityProvider.gravityAccelerationModifier` (relative to `Physics.gravity`), 0 disables gravity;
+    the grounded sphere cast uses every layer the Player layer collides with. `IsGrounded` =
+    `GravityProvider.isGrounded || CharacterController.isGrounded`.
+  - `TeleportEnabled` is only a flag for player-initiated teleports (no teleport interactor yet). The
+    `TeleportationProvider` stays enabled, so `Teleport()` also works while the player is locked (dialogs, cinema).
+  - `Teleport` queues `MatchOrientation.TargetUpAndForward` (the camera, not the origin, ends above the position and
+    looks along the rotation; `default(Quaternion)` = identity). The HVR workaround of setting the rotation afterwards
+    is not needed. `Teleported` is raised from `locomotionEnded`, which XRI defers until the body transformer applied
+    the move (same frame, one frame after the request), plus `Physics.SyncTransforms()`.
+  - Sitting: `Device` tracking + `CameraYOffset` = eye height 1.66. Standing: `Floor` + `Camera Offset` scaled by
+    `EyeHeight / HMD height` at the time the setting is applied (no scaling below 0.5 m HMD height). PlayerHeight:
+    `Floor`, no scaling.
+  - `Fade()` only stores the value until 1c (`FadeAlpha` returns it). `SetGrabbingEnabled` is a no-op,
+    `HandGrabbers` is empty, `IsClimbing` is false.
+  - `IVrRig.Root` is the XR Origin, which stays at the tracking-space origin: in room-scale the body is up to the
+    play-area size away from it (HVR moves its root under the head). `KeepPlayerWithin` and the hero position
+    (`GetCurrentPlayerController().transform`) use it. Fine for walking with the stick; revisit if room-scale
+    walking out of dialogs or NPC distances look wrong.
 
 | `IVrRig` member | XRI implementation |
 |-----------------|--------------------|
@@ -186,4 +231,4 @@ On Quest 3, Pico 4 and PCVR (Index), backend `Xri`:
 |------|-----------|
 | Sitting/Standing semantics differ from HVR | Implement `PlayerHeight` first (most players), then `Sitting`; check `Standing` scaling with a playtester. |
 | Pico button names differ in OpenXR profiles | Test the Pico 4 profile early; bind via the generic `<XRController>{LeftHand}/secondaryButton` paths where possible. |
-| Gravity/jump providers vs. our `KeepPlayerWithin` (`controller.Move`) | Both move the `CharacterController`. Keep `KeepPlayerWithin` after the providers (late update order) and verify dialogs. |
+| Gravity/jump providers vs. our `KeepPlayerWithin` (`controller.Move`) | Both move the `CharacterController`. Keep `KeepPlayerWithin` after the providers (late update order) and verify dialogs. 1b: already the case, `DialogService` calls it from a coroutine (`yield return null`, after all `Update`s) and the providers/`XRBodyTransformer` run in `Update` (execution order -210/-205). Dialogs not tested on XRI yet (needs UI, 1c). |

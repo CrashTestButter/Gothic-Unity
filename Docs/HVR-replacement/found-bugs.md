@@ -38,6 +38,10 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 - **Maybe related:** the existing GitHub issue "Chest -> Backpack - throwing exception".
 - **Test:** take an item out of a chest; loot a dead NPC, take an item, close the panel; no errors.
 
+## Misc
+1. Head never sticks into the wall as it is blocked from going into (poking back)
+1. Marvin menu is rotated wrong (fixed later, when we have a hand and actually see, where it should be placed).
+
 ## Known, not new
 
 - Chests with more than 12 items: pagination is missing (an error is logged, as before).

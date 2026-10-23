@@ -768,6 +768,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: The hero makes a pain sound when hit (SVM_<voice>_AARGH) like the NPCs.")]
         public bool EnableHeroHurtSound = true;
 
+        [Tooltip("V1: Sound effects with numbered variants (SVM_x_AARGH, SVM_x_AARGH_1 ... _4) pick one at random like " +
+                 "the _A1, _A2 variants - the pain screams only ever played the first one.")]
+        public bool EnableSfxNumberedVariants = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

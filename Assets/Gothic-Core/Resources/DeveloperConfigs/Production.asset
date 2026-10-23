@@ -195,6 +195,7 @@ MonoBehaviour:
   EnableDialogUntilStopProcessInfos: 1
   EnableSfxFromSfxFolder: 1
   EnableHeroHurtSound: 1
+  EnableSfxNumberedVariants: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1
   EnableNpcNavMesh: 1

@@ -56,7 +56,7 @@ namespace Gothic.VR.Adapters.Player
         {
             get
             {
-                if (_vrInput.IsSimulator)
+                if (_vrInput.IsSimulator && _vrInput.UsesBothGripsSimulatorKey)
                     return Keyboard.current[Key.T].isPressed;
 
                 return _vrInput.GetButton(VrHandSide.Left, VrButton.Grip).IsActive

@@ -19,7 +19,7 @@ Quest 2/3, Pico, PCVR, including Index / Steam Frame finger tracking.
 | 2 | [phase-2-grabbing.md](phase-2-grabbing.md) - items, melee, distance grab, hover, mobs, NPCs | M-L |
 | 3 | [phase-3-sockets-inventory.md](phase-3-sockets-inventory.md) - backpack, holsters, chest slots, NPC loot | L |
 | 4 | [phase-4-doors-chests-ladders.md](phase-4-doors-chests-ladders.md) - hinges, lock picking, chest lids, ladders | M |
-| 5 | [phase-5-hands.md](phase-5-hands.md) - hand models, finger curls, procedural posing, physics hands | L-XL |
+| 5 | [phase-5-hands.md](phase-5-hands.md) - **on hold**; physics hands skipped, Gothic fist meshes later | L-XL |
 | 6 | [phase-6-removal.md](phase-6-removal.md) - delete HVR, define, CI injection; update docs | S |
 
 ## TL;DR
@@ -37,6 +37,8 @@ Quest 2/3, Pico, PCVR, including Index / Steam Frame finger tracking.
   Missing: physics hands, procedural/authored hand posing.
 - **Recommendation:** our own `Gothic.VR.Interaction` ports, with XRI as the backend, our own procedural poser,
   physics hands and door/container components, plus selected UltimateXR borrowings (hands art, pose ideas).
+- **Update 2026-10-22:** physics hands are skipped, hands will use Gothic's own fist meshes, and nothing from
+  UltimateXR is used. Phase 5 is on hold.
   Six phases, ≈12-18 developer-weeks. Phase 0 (decoupling behind ports while HVR still runs) comes first and keeps
   every other option open.
 

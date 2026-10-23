@@ -3,13 +3,13 @@
 **Goal:** HVR is gone from the repository, the build and the docs. Every contributor can open the project, build
 the VR targets and play them, with or without a headset (simulator).
 
-**Size:** S (2-3 days) · **Depends on:** Phases 1-5 accepted in playtests on Quest, Pico and PCVR (5d may still be
-off by default)
+**Size:** S (2-3 days) · **Depends on:** Phases 1-4 accepted in playtests on Quest, Pico and PCVR (Phase 5 is on hold,
+5d physics hands are skipped - see phase-5-hands.md)
 
 ## Entry check (go / no-go)
 
 - [ ] Xri backend has been the default for at least one release/playtest round without HVR-only regressions.
-- [ ] The playtest checklists of Phases 0-5 pass on Quest 3, Pico 4 and PCVR (Index).
+- [ ] The playtest checklists of Phases 0-4 pass on Quest 3, Pico 4 and PCVR (Index).
 - [ ] Nobody on Discord has open work that depends on HVR components.
 
 ## Work items
@@ -38,7 +38,7 @@ off by default)
       `HVRGlobal` instance in `Player.unity` / `Lab.unity`, `UIManager` (HVR) instance.
 - [ ] Rename `VR - Player XRI.prefab` → `VR - Player.prefab`.
 - [ ] Delete `Gothic-VR/Resources/VR/HVR Settings/`, `GUZ-VR-Socketables.asset`,
-      `Player-Elements/BackPack/backpack_*_hand_pose.asset` (replaced in Phase 5), old slot prefabs.
+      `Player-Elements/BackPack/backpack_*_hand_pose.asset` (no replacement while Phase 5 is on hold), old slot prefabs.
 - [ ] Open every VR prefab and scene once and check for "Missing script" (UnityMCP `find_gameobjects` / console).
 
 ### Build and CI

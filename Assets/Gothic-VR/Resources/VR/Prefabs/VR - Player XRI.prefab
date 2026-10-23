@@ -431,6 +431,7 @@ GameObject:
   - component: {fileID: 6560536017312742706}
   - component: {fileID: 5987075695519224435}
   - component: {fileID: 5504711397442723850}
+  - component: {fileID: 3506189809021101468}
   m_Layer: 8
   m_Name: Locomotion
   m_TagString: Untagged
@@ -692,6 +693,29 @@ MonoBehaviour:
     m_ManualQueueWasCompletedThisFrame: 0
     m_ManualQueueValue: 0
     m_ManualQueueTargetFrame: 0
+--- !u!114 &3506189809021101468
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3580888346999583535}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 496880615cd240be960d436c1c8ae570, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.XR.Interaction.Toolkit::UnityEngine.XR.Interaction.Toolkit.Locomotion.Climbing.ClimbProvider
+  m_Mediator: {fileID: 0}
+  m_TransformationPriority: 0
+  m_ProvidersToDisable: []
+  m_EnableGravityOnClimbEnd: 1
+  m_ClimbSettings:
+    m_UseConstant: 1
+    m_ConstantValue:
+      m_AllowFreeXMovement: 1
+      m_AllowFreeYMovement: 1
+      m_AllowFreeZMovement: 1
+    m_Variable: {fileID: 0}
 --- !u!1 &3942069294043007131
 GameObject:
   m_ObjectHideFlags: 0
@@ -3277,6 +3301,7 @@ MonoBehaviour:
   _teleportationProvider: {fileID: 5987075695519224435}
   _gravityProvider: {fileID: 1435405315088257603}
   _jumpProvider: {fileID: 5504711397442723850}
+  _climbProvider: {fileID: 3506189809021101468}
   _moveSpeed: 1.5
   _runSpeed: 3.5
   _sprintStopThreshold: 0.1
@@ -4797,11 +4822,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6272730690859954775, guid: 8348fe5825a421c42be0dad392e03669, type: 3}
       propertyPath: m_Size
-      value: 0.9514283
+      value: 0.95142865
       objectReference: {fileID: 0}
     - target: {fileID: 6272730690859954775, guid: 8348fe5825a421c42be0dad392e03669, type: 3}
       propertyPath: m_Value
-      value: 1.000043
+      value: 1.0000467
       objectReference: {fileID: 0}
     - target: {fileID: 8278234239060405203, guid: 8348fe5825a421c42be0dad392e03669, type: 3}
       propertyPath: m_AnchorMax.x

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Gothic.Core.Logging;
+using Gothic.VR.Adapters.Player;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
@@ -32,6 +33,9 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [SerializeField] private Camera _camera;
         [SerializeField] private Transform _leftController;
         [SerializeField] private Transform _rightController;
+
+        [Tooltip("Fade on the camera, driven by Fade(). WallFade on the camera uses it too.")]
+        [SerializeField] private ScreenFade _screenFade;
 
         [Header("Locomotion")]
         [SerializeField] private ContinuousMoveProvider _moveProvider;
@@ -82,7 +86,6 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private bool _isSprintLatched;
         private bool _isCrouching;
         private float _crouchOffset;
-        private float _fadeAlpha;
         private bool _isTeleportQueued;
         private Vector3 _teleportPosition;
 
@@ -193,8 +196,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
             set => _characterController.stepOffset = value;
         }
 
-        // TODO HVR phase 1c: ScreenFade. Until then, Fade() only stores the value.
-        public float FadeAlpha => _fadeAlpha;
+        public float FadeAlpha => _screenFade != null ? _screenFade.FadeAlpha : 0f;
 
         // TODO HVR phase 2: Near-Far interactors.
         public IReadOnlyList<IVrGrabber> HandGrabbers => _noGrabbers;
@@ -390,8 +392,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         public void Fade(float alpha, float speed)
         {
-            // TODO HVR phase 1c: ScreenFade on the camera. Only the value is kept until then.
-            _fadeAlpha = Mathf.Clamp01(alpha);
+            if (_screenFade != null)
+                _screenFade.Fade(alpha, speed);
         }
     }
 }

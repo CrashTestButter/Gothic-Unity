@@ -237,9 +237,10 @@ namespace Gothic.VR.Adapters.UI
         private void LockPlayer()
         {
             // The cinema is inactive until the first video - no Awake to cache it in before.
+            // It's a sibling of the rig inside the player prefab, not a child of the VRPlayer.
             if (_player == null)
             {
-                _player = GetComponentInParent<VRPlayer>(true);
+                _player = transform.root.GetComponentInChildren<VRPlayer>(true);
                 _rig = _player == null ? null : _player.GetComponent<IVrRig>();
             }
             if (_player == null || _rig == null)
@@ -260,17 +261,21 @@ namespace Gothic.VR.Adapters.UI
             _player.IsMenuButtonEnabled = false;
         }
 
+        /// <summary>
+        /// Values enabled by others while the video played are kept: the lock saved at start can be outdated by then
+        /// (e.g. the world load or a dialog unlocked the player meanwhile), restoring it would leave the player stuck.
+        /// </summary>
         private void UnlockPlayer()
         {
             if (_player == null || _rig == null)
                 return;
 
-            _rig.MovementEnabled = _savedMovementEnabled;
-            _rig.TurnEnabled = _savedRotationEnabled;
-            _rig.CanCrouch = _savedCanCrouch;
-            _rig.CanJump = _savedCanJump;
-            _rig.TeleportEnabled = _savedTeleporterEnabled;
-            _player.IsMenuButtonEnabled = _savedMenuButtonEnabled;
+            _rig.MovementEnabled |= _savedMovementEnabled;
+            _rig.TurnEnabled |= _savedRotationEnabled;
+            _rig.CanCrouch |= _savedCanCrouch;
+            _rig.CanJump |= _savedCanJump;
+            _rig.TeleportEnabled |= _savedTeleporterEnabled;
+            _player.IsMenuButtonEnabled |= _savedMenuButtonEnabled;
         }
     }
 }

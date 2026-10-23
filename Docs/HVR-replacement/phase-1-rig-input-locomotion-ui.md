@@ -185,6 +185,27 @@ same perceived strength.
   haptics).
 - Ray interactor per hand for UI only in this phase (Phase 2 replaces it with the Near-Far interactor).
 
+- [x] Done in 1c. Notes:
+  - `VR - Player XRI.prefab` got a root child `UIManager` with `EventSystem`, `XRUIInputModule` (XR input only; mouse,
+    touch, gamepad, joystick and the built-in fallback actions are off) and an `XRInteractionManager`. The HVR player
+    keeps its `HVRInputModule`.
+  - `Left/Right Controller/UI Ray`: `XRRayInteractor` (handedness set, interaction layers *Nothing*, raycast mask
+    *UI* only, straight line, 30 m, select/activate input unused, UI press = `XRI Left/Right Interaction/UI Press`
+    (+ `UI Press Value`), UI scroll = `UI Scroll`), `LineRenderer` (built-in `Sprites-Default` material) and
+    `XRInteractorLineVisual` (5 mm, white; invalid/blocked gradient fully transparent, so the laser only shows while
+    it points at UI, like HVR). All Gothic UI graphics are on the UI layer, so the UI-only mask hits every menu.
+  - `XriUiPointers`: `RegisterCanvas` adds (or re-enables) a `TrackedDeviceGraphicRaycaster`, `UnregisterCanvas`
+    disables it, `RegisterAllCanvases` keeps the one-shot scan (logs the count). `TryGetHandSide` maps
+    `TrackedDeviceEventData.interactor` (`XRBaseInteractor.handedness`) to `VrHandSide`; other events -> false.
+  - Hero subtitles and the status bars were missing on the XRI camera since 1b (they were children of the removed
+    HVR camera; `Output.PrintDialog` threw NREs when the hero spoke). `Menu-Subtitles` and the three `StatusBar*`
+    instances were copied with the HVR player's overrides under `Main Camera`. Still missing from the HVR camera:
+    `Mouth` (VRMouth, eating/drinking, phase 2) and `HeadRelativeInventory` (shoulder sockets, phase 3).
+  - Fixed on both backends: `VRCinema.LockPlayer` never found the `VRPlayer` (the cinema is a sibling of the rig,
+    not a child), so videos never locked the player. It now searches the player prefab root. Unlocking keeps values
+    others enabled meanwhile (`|=` with the saved ones): the world load unlocks the player while the intro video
+    plays, and restoring the lock saved at video start would have left the player stuck.
+
 ## Fades
 
 - `ScreenFade`: a camera-attached inverted sphere or quad with an unlit URP material whose alpha is driven by
@@ -193,6 +214,26 @@ same perceived strength.
 - `WallFade` (replaces `HVRHeadCollision`): `Physics.OverlapSphere` on the camera with the world layers. Fade towards
   black by penetration depth. UltimateXR's `UxrCameraWallFade` (MIT) is a reference.
 
+- [x] Done in 1c (`Gothic-VR/Scripts/Adapters/Player/ScreenFade.cs`, `WallFade.cs`, both on the XRI `Main Camera`;
+  game code, no XRI types). Notes:
+  - What HVR did: `HVRCanvasFade` "GlobalCameraFade" was the `ScreenFader` behind `IVrRig.Fade` (VRSwimDive dive
+    darkness, VRSeat), a second one "HeadCollisionFade" was driven by `HVRHeadCollision` (layer Default only,
+    radius 0.1 m). Ours combines both in one `ScreenFade` with two channels (requested fade and wall fade, the
+    stronger one is shown); `IVrRig.FadeAlpha` returns the requested channel only, so `VRSeat` waits as before.
+  - `ScreenFade` draws the inner faces of a 0.3 m cube around the head with own shader `Gothic/VR Screen Fade`
+    (`Shaders/GothicVRScreenFade.shader`: color only, `ZTest Always`, `Cull Front`, `ColorMask RGB`, stereo
+    instancing macros) and material `Materials/VRScreenFade-XRI.mat` (render queue 3898: after world transparents,
+    before the on-top UI at 3899+, so dialogs/subtitles/menus stay readable). The cube is on the UI layer, so it also
+    works in the cinema. Runs on unscaled time. `Fade(a, float.MaxValue)` is immediate.
+  - `WallFade` (own design, `UxrCameraWallFade` only read): distance to the nearest Default-layer collider by a
+    binary search of `Physics.CheckSphere` radii (works for the non-convex world mesh, where `ClosestPoint`
+    doesn't; `ComputePenetration` needs an enabled collider), fade from 0.1 m to black at 0.03 m. Through a
+    one-sided wall mesh, a ray from the last free head position (both directions) keeps it black. Jumps > 1 m per
+    frame (teleport) reset the free position.
+  - Verified without headset by rendering the camera into a texture (fade 1 = black) and moving the camera into the
+    ground (ramps to 0.71 at 5 cm, to 1 below the surface, back to 0 above). The MCP Game-view screenshot doesn't show
+    the fade (captured before `LateUpdate`?), so the pixel check was used instead.
+
 ## Swim/dive (`VRSwimDive.cs`)
 
 Already on `IVrRig` after Phase 0. Check:
@@ -200,6 +241,21 @@ Already on `IVrRig` after Phase 0. Check:
   providers must not fight it, so `MovementEnabled = false` while swimming, as today.
 - Rotation math (`VRSwimDive.cs:350-415`) assumed HVR's rig hierarchy (`CameraRig.TransformDirection`). Re-check
   with `XROrigin.Origin` and the camera's yaw.
+
+- [x] Checked in 1c, no code change needed:
+  - `IVrRig.TrackingSpace` is `Camera Offset` on XRI. It never rotates relative to the XR Origin, which the turn
+    providers rotate, and controller velocities are relative to it. So `TrackingSpace.TransformDirection` contains
+    the synthetic (stick) yaw but not the real head yaw, like HVR's `CameraRig` ("Test 5"). Checked: origin yaw 90°
+    turns local forward into world +x.
+  - `MovementEnabled` is **not** set to false while swimming, neither on HVR today nor on XRI (the line above was
+    wrong): the stick keeps moving the player in water on both backends. On XRI this doesn't fight the strokes:
+    with gravity 0 the `ContinuousMoveProvider` moves horizontally via the body transformer, the strokes call
+    `CharacterController.Move` directly, both add up.
+  - Play mode (Xri, no headset): teleported into G1 water 2.7 m deep -> `Swim`, gravity/max fall 0, jump/crouch off.
+    `StartDive` -> `Dive`, the fade ramps up with `1/air` (0.32 after a few seconds); back to `Swim` -> fade 0
+    immediately. Strokes themselves need a headset or the simulator (1d).
+  - `VRSwimDive` raycasts from the XR Origin (`transform.position`), which in room-scale can be up to the play area
+    away from the body (see 1b notes on `IVrRig.Root`). Fine with stick walking; check on a headset.
 
 ## Simulator
 

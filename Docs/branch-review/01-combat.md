@@ -129,7 +129,8 @@
   its head under the eyes; the camera follows the animated head's height through `HVRCameraRig.CameraYOffset` (like a
   transformation) - never sideways, the HMD's rotation stays the player's. Dead, the game menu opens after 4 s. Not
   saved: a load starts standing, the offset is restored. The hero's death scream `SVM_<voice>_DEAD` (`b53715a9`,
-  OpenGothic `emitSoundSVM`). Option "Death" in the Immersion menu (`3d80cb5f`).
+  OpenGothic `emitSoundSVM`). Option "Death" in the Immersion menu (`3d80cb5f`). Lying or standing up isn't sneaking
+  (`f048ff61`: the lowered camera counted as crouching, `VRHeroBody.IsHeroDown`).
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 

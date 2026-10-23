@@ -76,6 +76,15 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
   (`EnableNpcEyeBlinking`) was WIP and off; with the flag the head blinks on its own. VISEME loops for an NPC's line,
   MDS morph events (T_HURT loops) are held 1 s. `VobAnimateMorph` keeps the old path.
 
+**Added 2026-10-23**
+
+- **Sound effects from SOUND/SFX** (`c9b61548`, `EnableSfxFromSfxFolder`): the VFS finds files by name; G1 has
+  `SVM_2_DEAD.WAV` in `sound.VDF` (`_WORK/DATA/SOUND/SFX`, 63928 B) and in the newer `Speech.vdf` (`SOUND/SPEECH`,
+  33852 B), so the speech recording won. SFX.DAT maps the SVM pain/death sounds onto three sets (`SVM_15_DEAD` ->
+  `svm_2_dead.wav`). A C_SFX file is now resolved in `_WORK/DATA/SOUND/SFX` first (clip cache key `SFX/<name>`).
+- **Hero pain sound** (`51550b1c`, `EnableHeroHurtSound`): `SVM_<voice>_AARGH` from the hero's voice source - he has no
+  `NpcSound`, nothing was heard.
+
 ## Key commits
 
 `ee4dbc2a` dialog bubble · `c1a4c1ad` free movement · `d109a6aa`/`cd10002c` on top · `bf3703ca` subtitles on death ·
@@ -90,6 +99,8 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 2026-10-18: `17bcdbf0` dialog until AI_StopProcessInfos · `1978c18e` pointer line on top
 
 2026-10-22: `e077c111` NPC faces (talking mouth, moods, blinking)
+
+2026-10-23: `c9b61548` SFX from SOUND/SFX · `51550b1c` hero pain sound
 
 ## Main files
 
@@ -113,6 +124,8 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 2026-10-18: `EnableDialogUntilStopProcessInfos`, `EnablePointerLineOnTop`
 
 2026-10-22: `EnableFaceAnimations`
+
+2026-10-23: `EnableSfxFromSfxFolder`, `EnableHeroHurtSound`
 
 ## Review notes
 

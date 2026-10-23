@@ -28,14 +28,17 @@ namespace Gothic.Core.Domain.Audio
         private ImaadpcmDecoderDomain _decoderDomain = new();
 
 
-        public AudioClip CreateAudioClip(string fileName)
+        /// <param name="soundFolder">Folder under _WORK/DATA/SOUND looked in first (SFX for sound effects), null = by
+        /// name only.</param>
+        public AudioClip CreateAudioClip(string fileName, string soundFolder = null)
         {
             fileName = Path.GetFileNameWithoutExtension(fileName);
+            var cacheKey = soundFolder == null ? fileName : $"{soundFolder}/{fileName}";
 
-            if (_multiTypeCacheService.AudioClips.TryGetValue(fileName, out AudioClip cachedClip))
+            if (_multiTypeCacheService.AudioClips.TryGetValue(cacheKey, out AudioClip cachedClip))
                 return cachedClip;
 
-            var soundBytes = _resourceCacheService.TryGetSoundBytes(fileName);
+            var soundBytes = _resourceCacheService.TryGetSoundBytes(fileName, soundFolder);
             if (soundBytes == null)
                 return null;
 
@@ -59,7 +62,7 @@ namespace Gothic.Core.Domain.Audio
                 soundData.SampleRate, false);
             audioClip.SetData(soundData.Sound, 0);
 
-            _multiTypeCacheService.AudioClips.Add(fileName, audioClip);
+            _multiTypeCacheService.AudioClips.Add(cacheKey, audioClip);
             return audioClip;
         }
 

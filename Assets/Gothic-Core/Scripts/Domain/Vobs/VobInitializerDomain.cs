@@ -770,7 +770,7 @@ namespace Gothic.Core.Domain.Vobs
                         $"Multiple random elements exist for >{firstSound.File}< but only first is selected.",
                         LogCat.Audio);
 
-                clip = _audioService.CreateAudioClip(firstSound.File);
+                clip = _audioService.CreateSfxAudioClip(firstSound.File);
             }
 
             return clip;

@@ -230,6 +230,23 @@ namespace Gothic.Core.Services.Caches
         /// Please consider using SoundCreator.ToAudioClip() instead.
         /// </summary>
         [CanBeNull]
+        /// <summary>
+        /// DeveloperConfig.EnableSfxFromSfxFolder: like the engine, a sound effect (C_SFX) is a file of
+        /// _WORK/DATA/SOUND/SFX - looked up by name only, a newer archive's speech file with the same name won (G1's
+        /// SFX.DAT maps the hero's SVM_15_DEAD to svm_2_dead.wav: sound.VDF's SFX one, not Speech.vdf's SPEECH one).
+        /// Falls back to the name lookup.
+        /// </summary>
+        public byte[] TryGetSoundBytes([NotNull] string key, [CanBeNull] string soundFolder)
+        {
+            if (soundFolder != null)
+            {
+                var node = Vfs.Resolve($"/_WORK/DATA/SOUND/{soundFolder}/{GetPreparedKey(key)}.wav");
+                if (node != null)
+                    return node.Buffer.Bytes;
+            }
+            return TryGetSoundBytes(key);
+        }
+
         public byte[] TryGetSoundBytes([NotNull] string key)
         {
             var node = Vfs.Find($"{GetPreparedKey(key)}.wav");

@@ -193,6 +193,7 @@ MonoBehaviour:
   EnableInvItemBySlot: 1
   EnablePointerLineOnTop: 1
   EnableDialogUntilStopProcessInfos: 1
+  EnableSfxFromSfxFolder: 1
   EnableNpcLookAtTarget: 1
   EnableSummonIgnoresMasterHits: 1
   EnableNpcNavMesh: 1

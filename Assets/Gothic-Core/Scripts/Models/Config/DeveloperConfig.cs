@@ -760,6 +760,11 @@ namespace Gothic.Core.Models.Config
                  "bubble and couldn't be skipped (G1 Lukis).")]
         public bool EnableDialogUntilStopProcessInfos = true;
 
+        [Tooltip("V1: Sound effects (C_SFX) are files of _WORK/DATA/SOUND/SFX like in the engine - by name only, a newer " +
+                 "archive's speech file with the same name won (G1: the hero's death scream and the pain sounds came " +
+                 "from Speech.vdf, not sound.VDF).")]
+        public bool EnableSfxFromSfxFolder = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

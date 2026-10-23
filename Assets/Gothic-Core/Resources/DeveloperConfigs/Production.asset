@@ -193,6 +193,7 @@ MonoBehaviour:
   EnableInvItemBySlot: 1
   EnablePointerLineOnTop: 1
   EnableDialogUntilStopProcessInfos: 1
+  EnableDialogBodyTurn: 1
   EnableSfxFromSfxFolder: 1
   EnableHeroHurtSound: 1
   EnableSfxNumberedVariants: 1

@@ -760,6 +760,10 @@ namespace Gothic.Core.Models.Config
                  "bubble and couldn't be skipped (G1 Lukis).")]
         public bool EnableDialogUntilStopProcessInfos = true;
 
+        [Tooltip("V1: In a dialog the NPC follows you with his head; walk behind him (beyond what his neck can turn) " +
+                 "and he turns his body towards you.")]
+        public bool EnableDialogBodyTurn = true;
+
         [Tooltip("V1: Sound effects (C_SFX) are files of _WORK/DATA/SOUND/SFX like in the engine - by name only, a newer " +
                  "archive's speech file with the same name won (G1: the hero's death scream and the pain sounds came " +
                  "from Speech.vdf, not sound.VDF).")]

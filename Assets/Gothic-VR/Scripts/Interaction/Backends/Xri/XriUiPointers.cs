@@ -10,7 +10,7 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Interaction.Backends.Xri
 {
     /// <summary>
-    /// UI laser pointers of the XRI rig: one XRRayInteractor per controller (UI only, "UI Ray" on the player prefab)
+    /// UI laser pointers of the XRI rig: the far ray of each hand's NearFarInteractor (also used for distance grabs)
     /// and the XRUIInputModule on the player's EventSystem. A canvas is hit only once it has a
     /// TrackedDeviceGraphicRaycaster, which RegisterCanvas() adds.
     /// </summary>

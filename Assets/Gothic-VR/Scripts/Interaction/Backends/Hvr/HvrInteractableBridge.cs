@@ -5,6 +5,7 @@ using Gothic.VR.Interaction.Ports;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Core.Sockets;
+using Reflex.Attributes;
 using UnityEngine;
 
 namespace Gothic.VR.Interaction.Backends.Hvr
@@ -12,9 +13,12 @@ namespace Gothic.VR.Interaction.Backends.Hvr
     /// <summary>
     /// Sits next to an HVRGrabbable and its VrInteractable. Forwards HVR's grabbable events synchronously to the
     /// VrInteractable and executes its commands on the HVRGrabbable.
+    /// Inactive (no subscriptions) if another backend runs; prefabs carry the bridges of all backends.
     /// </summary>
     public class HvrInteractableBridge : MonoBehaviour, IVrInteractableBackend
     {
+        [Inject] private readonly IVrBackend _vrBackend;
+
         private HVRGrabbable _grabbable;
         private VrInteractable _interactable;
         private bool _isSubscribed;
@@ -29,13 +33,18 @@ namespace Gothic.VR.Interaction.Backends.Hvr
             }
         }
 
+        /// <summary>
+        /// Without injection (e.g. objects outside a scene scope), HVR is assumed as before the XRI backend existed.
+        /// </summary>
+        public bool IsActive => _vrBackend == null || _vrBackend is HvrBackend;
+
         public bool IsHeld => Grabbable.IsBeingHeld;
         public IReadOnlyList<Collider> Colliders => Grabbable.Colliders;
 
         private void Awake()
         {
             _interactable = GetComponent<VrInteractable>();
-            if (Grabbable == null || _interactable == null)
+            if (!IsActive || Grabbable == null || _interactable == null)
                 return;
 
             Grabbable.HoverEnter.AddListener(OnHoverEnter);

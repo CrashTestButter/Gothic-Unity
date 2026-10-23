@@ -7,9 +7,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
 {
     /// <summary>
     /// XR Interaction Toolkit backend. Always compiled, as XRI is a free package.
-    /// Implemented: input, haptics, SFX, UI laser pointers and the player rig (XriRig on "VR - Player XRI.prefab",
-    /// with ScreenFade/WallFade on its camera).
-    /// Missing: the simulator (HVR phase 1d) and grabbing (phase 2).
+    /// Implemented: input, haptics, SFX, UI laser pointers, the player rig (XriRig on "VR - Player XRI.prefab",
+    /// with ScreenFade/WallFade on its camera), the XR Interaction Simulator and item grabbing (Near-Far interactor
+    /// per hand, GothicGrabInteractable + XriInteractableBridge on oCItem).
+    /// Missing: grabbing mobs/NPCs (phase 2b), sockets (3), doors/chests/ladders (4) and hands (5).
     /// </summary>
     public class XriBackend : IVrBackend
     {
@@ -18,8 +19,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         public void InstallBindings(ContainerBuilder containerBuilder)
         {
             Logger.LogWarning("XRI backend is work in progress: rig, locomotion, input, haptics, UI laser pointers, " +
-                              "screen fades and the XR Interaction Simulator work. Grabbing (phase 2), sockets (3), " +
-                              "doors/chests/ladders (4) and hands (5) are missing.", LogCat.VR);
+                              "screen fades, the XR Interaction Simulator and item grabbing work. Mobs/NPCs (phase " +
+                              "2b), sockets (3), doors/chests/ladders (4) and hands (5) are missing.", LogCat.VR);
 
             containerBuilder.AddSingleton(typeof(XriInput), typeof(IVrInput), typeof(XriInput));
             containerBuilder.AddSingleton(typeof(XriHaptics), typeof(IVrHaptics));

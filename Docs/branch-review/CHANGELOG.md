@@ -20,8 +20,8 @@ Link), not on Quest/Pico standalone.
   look around. Dead, the game menu opens after a moment. Immersion option "Death" off: you're only knocked out.
 - The Immersion menu scrolls (Up/Down on the right) - there are more options than fit.
 - Marvin: `kill` kills the NPC your hand pointed at last (not immortal ones like Diego).
-- Death screams and pain sounds sound like in the original game again (they played other recordings); the hero makes a
-  pain sound when hit. Getting up after a knockout no longer counts as sneaking.
+- Death screams and pain sounds sound like in the original game again (they played other recordings, and always the
+  same pain scream); the hero makes a pain sound when hit. Getting up after a knockout no longer counts as sneaking.
 
 ## 2026-10-22 (late evening): NPC faces
 

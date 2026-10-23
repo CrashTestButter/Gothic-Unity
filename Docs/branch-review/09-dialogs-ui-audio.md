@@ -82,6 +82,8 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
   `SVM_2_DEAD.WAV` in `sound.VDF` (`_WORK/DATA/SOUND/SFX`, 63928 B) and in the newer `Speech.vdf` (`SOUND/SPEECH`,
   33852 B), so the speech recording won. SFX.DAT maps the SVM pain/death sounds onto three sets (`SVM_15_DEAD` ->
   `svm_2_dead.wav`). A C_SFX file is now resolved in `_WORK/DATA/SOUND/SFX` first (clip cache key `SFX/<name>`).
+- **Numbered SFX variants** (`ca48b1e9`, `EnableSfxNumberedVariants`): variants were only `NAME_A1, _A2...`; the pain
+  screams are `SVM_x_AARGH, SVM_x_AARGH_1 ... _4` - only the first one played.
 - **Hero pain sound** (`51550b1c`, `EnableHeroHurtSound`): `SVM_<voice>_AARGH` from the hero's voice source - he has no
   `NpcSound`, nothing was heard.
 
@@ -100,7 +102,7 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 
 2026-10-22: `e077c111` NPC faces (talking mouth, moods, blinking)
 
-2026-10-23: `c9b61548` SFX from SOUND/SFX · `51550b1c` hero pain sound
+2026-10-23: `c9b61548` SFX from SOUND/SFX · `51550b1c` hero pain sound · `ca48b1e9` numbered SFX variants
 
 ## Main files
 
@@ -125,7 +127,7 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 
 2026-10-22: `EnableFaceAnimations`
 
-2026-10-23: `EnableSfxFromSfxFolder`, `EnableHeroHurtSound`
+2026-10-23: `EnableSfxFromSfxFolder`, `EnableHeroHurtSound`, `EnableSfxNumberedVariants`
 
 ## Review notes
 

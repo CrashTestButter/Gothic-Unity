@@ -765,6 +765,9 @@ namespace Gothic.Core.Models.Config
                  "from Speech.vdf, not sound.VDF).")]
         public bool EnableSfxFromSfxFolder = true;
 
+        [Tooltip("V1: The hero makes a pain sound when hit (SVM_<voice>_AARGH) like the NPCs.")]
+        public bool EnableHeroHurtSound = true;
+
         [Tooltip("V1: Npc_GetLookAtTarget (G2 scripts) returns the NPC set by AI_LookAtNpc. Read at VM start.")]
         public bool EnableNpcLookAtTarget = true;
 

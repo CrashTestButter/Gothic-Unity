@@ -1381,6 +1381,19 @@ namespace Gothic.Core.Services.Npc
             if (clip == null)
                 return;
 
+            // DeveloperConfig.EnableHeroHurtSound: the hero's pain sound like the NPCs' - from his own voice source (he
+            // has no NpcSound, nothing was heard).
+            if (_configService.Dev.EnableHeroHurtSound && target.PrefabProps != null && target.PrefabProps.IsHero())
+            {
+                var heroGo = _npcService.GetHeroGameObject();
+                var heroSource = heroGo != null ? heroGo.GetComponent<AudioSource>() : null;
+                if (heroSource != null)
+                {
+                    heroSource.PlayOneShot(clip);
+                    return;
+                }
+            }
+
             if (target.PrefabProps == null || target.PrefabProps.NpcSound == null)
                 return;
             target.PrefabProps.NpcSound.PlayOneShot(clip);

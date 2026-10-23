@@ -298,6 +298,7 @@ MonoBehaviour:
   EnableHeroDefeatedAivar: 1
   EnableEngineFinishingMove: 1
   EnableFinishWithStabSound: 1
+  EnableVrStabFinish: 1
   EnableHeroDeath: 1
   EnableHeroFallCamera: 1
   EnableMenuScrolling: 1

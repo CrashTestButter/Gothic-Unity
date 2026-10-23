@@ -87,7 +87,17 @@ namespace Gothic.VR.Services.Context
                 vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HERO_DEATH", Constants.IniNames.HeroDeath,
                     menuStartY + menuDY * 6, 1));
             }
-            var restartRow = _configService.Dev.EnableHeroDeath ? 7 : 6;
+            var nextRow = _configService.Dev.EnableHeroDeath ? 7 : 6;
+            // DeveloperConfig.EnableVrStabFinish: off = any hit finishes an unconscious NPC off.
+            if (_configService.Dev.EnableVrStabFinish)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "STAB_FINISH", "Finishing",
+                    "Stab and twist to finish off (off: any hit)", menuStartY + menuDY * nextRow));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "STAB_FINISH", VRConstants.IniNames.StabFinish,
+                    menuStartY + menuDY * nextRow, 1));
+                nextRow++;
+            }
+            var restartRow = nextRow;
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
             var backButton = CreateImmersionBackButton(mainMenu);
             vrImmersionMenu.Items.Add(backButton);

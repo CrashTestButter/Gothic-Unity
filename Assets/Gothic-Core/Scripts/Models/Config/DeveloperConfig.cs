@@ -1198,6 +1198,10 @@ namespace Gothic.Core.Models.Config
                  "and the hero screamed, only when the animation was over.")]
         public bool EnableFinishWithStabSound = true;
 
+        [Tooltip("V1 (VR): The hero finishes off an unconscious NPC with a stab and a twist of the wrist (like the lock " +
+                 "picks) instead of any slash - the 'Finishing' option in the Immersion menu (off: any hit).")]
+        public bool EnableVrStabFinish = true;
+
         [Tooltip("V1: An NPC finishing off the knocked out hero kills him like in Gothic (the 'Death' option in the " +
                  "Immersion menu can turn it off - then he only stays knocked out).")]
         public bool EnableHeroDeath = true;

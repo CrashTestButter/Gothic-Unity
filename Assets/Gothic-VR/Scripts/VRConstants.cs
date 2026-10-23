@@ -16,6 +16,8 @@ namespace Gothic.VR
             public const string Microphone = "microphone";
             // 0 = Marvin panel hidden, 1 = shown (default) - only while Marvin mode is on (MarvinService.IsMarvinMode).
             public const string MarvinPanel = "marvinPanel";
+            // 1 = an unconscious NPC is finished off by a stab and a twist (default), 0 = by any hit.
+            public const string StabFinish = "stabFinish";
         }
         
         public const string IniSectionAccessibility = "GOTHIC_VR_ACCESSIBILITY";

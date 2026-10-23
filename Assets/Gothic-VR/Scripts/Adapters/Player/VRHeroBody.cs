@@ -105,6 +105,11 @@ namespace Gothic.VR.Adapters.Player
         private const float _minDownEyeHeight = 0.2f;
         private const float _deathMenuDelay = 4f;
         private DownPhase _downPhase;
+
+        /// <summary>
+        /// The body lies or stands up (EnableHeroFallCamera) - the lowered camera isn't crouching (VRPlayerController).
+        /// </summary>
+        public static bool IsHeroDown { get; private set; }
         private readonly Queue<string> _downAnimations = new();
         private string _downAnimation;
         private Vector3 _downForward;
@@ -258,6 +263,7 @@ namespace Gothic.VR.Adapters.Player
             _isDeathMenuOpened = false;
             _bodyBones = null;
             _downPhase = DownPhase.Knockout;
+            IsHeroDown = true;
             SetDownAnimations("T_STAND_2_WOUNDEDB", "S_WOUNDEDB");
             Logger.Log("[VRHeroBody] Hero down - body falls, camera follows its head", LogCat.VR);
         }
@@ -284,6 +290,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             _downPhase = DownPhase.None;
+            IsHeroDown = false;
             _downAnimation = null;
             _downAnimations.Clear();
             var rig = _playerController != null ? _playerController.CameraRig : null;

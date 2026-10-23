@@ -6,6 +6,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
+using Gothic.VR.Adapters.Player;
 using Gothic.VR.Adapters.UI;
 using HurricaneVR.Framework.Core.Player;
 using MyBox;
@@ -126,7 +127,9 @@ namespace Gothic.VR.Adapters.HVROverrides
                 return;
 
             // DeveloperConfig.EnableHeroSneakBodyState: crouched (head below CrouchMinHeight) = sneaking.
-            if (_configService.Dev.EnableHeroSneakBodyState && IsCrouching)
+            // Lying or standing up (VRHeroBody's fall camera lowers the head) isn't sneaking - an NPC asked "why are you
+            // sneaking around" while the hero got up.
+            if (_configService.Dev.EnableHeroSneakBodyState && IsCrouching && !VRHeroBody.IsHeroDown)
             {
                 props.BodyState = VmGothicEnums.BodyState.BsSneak;
                 return;

@@ -301,6 +301,7 @@ MonoBehaviour:
   EnableHeroDeath: 1
   EnableHeroFallCamera: 1
   EnableMenuScrolling: 1
+  EnableUiGrabBars: 1
   EnableThrowRuneOneHand: 1
   EnableVrFists: 1
   EnableModelScale: 1

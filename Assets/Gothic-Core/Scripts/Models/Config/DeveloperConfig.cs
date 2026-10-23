@@ -1209,6 +1209,11 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: Menus with more options than fit scroll (drag, mouse wheel, arrows) - the Immersion menu.")]
         public bool EnableMenuScrolling = true;
 
+        [Tooltip("V1 (VR): The Marvin panel and the on-screen keyboard (save names, Marvin) have a bar under them like " +
+                 "SteamVR's windows - point at it, hold the trigger and move them. The Marvin panel then stays where you " +
+                 "put it (moving with you), 'Hand' docks it back to the left hand.")]
+        public bool EnableUiGrabBars = true;
+
         [Tooltip("V1: A rune with a throwable spell can't be grabbed by the throwing hand - grip + trigger (like a fist) " +
                  "grabbed it, both hands on the rune left none to throw with and fire balls never came.")]
         public bool EnableThrowRuneOneHand = true;

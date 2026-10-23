@@ -135,10 +135,47 @@ namespace Gothic.VR.Services.Context
 
             // Marvin Mode
             _marvinRoot = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!.gameObject;
+            if (developerConfig.EnableUiGrabBars)
+                AddMarvinGrabBar();
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera
             activeScene.GetComponentInChildren<VRPrintScreen>(true)!.Init();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableUiGrabBars: grabbed, the Marvin panel leaves the left hand and stays where it's put
+        /// in the player's space (it moves and turns with him) - one element with its keyboard (it follows the panel's
+        /// KeyboardAnchor), so the bar is upright at the side. Released in the sphere above the left hand, it docks back.
+        /// </summary>
+        private void AddMarvinGrabBar()
+        {
+            var panel = _marvinRoot.transform;
+            var hand = panel.parent;
+            var dockedPosition = panel.localPosition;
+            var dockedRotation = panel.localRotation;
+            var dockedScale = panel.localScale;
+            var playerSpace = _playerController.transform;
+
+            var bar = VRGrabBar.Create((RectTransform)panel, panel, true,
+                () =>
+                {
+                    if (panel.parent != playerSpace)
+                        panel.SetParent(playerSpace, true);
+                },
+                hand,
+                () =>
+                {
+                    panel.SetParent(hand, false);
+                    panel.SetLocalPositionAndRotation(dockedPosition, dockedRotation);
+                    panel.localScale = dockedScale;
+                    Logger.Log("[VRContextInteractionService] Marvin panel docked to the hand", LogCat.VR);
+                });
+
+            // Centered where the panel meets its keyboard (KeyboardAnchor below the panel) - one bar for both.
+            var barRect = (RectTransform)bar.transform;
+            barRect.anchorMin = barRect.anchorMax = new Vector2(1f, 0f);
+            barRect.sizeDelta = new Vector2(barRect.sizeDelta.x, ((RectTransform)panel).rect.height);
         }
 
         private void OnMarvinModeChanged(bool isActive)

@@ -132,6 +132,12 @@
   saved: a load starts standing, the offset is restored. The hero's death scream `SVM_<voice>_DEAD` (`b53715a9`,
   OpenGothic `emitSoundSVM`). Option "Death" in the Immersion menu (`3d80cb5f`). Lying or standing up isn't sneaking
   (`f048ff61`: the lowered camera counted as crouching, `VRHeroBody.IsHeroDown`).
+- **VR finishing move** (`dad7ec3c`, `EnableVrStabFinish`, ini option `stabFinish` "Finishing" in the Immersion menu):
+  any hit of the hero killed an unconscious NPC. Now only a stab does: the blade enters his hitbox (also already inside
+  the padded box, `OnTriggerStay`) with >= 1.2 m/s along the blade (85% of its speed; the tip = the mesh's X axis away
+  from the hand) - `FIG_SwordFinal` and a haptic pulse; then a 45 degree wrist twist around the blade (like the lock
+  picks) while the blade rests (< 0.6 m/s, faster restarts the angle - a slash after the stab turned it) kills through
+  `FightFinishingMove`. Pulled back 15 cm / 25 cm sideways, let go or 4 s: no finish. Fists can't finish off.
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
@@ -156,7 +162,7 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 `c4c2a8d0` one hit per swing, engine combos · `ccb310bb` animated NPC body (hitbox, personal space)
 
 2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera · `b53715a9` death scream · `3c23821d` kill with the
-stab's sound
+stab's sound · `dad7ec3c` VR finishing move (stab and twist)
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover
@@ -191,7 +197,7 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 `EnableRangedWeaponNeedsAmmo`, `EnableOutOfAmmoKeepsChasing`, `EnableRangedFocusIgnoresCover`,
 `EnableBlockedShotMoveInterrupt`
 
-2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`, `EnableFinishWithStabSound`
+2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`, `EnableFinishWithStabSound`, `EnableVrStabFinish`
 
 ## Review notes
 

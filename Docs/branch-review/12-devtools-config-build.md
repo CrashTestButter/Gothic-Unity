@@ -90,10 +90,16 @@
   its `IsScrollable` rows by one row - Up/Down buttons (commands `MENU_SCROLL_UP/DOWN`, handled in `AbstractMenu`) or
   the mouse wheel; rows outside the window are hidden, as item back pictures are 3D quads. Used by the Immersion menu,
   which got the "Death" option (`heroDeath`).
+- **Grab bars** (`c68c6a94`, `EnableUiGrabBars`, `VRGrabBar`): like SteamVR's windows - a hand within 6 cm of the bar
+  holding the grip moves and turns the target with its tracked controller (not the lagging physics hand); a hand
+  holding something doesn't grab. The Marvin panel gets an upright bar at its right side where it meets its keyboard
+  (the keyboard follows the panel's `KeyboardAnchor` - one element); grabbed it leaves the left hand for the player
+  controller's space, and released in the sphere shown above the left hand it docks back. The save name keyboard has a
+  bar under it. Position not saved.
 
 2026-10-18: `27aa8bf6` Marvin start commands
 
-2026-10-23: `8ed54eb7` Marvin kill · `3d80cb5f` menu scrolling, Death option
+2026-10-23: `8ed54eb7` Marvin kill · `3d80cb5f` menu scrolling, Death option · `c68c6a94` grab bars
 
 ## Main files
 
@@ -106,7 +112,7 @@ Config flags (2026-10-10/11): `EnableMarvinBlink`, `EnableMarvinFallRescue`, `En
 
 Config (2026-10-13): `MarvinCheatFriendsNpcSymbols` (`adf2d34e` Marvin teams)
 
-Config (2026-10-23): `EnableMarvinKill`, `EnableMenuScrolling`
+Config (2026-10-23): `EnableMarvinKill`, `EnableMenuScrolling`, `EnableUiGrabBars`
 
 ## Review notes
 

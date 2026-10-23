@@ -24,6 +24,10 @@ Link), not on Quest/Pico standalone.
   same pain scream); the hero makes a pain sound when hit. Getting up after a knockout no longer counts as sneaking.
 - Finished off, you scream right with the sword's stab, not once the enemy's animation is over.
 - Walk behind an NPC you talk to and he turns around to face you (his feet step along); his head keeps following you.
+- You finish off a knocked out NPC yourself like in Gothic's finishing move: stab the blade into him and twist your wrist
+  (like a lock pick). Slashing him no longer kills him. Immersion option "Finishing" off: any hit kills, as before.
+- The Marvin panel (with its keyboard) and the save name keyboard have a grab bar like SteamVR's windows: grab it with
+  your hand and put them where you like. Put the Marvin panel back into the sphere above your left hand to dock it.
 
 ## 2026-10-22 (late evening): NPC faces
 

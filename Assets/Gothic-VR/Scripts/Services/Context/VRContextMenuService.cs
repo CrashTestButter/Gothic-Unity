@@ -116,7 +116,7 @@ namespace Gothic.VR.Services.Context
             menu.Items.Add(CreateScrollButton(mainMenu, menu.Name + "_SCROLL_UP", "Up", Constants.MenuCommandScrollUp,
                 _scrollButtonX, topY - stepY));
             menu.Items.Add(CreateScrollButton(mainMenu, menu.Name + "_SCROLL_DOWN", "Down",
-                Constants.MenuCommandScrollDown, _scrollButtonX, bottomY));
+                Constants.MenuCommandScrollDown, _scrollButtonX, bottomY + stepY / 3));
         }
 
         // Virtual menu X (0...8191) of the scroll buttons, at the right edge.

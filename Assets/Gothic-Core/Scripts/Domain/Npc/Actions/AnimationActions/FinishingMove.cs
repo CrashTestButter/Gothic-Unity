@@ -20,6 +20,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         private NpcContainer _target => Action.Instance0?.GetUserData();
         private string _animationName;
         private bool _hasKilled;
+        private float _startTime;
 
         public FinishingMove(AnimationAction action, NpcContainer npcContainer) : base(action, npcContainer)
         {
@@ -52,6 +53,7 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return;
             }
             ActionEndEventTime = PrefabProps.AnimationSystem.GetAnimationDuration(_animationName);
+            _startTime = Time.time;
             Logger.Log($"[FinishingMove] {NpcInstance.GetName(NpcNameSlot.Slot0)} finishes " +
                        $"{target.Instance.GetName(NpcNameSlot.Slot0)} ({_animationName})", LogCat.Fight);
         }
@@ -61,8 +63,22 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
             base.Tick();
 
             if (!_hasKilled && (IsFinishedFlag ||
-                                PrefabProps.AnimationSystem.HasOptimalFrameReached(_animationName)))
+                                PrefabProps.AnimationSystem.HasOptimalFrameReached(_animationName) ||
+                                HasStabSoundPlayed()))
                 Kill();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableFinishWithStabSound: t_1hSFinish/t_2hSFinish have no DEF_OPT_FRAME - the stab is their
+        /// sound event (FIG_SwordFinal). The target died at the animation's end, his scream long after the stab.
+        /// </summary>
+        private bool HasStabSoundPlayed()
+        {
+            var animationSystem = PrefabProps.AnimationSystem;
+            return ConfigService.Dev.EnableFinishWithStabSound &&
+                   animationSystem.LastSfxEventTime >= _startTime &&
+                   _animationName.Equals(animationSystem.LastSfxEventAnimation,
+                       System.StringComparison.OrdinalIgnoreCase);
         }
 
         private void Kill()

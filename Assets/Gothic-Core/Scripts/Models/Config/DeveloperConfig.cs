@@ -1194,6 +1194,10 @@ namespace Gothic.Core.Models.Config
                  "weapon and plays t_1hSFinish/t_2hSFinish; the target dies with the stab. Before, it died at once.")]
         public bool EnableEngineFinishingMove = true;
 
+        [Tooltip("V1: The finishing move kills with the stab's sound (t_1hSFinish has no hit frame) - the target died, " +
+                 "and the hero screamed, only when the animation was over.")]
+        public bool EnableFinishWithStabSound = true;
+
         [Tooltip("V1: An NPC finishing off the knocked out hero kills him like in Gothic (the 'Death' option in the " +
                  "Immersion menu can turn it off - then he only stays knocked out).")]
         public bool EnableHeroDeath = true;

@@ -895,11 +895,22 @@ namespace Gothic.Core.Adapters.Animations
             }
         }
 
+        // The animation whose sound event (*eventSFX) played last, and when - FinishingMove kills with the stab's sound
+        // (t_1hSFinish has no DEF_OPT_FRAME; its FIG_SwordFinal is at frame 35 of 139).
+        public string LastSfxEventAnimation { get; private set; }
+        public float LastSfxEventTime { get; private set; }
+
         private void ApplySfxEvents(AnimationTrackInstance trackInstance)
         {
             var sfxEvents = trackInstance.GetPendingSoundEffects();
             if (sfxEvents == null)
                 return;
+
+            if (sfxEvents.Count > 0)
+            {
+                LastSfxEventAnimation = trackInstance.AnimationName;
+                LastSfxEventTime = Time.time;
+            }
 
             foreach (var sfx in sfxEvents)
             {

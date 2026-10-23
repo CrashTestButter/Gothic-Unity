@@ -20,7 +20,6 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 {
     public class VRContainerDoorPickingInteraction : MonoBehaviour
     {
-
         [SerializeField] private GameObject _rootGO;
         [SerializeField] private AudioSource _audioSource;
 
@@ -40,7 +39,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         private const string _lockInteractionColliderName = "LockPickInteraction";
 
         private int _combinationPos = 0;
-        
+
         public enum DoorLockStatus
         {
             StepSuccess,
@@ -68,7 +67,8 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                     _keyInstance = container.Key;
                     break;
                 default:
-                    Logger.LogError($"VRDoorLockInteraction: No door or container found for >{_lockable.Vob.Name}<.", LogCat.VR);
+                    Logger.LogError($"VRDoorLockInteraction: No door or container found for >{_lockable.Vob.Name}<.",
+                        LogCat.VR);
                     break;
             }
 
@@ -85,7 +85,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         private IEnumerator StartDelayed()
         {
             yield return null;
-            
+
             // Deactivate rotation
             _hinge?.Lock();
         }
@@ -136,7 +136,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
             var interaction = heldItem.GetComponentInChildren<VRLockPickInteraction>();
             return interaction != null && interaction.gameObject == lockInteraction;
         }
-        
+
         private void OnTriggerExit(Collider other)
         {
             if (!other.gameObject.name.Equals(_lockInteractionColliderName))
@@ -244,17 +244,22 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
             _hinge.Unlock();
 
-            // Apply force in the door's forward direction (world space)
-            var pushDirection = _hinge.Transform.forward;
-            var pushForce = 10f;
-            _hinge.Rigidbody.AddForce(pushDirection * pushForce, ForceMode.Impulse);
+            // Physics hinges (HVR) get pushed open here, kinematic ones (VrHinge) push themselves in Unlock().
+            var body = _hinge.Rigidbody;
+            if (body != null && !body.isKinematic)
+            {
+                var pushDirection = _hinge.Transform.forward;
+                var pushForce = 10f;
+                body.AddForce(pushDirection * pushForce, ForceMode.Impulse);
+            }
+
             gameObject.SetActive(false);
         }
 
         private void PlaySound(string soundName, string fallback = null)
         {
             var clip = _audioService.GetRandomSoundClip(soundName);
-            
+
             if (clip == null && fallback != null)
             {
                 PlaySound(fallback);
@@ -263,7 +268,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
             if (clip == null)
                 return;
-                
+
             _audioSource.PlayOneShot(clip);
         }
     }

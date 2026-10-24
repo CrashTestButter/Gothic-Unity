@@ -171,6 +171,7 @@ MonoBehaviour:
   EnableScriptEquipEffects: 1
   EnableNpcWater: 1
   EnableVrBows: 1
+  EnableMorphByPosition: 1
   EnableThrowableSpells: 1
   EnableBurning: 1
   EnableChaseGiveUpCooldown: 1

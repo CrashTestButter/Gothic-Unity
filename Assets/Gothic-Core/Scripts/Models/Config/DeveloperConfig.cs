@@ -665,6 +665,10 @@ namespace Gothic.Core.Models.Config
                  "release to shoot - speed/damage grow with the draw. Missed arrows/bolts lie in the world to pick up.")]
         public bool EnableVrBows = true;
 
+        [Tooltip("V1: Morph animations of items (a bow's draw S_SHOOT) find their vertices by position - bows never " +
+                 "bent (their mesh was built once without the morph mesh, no vertex mapping).")]
+        public bool EnableMorphByPosition = true;
+
         [Tooltip("V1: Projectile spells (VISUALFX CAST key with a TARGET trajectory: Firebolt, Fireball, Thunderbolt, " +
                  "Icecube, ...) are thrown: hold the rune in one hand, hold trigger to charge, swing + release trigger to " +
                  "throw. Soft homing towards the NPC closest to the throw direction. Other spells stay as they are.")]

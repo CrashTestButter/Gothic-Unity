@@ -41,6 +41,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Inject] private readonly VRRangedService _vrRangedService;
         [Inject] private readonly VrHapticsService _hapticsService;
         [Inject] private readonly MorphMeshCacheService _morphMeshCacheService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
 
         private const string _shootSfx = "BowShoot";
         private const string _drawSfx = "BowReload";
@@ -467,14 +468,18 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
 
         /// <summary>
-        /// Gothic bows: morphAni "S_SHOOT" = frames 1-12 of the draw (ITRW_BOW_*.MMS). Only if the cached vertex layout
+        /// Gothic bows: morphAni "S_SHOOT" = the 10 frames of the draw (ITRW_BOW_*.MMB). Only if the vertex layout
         /// matches this mesh - otherwise the limbs simply don't bend.
         /// </summary>
         private List<Vector3[]> TryGetDrawFrames()
         {
             try
             {
-                var frames = _morphMeshCacheService.TryGetMorphData(_item.Visual, "S_SHOOT");
+                // DeveloperConfig.EnableMorphByPosition: the cached mapping was missing for every bow (built once without
+                // the morph mesh) - morph frames=0, the limbs never bent.
+                var frames = _configService.Dev.EnableMorphByPosition
+                    ? _morphMeshCacheService.TryGetMorphDataForVertices(_item.Visual, "S_SHOOT", _restVertices)
+                    : _morphMeshCacheService.TryGetMorphData(_item.Visual, "S_SHOOT");
                 if (frames == null || frames.Count == 0 || frames[0].Length != _restVertices.Length)
                     return null;
                 return frames;

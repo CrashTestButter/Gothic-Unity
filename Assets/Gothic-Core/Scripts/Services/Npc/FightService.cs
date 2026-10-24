@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Const;
 using Gothic.Core.Domain.Npc.Actions;
@@ -148,15 +149,29 @@ namespace Gothic.Core.Services.Npc
         /// human's hit (fists too) or a monster's with a drawn weapon (orcs, skeletons) from the front (HeroFocusAngle
         /// around the head's direction). Animals, spells and projectiles always hit (they don't come this way).
         /// </summary>
-        private bool TryHeroBlockHit(NpcContainer attacker, NpcContainer hero)
+        private bool TryHeroBlockHit(NpcContainer attacker, NpcContainer hero, Vector3 position)
         {
             if (!_configService.Dev.EnableVrHeroBlock || !hero.Props.IsBlocking || attacker.Go == null ||
-                hero.Go == null)
+                hero.Go == null || _isBlockDecided)
                 return false;
 
             var attackerWeapon = (VmGothicEnums.WeaponState)attacker.Vob.FightMode;
             if (!IsHuman(attacker) && attackerWeapon is not (VmGothicEnums.WeaponState.W1H or VmGothicEnums.WeaponState.W2H))
                 return false;
+
+            // DeveloperConfig.EnableBlockWeaponContact: only a hit that touched the held weapon is blocked - a block
+            // held above the NPC's head blocked his hit too. The hit can reach the body first: it waits a moment for
+            // the touch.
+            if (_configService.Dev.EnableBlockWeaponContact)
+            {
+                if (HasBlockContact(attacker))
+                {
+                    BlockHit(attacker, hero);
+                    return true;
+                }
+                _unityMonoService.StartCoroutine(AwaitBlockContact(attacker, hero, position));
+                return true;
+            }
 
             var forward = Vector3.ProjectOnPlane(hero.Props.BlockForward, Vector3.up);
             var toAttacker = Vector3.ProjectOnPlane(attacker.Go.transform.position - hero.Go.transform.position,
@@ -169,10 +184,65 @@ namespace Gothic.Core.Services.Npc
                 return false;
             }
 
+            BlockHit(attacker, hero);
+            return true;
+        }
+
+        private const float _blockContactSeconds = 0.5f;
+        private readonly Dictionary<NpcContainer, float> _blockContacts = new();
+        // A deferred hit resolved without a block goes through OnHit again - without asking for a block twice.
+        private bool _isBlockDecided;
+
+        /// <summary>
+        /// DeveloperConfig.EnableBlockWeaponContact: VR reports that an NPC's weapon (or fist) touched the hero's held
+        /// weapon while he blocks.
+        /// </summary>
+        public void ReportBlockContact(NpcContainer attacker)
+        {
+            if (attacker != null)
+                _blockContacts[attacker] = Time.time;
+        }
+
+        private bool HasBlockContact(NpcContainer attacker)
+        {
+            return _blockContacts.TryGetValue(attacker, out var time) && Time.time - time <= _blockContactSeconds;
+        }
+
+        /// <summary>
+        /// The hit reached the hero before his weapon: blocked if the NPC's weapon touches it within
+        /// _blockContactSeconds, else it hits now.
+        /// </summary>
+        private IEnumerator AwaitBlockContact(NpcContainer attacker, NpcContainer hero, Vector3 position)
+        {
+            var end = Time.time + _blockContactSeconds;
+            while (Time.time < end)
+            {
+                if (HasBlockContact(attacker) && hero.Props.IsBlocking)
+                {
+                    BlockHit(attacker, hero);
+                    yield break;
+                }
+                yield return null;
+            }
+
+            Logger.Log($"[FightService] {attacker.Instance.GetName(NpcNameSlot.Slot0)}'s hit missed the blocking weapon",
+                LogCat.Fight);
+            _isBlockDecided = true;
+            try
+            {
+                OnHit(attacker, hero, position, null);
+            }
+            finally
+            {
+                _isBlockDecided = false;
+            }
+        }
+
+        private void BlockHit(NpcContainer attacker, NpcContainer hero)
+        {
             Logger.Log($"[FightService] The hero blocks {attacker.Instance.GetName(NpcNameSlot.Slot0)}'s hit", LogCat.Fight);
             PlayWeaponBlockEffect(attacker, hero);
             GlobalEventDispatcher.HeroBlockedHit.Invoke(attacker);
-            return true;
         }
 
         /// <summary>
@@ -514,7 +584,7 @@ namespace Gothic.Core.Services.Npc
             }
 
             // DeveloperConfig.EnableVrHeroBlock: an NPC's melee hit (no damage override: not a spell or projectile).
-            if (isHero && damageOverride == null && TryHeroBlockHit(attacker, target))
+            if (isHero && damageOverride == null && TryHeroBlockHit(attacker, target, position))
                 return;
 
             // DeveloperConfig.EnableBloodOnlyOnHit: blood only now - not for a parried or blocked hit.

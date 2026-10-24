@@ -1272,6 +1272,11 @@ namespace Gothic.Core.Models.Config
                  "blood together (OpenGothic: the hit effect only plays when the hit isn't blocked).")]
         public bool EnableBloodOnlyOnHit = true;
 
+        [Tooltip("V1: A block (EnableVrHeroBlock) stops only a hit whose weapon touched the hero's held weapon - held " +
+                 "above the NPC's head it blocked everything from the front. A hit reaching the body first waits 0.5 s " +
+                 "for the touch.")]
+        public bool EnableBlockWeaponContact = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

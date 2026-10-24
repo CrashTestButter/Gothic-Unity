@@ -8,6 +8,7 @@ using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
+using Gothic.Core.Services.Npc;
 using Gothic.VR.Services;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
@@ -30,8 +31,17 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly FightService _fightService;
+        [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
 
         private bool _isBlocking;
+
+        // DeveloperConfig.EnableBlockWeaponContact: an NPC weapon within this of the held weapon touches it.
+        private const float _contactDistance = 0.08f;
+        private const float _contactRange = 4f;
+        private const int _bladeSamples = 6;
+        private static readonly string[] _weaponSlots = { "ZS_RIGHTHAND", "ZS_LEFTHAND" };
+        private const string _fistBone = "BIP01 R HAND";
 
         private void Awake()
         {
@@ -61,6 +71,9 @@ namespace Gothic.VR.Adapters.Player
             if (head != null)
                 hero.Props.BlockForward = head.transform.forward;
 
+            if (isBlocking && _configService.Dev.EnableBlockWeaponContact)
+                ReportWeaponContacts(hero);
+
             if (isBlocking == _isBlocking)
                 return;
 
@@ -71,6 +84,80 @@ namespace Gothic.VR.Adapters.Player
                 _hapticsService.Vibrate(HVRHandSide.Left, VrHapticsService.VibrationType.Info);
                 _hapticsService.Vibrate(HVRHandSide.Right, VrHapticsService.VibrationType.Info);
             }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableBlockWeaponContact: which NPC weapons (the drawn one in the hand slot, sampled along its
+        /// length) or fists touch the held weapon right now - FightService blocks only their hits.
+        /// </summary>
+        private void ReportWeaponContacts(NpcContainer hero)
+        {
+            var held = _vrPlayerService.GrabbedItemLeft;
+            if (held == null || hero.Go == null)
+                return;
+            var colliders = held.GetComponentsInChildren<Collider>();
+            if (colliders.Length == 0)
+                return;
+
+            var heroPosition = hero.Go.transform.position;
+            foreach (var npc in _multiTypeCacheService.NpcCache)
+            {
+                if (npc == hero || npc?.Go == null || !npc.Go.activeInHierarchy || NpcHelperService.IsDown(npc) ||
+                    (npc.Go.transform.position - heroPosition).sqrMagnitude > _contactRange * _contactRange)
+                    continue;
+
+                var fightMode = (VmGothicEnums.WeaponState)npc.Vob.FightMode;
+                if (fightMode is not (VmGothicEnums.WeaponState.Fist or VmGothicEnums.WeaponState.W1H
+                    or VmGothicEnums.WeaponState.W2H))
+                    continue;
+
+                if (IsTouching(npc, colliders))
+                    _fightService.ReportBlockContact(npc);
+            }
+        }
+
+        private static bool IsTouching(NpcContainer npc, Collider[] colliders)
+        {
+            foreach (var slotName in _weaponSlots)
+            {
+                var slot = npc.Go.FindChildRecursively(slotName);
+                if (slot == null)
+                    continue;
+                foreach (var filter in slot.GetComponentsInChildren<MeshFilter>())
+                {
+                    if (filter.sharedMesh == null)
+                        continue;
+                    var bounds = filter.sharedMesh.bounds;
+                    var size = bounds.size;
+                    var axis = size.x >= size.y && size.x >= size.z ? Vector3.right
+                        : size.y >= size.z ? Vector3.up : Vector3.forward;
+                    var half = Vector3.Scale(axis, bounds.extents);
+                    var from = filter.transform.TransformPoint(bounds.center - half);
+                    var to = filter.transform.TransformPoint(bounds.center + half);
+                    for (var i = 0; i <= _bladeSamples; i++)
+                    {
+                        if (IsNear(Vector3.Lerp(from, to, (float)i / _bladeSamples), colliders))
+                            return true;
+                    }
+                }
+            }
+
+            // Fists: the hand.
+            var fist = npc.Go.FindChildRecursively(_fistBone);
+            return (VmGothicEnums.WeaponState)npc.Vob.FightMode == VmGothicEnums.WeaponState.Fist && fist != null &&
+                   IsNear(fist.transform.position, colliders);
+        }
+
+        private static bool IsNear(Vector3 point, Collider[] colliders)
+        {
+            foreach (var collider in colliders)
+            {
+                if (collider == null || !collider.enabled || collider.isTrigger)
+                    continue;
+                if ((collider.ClosestPoint(point) - point).sqrMagnitude <= _contactDistance * _contactDistance)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>

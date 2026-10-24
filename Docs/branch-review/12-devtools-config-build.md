@@ -114,6 +114,12 @@ Config (2026-10-13): `MarvinCheatFriendsNpcSymbols` (`adf2d34e` Marvin teams)
 
 Config (2026-10-23): `EnableMarvinKill`, `EnableMenuScrolling`, `EnableUiGrabBars`
 
+Config (2026-10-24): `EnableIniWriteInSection` (`eee08ebe`): a new Gothic.ini key went to the end of the file (the last
+section, VR immersion options under `[GOTHIC_VR_ACCESSIBILITY]`) and wasn't found in its own section the next time -
+every change added a line (`marvinPanel` 20 times; the loader takes the last one). Written at the end of its own section
+now, stray copies in other VR sections removed. Also `54a6445c`: no warning per touch of a weapon on a non-hitbox
+collider (it flooded the log and lagged).
+
 ## Review notes
 
 - ✅ `Bootstrap.unity` uses `Production.asset` (as on `main`). It briefly pointed at a gitignored local config;

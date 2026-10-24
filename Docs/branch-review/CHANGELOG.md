@@ -20,6 +20,11 @@ Link), not on Quest/Pico standalone.
 - Dead, you stay dead until you load a game - closing the menu no longer lets you walk around and get "knocked out"
   again.
 - Arrows and bolts that missed lie in the ground without blocking your way (an archer's bolts piled up in front of you).
+- Bows and crossbows are grabbed where they really are (fat invisible spheres around a bow, boxes across a crossbow).
+- Bows bend their limbs when you draw them.
+- Crossbows are reloaded by hand: after a shot take the string at the front with the trigger of your free hand and pull
+  it back until it clicks; a cocked crossbow shows its bolt. Out of a holster or the backpack it's cocked. Immersion
+  option "Crossbow" off: it reloads by itself.
 
 ## 2026-10-23: you can die
 

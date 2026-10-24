@@ -145,6 +145,24 @@
   died (`S_DEADB`; G1 crawler queen, harpy, meatbug only have `S_DEAD`). The dead hero (`VRHeroBody` death phase) stays
   `BS_DEAD` until a load and is locked again when the death menu closes - after Esc he walked, took hits, was knocked
   out and recovered with 1 HP.
+- **Fitted ranged colliders** (`e5a55ef1`, `EnableRangedFittedColliders`, `ItemColliderFittingDomain`): bows and
+  crossbows (`ItRw_Bow_*`, `ItRwCrossbow*`) are split into their mesh parts (welded by position; crossbow: stock,
+  prod, trigger, string), each part sampled densely and fitted with an oriented box (PCA); a part is halved along its
+  long axis while that leaves < 70 % of the volume (curved limbs, prods), up to 5 times; boxes thinner than 2.5 cm in two
+  directions (strings) are dropped. Convex mesh colliders on the item itself (child objects keep their layer when a held
+  item switches to VobItemNoWorldCollision). Crossbows are built by `BuildViaMmb`, bows via the cached collider path -
+  both call it. Before: three fat cached capsules (13 cm) on a bow, axis aligned slices across a crossbow's prod.
+- **Bows bend** (`478b8e32`, `EnableMorphByPosition`): `VRBow` blended the limbs with the bow's S_SHOOT morph, but every
+  bow logged "morph frames=0" - the vertex mapping only exists if the mesh was built from the morph mesh first, and the
+  bows had been built (welded, cached) without it. `MorphMeshCacheService.TryGetMorphDataForVertices` matches the Unity
+  vertices to the morph mesh positions (0.1 mm).
+- **Crossbow reload** (`ab73019b`, `EnableVrCrossbowManualReload`, ini `crossbowReload`): Gothic's crossbow morphs - the
+  rest mesh is cocked (S_READY has no offsets), S_SHOOT barely moves anything, S_RELAX (the NPCs' t_CBowReload) moves the
+  string 25-27 cm forward to the prod. `VRCrossbowString` (stays on the item) blends between the rest mesh and that
+  S_RELAX frame; the nock = the vertex moving farthest. After a shot the free hand's trigger takes the string within
+  12 cm and pulls it back along the stock (haptics every 10 %), at 97 % it locks (BowReload). A cocked crossbow with
+  bolts shows one on the stock, its tail at the string - that bolt flies. Socketed (holster) = cocked. Off: automatic
+  after 1.5 s with the shapes.
 - **Dropped items don't block** (`0e7fa467`, `EnableDroppedItemColliderLayer`): `DropItemAtPosition`'s resting box was on
   the loader (Default) - missed bolts in the ground blocked the hero and the next bolts hit them (piled up in one spot).
   It's on a TransparentFX child now (world only; not Player/Hand/VobHitbox, not in the projectile mask).
@@ -174,7 +192,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera · `b53715a9` death scream · `3c23821d` kill with the
 stab's sound · `dad7ec3c` VR finishing move (stab and twist)
 
-2026-10-24: `0e7fa467` dropped items don't block · `457d61cf` dead = 0 HP · `e90a5c1d` the dead stay dead
+2026-10-24: `0e7fa467` dropped items don't block · `457d61cf` dead = 0 HP · `e90a5c1d` the dead stay dead ·
+`e5a55ef1` fitted ranged colliders · `478b8e32` bows bend · `ab73019b` crossbow reload
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover
@@ -211,7 +230,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 
 2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`, `EnableFinishWithStabSound`, `EnableVrStabFinish`
 
-2026-10-24: `EnableDroppedItemColliderLayer`, `EnableDeathZeroHitPoints`, `EnableDeadSkipsRoutine`
+2026-10-24: `EnableDroppedItemColliderLayer`, `EnableDeathZeroHitPoints`, `EnableDeadSkipsRoutine`,
+`EnableRangedFittedColliders`, `EnableMorphByPosition`, `EnableVrCrossbowManualReload`
 
 ## Review notes
 

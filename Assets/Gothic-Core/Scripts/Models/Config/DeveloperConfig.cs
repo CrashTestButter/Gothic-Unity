@@ -1260,6 +1260,14 @@ namespace Gothic.Core.Models.Config
                  "froze after a fight until something woke him (talking, a drawn weapon).")]
         public bool EnableUseItemGlobalItem = true;
 
+        [Tooltip("V1: Immersion option \"Ranged knockout\": off (like OpenGothic) a lethal arrow, bolt or spell kills a " +
+                 "human, on it knocks him out and the next one (or a sword) finishes him off. Area spells (fire rain) hit " +
+                 "the knocked out too. Before: ranged and magic always left humans and the hero at 1 HP.")]
+        public bool EnableRangedKnockoutOption = true;
+
+        [Tooltip("The \"Ranged knockout\" option's value when Gothic.ini has none yet.")]
+        public bool RangedKnockoutByDefault;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

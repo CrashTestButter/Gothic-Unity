@@ -117,6 +117,16 @@ namespace Gothic.VR.Services.Context
                 vrImmersionMenu.Items.Add(spellRingChoice);
                 nextRow++;
             }
+            // DeveloperConfig.EnableRangedKnockoutOption: off (OpenGothic) = arrows, bolts and spells kill.
+            if (_configService.Dev.EnableRangedKnockoutOption)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "RANGED_KNOCKOUT", "Ranged knockout",
+                    "Arrows/spells knock out, the next one kills", menuStartY + menuDY * nextRow));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "RANGED_KNOCKOUT",
+                    VRConstants.IniNames.RangedKnockout, menuStartY + menuDY * nextRow,
+                    _configService.Dev.RangedKnockoutByDefault ? 1 : 0));
+                nextRow++;
+            }
             var restartRow = nextRow;
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
             var backButton = CreateImmersionBackButton(mainMenu);

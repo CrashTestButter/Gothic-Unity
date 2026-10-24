@@ -285,7 +285,7 @@ namespace Gothic.Core.Services.Npc
                 {
                     if (candidate == caster || candidate.Go == null || !candidate.Go.activeInHierarchy)
                         continue;
-                    if (NpcHelperService.IsDown(candidate))
+                    if (IsSparedByAreaSpell(candidate))
                         continue;
                     if (Vector3.Distance(casterPos, candidate.Go.transform.position) > rangeM)
                         continue;
@@ -321,7 +321,7 @@ namespace Gothic.Core.Services.Npc
                 if (candidate == caster || candidate == directTarget || candidate.Go == null ||
                     !candidate.Go.activeInHierarchy)
                     continue;
-                if (NpcHelperService.IsDown(candidate))
+                if (IsSparedByAreaSpell(candidate))
                     continue;
                 if (Vector3.Distance(pos, candidate.Go.transform.position) > SpellConst.SpreadRangeMeters)
                     continue;
@@ -528,7 +528,8 @@ namespace Gothic.Core.Services.Npc
                     Logger.LogWarning("[FightService] Hero knocked out!", LogCat.Fight);
                     OnHeroKnockedOut(target, attacker);
                 }
-                else if (IsHuman(target) && IsKnockedOutNotKilled(GetCreditedAttacker(attacker), target))
+                else if (IsHuman(target) && !IsRangedKill(damageOverride) &&
+                         IsKnockedOutNotKilled(GetCreditedAttacker(attacker), target))
                 {
                     Logger.Log($"[FightService.OnHit] {target.Instance.GetName(NpcNameSlot.Slot0)} is UNCONSCIOUS", LogCat.Npc);
                     OnNpcKnockedOut(target, GetCreditedAttacker(attacker));
@@ -920,6 +921,15 @@ namespace Gothic.Core.Services.Npc
         /// attitude between NPCs. A guard no longer kills a citizen in a brawl, bandits still die. Arrows kill.
         /// Off: only the hero and his party knock out. A berzerk is always only stopped (EnableGuardsStopBerzerk).
         /// </summary>
+        /// <summary>
+        /// DeveloperConfig.EnableRangedKnockoutOption: an arrow, bolt or spell (they pass their damage) kills unless the
+        /// "rangedKnockout" option is on.
+        /// </summary>
+        private bool IsRangedKill(int? damageOverride)
+        {
+            return _configService.Dev.EnableRangedKnockoutOption && damageOverride.HasValue && !IsRangedKnockoutOn();
+        }
+
         private bool IsKnockedOutNotKilled(NpcContainer attacker, NpcContainer target)
         {
             if (_configService.Dev.EnableGuardsStopBerzerk && IsBerzerk(target))
@@ -1255,12 +1265,13 @@ namespace Gothic.Core.Services.Npc
 
             // Magic and ranged never one-shot humanoids or the hero — they always survive with 1 HP,
             // requiring a follow-up hit to trigger knockout. Monsters (guild >= 16) take full damage.
+            // DeveloperConfig.EnableRangedKnockoutOption replaces this (OnHit: kill or knock out by the option).
             var attackerMode = (VmGothicEnums.WeaponState)attacker.Vob.FightMode;
             var isMagicOrRanged = attackerMode is VmGothicEnums.WeaponState.Mage
                 or VmGothicEnums.WeaponState.Bow
                 or VmGothicEnums.WeaponState.CBow;
             var targetIsHumanOrHero = (target.PrefabProps != null && target.PrefabProps.IsHero()) || IsHuman(target);
-            if (isMagicOrRanged && targetIsHumanOrHero)
+            if (!_configService.Dev.EnableRangedKnockoutOption && isMagicOrRanged && targetIsHumanOrHero)
                 damage = Mathf.Min(damage, Mathf.Max(1, hitPoints - 1));
 
             // NPC_FLAG_IMMORTAL (bit 1 = 2): take no damage, but combat still plays out normally.
@@ -1462,6 +1473,30 @@ namespace Gothic.Core.Services.Npc
                        $"strength {strength}, {rollResult} (roll {roll}) = {damage}{(isImmune ? " (immune)" : "")}",
                 LogCat.Fight);
             return damage;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableRangedKnockoutOption + the "rangedKnockout" immersion option: off (default, like
+        /// OpenGothic: only melee knocks out) a lethal arrow, bolt or spell kills a human; on, it knocks him out like a
+        /// sword and the next shot, spell or fire rain finishes him off.
+        /// </summary>
+        private bool IsRangedKnockoutOn()
+        {
+            return _configService.Dev.EnableRangedKnockoutOption && _configService.Gothic != null &&
+                   _configService.Gothic.GetInt(FightConst.RangedKnockoutIniName,
+                       _configService.Dev.RangedKnockoutByDefault ? 1 : 0) == 1;
+        }
+
+        /// <summary>
+        /// Area spells (fire rain, ice wave, a fire storm's flames) skip the dead - and the knocked out unless
+        /// DeveloperConfig.EnableRangedKnockoutOption: like the engine they hit them too (finishing them off), the fire
+        /// rain only ever knocked the Irdorath crew down.
+        /// </summary>
+        private bool IsSparedByAreaSpell(NpcContainer candidate)
+        {
+            if (!_configService.Dev.EnableRangedKnockoutOption)
+                return NpcHelperService.IsDown(candidate);
+            return candidate.Props.BodyState == VmGothicEnums.BodyState.BsDead;
         }
 
         // Set by CalculateMeleeDamage for the hit being calculated (OnHitUpdateHealth).

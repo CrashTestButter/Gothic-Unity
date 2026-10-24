@@ -309,6 +309,8 @@ MonoBehaviour:
   EnableBackpackEquipToggle: 1
   EnableProclaimFromAfar: 1
   EnableUseItemGlobalItem: 1
+  EnableRangedKnockoutOption: 1
+  RangedKnockoutByDefault: 0
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

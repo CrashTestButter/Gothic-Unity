@@ -22,6 +22,8 @@ namespace Gothic.VR
             public const string CrossbowReload = "crossbowReload";
             // 1 = the spell ring opens with the gesture (both hands up, both triggers), 0 = off.
             public const string SpellRing = "spellRing";
+            // 1 = a lethal arrow/bolt/spell knocks a human out (the next one finishes him off), 0 = it kills.
+            public const string RangedKnockout = Gothic.Core.Const.FightConst.RangedKnockoutIniName;
         }
         
         public const string IniSectionAccessibility = "GOTHIC_VR_ACCESSIBILITY";

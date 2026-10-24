@@ -98,7 +98,12 @@ namespace Gothic.VR.Adapters.Vob
             // OnGrabbed is normally called multiple times. Even after an object is already socketed. If so, then let's stop Grab behaviour.
             // If we sock an object on our hips or backpack etc.
             if (grabber is HVRSocket)
+            {
+                // DeveloperConfig.EnableVrCrossbowManualReload: out of a holster/backpack a crossbow is cocked.
+                if (TryGetComponent<Adapters.Vob.VobItem.VRCrossbowString>(out var crossbowString))
+                    crossbowString.SetProgress(1f);
                 return;
+            }
 
             // Stop collisions while being dragged around (at least shortly; otherwise e.g. items might stick inside chests when pulled out).
             gameObject.layer = Constants.VobItemNoWorldCollision;

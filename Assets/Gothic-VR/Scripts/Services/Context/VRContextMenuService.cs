@@ -97,6 +97,15 @@ namespace Gothic.VR.Services.Context
                     menuStartY + menuDY * nextRow, 1));
                 nextRow++;
             }
+            // DeveloperConfig.EnableVrCrossbowManualReload: off = a crossbow reloads by itself.
+            if (_configService.Dev.EnableVrCrossbowManualReload)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "CROSSBOW_RELOAD", "Crossbow",
+                    "Pull the string to reload (off: automatic)", menuStartY + menuDY * nextRow));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "CROSSBOW_RELOAD",
+                    VRConstants.IniNames.CrossbowReload, menuStartY + menuDY * nextRow, 1));
+                nextRow++;
+            }
             var restartRow = nextRow;
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
             var backButton = CreateImmersionBackButton(mainMenu);

@@ -669,6 +669,12 @@ namespace Gothic.Core.Models.Config
                  "bent (their mesh was built once without the morph mesh, no vertex mapping).")]
         public bool EnableMorphByPosition = true;
 
+        [Tooltip("V1 (VR): After a shot the crossbow's string sits at the prod (Gothic's own S_RELAX shape). Grab it " +
+                 "with the free hand (grip), pull it back along the stock until it locks - then it's cocked and shows " +
+                 "a bolt. Out of a holster/backpack it's cocked. The 'Crossbow' Immersion option turns it off " +
+                 "(automatic reload).")]
+        public bool EnableVrCrossbowManualReload = true;
+
         [Tooltip("V1: Projectile spells (VISUALFX CAST key with a TARGET trajectory: Firebolt, Fireball, Thunderbolt, " +
                  "Icecube, ...) are thrown: hold the rune in one hand, hold trigger to charge, swing + release trigger to " +
                  "throw. Soft homing towards the NPC closest to the throw direction. Other spells stay as they are.")]

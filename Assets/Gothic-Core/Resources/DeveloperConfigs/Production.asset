@@ -172,6 +172,7 @@ MonoBehaviour:
   EnableNpcWater: 1
   EnableVrBows: 1
   EnableMorphByPosition: 1
+  EnableVrCrossbowManualReload: 1
   EnableThrowableSpells: 1
   EnableBurning: 1
   EnableChaseGiveUpCooldown: 1

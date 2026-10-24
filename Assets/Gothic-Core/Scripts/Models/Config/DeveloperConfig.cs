@@ -1255,6 +1255,11 @@ namespace Gothic.Core.Models.Config
                  "it caught the hero, who ran away right after his attack (Lukis chased forever).")]
         public bool EnableProclaimFromAfar = true;
 
+        [Tooltip("V1: AI_UseItem(self, item) with the global `item` (G1 ZS_HealSelf eats food found by " +
+                 "Npc_GetInvItemBySlot) uses the item in it - it was the symbol ITEM, the use never finished and the NPC " +
+                 "froze after a fight until something woke him (talking, a drawn weapon).")]
+        public bool EnableUseItemGlobalItem = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

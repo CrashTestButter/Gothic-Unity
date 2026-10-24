@@ -308,6 +308,7 @@ MonoBehaviour:
   EnableKeyboardClearButton: 1
   EnableBackpackEquipToggle: 1
   EnableProclaimFromAfar: 1
+  EnableUseItemGlobalItem: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

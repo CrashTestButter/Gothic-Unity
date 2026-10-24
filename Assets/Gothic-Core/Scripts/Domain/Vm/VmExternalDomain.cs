@@ -545,6 +545,7 @@ namespace Gothic.Core.Domain.Vm
             var container = npc?.GetUserData();
             if (container?.Props == null)
                 return;
+            itemId = ResolveItemId(itemId);
             _npcAiService.ExtAiUseItemToState(npc, itemId, 0);
             container.Props.AnimationQueue.Enqueue(new Gothic.Core.Domain.Npc.Actions.AnimationActions.UseItemEffect(
                 new Gothic.Core.Domain.Npc.Actions.AnimationAction(int0: itemId), container));
@@ -553,7 +554,26 @@ namespace Gothic.Core.Domain.Vm
 
         public void AI_UseItemToState(NpcInstance npc, int itemId, int expectedInventoryCount)
         {
-            _npcAiService.ExtAiUseItemToState(npc, itemId, expectedInventoryCount);
+            _npcAiService.ExtAiUseItemToState(npc, ResolveItemId(itemId), expectedInventoryCount);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableUseItemGlobalItem: `AI_UseItem(self, item)` hands over the global `item` variable
+        /// (G1 ZS_HealSelf: food found by Npc_GetInvItemBySlot) - its symbol, not an item instance. The engine uses the
+        /// item in it. The unknown "item" left Lukis frozen after a fight (the use never finished).
+        /// </summary>
+        private int ResolveItemId(int itemId)
+        {
+            if (!_configService.Dev.EnableUseItemGlobalItem)
+                return itemId;
+
+            var vm = _gameStateService.GothicVm;
+            var symbol = vm.GetSymbolByIndex(itemId);
+            if (symbol == null || !string.Equals(symbol.Name, "ITEM", StringComparison.OrdinalIgnoreCase))
+                return itemId;
+
+            var item = vm.GlobalItem as ItemInstance;
+            return item != null ? item.Index : itemId;
         }
 
         public void AI_Wait(NpcInstance npc, float seconds)

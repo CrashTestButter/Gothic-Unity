@@ -1202,6 +1202,10 @@ namespace Gothic.Core.Models.Config
                  "picks) instead of any slash - the 'Finishing' option in the Immersion menu (off: any hit).")]
         public bool EnableVrStabFinish = true;
 
+        [Tooltip("V1: A dead NPC has 0 hit points like in the engine - a finished off NPC kept the knockout's 1 HP " +
+                 "(shown on his bar) and stood in a T-pose when he was culled in again.")]
+        public bool EnableDeathZeroHitPoints = true;
+
         [Tooltip("V1: A dropped item (also a missed arrow/bolt lying in the ground) rests on the world but doesn't block " +
                  "the hero or stop arrows - an archer's missed bolts blocked the hero's way and piled up in one spot.")]
         public bool EnableDroppedItemColliderLayer = true;

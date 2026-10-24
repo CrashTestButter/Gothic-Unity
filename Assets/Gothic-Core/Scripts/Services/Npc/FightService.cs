@@ -1219,6 +1219,16 @@ namespace Gothic.Core.Services.Npc
 
         private void OnNpcDied(NpcContainer dead, NpcContainer killer)
         {
+            // DeveloperConfig.EnableDeathZeroHitPoints: dead is 0 hit points like the engine (OpenGothic
+            // Npc::finishingMove / C_Kill: hit points -max) - a finished off NPC kept the knockout's 1 HP.
+            if (_configService.Dev.EnableDeathZeroHitPoints &&
+                dead.Vob.GetAttribute((int)NpcAttribute.HitPoints) > 0)
+            {
+                dead.Vob.SetAttribute((int)NpcAttribute.HitPoints, 0);
+                dead.Instance.SetAttribute(NpcAttribute.HitPoints, 0);
+                GlobalEventDispatcher.NpcAttributeChanged.Invoke(dead, NpcAttribute.HitPoints);
+            }
+
             DropReadiedWeapon(dead);
 
             // Set flag immediately so AiHandler.Start() on the corpse doesn't double-call ZS_Dead.

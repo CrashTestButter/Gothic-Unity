@@ -57,8 +57,9 @@ namespace Gothic.Core.Services.Npc
         private int _talentId = -1;
         private int _humanSeparator = -1;
 
-        public bool IsEnabled => _configService.Dev.EnableVrPickpocket && _contextGameVersionService.IsGothic1() &&
-                                 _gameStateService.GothicVm != null;
+        // No game picked yet (profile menu): no VM and no game version.
+        public bool IsEnabled => _configService.Dev.EnableVrPickpocket && _configService.Gothic != null &&
+                                 _gameStateService.GothicVm != null && _contextGameVersionService.IsGothic1();
 
         public NpcContainer Hero => (_gameStateService.GothicVm?.GlobalHero as NpcInstance)?.GetUserData();
 

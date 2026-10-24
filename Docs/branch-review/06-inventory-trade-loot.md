@@ -38,6 +38,24 @@
   ore". Like OpenGothic's `Inventory::findByFlags` it returns the slot-th item of the `INV_*` category from the packed
   inventory.
 
+**Added 2026-10-25**
+
+- **Pickpocketing, G1** (`0ecdf3d7`, `EnableVrPickpocket`): G1 steals through the engine's steal window, G2 in
+  dialogs (`DIA_*_PICKPOCKET`, `C_Beklauen`) - only G1 gets this; OpenGothic has no G1 pickpocketing. `PickpocketService`
+  (Core): the hero has `NPC_TALENT_PICKPOCKET` skill > 0 and is in `BS_SNEAK`; the victim is human (guild <
+  `GIL_SEPERATOR_HUM`), up, without a drawn weapon and can't see the hero (FOV). Each item taken rolls the talent value
+  as the chance to get caught (`Npc_Default` 90, `B_GiveSkill` -40 per level: 50 / 10) - Fingers: "only as a master
+  you take something without him noticing". Caught: `PERC_CATCHTHIEF` to the victim (`ZS_CatchThief`: whirl around,
+  `ZS_AssessEnemy`) via `NpcAiService.ExecuteSinglePerception`, the passive `PERC_ASSESSTHEFT` from the hero with the
+  victim set to witnesses within `HAI_DIST_ASSESSTHEFT` (`B_AssessTheft`: "$BEHINDYOU", `PERC_ASSESSWARN` to the
+  victim). `VRPickpocket` (VR): up to 3 purses within 3 m - the backpack's `BackPack-Body` mesh made 14 cm, at
+  `ZS_SWORD` mirrored on the NPC's middle plane (right hip), pulsing emission; a free hand within 20 cm grows it and
+  its grip opens `PickpocketInventoryOwner` (the NPC's items without worn/wielded ones, reports every taken item) in a
+  `VRBackpack` copy forced into that hand. The victim seeing the hero is a catch too; letting go of the backpack or
+  2.5 m away closes it; a caught victim has no purse for 30 s. `VRNpc.OnGrabbed` doesn't talk while a hand is at the
+  purse (+1 s) or the NPC is robbed - HVR grabs the NPC with the same grip. Runtime only; the items are in the saved
+  inventories.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
@@ -48,6 +66,8 @@
 2026-10-11/13: `f4439ca6` quick loot
 
 2026-10-18: `60fb9190` plundering takes ore
+
+2026-10-25: `0ecdf3d7` pickpocketing (G1)
 
 ## Main files
 
@@ -68,6 +88,8 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 2026-10-11/13: `EnableLootTakeAll`
 
 2026-10-18: `EnableInvItemBySlot`
+
+2026-10-25: `EnableVrPickpocket`
 
 ## Review notes
 

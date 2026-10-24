@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-25: pickpocketing (G1)
+
+- Learn pickpocketing (Fingers), sneak up behind someone: a glowing purse hangs on his right hip. Grab it and his
+  pockets open as a backpack in your hand - take what you want with the other hand.
+- Every item can get you caught (often when trained, rarely as a master), and so can he if he turns around: the
+  backpack is gone and he comes after you. Anyone else who sees it shouts "Behind you!".
+- In G2 pickpocketing stays in the dialogs, like the original.
+
 ## 2026-10-24 (night): whirl around, sneaking
 
 - Draw a weapon behind an NPC's back and he jumps around startled before he draws his own (Ghorri drew his sword with

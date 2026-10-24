@@ -35,6 +35,16 @@ namespace Gothic.VR.Interaction.Components
         /// </summary>
         public bool IsSelectOnly => Backend != null && Backend.IsSelectOnly;
 
+        /// <summary>
+        /// Played by VrSocketSlot when this interactable is put into a slot (instead of the slot's fallback).
+        /// </summary>
+        public AudioClip SocketedSound { get; private set; }
+
+        /// <summary>
+        /// Played by VrSocketSlot when this interactable is taken out of a slot (instead of the slot's fallback).
+        /// </summary>
+        public AudioClip UnsocketedSound { get; private set; }
+
         public IReadOnlyList<Collider> Colliders => Backend != null ? Backend.Colliders : Array.Empty<Collider>();
 
         private IVrInteractableBackend Backend
@@ -90,6 +100,8 @@ namespace Gothic.VR.Interaction.Components
         /// </summary>
         public void SetSocketSounds(AudioClip socketed, AudioClip unsocketed)
         {
+            SocketedSound = socketed;
+            UnsocketedSound = unsocketed;
             Backend?.SetSocketSounds(socketed, unsocketed);
         }
 

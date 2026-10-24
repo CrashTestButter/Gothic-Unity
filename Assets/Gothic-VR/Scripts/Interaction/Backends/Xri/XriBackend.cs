@@ -9,8 +9,9 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// XR Interaction Toolkit backend. Always compiled, as XRI is a free package.
     /// Implemented: input, haptics, SFX, UI laser pointers, the player rig (XriRig on "VR - Player XRI.prefab",
     /// with ScreenFade/WallFade on its camera), the XR Interaction Simulator and item grabbing (Near-Far interactor
-    /// per hand, GothicGrabInteractable + XriInteractableBridge on oCItem).
-    /// Missing: grabbing mobs/NPCs (phase 2b), sockets (3), doors/chests/ladders (4) and hands (5).
+    /// per hand, GothicGrabInteractable + XriInteractableBridge on oCItem), using mobs/NPCs and the socket core
+    /// (VrSocketSlot + XriSocketBridge, "VR Socket Slot.prefab").
+    /// Missing: backpack/holsters (phase 3b), chests/NPC loot (3c), doors/chests/ladders (4) and hands (5).
     /// </summary>
     public class XriBackend : IVrBackend
     {

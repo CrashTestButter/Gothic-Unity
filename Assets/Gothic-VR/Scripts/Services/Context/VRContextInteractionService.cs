@@ -151,6 +151,14 @@ namespace Gothic.VR.Services.Context
                 var pickpocket = new GameObject("_Pickpocket").AddComponent<VRPickpocket>();
                 pickpocket.transform.SetParent(_playerController.transform, false);
             }
+
+            // DeveloperConfig.EnableVrHeroBlock: both hands on a melee weapon + both triggers = parry.
+            if (developerConfig.EnableVrHeroBlock)
+            {
+                var heroBlock = new GameObject("_HeroBlock").AddComponent<VRHeroBlock>();
+                heroBlock.transform.SetParent(_playerController.transform, false);
+            }
+
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera

@@ -301,6 +301,7 @@ MonoBehaviour:
   EnableSneakBehindGuards: 1
   EnableSneakSlowSprint: 1
   EnableVrPickpocket: 1
+  EnableVrHeroBlock: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

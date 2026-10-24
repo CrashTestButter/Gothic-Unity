@@ -1220,6 +1220,12 @@ namespace Gothic.Core.Models.Config
                  "PERC_ASSESSTHEFT.")]
         public bool EnableVrPickpocket = true;
 
+        [Tooltip("V1: Blocking in VR like Gothic's parry: both hands on a melee weapon (one- or two-handed) and both " +
+                 "triggers held. Hits of humans (fists too) and of monsters with a drawn weapon (orcs, skeletons) from " +
+                 "the front (45 degrees around the head's direction) do no damage, the weapons clash. Animals, spells, " +
+                 "projectiles and hits from the side or back go through; while blocking the hero's own hits don't count.")]
+        public bool EnableVrHeroBlock = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

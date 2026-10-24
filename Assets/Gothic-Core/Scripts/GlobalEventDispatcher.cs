@@ -104,6 +104,12 @@ namespace Gothic.Core
         public static readonly UnityEvent<int> HeroMeleeSwing = new();
 
         /// <summary>
+        /// DeveloperConfig.EnableVrHeroBlock: the blocking hero parried a hit.
+        /// NpcContainer - the attacker
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer> HeroBlockedHit = new();
+
+        /// <summary>
         /// NpcContainer - caster
         /// NpcContainer - target
         /// Vector3      - hit position

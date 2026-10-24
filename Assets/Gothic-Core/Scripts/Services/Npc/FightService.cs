@@ -144,6 +144,38 @@ namespace Gothic.Core.Services.Npc
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableVrHeroBlock: OpenGothic Npc::takeDamage - the blocking hero takes no damage from a
+        /// human's hit (fists too) or a monster's with a drawn weapon (orcs, skeletons) from the front (HeroFocusAngle
+        /// around the head's direction). Animals, spells and projectiles always hit (they don't come this way).
+        /// </summary>
+        private bool TryHeroBlockHit(NpcContainer attacker, NpcContainer hero)
+        {
+            if (!_configService.Dev.EnableVrHeroBlock || !hero.Props.IsBlocking || attacker.Go == null ||
+                hero.Go == null)
+                return false;
+
+            var attackerWeapon = (VmGothicEnums.WeaponState)attacker.Vob.FightMode;
+            if (!IsHuman(attacker) && attackerWeapon is not (VmGothicEnums.WeaponState.W1H or VmGothicEnums.WeaponState.W2H))
+                return false;
+
+            var forward = Vector3.ProjectOnPlane(hero.Props.BlockForward, Vector3.up);
+            var toAttacker = Vector3.ProjectOnPlane(attacker.Go.transform.position - hero.Go.transform.position,
+                Vector3.up);
+            var angle = Vector3.Angle(forward, toAttacker);
+            if (forward.sqrMagnitude < 0.0001f || angle > FightConst.HeroFocusAngle)
+            {
+                Logger.Log($"[FightService] {attacker.Instance.GetName(NpcNameSlot.Slot0)} hits the blocking hero " +
+                           $"from the side ({angle:F0} degrees)", LogCat.Fight);
+                return false;
+            }
+
+            Logger.Log($"[FightService] The hero blocks {attacker.Instance.GetName(NpcNameSlot.Slot0)}'s hit", LogCat.Fight);
+            PlayWeaponBlockEffect(attacker, hero);
+            GlobalEventDispatcher.HeroBlockedHit.Invoke(attacker);
+            return true;
+        }
+
+        /// <summary>
         /// OpenGothic World::addWeaponBlkEffect: "CS_IAI_" + both weapons' materials (item attacks item), the particle
         /// effect CPFX_IAI_ the same or by the defender's material. Without a weapon on either side there's nothing.
         /// G1 has only CS_IAI_ME_ME - other pairs take the generic CS_IAI.
@@ -154,17 +186,21 @@ namespace Gothic.Core.Services.Npc
             var attackerMaterial = attacker.PrefabProps != null && attacker.PrefabProps.IsHero()
                 ? attacker.Props.MeleeSwingMaterial
                 : _npcHelperService.ExtNpcGetEquippedMeleeWeapon(attacker.Instance)?.Material ?? -1;
-            var defenderWeapon = _npcHelperService.ExtNpcGetEquippedMeleeWeapon(target.Instance) ??
-                                 (target.Props.CurrentItem >= 0 ? _vmCacheService.TryGetItemData(target.Props.CurrentItem) : null);
-            if (attackerMaterial < 0 || defenderWeapon == null)
+            // The blocking hero's held weapon isn't equipped either (DeveloperConfig.EnableVrHeroBlock).
+            var defenderMaterial = target.PrefabProps != null && target.PrefabProps.IsHero()
+                ? target.Props.BlockWeaponMaterial
+                : (_npcHelperService.ExtNpcGetEquippedMeleeWeapon(target.Instance) ??
+                   (target.Props.CurrentItem >= 0 ? _vmCacheService.TryGetItemData(target.Props.CurrentItem) : null))
+                ?.Material ?? -1;
+            if (attackerMaterial < 0 || defenderMaterial < 0)
             {
                 Logger.Log($"[FightService] Parry without a clash: attacker material {attackerMaterial}, " +
-                           $"defender weapon {defenderWeapon?.Name ?? "none"}", LogCat.Fight);
+                           $"defender material {defenderMaterial}", LogCat.Fight);
                 return;
             }
 
             var from = GetMaterialTag(attackerMaterial);
-            var to = GetMaterialTag(defenderWeapon.Material);
+            var to = GetMaterialTag(defenderMaterial);
             var clip = _audioService.GetRandomSoundClip($"CS_IAI_{from}_{to}") ?? _audioService.GetRandomSoundClip("CS_IAI");
             if (clip != null && target.PrefabProps?.NpcSound != null)
                 target.PrefabProps.NpcSound.PlayOneShot(clip);
@@ -454,6 +490,19 @@ namespace Gothic.Core.Services.Npc
 
             // DeveloperConfig.EnableNpcParadeBlocksHits: the hero's hit on a parrying / jumping back NPC.
             if (!isHero && isHeroAttacker && TryBlockHit(attacker, target))
+                return;
+
+            // DeveloperConfig.EnableVrHeroBlock: a parry is its own state like the engine's - no hits while blocking.
+            if (isHeroAttacker && damageOverride == null && _configService.Dev.EnableVrHeroBlock &&
+                attacker.Props.IsBlocking)
+            {
+                Logger.Log($"[FightService] The hero blocks - his hit on {target.Instance.GetName(NpcNameSlot.Slot0)} " +
+                           "doesn't count", LogCat.Fight);
+                return;
+            }
+
+            // DeveloperConfig.EnableVrHeroBlock: an NPC's melee hit (no damage override: not a spell or projectile).
+            if (isHero && damageOverride == null && TryHeroBlockHit(attacker, target))
                 return;
 
             Logger.Log($"[FightService.OnHit] *** {attacker.Instance.GetName(NpcNameSlot.Slot0)} HIT {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);

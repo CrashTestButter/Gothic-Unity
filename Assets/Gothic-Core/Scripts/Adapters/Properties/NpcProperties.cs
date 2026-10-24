@@ -62,6 +62,11 @@ namespace Gothic.Core.Adapters.Properties
         public float MeleePrehitUntil = float.MinValue;
         // The material of the weapon swung last (ItemMaterial, -1 = fists) - the hero's held weapon isn't equipped in VR.
         public int MeleeSwingMaterial = -1;
+        // DeveloperConfig.EnableVrHeroBlock: the hero parries (VR: both hands on a melee weapon, both triggers held) -
+        // the held weapon's material and the direction he faces (head) while he does.
+        public bool IsBlocking;
+        public int BlockWeaponMaterial = -1;
+        public UnityEngine.Vector3 BlockForward;
         // AI_LookAtNpc target until AI_StopLookAt (Npc_GetLookAtTarget).
         public NpcInstance LookAtTarget;
 

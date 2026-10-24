@@ -159,6 +159,12 @@ namespace Gothic.VR.Services.Context
                 heroBlock.transform.SetParent(_playerController.transform, false);
             }
 
+            // DeveloperConfig.EnableBackpackEquipToggle: a trigger click at a worn item in the backpack equips it.
+            if (developerConfig.EnableBackpackEquipToggle)
+            {
+                var equipToggle = new GameObject("_BackpackEquipToggle").AddComponent<VRBackpackEquipToggle>();
+                equipToggle.transform.SetParent(_playerController.transform, false);
+            }
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera

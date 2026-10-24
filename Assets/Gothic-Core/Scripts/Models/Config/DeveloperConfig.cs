@@ -1245,6 +1245,10 @@ namespace Gothic.Core.Models.Config
                  "text at once.")]
         public bool EnableKeyboardClearButton = true;
 
+        [Tooltip("V1: An empty hand at an armor, amulet, ring or belt in the hero's backpack and a trigger click (quick, " +
+                 "without moving) puts it on or takes it off - like a click in the spell ring.")]
+        public bool EnableBackpackEquipToggle = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

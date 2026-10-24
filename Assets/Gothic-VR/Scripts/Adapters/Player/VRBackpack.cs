@@ -301,6 +301,14 @@ namespace Gothic.VR.Adapters.Player
         public NpcContainer Trader => _trader;
 
         /// <summary>
+        /// DeveloperConfig.EnableBackpackEquipToggle: [E] labels after equipping from outside (VRBackpackEquipToggle).
+        /// </summary>
+        public void RefreshInventoryView()
+        {
+            UpdateInventoryView();
+        }
+
+        /// <summary>
         /// The socketed stack nearest to a hand - taking pieces off it with the split button (VRStackSplitter).
         /// </summary>
         public HVRGrabbable FindStackNear(Vector3 position, float maxDistance)

@@ -1199,6 +1199,11 @@ namespace Gothic.Core.Models.Config
                  "keeps it (B_FullStop before drawing a sword dropped it). Before: a plain turn.")]
         public bool EnableAiWhirlAround = true;
 
+        [Tooltip("V1 (opinion): Guards (G1 ZS_Guard, ZS_GuardPalisade) don't turn to the hero sneaking up behind them - " +
+                 "their routine turned to him within 8 m by distance alone (also in Gothic), sneaking up was pointless. " +
+                 "Seeing him or hearing his steps (not sneaking) still works.")]
+        public bool EnableSneakBehindGuards = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

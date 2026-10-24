@@ -598,6 +598,18 @@ namespace Gothic.Core.Services.Npc
                 return;
             }
 
+            // DeveloperConfig.EnableSneakBehindGuards: G1 ZS_Guard_Loop / ZS_GuardPalisade_Loop turn to the hero within
+            // 8 m (B_SmartTurnToNpc, distance only) - also to a hero sneaking up behind them. He keeps facing his post.
+            if (IsHeroSneakingBehindGuard(npc, other))
+            {
+                if (_sneakIgnoringGuards.Add(npc.Index))
+                    Logger.Log($"[Sneak] {npc.GetName(NpcNameSlot.Slot0)} doesn't turn to the hero sneaking behind him",
+                        LogCat.Ai);
+                ExtAiAlignToFp(npc);
+                return;
+            }
+            _sneakIgnoringGuards.Remove(npc.Index);
+
             npc.GetUserData().Props.AnimationQueue.Enqueue(new TurnToNpc(
                 new AnimationAction(instance0: other),
                 npc.GetUserData()));
@@ -738,6 +750,36 @@ namespace Gothic.Core.Services.Npc
         }
 
         private static readonly string[] _attackLoopNames = { "ZS_ATTACK_LOOP", "ZS_ORC_ATTACK_LOOP", "ZS_MM_ATTACK_LOOP" };
+
+        private bool IsHeroSneakingBehindGuard(NpcInstance npc, NpcInstance other)
+        {
+            if (!_configService.Dev.EnableSneakBehindGuards)
+                return false;
+
+            var hero = _gameStateService.GothicVm.GlobalHero as NpcInstance;
+            if (hero == null || other.Index != hero.Index ||
+                hero.GetUserData()?.Props.BodyState != VmGothicEnums.BodyState.BsSneak)
+                return false;
+
+            if (_guardLoopIndices == null)
+            {
+                var vm = _gameStateService.GothicVm;
+                _guardLoopIndices = new HashSet<int>();
+                foreach (var name in _guardLoopNames)
+                {
+                    var symbol = vm.GetSymbolByName(name);
+                    if (symbol != null)
+                        _guardLoopIndices.Add(symbol.Index);
+                }
+            }
+            var props = npc.GetUserData()?.Props;
+            return props != null && _guardLoopIndices.Contains(props.StateLoop) &&
+                   !_npcHelperService.CanSeeNpc(npc, other, false);
+        }
+
+        private static readonly string[] _guardLoopNames = { "ZS_GUARD_LOOP", "ZS_GUARDPALISADE_LOOP" };
+        private HashSet<int> _guardLoopIndices;
+        private readonly HashSet<int> _sneakIgnoringGuards = new();
         private const float _caughtHeroDistance = 4f;
         private HashSet<int> _attackLoopIndices;
 

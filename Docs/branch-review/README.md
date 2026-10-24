@@ -6,12 +6,12 @@ before pushing. Goal: make Gothic 1 and Gothic 2 completable in VR — a "game c
 | | |
 |---|---|
 | Compared against | `main` at `084e5e95` (PR #401, merged into the branch - [merge notes](merge-2026-10-22.md)) |
-| Commits | 488 on the branch that `main` doesn't have |
-| Files | 364 changed (198 added, 166 modified), +37,950 / −957 lines |
-| C# | 222 files (77 new) |
+| Commits | 492 on the branch that `main` doesn't have |
+| Files | 366 changed (200 added, 166 modified), +38,250 / −957 lines |
+| C# | 236 files (85 new) |
 | Period | 2026-06-14 → 2026-10-13 |
 | Tested on | PCVR, G1 (vanilla + Mroczne Tajemnice mod), G2 NotR (played to the end: Irdorath, undead dragon, ending). **Not** built or tested: Quest/Pico, Flat mode |
-| Docs up to | `59fe4f51` (2026-10-24) - see the [changelog](CHANGELOG.md) for what changed since |
+| Docs up to | `0ca89b3b` (2026-10-24) - see the [changelog](CHANGELOG.md) for what changed since |
 
 ## Author's note
 
@@ -28,7 +28,7 @@ Please read the changes with two kinds in mind:
 
 ---
 
-Almost everything new is behind a `DeveloperConfig` flag (**243 new fields**), so features can be switched off one by
+Almost everything new is behind a `DeveloperConfig` flag (**246 new fields**), so features can be switched off one by
 one. The production config (`Production.asset`) has them on except cheats, NPC ranged combat and save/load.
 
 ## Changelog

@@ -87,6 +87,22 @@
   `AI_StartState(..., 1, ...)` - that took the running `ZS_Attack_End` as the old state's `_End` and ran it again. A
   state in its End/AfterEnd phase passes no `_End` on.
 
+**Added 2026-10-24**
+
+- **Whirl around** (`bda6d4e1`, `EnableAiWhirlAround`): `AI_WhirlAround` was a plain turn. `WhirlAround` plays
+  Humans.mds `t_surprise_CW`/`t_surprise_CCW` by the turn's side (then `s_surprise`) and turns the body along with the
+  animation (SmoothStep over its duration); monsters without it just turn. G1 `ZS_AssessFighter` -> `B_WhirlAround` uses
+  it when the hero draws behind an NPC. `B_SelectWeapon` -> `B_EquipAndDrawBestMeleeWeapon` calls `B_FullStop`
+  (`Npc_ClearAIQueue`) a second time and dropped the queued whirl - only NPCs with a ranged weapon (Lukis) whirled.
+  `ExtNpcClearAiQueue` keeps a queued whirl at the front (whatever the script queues after the clear follows it) and
+  lets a running one finish.
+- **Sneaking behind guards** (`1fe4496d`, `EnableSneakBehindGuards`, opinion): G1 `ZS_Guard_Loop` /
+  `ZS_GuardPalisade_Loop` call `B_SmartTurnToNpc(self, hero)` within 8 m by distance alone (`AI_TurnToNpc` when he
+  can't see the hero) - in the original game too. `ExtAiTurnToNpc` turns such a guard back to his FP (`AlignToFp`)
+  instead when the hero sneaks (`BS_SNEAK`) and the guard can't see him (FOV). OpenGothic: smell senses all around in
+  the senses range regardless of sneaking, hearing only through noise perceptions - the sneaking hero's steps send no
+  `PERC_ASSESSQUIETSOUND` (ours: `EnableQuietSenses`, smell 3 m).
+
 ## Key commits
 
 `b459f4f7` passive perc broadcast, ASSESSBODY, MURDER/DEFEAT · `00f95e72` hero perceptions (sneak, rooms, usemob) ·
@@ -106,6 +122,8 @@ ZS_Dead_Loop · `247ac69d` routine-less NPCs
 stay down · `fe43a81b` a state's _End runs once
 
 2026-10-18: `69bb0d3a` AI_TurnAway, beaten NPCs fight back, looking away ends
+
+2026-10-24: `bda6d4e1` whirl around · `1fe4496d` sneaking behind guards
 
 ## Main files
 
@@ -130,6 +148,8 @@ stay down · `fe43a81b` a state's _End runs once
 2026-10-17: `EnableQueuedStateEnd`, `EnableDownedNpcPerceptions`
 
 2026-10-18: `EnableAiTurnAway`, `EnableDefeatedNpcFightsBack`, `EnableTurnAwayIgnoresEnemyBehind`
+
+2026-10-24: `EnableAiWhirlAround`, `EnableSneakBehindGuards`
 
 ## Review notes
 

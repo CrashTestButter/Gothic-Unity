@@ -46,6 +46,11 @@
   colored ambient tint it only 30% (`HandLightInfluence`), emission with the skin texture carries the rest, no
   highlights or reflections (matte, not waxy). Fully lit they turned navy at night, red in the evening.
 
+**Added 2026-10-24**
+
+- **Slower sprint while sneaking** (`0ca89b3b`, `EnableSneakSlowSprint`, opinion): `VRPlayerController.
+  HandleHorizontalMovement` halves HVR's `RunSpeed` for the frame while the hero sprints in `BS_SNEAK` (crouched).
+
 ## Key commits
 
 `7227eb60`/`1e7389ac`/`05dfa9f7`/`434432cd` hero body · `84a84753` equip · `c62882ff` pouches · `567fc20d`/`bdda2d2a`
@@ -57,6 +62,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-11/13: `51f2be43` personal space vs talking · `d5731bdb` turning while knocked out · `87665888` fists
 
 2026-10-15: `367d7f78` skin colored hands
+
+2026-10-24: `0ca89b3b` slower sprint while sneaking
 
 ## Main files
 
@@ -75,6 +82,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-11/13: `EnableKnockoutTurning`, `EnableVrFists`
 
 2026-10-15: `HandLightInfluence`, `HandSkinTint`
+
+2026-10-24: `EnableSneakSlowSprint`
 
 ## Review notes
 

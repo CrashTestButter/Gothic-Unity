@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-24 (night): whirl around, sneaking
+
+- Draw a weapon behind an NPC's back and he jumps around startled before he draws his own (Ghorri drew his sword with
+  his back to you and only turned afterwards).
+- Guards no longer turn to you when you sneak up behind them - they kept facing you within 8 m (also in the original
+  game), sneaking up was pointless. Seeing you or hearing your steps still works.
+- Sprinting while sneaking is half as fast.
+
 ## 2026-10-24 (evening): the spell ring
 
 - Gothic's spell selection in VR: raise both empty hands above your head and hold both triggers for a second - your

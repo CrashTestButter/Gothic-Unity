@@ -1249,6 +1249,11 @@ namespace Gothic.Core.Models.Config
                  "without moving) puts it on or takes it off - like a click in the spell ring.")]
         public bool EnableBackpackEquipToggle = true;
 
+        [Tooltip("V1 (opinion): An NPC chasing the hero to proclaim (ZS_ProclaimAndPunish: \"Now wait...\") stops within " +
+                 "12 m and proclaims, and gives the chase up after HAI_TIME_PURSUIT - its loop only looked again once " +
+                 "it caught the hero, who ran away right after his attack (Lukis chased forever).")]
+        public bool EnableProclaimFromAfar = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

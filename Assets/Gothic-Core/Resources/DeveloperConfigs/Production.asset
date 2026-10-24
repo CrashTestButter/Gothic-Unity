@@ -307,6 +307,7 @@ MonoBehaviour:
   EnableNpcItemsSpareHeroArmor: 1
   EnableKeyboardClearButton: 1
   EnableBackpackEquipToggle: 1
+  EnableProclaimFromAfar: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

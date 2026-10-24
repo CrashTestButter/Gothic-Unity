@@ -42,6 +42,9 @@ namespace Gothic.Core.Adapters.Npc
         private DaedalusVm Vm => _gameStateService.GothicVm;
         private const int _daedalusLoopContinue = 0; // Id taken from a Daedalus constant.
         private const int _daedalusLoopEnd = 1;
+        private const string _proclaimState = "ZS_PROCLAIMANDPUNISH";
+        private const float _proclaimDistance = 12f;
+        private const float _defaultPursuitSeconds = 20f;
 
         // True while the combo-preload CallAiFunction is executing. Used by ExtNpcClearAiQueue to
         // avoid stopping the active AttackPlayAni when Npc_ClearAIQueue fires from ZS_Attack_Loop.
@@ -111,6 +114,7 @@ namespace Gothic.Core.Adapters.Npc
             }
 
             ExecuteActivePerceptions();
+            CheckProclaimChase();
             ExecuteStates();
 
             Properties.CurrentAction.Tick();
@@ -238,6 +242,39 @@ namespace Gothic.Core.Adapters.Npc
                 return;
             Logger.Log($"[AiLoop] {NpcInstance.GetName(ZenKit.Daedalus.NpcNameSlot.Slot0)}: {Vob.CurrentStateName} loop ended " +
                        $"(state time {Properties.StateTime:F1} s, active {Properties.IsStateTimeActive})", LogCat.Ai);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableProclaimFromAfar (opinion): ZS_ProclaimAndPunish_Loop only looks again once AI_GotoNpc
+        /// reached the hero - a hero running away right after his attack was chased until caught (Lukis), the loop's
+        /// 5 m (PERC_DIST_DIALOG) and HAI_TIME_PURSUIT never had a say. Within _proclaimDistance the chase stops and the
+        /// proclaim (_End: "Now wait...", the attack) comes; after HAI_TIME_PURSUIT the loop decides (back to routine).
+        /// </summary>
+        private void CheckProclaimChase()
+        {
+            if (!_configService.Dev.EnableProclaimFromAfar ||
+                Properties.CurrentLoopState != NpcProperties.LoopState.Loop ||
+                Properties.AnimationQueue.Count == 0 && Properties.CurrentAction.IsFinished() ||
+                !string.Equals(Vob.CurrentStateName, _proclaimState, System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var heroGo = (Vm.GlobalHero as NpcInstance)?.GetUserData()?.Go;
+            if (heroGo == null)
+                return;
+
+            var distance = Vector3.Distance(transform.position, heroGo.transform.position);
+            var pursuitSeconds = Vm.GetSymbolByName("HAI_TIME_PURSUIT")?.GetInt(0) ?? _defaultPursuitSeconds;
+            var isClose = distance <= _proclaimDistance;
+            if (!isClose && Properties.StateTime <= pursuitSeconds)
+                return;
+
+            _npcAiService.ExtNpcClearAiQueue(NpcInstance);
+            if (isClose)
+                Properties.CurrentLoopState = NpcProperties.LoopState.End;
+            Logger.Log($"[Proclaim] {NpcInstance.GetName(NpcNameSlot.Slot0)}: " +
+                       (isClose
+                           ? $"hero {distance:F1} m away - stops chasing and proclaims"
+                           : $"chased {Properties.StateTime:F0} s - the loop decides"), LogCat.Ai);
         }
 
         private bool IsDailyState(int stateIndex)

@@ -109,6 +109,8 @@ namespace Gothic.VR.Adapters.Player
         private const float _transferStartRate = 2f;
         private const float _transferMaxRate = 500f;
         private const float _transferEndDistance = 0.15f;
+        // A weapon taken out of the ring and let go: after this it's in the backpack, a holster or on the ground.
+        private const float _takenWeaponCheckSeconds = 0.5f;
         private static readonly Color _emptySlotColor = new(0.6f, 0.6f, 0.6f, 1f);
 
         private readonly List<Slot> _slots = new();
@@ -138,6 +140,7 @@ namespace Gothic.VR.Adapters.Player
         private readonly PutInCandidate[] _putInCandidates = new PutInCandidate[2];
         private PutInCandidate _pendingPutIn;
         private Transfer _transfer;
+        private TakenWeapon _takenWeapon;
 
         private enum SlotKind
         {
@@ -186,6 +189,18 @@ namespace Gothic.VR.Adapters.Player
             public ItemInstance Replaced;
             public float Time;
             public HVRHandSide Side;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableRingWeaponLeavesOnDrop: a weapon taken out of the ring, until it was let go.
+        /// </summary>
+        private class TakenWeapon
+        {
+            public HVRGrabbable Grabbable;
+            public ItemInstance Item;
+            public string InstanceName;
+            public SlotKind Kind;
+            public float ReleasedTime = -1f;
         }
 
         private class Transfer
@@ -246,6 +261,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
             }
 
+            UpdateTakenWeapon();
             UpdateGesture();
             if (!_isOpen)
                 return;
@@ -496,14 +512,16 @@ namespace Gothic.VR.Adapters.Player
         }
 
         /// <summary>
-        /// How many are in the backpack: the inventory without those in the hands and holsters (IsHeldByPlayer).
+        /// How many are in the backpack: the inventory without those in the hands and holsters (IsHeldByPlayer). The
+        /// backpack's own sockets are player sockets too (the page shown) - those are in it.
         /// </summary>
         private int GetBackpackAmount(string instanceName)
         {
             var amount = GetAmount(instanceName);
             foreach (var container in _multiTypeCacheService.VobCache)
             {
-                if (container is not { IsHeldByPlayer: true } || container.Vob is not IItem item)
+                if (container is not { IsHeldByPlayer: true } || container.Vob is not IItem item ||
+                    container.Go != null && container.Go.GetComponentInParent<VRBackpack>() != null)
                     continue;
                 var name = !string.IsNullOrEmpty(item.Instance) ? item.Instance : item.Name;
                 if (IsSame(name, instanceName))
@@ -1019,6 +1037,16 @@ namespace Gothic.VR.Adapters.Player
             slot.Amount--;
 
             Logger.Log($"[FavoritesRing] {slot.Item.Name} taken into the hand ({slot.Amount} left)", LogCat.VR);
+            if (slot.Kind is SlotKind.Melee or SlotKind.Ranged)
+            {
+                _takenWeapon = new TakenWeapon
+                {
+                    Grabbable = grabbable,
+                    Item = slot.Item,
+                    InstanceName = slot.InstanceName,
+                    Kind = slot.Kind
+                };
+            }
             if (slot.Kind is SlotKind.Item or SlotKind.Currency && slot.Amount > 0 && grabber is HVRHandGrabber hand)
             {
                 _transfer = new Transfer
@@ -1178,11 +1206,55 @@ namespace Gothic.VR.Adapters.Player
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableRingWeaponLeavesOnDrop: a weapon taken out of the ring stays the equipped one if it
+        /// went back into the backpack (opened, or over the shoulder - then it's gone from the world) - dropped or put
+        /// into another quick slot it comes off (Gothic: an equipped weapon is in the inventory). Back into the ring,
+        /// the ring equipped it already.
+        /// </summary>
+        private void UpdateTakenWeapon()
+        {
+            var taken = _takenWeapon;
+            if (taken == null || taken.ReleasedTime < 0f || Time.time - taken.ReleasedTime < _takenWeaponCheckSeconds)
+                return;
+            if (taken.Grabbable != null && taken.Grabbable.IsBeingHeld)
+            {
+                // In a hand again.
+                taken.ReleasedTime = -1f;
+                return;
+            }
+
+            _takenWeapon = null;
+            if (!_configService.Dev.EnableRingWeaponLeavesOnDrop)
+                return;
+
+            var hero = _playerService.HeroContainer;
+            var isGone = taken.Grabbable == null || taken.Grabbable.GetComponentInParent<VRBackpack>() != null;
+            var isInBackpack = isGone && GetBackpackAmount(taken.InstanceName) > 0;
+            var isEquipped = _npcInventoryService.IsEquipped(hero.Instance, taken.InstanceName);
+            if (isInBackpack && !isEquipped)
+            {
+                foreach (var other in hero.Props.EquippedItems.Where(i => GetKind(i) == taken.Kind).ToList())
+                    _npcInventoryService.UnequipItemWithEffects(hero.Instance, other);
+                _npcInventoryService.EquipItemWithEffects(hero.Instance, taken.Item);
+            }
+            else if (!isInBackpack && isEquipped)
+            {
+                _npcInventoryService.UnequipItemWithEffects(hero.Instance, taken.Item);
+            }
+            Logger.Log($"[FavoritesRing] {taken.Item.Name} " + (isInBackpack
+                ? "back in the backpack - stays equipped"
+                : "dropped or in another quick slot - no longer equipped"), LogCat.VR);
+        }
+
+        /// <summary>
         /// Let go of an item at a slot (within _putInGraceSeconds): it goes in next frame - after HVR and VRVobItem
         /// handled the release (the held item left the inventory count).
         /// </summary>
         private void OnReleased(HVRGrabberBase grabber, HVRGrabbable grabbable)
         {
+            if (_takenWeapon != null && _takenWeapon.Grabbable == grabbable)
+                _takenWeapon.ReleasedTime = Time.time;
+
             if (!_isOpen || grabber is not HVRHandGrabber hand)
                 return;
             var index = hand.HandSide == HVRHandSide.Left ? 0 : 1;

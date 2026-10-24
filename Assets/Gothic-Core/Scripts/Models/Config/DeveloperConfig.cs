@@ -1301,6 +1301,10 @@ namespace Gothic.Core.Models.Config
                  "were equipped without being in the inventory.")]
         public bool EnableEquipItemCreatesItem = true;
 
+        [Tooltip("V1: A weapon taken out of the favorites ring stays its equipped weapon only if it goes back into the " +
+                 "backpack (opened or over the shoulder) - dropped or put into another quick slot it comes off.")]
+        public bool EnableRingWeaponLeavesOnDrop = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

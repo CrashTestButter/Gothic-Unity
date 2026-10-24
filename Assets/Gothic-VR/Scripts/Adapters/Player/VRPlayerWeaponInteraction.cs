@@ -117,8 +117,9 @@ namespace Gothic.VR.Adapters.Player
                 }
                 else
                 {
+                    // The ring's own weapon too: where it ends up decides (VRFavoritesRing, EnableRingWeaponLeavesOnDrop).
                     equippedItems.RemoveAll(i => i.MainFlag == itemInstance.MainFlag);
-                    if (_equippedBeforeGrab != null && _equippedBeforeGrab.Index != itemInstance.Index)
+                    if (_equippedBeforeGrab != null)
                         equippedItems.Add(_equippedBeforeGrab);
                     _equippedBeforeGrab = null;
                     _isEquippedBeforeGrabKept = false;

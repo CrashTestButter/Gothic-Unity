@@ -33,7 +33,12 @@ namespace Gothic.Core.Services.Meshes
 
         public void Init()
         {
-            GlobalEventDispatcher.FightHit.AddListener(EmitBlood);
+            // DeveloperConfig.EnableBloodOnlyOnHit: blood when the hit landed - every swing that touched an NPC bled,
+            // also a parried one or one on the blocking hero (sparks and blood together).
+            if (_npcSpellConfigService.Dev.EnableBloodOnlyOnHit)
+                GlobalEventDispatcher.MeleeHitLanded.AddListener(EmitBlood);
+            else
+                GlobalEventDispatcher.FightHit.AddListener(EmitBlood);
         }
 
         /// <summary>

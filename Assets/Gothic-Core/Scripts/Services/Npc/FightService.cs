@@ -437,7 +437,7 @@ namespace Gothic.Core.Services.Npc
         private void OnHit(NpcContainer attacker, NpcContainer target, Vector3 __) =>
             OnHit(attacker, target, __, damageOverride: null);
 
-        private void OnHit(NpcContainer attacker, NpcContainer target, Vector3 __, int? damageOverride,
+        private void OnHit(NpcContainer attacker, NpcContainer target, Vector3 position, int? damageOverride,
             int overrideProtectionIndex = (int)DamageType.Fire)
         {
             if (target.Props.BodyState == VmGothicEnums.BodyState.BsDead)
@@ -469,6 +469,10 @@ namespace Gothic.Core.Services.Npc
             // comparison needed; attacker is directly the enemy party members should engage.
             if (isHero)
                 AlertPartyMembersToDefendHero(attacker);
+
+            // DeveloperConfig.EnableBloodOnlyOnHit: the melee hit lands (finishing off a downed NPC too).
+            if (damageOverride == null && NpcHelperService.IsKnockedOut(target) && !isHero)
+                GlobalEventDispatcher.MeleeHitLanded.Invoke(attacker, target, position);
 
             // Any attacker finishes off unconscious NPC — set dead and call ZS_Dead.
             if (NpcHelperService.IsKnockedOut(target) && !isHero)
@@ -512,6 +516,10 @@ namespace Gothic.Core.Services.Npc
             // DeveloperConfig.EnableVrHeroBlock: an NPC's melee hit (no damage override: not a spell or projectile).
             if (isHero && damageOverride == null && TryHeroBlockHit(attacker, target))
                 return;
+
+            // DeveloperConfig.EnableBloodOnlyOnHit: blood only now - not for a parried or blocked hit.
+            if (damageOverride == null)
+                GlobalEventDispatcher.MeleeHitLanded.Invoke(attacker, target, position);
 
             Logger.Log($"[FightService.OnHit] *** {attacker.Instance.GetName(NpcNameSlot.Slot0)} HIT {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
             if (OnHitUpdateHealth(attacker, target, damageOverride, overrideProtectionIndex))

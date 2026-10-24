@@ -110,6 +110,14 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer> HeroBlockedHit = new();
 
         /// <summary>
+        /// DeveloperConfig.EnableBloodOnlyOnHit: a melee hit that landed (not parried, blocked, in a dialog, ...) - blood.
+        /// NpcContainer - who attacks
+        /// NpcContainer - who got hit
+        /// Vector3      - at which position
+        /// </summary>
+        public static readonly UnityEvent<NpcContainer, NpcContainer, Vector3> MeleeHitLanded = new();
+
+        /// <summary>
         /// NpcContainer - caster
         /// NpcContainer - target
         /// Vector3      - hit position

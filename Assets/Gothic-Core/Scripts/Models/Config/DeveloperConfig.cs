@@ -1268,6 +1268,10 @@ namespace Gothic.Core.Models.Config
         [Tooltip("The \"Ranged knockout\" option's value when Gothic.ini has none yet.")]
         public bool RangedKnockoutByDefault;
 
+        [Tooltip("V1: Blood only for a melee hit that landed - a parried hit or one on the blocking hero showed sparks and " +
+                 "blood together (OpenGothic: the hit effect only plays when the hit isn't blocked).")]
+        public bool EnableBloodOnlyOnHit = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

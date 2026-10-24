@@ -114,6 +114,49 @@ namespace Gothic.Core.Services.Config
             return available;
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableGameProfileIniChoice: a profile's ModIni "*" lists the mod's game inis found in its System
+        /// folder (ModIniScanner), "A.INI;B.INI" lists those - one profile per ini to pick from (Mroczne Tajemnice's
+        /// easy/normal/hard). Empty when there's nothing to choose (one fixed ini, or none = GothicGame.ini as before).
+        /// </summary>
+        public List<JsonGameProfile> GetGameProfileIniChoices(JsonGameProfile profile)
+        {
+            var choices = new List<JsonGameProfile>();
+            if (!Dev.EnableGameProfileIniChoice || profile?.ModPath == null)
+                return choices;
+
+            var modIni = profile.ModIni?.Trim();
+            if (string.IsNullOrEmpty(modIni))
+                return choices;
+            var isScan = modIni == "*";
+            if (!isScan && modIni.IndexOfAny(new[] { ';', ',' }) < 0)
+                return choices;
+
+            var found = ModIniScanner.FindGameInis(profile.ModPath);
+            IEnumerable<ModIniScanner.ModIni> inis = found;
+            if (!isScan)
+            {
+                // A fixed list keeps its order; its titles come from the inis found.
+                inis = modIni.Split(';', ',')
+                    .Select(i => i.Trim())
+                    .Where(i => i.Length > 0)
+                    .Select(i => found.FirstOrDefault(f => f.FileName.Equals(i, StringComparison.OrdinalIgnoreCase))
+                                 ?? new ModIniScanner.ModIni { FileName = i, Title = i });
+            }
+
+            foreach (var ini in inis)
+            {
+                choices.Add(new JsonGameProfile
+                {
+                    Name = $"{ini.Title} ({ini.FileName})",
+                    GameVersion = profile.GameVersion,
+                    ModPath = profile.ModPath,
+                    ModIni = ini.FileName
+                });
+            }
+            return choices;
+        }
+
         public void SelectGameProfile(JsonGameProfile profile)
         {
             SelectedGameProfile = profile;

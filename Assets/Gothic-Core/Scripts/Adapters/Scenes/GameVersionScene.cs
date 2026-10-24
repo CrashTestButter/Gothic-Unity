@@ -106,16 +106,40 @@ namespace Gothic.Core.Adapters.Scenes
 
             Logger.Log($"Showing game profile menu with {profiles.Count} profile(s).", LogCat.Loading);
 
-            var menuGo = new GameObject("GameProfileMenu");
-            SceneManager.MoveGameObjectToScene(menuGo, gameObject.scene);
-            menuGo.AddComponent<GameProfileMenu>().Build(profiles, OnGameProfileSelected);
-
-            // Registers the new canvas for the VR laser pointer.
-            _contextInteractionService.InitUIInteraction();
+            ShowMenu("GameProfileMenu", profiles, OnGameProfileSelected, null);
             return true;
         }
 
+        private void ShowMenu(string menuName, System.Collections.Generic.IReadOnlyList<JsonGameProfile> profiles,
+            Action<JsonGameProfile> onSelected, Action onBack)
+        {
+            var menuGo = new GameObject(menuName);
+            SceneManager.MoveGameObjectToScene(menuGo, gameObject.scene);
+            menuGo.AddComponent<GameProfileMenu>().Build(profiles, onSelected, onBack);
+
+            // Registers the new canvas for the VR laser pointer.
+            _contextInteractionService.InitUIInteraction();
+        }
+
         private void OnGameProfileSelected(JsonGameProfile profile)
+        {
+            // DeveloperConfig.EnableGameProfileIniChoice: a mod with several game inis (Mroczne Tajemnice's
+            // difficulties) asks which one first.
+            var iniChoices = _configService.GetGameProfileIniChoices(profile);
+            if (iniChoices.Count > 1)
+            {
+                Logger.Log($"Game profile >{profile.Name}<: {iniChoices.Count} game inis to choose from.",
+                    LogCat.Loading);
+                ShowMenu("GameProfileIniMenu", iniChoices, StartGameProfile,
+                    () => ShowMenu("GameProfileMenu", _configService.GetAvailableGameProfiles(),
+                        OnGameProfileSelected, null));
+                return;
+            }
+
+            StartGameProfile(iniChoices.Count == 1 ? iniChoices[0] : profile);
+        }
+
+        private void StartGameProfile(JsonGameProfile profile)
         {
             _configService.TryGetGameProfileVersion(profile, out var version);
             _configService.SelectGameProfile(profile);

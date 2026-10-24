@@ -1305,6 +1305,11 @@ namespace Gothic.Core.Models.Config
                  "backpack (opened or over the shoulder) - dropped or put into another quick slot it comes off.")]
         public bool EnableRingWeaponLeavesOnDrop = true;
 
+        [Tooltip("V1: A game profile whose ModIni is \"*\" asks which of the mod's game inis to " +
+                 "start - found in its System folder by their layout ([INFO] title, [FILES] game/vdf), e.g. Mroczne " +
+                 "Tajemnice's DM_E/DM_N/DM_T; \"A.INI;B.INI\" offers those. Saves stay per ini like in Gothic.")]
+        public bool EnableGameProfileIniChoice = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

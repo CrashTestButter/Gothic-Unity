@@ -10,7 +10,8 @@ namespace Gothic.Core.Adapters.UI.Menus
 {
     /// <summary>
     /// World-space list of GameSettings.json game profiles shown at start (EnableGameProfiles). Built in code so the
-    /// GameVersion scene stays untouched; one button per profile, the VR laser / flat mouse clicks it.
+    /// GameVersion scene stays untouched; one button per profile, the VR laser / flat mouse clicks it. Also the second
+    /// list of a mod's game inis (DeveloperConfig.EnableGameProfileIniChoice) with a back button.
     /// </summary>
     public class GameProfileMenu : MonoBehaviour
     {
@@ -21,14 +22,20 @@ namespace Gothic.Core.Adapters.UI.Menus
         private const float _buttonSpacing = 15f;
         private const string _fontPath = "Fonts & Materials/LiberationSans SDF";
 
+        private const string _backLabel = "< Back";
+
         private Action<JsonGameProfile> _onSelected;
+        private Action _onBack;
         private bool _isSelected;
 
-        public void Build(IReadOnlyList<JsonGameProfile> profiles, Action<JsonGameProfile> onSelected)
+        public void Build(IReadOnlyList<JsonGameProfile> profiles, Action<JsonGameProfile> onSelected,
+            Action onBack = null)
         {
             _onSelected = onSelected;
+            _onBack = onBack;
 
-            var height = profiles.Count * (_buttonHeight + _buttonSpacing) + _buttonSpacing;
+            var buttonCount = profiles.Count + (onBack != null ? 1 : 0);
+            var height = buttonCount * (_buttonHeight + _buttonSpacing) + _buttonSpacing;
             var rect = gameObject.AddComponent<RectTransform>();
             rect.sizeDelta = new Vector2(_width, height);
             transform.localScale = Vector3.one / _pixelsPerMeter;
@@ -48,6 +55,12 @@ namespace Gothic.Core.Adapters.UI.Menus
                 var y = height / 2f - _buttonSpacing - i * (_buttonHeight + _buttonSpacing) - _buttonHeight / 2f;
                 CreateButton(profile.Name, new Vector2(0f, y), () => Select(profile));
             }
+            if (onBack != null)
+            {
+                var backY = height / 2f - _buttonSpacing - profiles.Count * (_buttonHeight + _buttonSpacing) -
+                            _buttonHeight / 2f;
+                CreateButton(_backLabel, new Vector2(0f, backY), Back);
+            }
 
             PlaceInFrontOfCamera();
         }
@@ -61,6 +74,16 @@ namespace Gothic.Core.Adapters.UI.Menus
             _isSelected = true;
             gameObject.SetActive(false);
             _onSelected?.Invoke(profile);
+        }
+
+        private void Back()
+        {
+            if (_isSelected)
+                return;
+
+            _isSelected = true;
+            gameObject.SetActive(false);
+            _onBack?.Invoke();
         }
 
         private void PlaceInFrontOfCamera()

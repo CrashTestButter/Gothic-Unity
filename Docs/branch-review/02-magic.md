@@ -89,6 +89,12 @@
   `OnSpellHit` passes the protection of the spell's own `damageType` (Windfist `DAM_FLY`, lightning `DAM_MAGIC`).
 - **Ranged knockout** for spells too (`7542c3d0`) - see [Combat](01-combat.md).
 
+**Added 2026-10-25 (evening)**
+
+- **The spell ring became the favorites ring** (`ceeee724`): `VRSpellRing` -> `VRFavoritesRing`, `VRSpellRingItem` ->
+  `VRFavoritesRingSpell`; spells work as before. Weapons, items and money in it: see
+  [Inventory](06-inventory-trade-loot.md).
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
@@ -108,6 +114,8 @@ sleep/freeze on the hero
 2026-10-24: `59fe4f51` spell ring
 
 2026-10-25: `42b42b6d` spell damage types
+
+2026-10-25: `ceeee724` favorites ring
 
 ## Main files
 
@@ -129,6 +137,8 @@ sleep/freeze on the hero
 2026-10-15: `NpcSpellHoming`
 
 2026-10-24: `EnableVrSpellRing`
+
+2026-10-25: `EnableVrSpellRing` (Immersion option renamed "Favorites ring", ini `spellRing`)
 
 ## Review notes
 

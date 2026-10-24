@@ -64,6 +64,31 @@
 - **Pickpocketing in menus** (`4a199637`): `PickpocketService.IsEnabled` checks the Gothic config and the VM before the
   game version - it threw every frame in the profile menu.
 
+**Added 2026-10-25 (evening)**
+
+- **Favorites ring** (`ceeee724`, `d644e599`, `EnableRingWeaponSlots`, `EnableRingItemSlots`,
+  `EnableRingWeaponLeavesOnDrop`): the spell ring ([Magic](02-magic.md)) also holds the equipped melee weapon and
+  bow/crossbow (the last equipped of each kind - Gothic has one of each), up to 3 favorite items
+  (`NpcProperties.FavoriteItems`, saved as `HeroFavoriteItems` in UNITYSAVE.json) and the trade currency
+  (`TRADE_CURRENCY_INSTANCE`, G1 `ItMiNugget`) - at most 8 + 2 + 3 + 1; the empty slot shows while something is
+  missing. Weapons and items are the real items (`VobService.CreateItem`), kinematic and shrunk into their slot, with no
+  hand/body collisions, no force grab and without `VRFocus`'s name: HVR grabs them like out of a socket (at the grip,
+  `VRWeaponGripGrab`), full size again in `BeforeGrabbed`; one is taken out of the inventory (the grab counted it in,
+  `VRPlayerService.SetGrab`). Grip held at a stack for 1.5 s grows the held stack (2/s, doubling every second); moving
+  the hand 15 cm away closes the ring. Only what is in the backpack shows - inventory minus `IsHeldByPlayer` items
+  outside the backpack's own sockets (an equipped weapon in a hand, holster or on the ground made a copy with every
+  grab). A held item let go within 0.2 s of touching a slot (any collider, a sword by its blade) goes in: a weapon is
+  equipped (all others of its kind come off - several bows stayed equipped, `[E]` moved from one to the next), anything
+  else becomes a favorite, at its own slot it just goes back. A trigger click unequips / takes it off the ring; loading
+  a game closes the ring; the backpack vacuum leaves ring items alone. `VRPlayerWeaponInteraction` (grabbing a melee
+  weapon equips it while held) gives back the weapon equipped before the grab - before, any weapon let go left no
+  equipped melee weapon at all. A weapon taken out of the ring stays equipped if it ends up in the backpack (opened or
+  over the shoulder), dropped or in another quick slot it comes off (checked 0.5 s after letting go).
+- **EquipItem gives the item** (`71c4d8dc`, `EnableEquipItemCreatesItem`): externals.d - "gibt dem Nsc direkt das
+  angegebene Item an den Guertel"; orc shamans equip their staff without `CreateInvItem`. We only equipped it:
+  Mroczne Tajemnice's PC_Rockefeller had his warhammer equipped but not in the inventory. Loading a save clears the
+  hero's inventory first, nothing doubles.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
@@ -78,6 +103,8 @@
 2026-10-25: `0ecdf3d7` pickpocketing (G1)
 
 2026-10-25: `cdb58a50` equip from the backpack · `4a199637` pickpocketing menu fix
+
+2026-10-25: `ceeee724` favorites ring · `d644e599` ring weapon back into the backpack · `71c4d8dc` EquipItem gives the item
 
 ## Main files
 
@@ -102,6 +129,8 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 2026-10-25: `EnableVrPickpocket`
 
 2026-10-25: `EnableBackpackEquipToggle`
+
+2026-10-25: `EnableRingWeaponSlots`, `EnableRingItemSlots`, `EnableRingWeaponLeavesOnDrop`, `EnableEquipItemCreatesItem`
 
 ## Review notes
 

@@ -197,6 +197,18 @@
   bolt or spell kills; on it knocks out (`IsKnockedOutNotKilled`) and the next one finishes. Area/spread spells
   (`IsSparedByAreaSpell`) hit the knocked out too.
 
+**Added 2026-10-25 (evening)**
+
+- **Block by weapon contact** (`8118ce45`, `EnableBlockWeaponContact`): a block held anywhere in front (above the NPC's
+  head too) stopped every hit. While blocking, `VRHeroBlock.ReportWeaponContacts` samples each armed NPC within 4 m - the
+  drawn weapon's mesh under `ZS_RIGHTHAND`/`ZS_LEFTHAND` along its longest axis (7 points), fists at `BIP01 R HAND` -
+  and reports a touch within 8 cm of the held weapon's colliders (`FightService.ReportBlockContact`). `TryHeroBlockHit`
+  blocks a hit touched in the last 0.5 s; a hit reaching the body first waits up to 0.5 s for the touch
+  (`AwaitBlockContact`), else it lands. Confirmed: big weapons block easier, two attackers at once.
+- **Blood only on a landed hit** (`167edcf7`, `EnableBloodOnlyOnHit`): every swing touching an NPC bled, also a parried
+  one or one on the blocking hero (sparks and blood together). `FightService` sends `MeleeHitLanded` after the block and
+  parry checks - OpenGothic plays the hit effect only for a hit that isn't blocked.
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
@@ -227,6 +239,8 @@ stab's sound · `dad7ec3c` VR finishing move (stab and twist)
 archers get around cover
 
 2026-10-25: `c321ebb6` blocking · `42b42b6d` engine melee damage · `0cc510ad` weapon requirements · `6a8015ba` fitted melee hitboxes · `7542c3d0` ranged knockout
+
+2026-10-25: `167edcf7` blood only on hit · `8118ce45` block by weapon contact
 
 ## Main files
 
@@ -264,6 +278,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 `EnableRangedFittedColliders`, `EnableMorphByPosition`, `EnableVrCrossbowManualReload`
 
 2026-10-25: `EnableVrHeroBlock`, `EnableEngineMeleeDamage`, `EnableWeaponRequirementCap`, `EnableMeleeFittedColliders`, `EnableRangedKnockoutOption`, `RangedKnockoutByDefault`
+
+2026-10-25: `EnableBloodOnlyOnHit`, `EnableBlockWeaponContact`
 
 ## Review notes
 

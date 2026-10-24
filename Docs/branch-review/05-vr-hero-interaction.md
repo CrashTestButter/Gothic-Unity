@@ -51,6 +51,21 @@
 - **Slower sprint while sneaking** (`0ca89b3b`, `EnableSneakSlowSprint`, opinion): `VRPlayerController.
   HandleHorizontalMovement` halves HVR's `RunSpeed` for the frame while the hero sprints in `BS_SNEAK` (crouched).
 
+**Added 2026-10-25 (evening)**
+
+- **Grab at the grip** (`82f127cd`, `EnableWeaponGripGrab`): our items have no grab points, so HVR's physics poser
+  (`DynamicGrab` -> `FindClosestPoint` over the enabled colliders) closed the hand on the collider nearest to the palm -
+  out of a holster, the backpack or a force grab often the blade or the guard. Gothic's weapon meshes have their origin
+  where NPCs hold them (`ZS_RIGHTHAND`). `VRWeaponGripGrab` (`BeforeGrabbed` of the first hand on an `ITEM_KAT_NF`/`FF`):
+  the fitted collider the origin lies deepest in (local bounds, no physics query) stays, the others are disabled until
+  `Grabbed` (`LateUpdate` restores a cancelled grab). The second hand of a two-handed weapon grabs where it is.
+- **Items pass through backpacks** (`878b276f`, `6c941ebb`, `EnableBackpackItemPassThrough`): a held potion or sword
+  pushed the hero's backpack (and NPCs' loot backpacks). Items share the `VobItem` layer with the mobs' interaction
+  parts (a torch holder's torch, beds, anvils), so no layer can split them: `VRBackpackItemPassThrough` (added by
+  `VRBackpack`) lets every item collider near the backpack ignore its solid colliders - hull and the items shown in its
+  sockets, collected again every 0.5 s - pair by pair (`Physics.IgnoreCollision`; a pair is forgotten once a collider is
+  disabled, so it's checked again). The world and vobs still collide, the socket triggers stay.
+
 ## Key commits
 
 `7227eb60`/`1e7389ac`/`05dfa9f7`/`434432cd` hero body · `84a84753` equip · `c62882ff` pouches · `567fc20d`/`bdda2d2a`
@@ -64,6 +79,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-15: `367d7f78` skin colored hands
 
 2026-10-24: `0ca89b3b` slower sprint while sneaking
+
+2026-10-25: `82f127cd` grab at the grip · `878b276f` `6c941ebb` items pass through backpacks
 
 ## Main files
 
@@ -84,6 +101,8 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-15: `HandLightInfluence`, `HandSkinTint`
 
 2026-10-24: `EnableSneakSlowSprint`
+
+2026-10-25: `EnableWeaponGripGrab`, `EnableBackpackItemPassThrough`
 
 ## Review notes
 

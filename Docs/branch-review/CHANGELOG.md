@@ -12,6 +12,24 @@ Link), not on Quest/Pico standalone.
 
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
+- Windfist and Stormfist throw their victims away; G1 chain lightning jumps from victim to victim; bows and crossbows
+  hit critically by their talent (G1); fire rain finishes those already down.
+
+## 2026-10-25 (evening): the favorites ring, blocking with the weapon, grabbing at the grip
+
+- The spell ring is now the favorites ring: besides up to 8 spells it holds your equipped melee weapon and bow or
+  crossbow, up to 3 favorite items (a torch, a key, potions, food) and your ore (G1) or gold (G2). Grab a weapon or item
+  right out of the ring - one at a time; keep the grip on a stack and more and more come into your hand. Let go of an
+  item at the empty slot to add it, at a weapon slot to equip that weapon instead. A trigger click takes it off the ring.
+  Immersion option "Favorites ring".
+- A weapon taken out of the ring stays equipped if you put it back into the backpack (also over the left shoulder);
+  dropped or put into another quick slot, it no longer is.
+- A block only stops a hit that meets your weapon - holding it up anywhere in front no longer blocks everything. Big
+  weapons block easier, and two attackers can be blocked at once.
+- Blood only for a hit that lands - a blocked one only sparks.
+- Weapons pulled out of a holster, the backpack or with a force grab sit in your hand at their grip, not at the blade.
+- Items you hold pass through your backpack (and NPCs' loot backpacks and the items in them) instead of pushing it.
+- Mroczne Tajemnice: Rockefeller's warhammer is really in his inventory (it was equipped but nowhere to be found).
 
 ## 2026-10-25 (afternoon): blocking, Gothic's damage, weapon requirements
 

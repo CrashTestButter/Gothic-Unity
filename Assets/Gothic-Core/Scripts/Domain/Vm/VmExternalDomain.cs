@@ -744,7 +744,11 @@ namespace Gothic.Core.Domain.Vm
 
         public void AI_WhirlAround(NpcInstance npc, NpcInstance target)
         {
-            _npcAiService.ExtAiTurnToNpc(npc, target);
+            // DeveloperConfig.EnableAiWhirlAround: the startled jump around (t_surprise_CW/CCW), not a plain turn.
+            if (_configService.Dev.EnableAiWhirlAround)
+                _npcAiService.ExtAiWhirlAround(npc, target);
+            else
+                _npcAiService.ExtAiTurnToNpc(npc, target);
         }
 
         public void AI_TurnAway(NpcInstance npc, NpcInstance target)

@@ -184,6 +184,45 @@ namespace Gothic.Core.Services.Npc
         {
             var container = npc.GetUserData();
 
+            // DeveloperConfig.EnableAiWhirlAround: the startled jump survives the queue being cleared, like the engine's
+            // whirl that starts right away. G1 ZS_AssessFighter: B_WhirlAround, then B_SelectWeapon ->
+            // B_EquipAndDrawBestMeleeWeapon -> B_FullStop clears the queue again - Ghorri drew his sword with his back
+            // to the hero and only turned afterwards (Lukis with his crossbow takes another branch and whirled).
+            var whirls = _configService.Dev.EnableAiWhirlAround
+                ? container.Props.AnimationQueue.Where(action => action is WhirlAround).ToList()
+                : null;
+            if (whirls is { Count: 0 } && container.Props.CurrentAction is not WhirlAround)
+                whirls = null;
+            if (whirls == null)
+            {
+                ClearAiQueue(npc, container);
+                return;
+            }
+
+            try
+            {
+                // A running whirl goes on.
+                if (container.Props.CurrentAction is WhirlAround)
+                {
+                    container.Props.AnimationQueue.Clear();
+                    return;
+                }
+                ClearAiQueue(npc, container);
+            }
+            finally
+            {
+                // The whirl first, then whatever the script queues after the clear (AI_StandUpQuick, the weapon).
+                var rest = container.Props.AnimationQueue.ToList();
+                container.Props.AnimationQueue.Clear();
+                foreach (var whirl in whirls)
+                    container.Props.AnimationQueue.Enqueue(whirl);
+                foreach (var action in rest)
+                    container.Props.AnimationQueue.Enqueue(action);
+            }
+        }
+
+        private void ClearAiQueue(NpcInstance npc, NpcContainer container)
+        {
             // DeveloperConfig.EnableDialogKeepsOutputs: the hero's dialog partner keeps its lines. G2's dragons talk
             // from their own state with perceptions running - a Npc_ClearAIQueue there dropped every queued AI_Output,
             // only the hero's lines (his own queue) were heard. The rest of the queue is cleared as usual.
@@ -539,6 +578,16 @@ namespace Gothic.Core.Services.Npc
 
             npc.GetUserData().Props.AnimationQueue.Enqueue(new TurnToNpc(
                 new AnimationAction(instance0: other, float0: toleranceDegrees),
+                npc.GetUserData()));
+        }
+
+        public void ExtAiWhirlAround(NpcInstance npc, NpcInstance other)
+        {
+            if (other == null)
+                return;
+
+            npc.GetUserData().Props.AnimationQueue.Enqueue(new WhirlAround(
+                new AnimationAction(instance0: other),
                 npc.GetUserData()));
         }
 

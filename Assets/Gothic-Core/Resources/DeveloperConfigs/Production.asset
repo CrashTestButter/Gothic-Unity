@@ -296,6 +296,7 @@ MonoBehaviour:
   EnableNpcPrehitCancelsAttack: 1
   EnableNpcParadeBlocksHits: 1
   EnableAiTurnAway: 1
+  EnableAiWhirlAround: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

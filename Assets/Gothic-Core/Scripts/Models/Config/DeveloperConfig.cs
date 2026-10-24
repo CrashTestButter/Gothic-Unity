@@ -1194,6 +1194,11 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: AI_TurnAway turns the NPC's back to the other one (ZS_TurnAway of a beaten guard) - it was a stub.")]
         public bool EnableAiTurnAway = true;
 
+        [Tooltip("V1: AI_WhirlAround plays the startled jump around (t_surprise_CW/CCW) like the engine - G1's " +
+                 "ZS_AssessFighter uses it when the hero draws a weapon/rune behind an NPC - and Npc_ClearAIQueue " +
+                 "keeps it (B_FullStop before drawing a sword dropped it). Before: a plain turn.")]
+        public bool EnableAiWhirlAround = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

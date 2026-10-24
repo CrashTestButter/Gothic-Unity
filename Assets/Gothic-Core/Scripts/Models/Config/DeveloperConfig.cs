@@ -1241,6 +1241,10 @@ namespace Gothic.Core.Models.Config
                  "PC_Rockefeller at the start of a new game.")]
         public bool EnableNpcItemsSpareHeroArmor = true;
 
+        [Tooltip("V1: The on-screen keyboard (save names) has a Clear key between backspace and OK - it empties the " +
+                 "text at once.")]
+        public bool EnableKeyboardClearButton = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

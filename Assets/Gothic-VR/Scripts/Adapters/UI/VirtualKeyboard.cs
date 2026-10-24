@@ -46,6 +46,9 @@ namespace Gothic.VR.Adapters.UI
 
         private static VirtualKeyboard _current;
 
+        private const string _clearLabel = "Clear";
+        private Button _clearButton;
+
         private string _text = string.Empty;
         private bool _isUpperCase;
         private int _maxLength = DefaultMaxLength;
@@ -144,6 +147,8 @@ namespace Gothic.VR.Adapters.UI
             _shiftButton.onClick.AddListener(ToggleCase);
             _spaceButton.onClick.AddListener(() => Type(' '));
             _backspaceButton.onClick.AddListener(Backspace);
+            if (ReflexProjectInstaller.DIContainer.Resolve<ConfigService>().Dev.EnableKeyboardClearButton)
+                CreateClearButton();
             _submitButton.onClick.AddListener(Submit);
             _cancelButton.onClick.AddListener(Cancel);
 
@@ -222,6 +227,31 @@ namespace Gothic.VR.Adapters.UI
             }
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableKeyboardClearButton: a copy of the backspace key between it and OK empties the text at
+        /// once (a save's name to overwrite).
+        /// </summary>
+        private void CreateClearButton()
+        {
+            var clear = Instantiate(_backspaceButton.gameObject, _backspaceButton.transform.parent);
+            clear.name = _clearLabel;
+            clear.transform.SetSiblingIndex(_backspaceButton.transform.GetSiblingIndex() + 1);
+            _clearButton = clear.GetComponent<Button>();
+            _clearButton.onClick = new Button.ButtonClickedEvent();
+            _clearButton.onClick.AddListener(Clear);
+            foreach (var label in clear.GetComponentsInChildren<TMP_Text>(true))
+                label.text = _clearLabel;
+        }
+
+        private void Clear()
+        {
+            if (_text.Length == 0)
+                return;
+            _text = string.Empty;
+            RefreshDisplay();
+            _onTextChanged?.Invoke(_text);
+        }
+
         private void Backspace()
         {
             if (_text.Length == 0)
@@ -254,6 +284,8 @@ namespace Gothic.VR.Adapters.UI
 
             SetKeyInteractable(_spaceButton, _spaceLabel, IsKeyAllowed(' '));
             _backspaceButton.interactable = _text.Length > 0;
+            if (_clearButton != null)
+                _clearButton.interactable = _text.Length > 0;
             _submitButton.interactable = IsSubmitAllowed();
         }
 

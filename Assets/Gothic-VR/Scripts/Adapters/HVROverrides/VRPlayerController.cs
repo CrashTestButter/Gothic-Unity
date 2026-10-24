@@ -52,6 +52,8 @@ namespace Gothic.VR.Adapters.HVROverrides
         private float _lastRunTime = float.MinValue;
         private Vector3 _lastBodyStatePosition;
 
+        private const float _sneakSprintFactor = 0.5f;
+
         protected override void Start()
         {
             base.Start();
@@ -76,6 +78,36 @@ namespace Gothic.VR.Adapters.HVROverrides
 
             UpdateHeroBodyState();
             UpdateSpeedBoost();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableSneakSlowSprint: sprinting while sneaking (BS_SNEAK) runs at half the sprint speed -
+        /// sneaking up behind someone at full sprint looked silly.
+        /// </summary>
+        protected override void HandleHorizontalMovement()
+        {
+            if (!Sprinting || !_configService.Dev.EnableSneakSlowSprint || !IsHeroSneaking())
+            {
+                base.HandleHorizontalMovement();
+                return;
+            }
+
+            var runSpeed = RunSpeed;
+            RunSpeed *= _sneakSprintFactor;
+            try
+            {
+                base.HandleHorizontalMovement();
+            }
+            finally
+            {
+                RunSpeed = runSpeed;
+            }
+        }
+
+        private bool IsHeroSneaking()
+        {
+            return _gameStateService.GothicVm?.GlobalHero is NpcInstance heroInstance &&
+                   heroInstance.GetUserData()?.Props.BodyState == VmGothicEnums.BodyState.BsSneak;
         }
 
         private void OnHeroOverlayTimed(string overlayName, float seconds)

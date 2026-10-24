@@ -1204,6 +1204,10 @@ namespace Gothic.Core.Models.Config
                  "Seeing him or hearing his steps (not sneaking) still works.")]
         public bool EnableSneakBehindGuards = true;
 
+        [Tooltip("V1 (opinion): Sprinting while sneaking (crouched, BS_SNEAK) is half as fast - a full sprint behind " +
+                 "an NPC's back looked silly.")]
+        public bool EnableSneakSlowSprint = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

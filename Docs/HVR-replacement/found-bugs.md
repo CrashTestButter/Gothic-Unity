@@ -46,7 +46,10 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 
 
 ## Misc
-1. Head never sticks into the wall as it is blocked from going into (poking back)
-1. Marvin menu is rotated wrong (fixed later, when we have a hand and actually see, where it should be placed).
-1. Raycaster for selecting objects is waaay to long. Should have same length as HVR - configurable via Config setting.
-1. Holding object in hand stutters. And if I move my hand too fast, it is stuck in the air
+- Head never sticks into the wall as it is blocked from going into (poking back)
+- Marvin menu is rotated wrong (fixed later, when we have a hand and actually see, where it should be placed).
+- Raycaster for selecting objects is waaay to long. Should have same length as HVR - configurable via Config setting.
+- Holding object in hand stutters. And if I move my hand too fast, it is stuck in the air
+- Backpack grab point is too small. Hard to grab it. Should be aligned with the size on how HVR handled it.
+- Rotation of long backack-slot at the bottom is wrong. Should be like before.
+- Simulator: Very complex to traverse. Why not having it like the one from https://github.com/AdrielHercules/hvr-simulator (aka Controller handling etc.)

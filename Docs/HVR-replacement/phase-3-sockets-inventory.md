@@ -11,9 +11,12 @@ PlayMode test), **3b** backpack + shoulder socket + hip holsters + HeadRelativeI
 
 ## Exit criteria
 
-- [ ] Backpack: grab from the shoulder, browse categories/pages, take items out, put items in; the inventory and the
-      save-game vob list stay consistent.
-- [ ] Hip/back holsters keep weapons; drawing and holstering updates the inventory as today.
+- [x] Backpack: grab from the shoulder, browse categories/pages, take items out, put items in; the inventory and the
+      save-game vob list stay consistent. (3b; played on Xri with the simulator: shoulder → hand → shoulder,
+      category flip, item in/out with inventory count and save-game vob list. Not played: more than 9 items (page
+      flip), save → load.)
+- [x] Hip/back holsters keep weapons; drawing and holstering updates the inventory as today. (3b; holster, teleport
+      while holstered, draw played on Xri with an item. Not played: swimming, walking with real tracking.)
 - [ ] Chests: the content spawns into slots (scaled down), items can be taken and put back; dropping an item into the
       open chest stores it.
 - [ ] NPC loot: equipped and inventory items appear in loot slots, taking one moves it to the player.
@@ -102,19 +105,53 @@ as HVR's head-relative inventory). `VRBackpack.OnItemPutIntoHolster/OutOfHolster
       on the Xri backend only.
 - [x] Move the logic of `VRSocket` / `VRShoulderSocket` into `VrSocketSlot`. The HVR versions stay in
       `Backends/Hvr` until Phase 6. (3a; `HvrSocket` now uses `VrSocketSlot.GetCategoryRotation`, same table.)
-- [ ] `VRBackpack`: uses `IVrSocketContainer` (already after Phase 0), handles page refresh with
-      `TryPlace(…, raiseEvents: false)` instead of `_tempIgnoreSocketing` if possible.
+- [x] `VRBackpack`: uses `IVrSocketContainer` (already after Phase 0), handles page refresh with
+      `TryPlace(…, raiseEvents: false)` instead of `_tempIgnoreSocketing` if possible. (3b: no `raiseEvents`
+      parameter - the HVR backend may raise its socket events later or twice. Instead `VRBackpack` remembers the
+      items it takes out / puts in itself during a refresh and ignores only their events, so items the player moves
+      meanwhile still count. Refill is `TryPlace(…, silent: true)`. While the backpack is on a shoulder socket, its
+      `VrSocketSlot`s are switched off with `SetDetectionEnabled(false)`; HVR's slots keep `ParentDisablesGrab`.)
+- [x] Backpack and holsters on the XRI rig (3b):
+      - `Resources/VR/Prefabs/Player-Elements/BackPack XRI.prefab`: copy of `BackPack.prefab` without HVR parts
+        (HVR player keeps the old prefab unchanged). `BackPack-Body` has `GothicGrabInteractable` (Instantaneous, no
+        throw, fixed attach point `Xri Attach` at HVR's first grab point, `_isOneHandOnly` so the other hand takes
+        items out instead of the backpack), `XriInteractableBridge`, `VrSocketContainer` (auto-collects its slots)
+        and the new `VrSocketLink` (starts in the shoulder slot, returns there one frame after a hand lets go - like
+        HVR's `HVRSocketLink` with ReturnTime 0). 9 `VR Socket Slot` instances (sphere r 0.04, ring turned like
+        HVR's) + `PutIntoSlot` (box trigger like HVR's). Hull colliders on layer `VobItemNoWorldCollision` (7), so
+        held items don't bump into the backpack (HVR ignored those collisions at start in `DemoBackpack`); the near
+        caster still sees layer 7.
+      - `VR - Player XRI.prefab`, under `XR Origin`: `Shoulders` (`VrBodyAnchor`, 0.1 m below the head) with
+        `Left Shoulder` (backpack: `_linkedInteractable` = backpack, Size 0.1, box trigger like HVR's) and
+        `Right Shoulder` (item holster, `_isShoulder`, Size 0.1); `Waist` (`VrBodyAnchor`, 0.6 m below the head,
+        like HVR's `HVRPlayerWaist`) / `Holsters` / `Left Holster`, `Right Holster` (Size 0.3, sphere r 0.15).
+        The holster rings only show while hovered (`VrSocketHoverFeedback._isHiddenWhileIdle`).
+        `VRBackpack._holsterSockets` = left/right holster + right shoulder.
+      - `VrBodyAnchor` (new, backend-neutral) replaces HVR's `HeadRelativeInventory` + `HVRPlayerWaist`: follows the
+        head's position and yaw, not its pitch; while the head is pitched > 30°, it only catches up beyond 70°.
+      - `VrSocketSlot` got `_linkedInteractable` / `Accepts()`: a slot for one interactable without VobLoader (the
+        backpack is re-parented itself). `XriSocketBridge` uses `Accepts()` instead of `IsItem()`.
+      - `GothicGrabInteractable`: hands can't hover/take an item from a slot whose detection is off
+        (`XriSocketBridge.IsDetectionEnabled`, HVR's `ParentDisablesGrab`). Socketed items get Rigidbody
+        interpolation None: with Interpolate (set for hand grabs) the item stayed behind - kilometres - when the slot's
+        transform moved (shoulder/waist anchors, backpack). This also fixes 3a's slots.
+      - XRGrabInteractable's teleport subscription (`TeleportationMonitor`) only corrects its throw-velocity history;
+        it doesn't move socketed items. Teleporting with a holstered item and a held backpack keeps both in place.
+      - `VR Socket Slot.prefab` is on layer `TransparentFX` (1) now, like the mouth: its trigger meets held items
+        (layers 6 and 7, which don't collide with Default), but neither the player nor hands' raycasts.
 - [ ] `VRVobContainerPhysicsChest`: split into `VrChestLid` (Phase 4) + `VrChestSlots` (this phase: resize slots to the
       chest mesh, as today's `AlignSockets` logic, bulk spawn silently, pagination still TODO as logged today).
 - [ ] `VRNpcLoot`: create `VrSocketSlot`s at runtime instead of `HVRSocket`s; `Removed` → `OnItemTakenFromLoot`.
 - [ ] `VRVobContainerSocketInventory`: subscribe to container events.
 - [ ] **Assets (UnityMCP):** (3a done: `Resources/VR/Prefabs/Player-Elements/VR Socket Slot.prefab` - slot,
       XriSocketBridge, sphere trigger r=0.07, hover feedback, GameObjectSelfInjector; `Gothic-VR/Meshes/SocketRing.asset`
-      procedural torus; `Gothic-VR/Materials/SocketRing(-Valid/-Invalid).mat` URP Unlit transparent. Rest: 3b/3c)
+      procedural torus; `Gothic-VR/Materials/SocketRing(-Valid/-Invalid).mat` URP Unlit transparent. 3b: backpack
+      prefab and rig anchors, see above. Rest: 3c)
       new `VR Socket Slot.prefab` (replaces `VRBackpack(Large)InventorySlot` + HVR's
       `LargeInventorySlot` / `SocketOval`), ring mesh (simple torus, our own) + `SocketRing/Valid/Invalid` URP materials,
       add slots to `oCMobContainer.prefab` and the backpack prefab, shoulder + hip anchors on the XRI rig.
-- [ ] Remove `GUZ-VR-Socketables.asset` usage on the Xri path (keep the file until Phase 6).
+- [x] Remove `GUZ-VR-Socketables.asset` usage on the Xri path (keep the file until Phase 6). (3a/3b: the Xri path
+      never uses it, slots filter with `VrSocketSlot.Accepts`.)
 
 ## Test plan
 

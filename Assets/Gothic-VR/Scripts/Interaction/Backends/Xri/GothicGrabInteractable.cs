@@ -9,10 +9,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// XRGrabInteractable for Gothic items. Adds what XRI lacks compared to HVR:
     /// - BeforeGrabbed: raised (via XriInteractableBridge) before XRI captures the Rigidbody state. Gothic items lie
     ///   kinematic, the game turns physics on there, so that VelocityTracking moves them and they fall when dropped.
-    /// - Interpolation while held, against jitter of velocity tracked items while walking.
+    /// - Interpolation while held by a hand, against jitter of velocity tracked items while walking. None while
+    ///   socketed, as the slot's transform moves it then.
     /// - Sockets (XriSocketBridge): while only a socket selects the item, XRI neither unparents nor moves it, as
     ///   VrSocketSlot re-parents its VobLoader. A hand grabbing it releases it from the socket first, so that the
     ///   socket restores the hierarchy before the hand's grab starts (HVR order: socket released, then grabbed).
+    ///   Hands can't hover or take it while its socket's detection is off (backpack slots while the backpack is on
+    ///   the shoulder, like HVR's ParentDisablesGrab).
     ///
     /// Disabled in the prefab. XriInteractableBridge enables it on the XRI backend once the runtime colliders exist.
     /// </summary>
@@ -20,6 +23,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
     {
         [Tooltip("Rigidbody interpolation while held. Restored on drop.")]
         [SerializeField] private RigidbodyInterpolation _heldInterpolation = RigidbodyInterpolation.Interpolate;
+
+        [Tooltip("While a hand holds it, other hands can neither hover nor take it (the backpack: the other hand " +
+                 "takes items out of its slots).")]
+        [SerializeField] private bool _isOneHandOnly;
 
         private XriInteractableBridge _bridge;
         private RigidbodyInterpolation _interpolationBeforeGrab;
@@ -35,6 +42,42 @@ namespace Gothic.VR.Interaction.Backends.Xri
         {
             base.Awake();
             _bridge = GetComponent<XriInteractableBridge>();
+        }
+
+        /// <summary>
+        /// Selected by a socket whose detection is off.
+        /// </summary>
+        private bool IsLockedInSocket => IsSocketed && interactorsSelecting[0] is XriSocketBridge socket &&
+                                         !socket.IsDetectionEnabled;
+
+        public override bool IsHoverableBy(IXRHoverInteractor interactor)
+        {
+            if (interactor is not XriSocketBridge && (IsLockedInSocket || IsHeldByOtherHand(interactor)))
+                return false;
+
+            return base.IsHoverableBy(interactor);
+        }
+
+        public override bool IsSelectableBy(IXRSelectInteractor interactor)
+        {
+            if (interactor is not XriSocketBridge && (IsLockedInSocket || IsHeldByOtherHand(interactor)))
+                return false;
+
+            return base.IsSelectableBy(interactor);
+        }
+
+        private bool IsHeldByOtherHand(IXRInteractor interactor)
+        {
+            if (!_isOneHandOnly)
+                return false;
+
+            foreach (var selecting in interactorsSelecting)
+            {
+                if (selecting is not XriSocketBridge && !ReferenceEquals(selecting, interactor))
+                    return true;
+            }
+
+            return false;
         }
 
         public override void ProcessInteractable(XRInteractionUpdateOrder.UpdatePhase updatePhase)
@@ -100,7 +143,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
             }
 
             base.SetupRigidbodyGrab(rigidbody);
-            rigidbody.interpolation = _heldInterpolation;
+
+            // A socketed item moves with its slot's transform (holsters, backpack on the shoulder). Interpolation
+            // would keep writing the Rigidbody's stale pose over it.
+            rigidbody.interpolation = IsSocketed ? RigidbodyInterpolation.None : _heldInterpolation;
         }
 
         protected override void SetupRigidbodyDrop(Rigidbody rigidbody)

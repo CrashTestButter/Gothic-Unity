@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 6523535316780004576}
   - component: {fileID: 2601360332808143820}
   - component: {fileID: 3550217527804890868}
-  m_Layer: 0
+  m_Layer: 1
   m_Name: VR Socket Slot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -89,6 +89,7 @@ MonoBehaviour:
   _shouldRotateByCategory: 1
   _shouldCenterItem: 1
   _isShoulder: 0
+  _linkedInteractable: {fileID: 0}
   _placedSoundFallback: {fileID: 0}
   _removedSoundFallback: {fileID: 0}
 --- !u!114 &2601360332808143820
@@ -159,6 +160,7 @@ MonoBehaviour:
   _normalMaterial: {fileID: 2100000, guid: a3dcff690c3412844a33e16319700e44, type: 2}
   _validMaterial: {fileID: 2100000, guid: 086e8cac1c176f14982891c8610dd9d7, type: 2}
   _invalidMaterial: {fileID: 2100000, guid: 52dc35718064d9c43ab35b777254779c, type: 2}
+  _isHiddenWhileIdle: 0
 --- !u!1 &8594113158379179365
 GameObject:
   m_ObjectHideFlags: 0
@@ -170,7 +172,7 @@ GameObject:
   - component: {fileID: 6494516477512632141}
   - component: {fileID: 8826080630609865501}
   - component: {fileID: 8774205800838183018}
-  m_Layer: 0
+  m_Layer: 1
   m_Name: Ring
   m_TagString: Untagged
   m_Icon: {fileID: 0}

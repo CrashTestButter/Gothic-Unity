@@ -19,8 +19,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         public void InstallBindings(ContainerBuilder containerBuilder)
         {
             Logger.LogWarning("XRI backend is work in progress: rig, locomotion, input, haptics, UI laser pointers, " +
-                              "screen fades, the XR Interaction Simulator and item grabbing work. Mobs/NPCs (phase " +
-                              "2b), sockets (3), doors/chests/ladders (4) and hands (5) are missing.", LogCat.VR);
+                              "screen fades, the XR Interaction Simulator and grabbing (items, mobs, NPCs) work. " +
+                              "Sockets (phase 3), doors/chests/ladders (4) and hands (5) are missing.", LogCat.VR);
 
             containerBuilder.AddSingleton(typeof(XriInput), typeof(IVrInput), typeof(XriInput));
             containerBuilder.AddSingleton(typeof(XriHaptics), typeof(IVrHaptics));

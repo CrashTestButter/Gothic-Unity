@@ -1236,6 +1236,11 @@ namespace Gothic.Core.Models.Config
                  "does only 1 damage - in Gothic he couldn't equip it at all.")]
         public bool EnableWeaponRequirementCap = true;
 
+        [Tooltip("V1: An NPC's item function (on_equip) can't take the hero's armor off - Mroczne Tajemnice's helmet " +
+                 "and armor functions check and undress `hero` instead of `self`, NPCs created after the hero undressed " +
+                 "PC_Rockefeller at the start of a new game.")]
+        public bool EnableNpcItemsSpareHeroArmor = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

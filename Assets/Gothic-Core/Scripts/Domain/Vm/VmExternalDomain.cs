@@ -719,6 +719,18 @@ namespace Gothic.Core.Domain.Vm
 
         public void AI_UnequipArmor(NpcInstance npc)
         {
+            // DeveloperConfig.EnableNpcItemsSpareHeroArmor: an NPC's own equipment can't undress the hero. Mroczne
+            // Tajemnice's helmets (Equip_helms) and armors check and undress `hero`, not `self` - NPCs created after
+            // the hero (we load them later than the engine) took PC_Rockefeller's armor off at the start.
+            var owner = _npcInventoryService.ItemFunctionOwner;
+            if (_configService.Dev.EnableNpcItemsSpareHeroArmor && owner != null && npc != null &&
+                owner.Index != npc.Index && npc.Index == _gameStateService.GothicVm.GlobalHero?.Index)
+            {
+                Logger.Log($"[AI_UnequipArmor] {owner.GetName(NpcNameSlot.Slot0)}'s item function wanted to undress " +
+                           "the hero - ignored", LogCat.Npc);
+                return;
+            }
+
             _npcAiService.ExtAiUnequipArmor(npc);
         }
 

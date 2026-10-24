@@ -304,6 +304,7 @@ MonoBehaviour:
   EnableVrHeroBlock: 1
   EnableEngineMeleeDamage: 1
   EnableWeaponRequirementCap: 1
+  EnableNpcItemsSpareHeroArmor: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

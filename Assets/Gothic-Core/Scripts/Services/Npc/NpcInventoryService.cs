@@ -376,6 +376,11 @@ namespace Gothic.Core.Services.Npc
                 CallItemFunction(npc, item, function);
         }
 
+        /// <summary>
+        /// The NPC whose item function (on_equip/on_unequip) runs right now, null otherwise.
+        /// </summary>
+        public NpcInstance ItemFunctionOwner { get; private set; }
+
         private void CallItemFunction(NpcInstance npc, ItemInstance item, int function)
         {
             if (function <= 0)
@@ -383,8 +388,10 @@ namespace Gothic.Core.Services.Npc
 
             var vm = _gameStateService.GothicVm;
             var oldSelf = vm.GlobalSelf;
+            var oldOwner = ItemFunctionOwner;
             vm.GlobalSelf = npc;
             vm.GlobalItem = item;
+            ItemFunctionOwner = npc;
             try
             {
                 vm.Call(function);
@@ -396,6 +403,7 @@ namespace Gothic.Core.Services.Npc
             finally
             {
                 vm.GlobalSelf = oldSelf;
+                ItemFunctionOwner = oldOwner;
             }
         }
         

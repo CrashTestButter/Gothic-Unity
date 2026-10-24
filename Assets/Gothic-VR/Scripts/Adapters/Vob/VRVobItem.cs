@@ -36,6 +36,7 @@ namespace Gothic.VR.Adapters.Vob
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly Gothic.Core.Services.Vobs.VobService _vobService;
         [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
+        [Inject] private readonly Gothic.Core.Services.Npc.FightService _fightService;
 
         // DeveloperConfig.EnableDocConsumeOnClose: a sealed letter (MAPSEALED) is used up when it's read - but only
         // when the reading ends (one hand lets go), not while it's still in front of the player.
@@ -117,6 +118,9 @@ namespace Gothic.VR.Adapters.Vob
 
             _vobMeshCullingService?.StartTrackVobPositionUpdates(gameObject);
             _vrPlayerService.SetGrab(grabber, grabbable);
+
+            // DeveloperConfig.EnableWeaponRequirementCap: the engine's "missing ... points" for a weapon he can't use.
+            TryShowWeaponRequirement();
 
             // One hand is enough for ranged weapons and torches.
             TryPrepareRangedWeapon();
@@ -306,6 +310,14 @@ namespace Gothic.VR.Adapters.Vob
         /// <summary>
         /// V1 (DeveloperConfig.EnableVrCrossbow / EnableVrBows): ranged weapons shoot while held (vr-ranged-spells-plan.md).
         /// </summary>
+        private void TryShowWeaponRequirement()
+        {
+            var item = GetComponentInParent<VobLoader>()?.Container.PropsAs<VobItemProperties2>()?.Instance;
+            var mainFlag = item != null ? (VmGothicEnums.ItemFlags)item.MainFlag : 0;
+            if (mainFlag is VmGothicEnums.ItemFlags.ItemKatNf or VmGothicEnums.ItemFlags.ItemKatFf)
+                _fightService.CheckHeroWeaponRequirement(item, isMessageShown: true);
+        }
+
         private void TryPrepareRangedWeapon()
         {
             if (GetComponent<Adapters.Vob.VobItem.VRCrossbow>() != null || GetComponent<Adapters.Vob.VobItem.VRBow>() != null)

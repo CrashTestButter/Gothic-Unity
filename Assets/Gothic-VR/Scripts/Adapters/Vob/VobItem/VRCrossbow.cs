@@ -39,6 +39,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Inject] private readonly VRRangedService _vrRangedService;
         [Inject] private readonly VrHapticsService _hapticsService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly Gothic.Core.Services.Npc.FightService _fightService;
 
         private const int _crossbowTalent = 4; // NPC_TALENT_CROSSBOW
         private const int _masterSkill = 2;
@@ -205,6 +206,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             var hero = _npcService.GetHeroContainer();
             if (hero == null || _munition == null)
                 return;
+
+            // DeveloperConfig.EnableWeaponRequirementCap: without the crossbow's requirements it doesn't shoot.
+            if (!_fightService.CheckHeroWeaponRequirement(_item, isMessageShown: true))
+            {
+                _hapticsService.Vibrate(handSide, VrHapticsService.VibrationType.Error);
+                return;
+            }
 
             if (!_vrRangedService.HasAmmo(hero, _munition))
             {

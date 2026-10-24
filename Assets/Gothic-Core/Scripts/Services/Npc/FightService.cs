@@ -1239,6 +1239,11 @@ namespace Gothic.Core.Services.Npc
             if (_configService.Dev.EnableMinimalDamage && !isImmune)
                 damage = Mathf.Max(damage, GetMinimalDamage());
 
+            // DeveloperConfig.EnableWeaponRequirementCap: 1 also against the minimal damage (Mroczne Tajemnice: 5).
+            if (_isRequirementCapped && !isImmune)
+                damage = 1;
+            _isRequirementCapped = false;
+
             // Dev cheats: hero one-hit kill / knockout.
             if (attacker.PrefabProps != null && attacker.PrefabProps.IsHero())
             {
@@ -1443,11 +1448,12 @@ namespace Gothic.Core.Services.Npc
             }
 
             if (isHeroAttacker && weapon != null && _configService.Dev.EnableWeaponRequirementCap &&
-                !IsWeaponRequirementMet(attacker, weapon, out var requirement))
+                !IsWeaponRequirementMet(attacker, weapon, out var requirement, out _, out _))
             {
                 Logger.Log($"[FightService] The hero lacks {requirement} for '{weapon.Name}' - {damage} damage capped to 1",
                     LogCat.Fight);
                 damage = Mathf.Min(damage, 1);
+                _isRequirementCapped = true;
             }
 
             var rollResult = isG2 ? (isCritical ? "hit" : "near miss") : (isCritical ? "CRITICAL" : "normal");
@@ -1458,12 +1464,64 @@ namespace Gothic.Core.Services.Npc
             return damage;
         }
 
+        // Set by CalculateMeleeDamage for the hit being calculated (OnHitUpdateHealth).
+        private bool _isRequirementCapped;
+
+        private const float _cannotUseMessageSeconds = 2f;
+        private float _lastCannotUseMessageTime = float.MinValue;
+
+        /// <summary>
+        /// DeveloperConfig.EnableWeaponRequirementCap: does the hero meet a weapon's requirements (cond_atr/cond_value)?
+        /// If not, like the engine's equip (OpenGothic Inventory::use -> printCannotUseError) the scripts' G_CanNotUse
+        /// prints what is missing ("... strength points") - at most every few seconds. Melee weapons still hit (for 1),
+        /// bows and crossbows don't shoot.
+        /// </summary>
+        public bool CheckHeroWeaponRequirement(ItemInstance weapon, bool isMessageShown)
+        {
+            if (!_configService.Dev.EnableWeaponRequirementCap || weapon == null)
+                return true;
+
+            var hero = _npcService.GetHeroContainer();
+            if (hero == null || IsWeaponRequirementMet(hero, weapon, out var requirement, out var attribute, out var value))
+                return true;
+
+            if (isMessageShown && Time.time - _lastCannotUseMessageTime > _cannotUseMessageSeconds)
+            {
+                _lastCannotUseMessageTime = Time.time;
+                Logger.Log($"[FightService] The hero lacks {requirement} for '{weapon.Name}'", LogCat.Fight);
+                PrintCannotUse(hero, attribute, value);
+            }
+            return false;
+        }
+
+        private void PrintCannotUse(NpcContainer hero, int attribute, int value)
+        {
+            var vm = _gameStateService.GothicVm;
+            var function = vm.GetSymbolByName("G_CanNotUse");
+            if (function == null)
+                return;
+
+            var oldSelf = vm.GlobalSelf;
+            vm.GlobalSelf = hero.Instance;
+            try
+            {
+                vm.Call<int, int, int>(function.Index, 1, attribute, value);
+            }
+            finally
+            {
+                vm.GlobalSelf = oldSelf;
+            }
+        }
+
         /// <summary>
         /// C_ITEM.cond_atr[]/cond_value[]: the attributes a weapon needs (G1/G2: strength or dexterity).
         /// </summary>
-        private static bool IsWeaponRequirementMet(NpcContainer npc, ItemInstance weapon, out string requirement)
+        private static bool IsWeaponRequirementMet(NpcContainer npc, ItemInstance weapon, out string requirement,
+            out int missingAttribute, out int requiredValue)
         {
             requirement = null;
+            missingAttribute = -1;
+            requiredValue = 0;
             foreach (ItemConditionSlot slot in System.Enum.GetValues(typeof(ItemConditionSlot)))
             {
                 var attribute = weapon.GetCondAtr(slot);
@@ -1474,6 +1532,8 @@ namespace Gothic.Core.Services.Npc
                     continue;
 
                 requirement = $"{(NpcAttribute)attribute} {value} (has {npc.Vob.GetAttribute(attribute)})";
+                missingAttribute = attribute;
+                requiredValue = value;
                 return false;
             }
             return true;

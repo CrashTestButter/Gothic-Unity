@@ -1233,7 +1233,8 @@ namespace Gothic.Core.Models.Config
         public bool EnableEngineMeleeDamage = true;
 
         [Tooltip("V1 (opinion): The hero can swing a weapon without its requirements (e.g. 50 strength) but every hit " +
-                 "does only 1 damage - in Gothic he couldn't equip it at all.")]
+                 "does only 1 damage - in Gothic he couldn't equip it at all. Bows and crossbows without them don't " +
+                 "shoot. Grabbing such a weapon shows the engine's message (G_CanNotUse: \"missing ... points\").")]
         public bool EnableWeaponRequirementCap = true;
 
         [Tooltip("V1: An NPC's item function (on_equip) can't take the hero's armor off - Mroczne Tajemnice's helmet " +

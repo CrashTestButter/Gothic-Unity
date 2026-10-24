@@ -42,6 +42,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Inject] private readonly VrHapticsService _hapticsService;
         [Inject] private readonly MorphMeshCacheService _morphMeshCacheService;
         [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
+        [Inject] private readonly Gothic.Core.Services.Npc.FightService _fightService;
 
         private const string _shootSfx = "BowShoot";
         private const string _drawSfx = "BowReload";
@@ -208,6 +209,14 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_arrow == null || tension < _minShootTension || hero == null || !_vrRangedService.HasAmmo(hero, _munition))
             {
                 DropArrow();
+                return;
+            }
+
+            // DeveloperConfig.EnableWeaponRequirementCap: without the bow's requirements (dexterity) it doesn't shoot.
+            if (!_fightService.CheckHeroWeaponRequirement(_item, isMessageShown: true))
+            {
+                DropArrow();
+                _hapticsService.Vibrate(_drawHand, VrHapticsService.VibrationType.Error);
                 return;
             }
 

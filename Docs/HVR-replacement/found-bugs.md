@@ -38,12 +38,19 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 - **Maybe related:** the existing GitHub issue "Chest -> Backpack - throwing exception".
 - **Test:** take an item out of a chest; loot a dead NPC, take an item, close the panel; no errors.
 
-## Misc
-1. Head never sticks into the wall as it is blocked from going into (poking back)
-1. Marvin menu is rotated wrong (fixed later, when we have a hand and actually see, where it should be placed).
-
 ## Known, not new
 
 - Chests with more than 12 items: pagination is missing (an error is logged, as before).
 - Taking items from a chest doesn't change the chest's saved contents.
 - Chest slot spheres overlap on small chests (same as with HVR).
+
+## Misc
+- Head never sticks into the wall as it is blocked from going into (poking back)
+- Marvin menu is rotated wrong (fixed later, when we have a hand and actually see, where it should be placed).
+- Raycaster for selecting objects is waaay to long. Should have same length as HVR - configurable via Config setting.
+- Holding object in hand stutters. And if I move my hand too fast, it is stuck in the air
+- Backpack grab point is too small. Hard to grab it. Should be aligned with the size on how HVR handled it.
+- Rotation of long backack-slot at the bottom is wrong. Should be like before.
+- Simulator: Very complex to traverse. Why not having it like the one from https://github.com/AdrielHercules/hvr-simulator (aka Controller handling etc.)
+- Rotation + Scaling of objects inside Slots is broken
+- Lockpicking - finalizing the minigame should open the door directly. Currently: Nothing.

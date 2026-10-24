@@ -365,8 +365,16 @@ namespace Gothic.Core.Services.Npc
             // HP/animation/death handling. Reaction-only spells (damage=0) stop here — their effect
             // (freeze, sleep, ...) is entirely driven by the ASSESSMAGIC dispatch above, and routing
             // a fake 0-damage hit through OnHit would wrongly trigger pain animations/sounds.
+            // DeveloperConfig.EnableEngineMeleeDamage: the spell's own damage type (OpenGothic: spl.damage_type) - every
+            // spell was taken as fire (Windfist DAM_FLY, lightning DAM_MAGIC).
+            var spellDamageType = _configService.Dev.EnableEngineMeleeDamage && caster.ActiveSpell >= 0
+                ? _vmCacheService.TryGetSpellData(caster.ActiveSpell)?.DamageType ?? 0
+                : 0;
             if (damage > 0)
-                OnHit(caster, target, pos, damageOverride: damage);
+                OnHit(caster, target, pos, damageOverride: damage,
+                    overrideProtectionIndex: spellDamageType != 0
+                        ? GetProtectionIndex(spellDamageType)
+                        : (int)DamageType.Fire);
 
             // DeveloperConfig.EnableBurning: fire spells set the victim on fire (VOB_BURN + the s_Fire_Victim dance).
             // Not the hero - in VR there's no own body to burn.
@@ -1198,6 +1206,10 @@ namespace Gothic.Core.Services.Npc
                 isImmune = protection < 0;
                 damage = isImmune ? 0 : Mathf.Max(0, damageOverride.Value - protection);
             }
+            else if (_configService.Dev.EnableEngineMeleeDamage)
+            {
+                damage = CalculateMeleeDamage(attacker, target, out isImmune);
+            }
             else
             {
                 var equippedWeapon = _npcHelperService.ExtNpcGetEquippedMeleeWeapon(attacker.Instance);
@@ -1354,6 +1366,119 @@ namespace Gothic.Core.Services.Npc
         /// C_ITEM.damageType is a DAM_* bitmask whose bit positions match the PROT_* indices.
         /// Weapons carry one damage type; the first set bit wins.
         /// </summary>
+        /// <summary>
+        /// DeveloperConfig.EnableEngineMeleeDamage: OpenGothic DamageCalculator::swordDamage. Per damage type of the
+        /// weapon (or the NPC's own damagetype: fists, claws - wolves bite DAM_EDGE): strength + the NPC's damage[] +
+        /// the weapon's damage[] and damageTotal - the target's protection of that type; immune types (protection -1)
+        /// are left out.
+        /// G1: a critical hit with the talent value's chance (1H/2H) doubles the weapon part (DAM_CRITICAL_MULTIPLIER).
+        /// G2: a miss by the hit chance (C_NPC.hitchance[1H/2H]) does a tenth; monsters without a weapon always hit.
+        /// The hero's weapon is the one in his VR hand (Props.MeleeHitWeapon) - it isn't equipped in VR, he hit with
+        /// his strength alone (Lukis in heavy armor took 30 instead of 80).
+        /// DeveloperConfig.EnableWeaponRequirementCap (opinion): the hero swings a weapon without its requirements
+        /// (cond_atr/cond_value, e.g. 50 strength) - every hit does only 1 damage.
+        /// </summary>
+        private int CalculateMeleeDamage(NpcContainer attacker, NpcContainer target, out bool isImmune)
+        {
+            var isHeroAttacker = attacker.PrefabProps != null && attacker.PrefabProps.IsHero();
+            var weapon = isHeroAttacker
+                ? attacker.Props.MeleeHitWeapon
+                : _npcHelperService.ExtNpcGetEquippedMeleeWeapon(attacker.Instance);
+            // DeveloperConfig.EnableVrFists: in fist mode the engine hits with the fist, not the sword in the belt.
+            if (_fightConfigService.Dev.EnableVrFists &&
+                (VmGothicEnums.WeaponState)attacker.Vob.FightMode == VmGothicEnums.WeaponState.Fist)
+                weapon = null;
+
+            var mask = weapon?.DamageType ?? attacker.Instance.DamageType;
+            if (mask == 0)
+                mask = 1 << (int)DamageType.Blunt;
+
+            var vm = _gameStateService.GothicVm;
+            var isTwoHanded = weapon != null && ((VmGothicEnums.ItemFlags)weapon.Flags &
+                (VmGothicEnums.ItemFlags.Item2HdSwd | VmGothicEnums.ItemFlags.Item2HdAxe)) != 0;
+            var roll = Random.Range(0, 100);
+            var isG2 = _contextGameVersionService.IsGothic2();
+            bool isCritical;
+            if (isG2)
+            {
+                // G2: the "critical" roll is the hit chance - below it the hit is a near miss.
+                isCritical = (!IsHuman(attacker) && weapon == null) ||
+                             attacker.Instance.GetHitChance(isTwoHanded ? NpcTalent.TwoHanded : NpcTalent.OneHanded) > roll;
+            }
+            else
+            {
+                var talentId = vm.GetSymbolByName(isTwoHanded ? "NPC_TALENT_2H" : "NPC_TALENT_1H")?.GetInt(0) ??
+                               (isTwoHanded ? 2 : 1);
+                isCritical = weapon != null && _npcHelperService.ExtNpcGetTalentValue(attacker.Instance, talentId) > roll;
+            }
+            var multiplier = vm.GetSymbolByName("DAM_CRITICAL_MULTIPLIER")?.GetInt(0) ?? 2;
+            var strength = attacker.Vob.GetAttribute((int)NpcAttribute.Strength);
+
+            var damage = 0;
+            isImmune = true;
+            for (var i = 0; i < 8; i++)
+            {
+                if ((mask & (1 << i)) == 0)
+                    continue;
+
+                var protection = target.Vob.GetProtection(i);
+                if (protection < 0)
+                    continue;
+
+                var typeDamage = attacker.Instance.GetDamage((DamageType)i) +
+                                 (weapon != null ? weapon.GetDamage((DamageType)i) + weapon.DamageTotal : 0);
+                int value;
+                if (isG2)
+                {
+                    value = Mathf.Max(strength + typeDamage - protection, 0);
+                    if (!isCritical)
+                        value = (value - 1) / 10;
+                }
+                else
+                {
+                    value = Mathf.Max(strength + (isCritical ? multiplier * typeDamage : typeDamage) - protection, 0);
+                }
+                damage += value;
+                isImmune = false;
+            }
+
+            if (isHeroAttacker && weapon != null && _configService.Dev.EnableWeaponRequirementCap &&
+                !IsWeaponRequirementMet(attacker, weapon, out var requirement))
+            {
+                Logger.Log($"[FightService] The hero lacks {requirement} for '{weapon.Name}' - {damage} damage capped to 1",
+                    LogCat.Fight);
+                damage = Mathf.Min(damage, 1);
+            }
+
+            var rollResult = isG2 ? (isCritical ? "hit" : "near miss") : (isCritical ? "CRITICAL" : "normal");
+            Logger.Log($"[FightService.MeleeDamage] {attacker.Instance.GetName(NpcNameSlot.Slot0)} -> " +
+                       $"{target.Instance.GetName(NpcNameSlot.Slot0)}: weapon '{weapon?.Name ?? "none"}' mask {mask}, " +
+                       $"strength {strength}, {rollResult} (roll {roll}) = {damage}{(isImmune ? " (immune)" : "")}",
+                LogCat.Fight);
+            return damage;
+        }
+
+        /// <summary>
+        /// C_ITEM.cond_atr[]/cond_value[]: the attributes a weapon needs (G1/G2: strength or dexterity).
+        /// </summary>
+        private static bool IsWeaponRequirementMet(NpcContainer npc, ItemInstance weapon, out string requirement)
+        {
+            requirement = null;
+            foreach (ItemConditionSlot slot in System.Enum.GetValues(typeof(ItemConditionSlot)))
+            {
+                var attribute = weapon.GetCondAtr(slot);
+                var value = weapon.GetCondValue(slot);
+                if (value <= 0 || attribute < 0 || attribute >= 8)
+                    continue;
+                if (npc.Vob.GetAttribute(attribute) >= value)
+                    continue;
+
+                requirement = $"{(NpcAttribute)attribute} {value} (has {npc.Vob.GetAttribute(attribute)})";
+                return false;
+            }
+            return true;
+        }
+
         private static int GetProtectionIndex(int damageTypeMask)
         {
             for (var i = 0; i < 8; i++)

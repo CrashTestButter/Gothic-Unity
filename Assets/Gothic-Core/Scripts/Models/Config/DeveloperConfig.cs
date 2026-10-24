@@ -1226,6 +1226,16 @@ namespace Gothic.Core.Models.Config
                  "projectiles and hits from the side or back go through; while blocking the hero's own hits don't count.")]
         public bool EnableVrHeroBlock = true;
 
+        [Tooltip("V1: Melee damage like the engine (OpenGothic DamageCalculator): per damage type strength + damage - " +
+                 "protection, G1 critical hits by the 1H/2H talent value (x2), G2 near misses by the hit chance, " +
+                 "monsters with their own damage type (wolves bite DAM_EDGE, not blunt). The hero's VR weapon counts " +
+                 "- it hit with his strength alone. Spells use their own damage type instead of fire.")]
+        public bool EnableEngineMeleeDamage = true;
+
+        [Tooltip("V1 (opinion): The hero can swing a weapon without its requirements (e.g. 50 strength) but every hit " +
+                 "does only 1 damage - in Gothic he couldn't equip it at all.")]
+        public bool EnableWeaponRequirementCap = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

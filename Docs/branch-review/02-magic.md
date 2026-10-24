@@ -68,6 +68,21 @@
   (`NpcSpellHoming` = 0.2), hits only within 0.8 m and otherwise flies on and fades - fully homing, nobody could dodge
   a crawler's web.
 
+**Added 2026-10-24**
+
+- **Spell ring** (`59fe4f51`, `EnableVrSpellRing`, ini `spellRing`): Gothic's spell selection (hold the magic key, the
+  equipped spells circle the hero). Both hands empty, ~10 cm above the eyes, both triggers for 1 s (haptic ramp) open/close
+  `VRSpellRing`: a carousel 0.55 m in front of the player and 0.2 m below the eyes, in the player controller's space, of
+  the hero's equipped `ITEM_KAT_RUNE` items in equip order (max 8). The front spell shows its effect after 2 s
+  (`VRSpellEffect`: MFX_[NAME]_INIT or the VISUALFX visual, like `VRRuneCaster.SpawnSpellVfx`), a hand within 9 cm
+  enlarges a spell ×1.4 and shows its description ("Runa" is every rune's name). Trigger + moving sideways turns it,
+  a trigger click (no move) unequips; an empty slot below the limit equips a held rune/scroll (`VRItemUser.Equip` way:
+  into the inventory with [E]). Grip takes a spell: an invisible, non-grabbable rune is parented to the hand (an HVR
+  force grab without colliders flung the physics hand away), `VRRuneCaster.RingHand` makes that hand aim/cast and
+  charge/throw throwables; `VRSpellRingItem` shows the effect while not casting and puts the spell away on a trigger
+  click of the other empty hand (also when the spell hand grabs something or the hero is down). The spell stays in the
+  inventory throughout, like Gothic's readied spell.
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
@@ -83,6 +98,8 @@ charge effects cleared
 sleep/freeze on the hero
 
 2026-10-15: `b6dcf8c7` dodgeable NPC spells
+
+2026-10-24: `59fe4f51` spell ring
 
 ## Main files
 
@@ -102,6 +119,8 @@ sleep/freeze on the hero
 `EnableHeroSpellStates`
 
 2026-10-15: `NpcSpellHoming`
+
+2026-10-24: `EnableVrSpellRing`
 
 ## Review notes
 

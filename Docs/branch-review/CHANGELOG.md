@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-24 (evening): the spell ring
+
+- Gothic's spell selection in VR: raise both empty hands above your head and hold both triggers for a second - your
+  equipped spells (up to 8) circle in front of you. Turn the circle with the trigger, grab a spell: your hand holds the
+  spell itself (fireball, ice, ...) and casts it alone; a trigger click of the other hand puts it away.
+- Equip a spell by holding its rune or scroll into the empty slot of the circle; a trigger click on a spell unequips it.
+  Immersion option "Spell ring".
+
 ## 2026-10-24: the dead stay down
 
 - Dead NPCs and monsters stay where they died and keep lying there when you come back (they stood up into a T-pose with

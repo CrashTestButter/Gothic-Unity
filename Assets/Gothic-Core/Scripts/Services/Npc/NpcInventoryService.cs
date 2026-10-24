@@ -38,6 +38,16 @@ namespace Gothic.Core.Services.Npc
             var props = npc.GetUserData().Props;
             var itemData = _vmCacheService.TryGetItemData(itemId);
 
+            // DeveloperConfig.EnableEquipItemCreatesItem: "gibt dem Nsc direkt das angegebene Item an den Guertel"
+            // (externals.d) - the engine gives the item too. Orc shamans equip their staff without CreateInvItem,
+            // Mroczne Tajemnice's Rockefeller his warhammer: equipped, but not in the inventory.
+            if (_configService.Dev.EnableEquipItemCreatesItem && itemData != null && ExtNpcHasItems(npc, itemId) <= 0)
+            {
+                ExtCreateInvItems(npc, itemId, 1);
+                Logger.Log($"[Equip] {npc.GetName(NpcNameSlot.Slot0)} got '{itemData.Name}' from EquipItem " +
+                           "(not in the inventory)", LogCat.Npc);
+            }
+
             // The engine applies protection[] + on_equip for script equips too (OpenGothic: Inventory::setSlot -> applyArmor).
             // Without it, every NPC's armor (and the hero's starting armor) protected nothing.
             if (_configService.Dev.EnableScriptEquipEffects && itemData != null)

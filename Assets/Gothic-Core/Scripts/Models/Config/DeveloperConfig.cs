@@ -1296,6 +1296,11 @@ namespace Gothic.Core.Models.Config
                  "UNITYSAVE.json.")]
         public bool EnableRingItemSlots = true;
 
+        [Tooltip("V1: EquipItem gives the NPC the item if he doesn't have it (externals.d: \"gibt dem Nsc direkt das " +
+                 "angegebene Item an den Guertel\") - orc shamans' staffs, Mroczne Tajemnice's Rockefeller's warhammer " +
+                 "were equipped without being in the inventory.")]
+        public bool EnableEquipItemCreatesItem = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

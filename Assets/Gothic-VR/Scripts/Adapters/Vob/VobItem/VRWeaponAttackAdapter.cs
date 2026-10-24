@@ -53,11 +53,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private void OnTriggerEnter(Collider other)
         {
+            // Hands, grabbables, the world - touching them is normal. A warning per touch flooded the log (lag).
             if (other.gameObject.layer != Constants.VobHitbox)
-            {
-                Logger.LogWarning($"[WeaponAttackAdapter] Wrong layer: {LayerMask.LayerToName(other.gameObject.layer)}", LogCat.Fight);
                 return;
-            }
 
             Logger.Log($"[WeaponAttackAdapter] Collision with VobHitbox: {other.gameObject.name}", LogCat.Fight);
 

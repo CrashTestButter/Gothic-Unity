@@ -315,10 +315,17 @@ namespace Gothic.Core.Domain.Meshes.Builder
             {
                 // Sliced boxes first: the cached colliders of some bows are capsules as thick as an arm - the hand
                 // held the bow 10 cm next to its mesh.
-                if (UseColliderCache && !AddSlicedBoxColliders(RootGo, meshFilter.sharedMesh))
-                    PrepareCachedCollider(RootGo, meshFilter.sharedMesh);
-                else if (!UseColliderCache)
+                // DeveloperConfig.EnableRangedFittedColliders: crossbows are morph meshes and come this way.
+                if (UseColliderCache)
+                {
+                    if (!TryAddRangedFittedColliders(RootGo, meshFilter.sharedMesh) &&
+                        !AddSlicedBoxColliders(RootGo, meshFilter.sharedMesh))
+                        PrepareCachedCollider(RootGo, meshFilter.sharedMesh);
+                }
+                else
+                {
                     PrepareMeshCollider(RootGo, meshFilter.sharedMesh);
+                }
             }
 
             SetPosAndRot(RootGo, RootPosition, RootRotation);
@@ -780,6 +787,9 @@ namespace Gothic.Core.Domain.Meshes.Builder
 
         protected void PrepareCachedCollider(GameObject rootGo, Mesh mesh)
         {
+            if (TryAddRangedFittedColliders(rootGo, mesh))
+                return;
+
             if (!_staticCacheService.LoadedVobItemColliders.TryGetValue(MeshName, out var colliders) || colliders.Count == 0)
             {
                 // The pre-cached colliders are calculated from MRMs only - morph mesh items (bows, crossbows) got none:
@@ -826,6 +836,73 @@ namespace Gothic.Core.Domain.Meshes.Builder
                     Logger.LogError($"Capsule cache type {coll.T} not yet handled", LogCat.Mesh);
                 }
             }
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableRangedFittedColliders: bows and crossbows (ItRw_Bow_*, ItRwCrossbow*) get boxes fitted
+        /// to their parts instead of the cached colliders (capsules along the bounds of a straight weapon - a curved bow
+        /// got three fat capsules, 13 cm radius, full of air) or the axis aligned slices (crossbow prods lie diagonally).
+        /// </summary>
+        private bool TryAddRangedFittedColliders(GameObject rootGo, Mesh mesh)
+        {
+            return _builderConfigService.Dev.EnableRangedFittedColliders && mesh != null && MeshName != null &&
+                   MeshName.StartsWith("ITRW", System.StringComparison.OrdinalIgnoreCase) &&
+                   (AddFittedColliders(rootGo, mesh) || AddSlicedBoxColliders(rootGo, mesh));
+        }
+
+        // DeveloperConfig.EnableRangedFittedColliders: box meshes per item mesh, computed once.
+        private static readonly Dictionary<string, Mesh[]> _fittedColliderMeshes = new();
+
+        /// <summary>
+        /// Oriented boxes along the item's parts (ItemColliderFittingDomain) as convex mesh colliders on the item itself:
+        /// child objects would keep their layer when the grabbed item switches to VobItemNoWorldCollision.
+        /// </summary>
+        private bool AddFittedColliders(GameObject rootGo, Mesh mesh)
+        {
+            if (!mesh.isReadable)
+                return false;
+
+            if (!_fittedColliderMeshes.TryGetValue(MeshName, out var boxMeshes))
+            {
+                var boxes = ItemColliderFittingDomain.Fit(mesh.vertices, mesh.triangles);
+                boxMeshes = new Mesh[boxes.Count];
+                for (var i = 0; i < boxes.Count; i++)
+                    boxMeshes[i] = CreateBoxMesh(boxes[i], $"{MeshName}_FitCollider{i}");
+                _fittedColliderMeshes[MeshName] = boxMeshes;
+                Logger.Log($"[MeshBuilder] {MeshName}: {boxes.Count} fitted colliders", LogCat.Mesh);
+            }
+
+            foreach (var boxMesh in boxMeshes)
+            {
+                var meshCollider = rootGo.AddComponent<MeshCollider>();
+                meshCollider.convex = true;
+                meshCollider.sharedMesh = boxMesh;
+            }
+            return boxMeshes.Length > 0;
+        }
+
+        private static readonly int[] _boxTriangles =
+        {
+            0, 2, 1, 1, 2, 3, 4, 5, 6, 5, 7, 6, 0, 1, 4, 1, 5, 4,
+            2, 6, 3, 3, 6, 7, 0, 4, 2, 2, 4, 6, 1, 3, 5, 3, 7, 5
+        };
+
+        private static Mesh CreateBoxMesh(ItemColliderFittingDomain.Box box, string name)
+        {
+            var half = box.Size * 0.5f;
+            var corners = new Vector3[8];
+            for (var i = 0; i < 8; i++)
+            {
+                var local = new Vector3((i & 1) == 0 ? -half.x : half.x, (i & 2) == 0 ? -half.y : half.y,
+                    (i & 4) == 0 ? -half.z : half.z);
+                corners[i] = box.Center + box.Rotation * local;
+            }
+
+            var boxMesh = new Mesh { name = name };
+            boxMesh.SetVertices(corners);
+            boxMesh.SetTriangles(_boxTriangles, 0);
+            boxMesh.RecalculateBounds();
+            return boxMesh;
         }
 
         private const int _colliderSlices = 8;

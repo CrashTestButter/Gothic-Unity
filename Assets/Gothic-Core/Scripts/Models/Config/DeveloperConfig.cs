@@ -611,6 +611,11 @@ namespace Gothic.Core.Models.Config
                  "mesh bounds. Before they had no collider: fell through the ground, no force grab, flew away in hands.")]
         public bool EnableItemColliderFallback = true;
 
+        [Tooltip("V1: Bows and crossbows get boxes fitted to their parts (stock, prod, limbs - turned along them, no " +
+                 "string) instead of the cached capsules - a curved bow got three fat capsules full of air, hard to " +
+                 "grab and hold.")]
+        public bool EnableRangedFittedColliders = true;
+
         [Tooltip("Npc_ClearAIQueue no longer restarts an NPC's running idle animation (engine: only the queue is " +
                  "cleared). Summoned demons flapped their wings every 0.5 s (B_FullStop on each ASSESSPLAYER).")]
         public bool EnableKeepIdleOnClearAiQueue = true;

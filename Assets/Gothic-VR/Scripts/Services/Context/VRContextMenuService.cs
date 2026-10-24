@@ -127,6 +127,15 @@ namespace Gothic.VR.Services.Context
                     _configService.Dev.RangedKnockoutByDefault ? 1 : 0));
                 nextRow++;
             }
+            // DeveloperConfig.EnableScrollUseOption: on (Gothic) a scroll's cast uses it up, off they're cast forever.
+            if (_configService.Dev.EnableScrollUseOption)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "SCROLLS_SINGLE_USE", "Single-use scrolls",
+                    "A cast uses the scroll up (Gothic)", menuStartY + menuDY * nextRow));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "SCROLLS_SINGLE_USE",
+                    VRConstants.IniNames.ScrollsSingleUse, menuStartY + menuDY * nextRow, 1));
+                nextRow++;
+            }
             var restartRow = nextRow;
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
             var backButton = CreateImmersionBackButton(mainMenu);

@@ -1310,6 +1310,10 @@ namespace Gothic.Core.Models.Config
                  "Tajemnice's DM_E/DM_N/DM_T; \"A.INI;B.INI\" offers those. Saves stay per ini like in Gothic.")]
         public bool EnableGameProfileIniChoice = true;
 
+        [Tooltip("V1: Immersion option \"Single-use scrolls\" (ini scrollsSingleUse, on by default): a scroll's cast uses " +
+                 "it up like in Gothic - held stacks and scrolls from the favorites ring. Scrolls were cast forever.")]
+        public bool EnableScrollUseOption = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

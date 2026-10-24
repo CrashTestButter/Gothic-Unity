@@ -320,6 +320,7 @@ MonoBehaviour:
   EnableEquipItemCreatesItem: 1
   EnableRingWeaponLeavesOnDrop: 1
   EnableGameProfileIniChoice: 1
+  EnableScrollUseOption: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

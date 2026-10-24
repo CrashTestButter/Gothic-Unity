@@ -1,4 +1,5 @@
 #if GOTHIC_HVR_INSTALLED
+using System.Linq;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
@@ -75,6 +76,14 @@ namespace Gothic.VR.Adapters.Player
                 bodyState is VmGothicEnums.BodyState.BsUnconscious or VmGothicEnums.BodyState.BsDead)
             {
                 PutAway("the spell hand grabbed something / hero down");
+                return;
+            }
+
+            // The last scroll was used up (VRRuneCaster, single-use scrolls) or the spell taken off in the backpack.
+            var hero = _playerService.HeroContainer;
+            if (hero != null && _item != null && !hero.Props.EquippedItems.Any(i => i.Index == _item.Index))
+            {
+                PutAway("no longer equipped (last scroll used up)");
                 return;
             }
 

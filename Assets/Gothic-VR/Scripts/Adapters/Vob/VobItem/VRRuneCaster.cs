@@ -62,6 +62,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
         [Inject] private readonly VrHapticsService _hapticsService;
         [Inject] private readonly VRTransformService _vrTransformService;
+        [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
+        [Inject] private readonly Gothic.Core.Services.Vobs.VobService _vobService;
         private const string _transformName = "Transform";
         // DeveloperConfig.EnableSpellBodyFx: VISUALFX effects at the body/hand while charging and when cast.
         private readonly System.Collections.Generic.List<GameObject> _bodyFxGos = new();
@@ -633,12 +635,53 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 }
             }
 
-            // TODO scrolls: consume one from stack, destroy if last
-            // var isScroll = (_item.Flags & ItemFlags.Multi) != 0;
-            // if (isScroll) ConsumeScroll();
+            if (applyEffect)
+                TryUseUpScroll();
 
             _isCasting = false;
             // Allow recasting without re-grabbing: _castThisGrab stays false
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableScrollUseOption + the "scrollsSingleUse" option (Immersion, on by default): like Gothic a
+        /// scroll (a spell item with ITEM_MULTI - runes have none) is used up by its cast. A held scroll stack loses one
+        /// (the last one is gone from the hand), a scroll from the favorites ring one from the backpack (the last one
+        /// unequips it, VRFavoritesRingSpell puts the hand's spell away). Scrolls were cast forever.
+        /// </summary>
+        private void TryUseUpScroll()
+        {
+            if (!_configService.Dev.EnableScrollUseOption || _item == null ||
+                ((VmGothicEnums.ItemFlags)_item.Flags & VmGothicEnums.ItemFlags.ItemMulti) == 0 ||
+                _configService.Gothic == null ||
+                _configService.Gothic.GetInt(VRConstants.IniNames.ScrollsSingleUse, 1) != 1)
+                return;
+
+            var container = GetComponentInParent<VobLoader>()?.Container;
+            var vobItem = container?.VobAs<ZenKit.Vobs.IItem>();
+            if (vobItem == null)
+                return;
+            var instanceName = !string.IsNullOrEmpty(vobItem.Instance) ? vobItem.Instance : vobItem.Name;
+
+            // The ring's spell is an invisible item outside the inventory - the scroll comes out of the backpack.
+            if (RingHand.HasValue)
+            {
+                new Gothic.Core.Domain.Inventory.PlayerInventoryOwner().Remove(instanceName, 1);
+                Logger.Log($"[VRRuneCaster] Scroll {_item.Description} used up (favorites ring)", LogCat.VR);
+                return;
+            }
+
+            // A held stack counts in the inventory (VRPlayerService.SetGrab): one less in both.
+            _playerService.RemoveItem(instanceName, 1);
+            vobItem.Amount = Mathf.Max(0, vobItem.Amount - 1);
+            Logger.Log($"[VRRuneCaster] Scroll {_item.Description} used up ({vobItem.Amount} left in the hand)",
+                LogCat.VR);
+            if (vobItem.Amount > 0)
+                return;
+
+            var grabbable = GetComponent<HVRGrabbable>();
+            if (grabbable != null && grabbable.IsBeingHeld)
+                grabbable.ForceRelease();
+            _vobService.RemoveWorldItem(container);
         }
 
         /// <summary>

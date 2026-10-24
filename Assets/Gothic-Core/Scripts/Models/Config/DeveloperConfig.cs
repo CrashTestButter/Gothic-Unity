@@ -675,6 +675,11 @@ namespace Gothic.Core.Models.Config
                  "(automatic reload).")]
         public bool EnableVrCrossbowManualReload = true;
 
+        [Tooltip("V1: Our (VR) options are written into their own Gothic.ini section, stray copies in other VR sections " +
+                 "are removed - a new key went to the end of the file (the last section) and every change added " +
+                 "another line; the last one in the file wins when loading.")]
+        public bool EnableIniWriteInSection = true;
+
         [Tooltip("V1: Projectile spells (VISUALFX CAST key with a TARGET trajectory: Firebolt, Fireball, Thunderbolt, " +
                  "Icecube, ...) are thrown: hold the rune in one hand, hold trigger to charge, swing + release trigger to " +
                  "throw. Soft homing towards the NPC closest to the throw direction. Other spells stay as they are.")]

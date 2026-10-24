@@ -173,6 +173,7 @@ MonoBehaviour:
   EnableVrBows: 1
   EnableMorphByPosition: 1
   EnableVrCrossbowManualReload: 1
+  EnableIniWriteInSection: 1
   EnableThrowableSpells: 1
   EnableBurning: 1
   EnableChaseGiveUpCooldown: 1

@@ -165,6 +165,13 @@ namespace Gothic.VR.Services.Context
                 var equipToggle = new GameObject("_BackpackEquipToggle").AddComponent<VRBackpackEquipToggle>();
                 equipToggle.transform.SetParent(_playerController.transform, false);
             }
+
+            // DeveloperConfig.EnableWeaponGripGrab: the first hand on a weapon closes around its grip.
+            if (developerConfig.EnableWeaponGripGrab)
+            {
+                var gripGrab = new GameObject("_WeaponGripGrab").AddComponent<VRWeaponGripGrab>();
+                gripGrab.transform.SetParent(_playerController.transform, false);
+            }
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera

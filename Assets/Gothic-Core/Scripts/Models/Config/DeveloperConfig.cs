@@ -1277,6 +1277,10 @@ namespace Gothic.Core.Models.Config
                  "for the touch.")]
         public bool EnableBlockWeaponContact = true;
 
+        [Tooltip("V1: The first hand on a weapon (a sword or bow from a holster or the backpack, force grabbed) closes " +
+                 "around its grip - the item's origin, where Gothic's NPCs hold it - not the nearest part of the blade.")]
+        public bool EnableWeaponGripGrab = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

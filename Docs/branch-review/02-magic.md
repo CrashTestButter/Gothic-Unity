@@ -83,6 +83,12 @@
   click of the other empty hand (also when the spell hand grabs something or the hero is down). The spell stays in the
   inventory throughout, like Gothic's readied spell.
 
+**Added 2026-10-25 (afternoon)**
+
+- **Spell damage types** (`42b42b6d`, `EnableEngineMeleeDamage`): a spell's hit took fire protection for every spell -
+  `OnSpellHit` passes the protection of the spell's own `damageType` (Windfist `DAM_FLY`, lightning `DAM_MAGIC`).
+- **Ranged knockout** for spells too (`7542c3d0`) - see [Combat](01-combat.md).
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
@@ -100,6 +106,8 @@ sleep/freeze on the hero
 2026-10-15: `b6dcf8c7` dodgeable NPC spells
 
 2026-10-24: `59fe4f51` spell ring
+
+2026-10-25: `42b42b6d` spell damage types
 
 ## Main files
 

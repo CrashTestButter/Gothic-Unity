@@ -169,6 +169,34 @@
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
+**Added 2026-10-25 (afternoon)**
+
+- **Blocking** (`c321ebb6`, `EnableVrHeroBlock`): Gothic's parry animation holds the weapon with both hands for one- and
+  two-handed weapons alike - `VRHeroBlock`: both hands on the same melee weapon (`IsDualGrabbed`, `ITEM_KAT_NF`) and
+  both triggers held set the hero's `Props.IsBlocking`, the weapon's material and the head's direction.
+  `FightService.TryHeroBlockHit` like OpenGothic `Npc::takeDamage`: a human's hit (fists too) or a monster's with a drawn
+  weapon within `HeroFocusAngle` (45) of the head does nothing, `CS_IAI_*` + `CPFX_IAI_*` (`PlayWeaponBlockEffect` with
+  the held weapon's material), `HeroBlockedHit` buzzes both hands. Spells/projectiles (damage override) and animals
+  always hit. While blocking the hero's own hits don't count (a parry is its own state).
+- **Engine melee damage** (`42b42b6d`, `EnableEngineMeleeDamage`): the hero's VR hit took `ExtNpcGetEquippedMeleeWeapon`,
+  which is null for the hero - he hit with his strength alone. `VRWeaponAttackAdapter` hands the held weapon over
+  (`Props.MeleeHitWeapon`, only during `FightHit`). `CalculateMeleeDamage` = OpenGothic `DamageCalculator::swordDamage`:
+  per damage type of the weapon (or the NPC's own `damagetype` - wolves `DAM_EDGE`, not blunt) strength + the NPC's
+  `damage[]` + the weapon's `damage[]` and `damageTotal` - protection, immune types (-1) left out. G1: critical hit by the
+  1H/2H talent value (weapon part x `DAM_CRITICAL_MULTIPLIER`); G2: a miss by `hitchance[]` does a tenth, monsters without a
+  weapon always hit. Confirmed in the logs: hero (100 str) with Miecz Śmierci (66) on Ghorri (edge 55) = 111.
+- **Weapon requirements** (`42b42b6d`, `0cc510ad`, `EnableWeaponRequirementCap`, opinion): `cond_atr`/`cond_value`
+  unmet - a melee hit does exactly 1 (also against `NPC_MINIMAL_DAMAGE`, MT: 5), bows/crossbows don't shoot; grabbing the
+  weapon calls the scripts' `G_CanNotUse` (OpenGothic `printCannotUseError`): "You lack 80 points of dexterity". G1/MT
+  crossbows need dexterity, G2 strength - read from the item.
+- **Fitted melee hitboxes** (`6a8015ba`, `EnableMeleeFittedColliders`): `ItMw_*` take `ItemColliderFittingDomain` like bows
+  (`keepThinParts`: rods and shafts are held) - the cached boxes along the mesh axes gave `ItMw_2H_Sword_Light_03`'s
+  slanted guard 28 x 20 cm.
+- **Ranged knockout** (`7542c3d0`, `EnableRangedKnockoutOption`, `RangedKnockoutByDefault`, ini `rangedKnockout`): the
+  old rule left humans and the hero at 1 HP from ranged/magic. Off (OpenGothic: only melee knocks out) a lethal arrow,
+  bolt or spell kills; on it knocks out (`IsKnockedOutNotKilled`) and the next one finishes. Area/spread spells
+  (`IsSparedByAreaSpell`) hit the knocked out too.
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
@@ -197,6 +225,8 @@ stab's sound · `dad7ec3c` VR finishing move (stab and twist)
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover
+
+2026-10-25: `c321ebb6` blocking · `42b42b6d` engine melee damage · `0cc510ad` weapon requirements · `6a8015ba` fitted melee hitboxes · `7542c3d0` ranged knockout
 
 ## Main files
 
@@ -232,6 +262,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 
 2026-10-24: `EnableDroppedItemColliderLayer`, `EnableDeathZeroHitPoints`, `EnableDeadSkipsRoutine`,
 `EnableRangedFittedColliders`, `EnableMorphByPosition`, `EnableVrCrossbowManualReload`
+
+2026-10-25: `EnableVrHeroBlock`, `EnableEngineMeleeDamage`, `EnableWeaponRequirementCap`, `EnableMeleeFittedColliders`, `EnableRangedKnockoutOption`, `RangedKnockoutByDefault`
 
 ## Review notes
 

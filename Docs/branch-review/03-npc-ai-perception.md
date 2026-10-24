@@ -103,6 +103,17 @@
   the senses range regardless of sneaking, hearing only through noise perceptions - the sneaking hero's steps send no
   `PERC_ASSESSQUIETSOUND` (ours: `EnableQuietSenses`, smell 3 m).
 
+**Added 2026-10-25 (afternoon)**
+
+- **Proclaim from afar** (`7d91ccdb`, `EnableProclaimFromAfar`, opinion): `ZS_ProclaimAndPunish_Loop` only runs once
+  `AI_GotoNpc` reached the hero - a hero running away right after his attack was chased forever, the loop's 5 m and
+  `HAI_TIME_PURSUIT` never had a say. `AiHandler.CheckProclaimChase`: within 12 m the queue is cleared and the state ends
+  (proclaim, attack - Lukis draws his crossbow at once); after `HAI_TIME_PURSUIT` the loop decides.
+- **No freeze after fights** (`4ff1afc4`, `EnableUseItemGlobalItem`): G1 `ZS_HealSelf_Loop` eats food found by
+  `Npc_GetInvItemBySlot` with `AI_UseItem(self, item)` - the external got the symbol `ITEM`, not the item in it;
+  `UseItemToState` had nothing to play and waited forever (Lukis stood with his crossbow half put away until talked to).
+  `ResolveItemId` takes `GlobalItem`; a use with nothing to play ends at once.
+
 ## Key commits
 
 `b459f4f7` passive perc broadcast, ASSESSBODY, MURDER/DEFEAT · `00f95e72` hero perceptions (sneak, rooms, usemob) ·
@@ -124,6 +135,8 @@ stay down · `fe43a81b` a state's _End runs once
 2026-10-18: `69bb0d3a` AI_TurnAway, beaten NPCs fight back, looking away ends
 
 2026-10-24: `bda6d4e1` whirl around · `1fe4496d` sneaking behind guards
+
+2026-10-25: `7d91ccdb` proclaim from afar · `4ff1afc4` no freeze after fights
 
 ## Main files
 
@@ -150,6 +163,8 @@ stay down · `fe43a81b` a state's _End runs once
 2026-10-18: `EnableAiTurnAway`, `EnableDefeatedNpcFightsBack`, `EnableTurnAwayIgnoresEnemyBehind`
 
 2026-10-24: `EnableAiWhirlAround`, `EnableSneakBehindGuards`
+
+2026-10-25: `EnableProclaimFromAfar`, `EnableUseItemGlobalItem`
 
 ## Review notes
 

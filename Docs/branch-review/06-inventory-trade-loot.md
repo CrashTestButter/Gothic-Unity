@@ -56,6 +56,14 @@
   purse (+1 s) or the NPC is robbed - HVR grabs the NPC with the same grip. Runtime only; the items are in the saved
   inventories.
 
+**Added 2026-10-25 (afternoon)**
+
+- **Equip from the backpack** (`cdb58a50`, `EnableBackpackEquipToggle`): `VRBackpackEquipToggle` - an empty hand at a
+  wearable (armor, amulet, ring, belt) in the hero's backpack and a trigger click (under 0.5 s, under 3 cm) equips or
+  unequips it with effects; `VRBackpack.RefreshInventoryView` updates [E].
+- **Pickpocketing in menus** (`4a199637`): `PickpocketService.IsEnabled` checks the Gothic config and the VM before the
+  game version - it threw every frame in the profile menu.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
@@ -68,6 +76,8 @@
 2026-10-18: `60fb9190` plundering takes ore
 
 2026-10-25: `0ecdf3d7` pickpocketing (G1)
+
+2026-10-25: `cdb58a50` equip from the backpack · `4a199637` pickpocketing menu fix
 
 ## Main files
 
@@ -90,6 +100,8 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 2026-10-18: `EnableInvItemBySlot`
 
 2026-10-25: `EnableVrPickpocket`
+
+2026-10-25: `EnableBackpackEquipToggle`
 
 ## Review notes
 

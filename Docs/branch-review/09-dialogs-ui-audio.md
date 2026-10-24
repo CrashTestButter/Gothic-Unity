@@ -92,6 +92,11 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 - **Hero pain sound** (`51550b1c`, `EnableHeroHurtSound`): `SVM_<voice>_AARGH` from the hero's voice source - he has no
   `NpcSound`, nothing was heard.
 
+**Added 2026-10-25 (afternoon)**
+
+- **Clear key** (`4acb1acb`, `EnableKeyboardClearButton`): `VirtualKeyboard` copies the backspace key at runtime (prefab
+  untouched) between it and OK - it empties the text.
+
 ## Key commits
 
 `ee4dbc2a` dialog bubble · `c1a4c1ad` free movement · `d109a6aa`/`cd10002c` on top · `bf3703ca` subtitles on death ·
@@ -109,6 +114,8 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 
 2026-10-23: `c9b61548` SFX from SOUND/SFX · `51550b1c` hero pain sound · `ca48b1e9` numbered SFX variants ·
 `dbf99c7f` dialog body turn
+
+2026-10-25: `4acb1acb` keyboard Clear key
 
 ## Main files
 
@@ -134,6 +141,8 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 2026-10-22: `EnableFaceAnimations`
 
 2026-10-23: `EnableSfxFromSfxFolder`, `EnableHeroHurtSound`, `EnableSfxNumberedVariants`, `EnableDialogBodyTurn`
+
+2026-10-25: `EnableKeyboardClearButton`
 
 ## Review notes
 

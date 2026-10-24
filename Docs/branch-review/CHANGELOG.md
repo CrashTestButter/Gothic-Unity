@@ -13,6 +13,23 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-25 (afternoon): blocking, Gothic's damage, weapon requirements
+
+- Block like Gothic's parry: both hands on your weapon (one- or two-handed) and both triggers held. Hits from the front
+  clash off with sparks; from the side or back, animals, spells and arrows still hit. While blocking you don't hit.
+- Damage follows Gothic's formula now: your own weapon finally counts (you hit with your strength alone - 30 instead of
+  80 on Lukis), critical hits by your weapon talent, wolves bite with their teeth (edge) instead of blunt, spells hit
+  the protection of their own kind.
+- A weapon you're too weak or clumsy for shows Gothic's "You lack X points of strength" - a sword then hits for 1, a bow
+  or crossbow doesn't shoot.
+- Weapon hitboxes follow the blade, guard, grip and axe head - no more big boxes around slanted guards.
+- New immersion option "Ranged knockout": off (default) an arrow, bolt or spell kills like in OpenGothic; on, it knocks
+  a human down and the next one (or your sword) finishes him. Fire rain hits those already down.
+- Attack someone and run: he stops chasing you after 12 m and draws his bow instead of chasing you forever.
+- NPCs no longer freeze after a fight (they wanted to eat and couldn't).
+- Put on armor, amulets and rings with a trigger click in the backpack; the save keyboard has a Clear key.
+- Mroczne Tajemnice: Rockefeller starts in his armor (NPCs with helmets took it off him).
+
 ## 2026-10-25: pickpocketing (G1)
 
 - Learn pickpocketing (Fingers), sneak up behind someone: a glowing purse hangs on his right hip. Grab it and his

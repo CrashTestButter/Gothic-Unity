@@ -59,6 +59,13 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
   ZenKitCS' cast, the stack stayed broken and the VM crashed natively (Mroczne Tajemnice's giant skeleton by Fellan's
   armor). Loading a game also resets the item/SVM/spell instances cached from the old VM.
 
+**Added 2026-10-25 (afternoon)**
+
+- **Mroczne Tajemnice: Rockefeller's armor** (`186898ea`, `EnableNpcItemsSpareHeroArmor`): the mod's helmet/armor item
+  functions (`Equip_helms`, `Equip_ARMORx`) check and undress `hero` instead of `self`; NPCs we create after the hero
+  (the engine before) took PC_Rockefeller's armor off at the start. `NpcInventoryService.ItemFunctionOwner` +
+  `AI_UnequipArmor`: an NPC's item function can't undress the hero.
+
 ## Key commits
 
 `5eb534aa`/`fca4712c` mod loading · `75287b0e` OU.BIN · `803816ee` extended classes · `1107c651` language ·
@@ -73,6 +80,8 @@ items as NPC parameters
 2026-10-16: `af632900` ZEN material count header · `f4989135` subtitles from the archives
 
 2026-10-18: `6cc8e641` ZEN mesh chunk lengths · `77bb432a` item instances by symbol
+
+2026-10-25: `186898ea` MT: Rockefeller keeps his armor
 
 ## Main files
 
@@ -92,6 +101,8 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 2026-10-16: `EnableZenMaterialCountFix`, `EnableSubtitlesFromVfs`
 
 2026-10-18: `EnableZenChunkLengthFix`, `EnableItemDataBySymbol`
+
+2026-10-25: `EnableNpcItemsSpareHeroArmor`
 
 ## Review notes
 

@@ -1281,6 +1281,10 @@ namespace Gothic.Core.Models.Config
                  "around its grip - the item's origin, where Gothic's NPCs hold it - not the nearest part of the blade.")]
         public bool EnableWeaponGripGrab = true;
 
+        [Tooltip("V1: A backpack (the hero's, an NPC's loot backpack) collides with the world and vobs only - items " +
+                 "(a held potion, a sword, items lying around) pass through it instead of pushing it.")]
+        public bool EnableBackpackItemPassThrough = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

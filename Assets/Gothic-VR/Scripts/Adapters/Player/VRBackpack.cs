@@ -415,6 +415,10 @@ namespace Gothic.VR.Adapters.Player
             // V1, toggled at runtime via DeveloperConfig.EnableItemDetailsPopup.
             if (GetComponent<VRItemDetailsPopup>() == null)
                 gameObject.AddComponent<VRItemDetailsPopup>();
+
+            // V1, toggled at runtime via DeveloperConfig.EnableBackpackItemPassThrough.
+            if (GetComponent<VRBackpackItemPassThrough>() == null)
+                gameObject.AddComponent<VRBackpackItemPassThrough>();
         }
 
         private void Init()

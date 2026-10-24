@@ -314,6 +314,7 @@ MonoBehaviour:
   EnableBloodOnlyOnHit: 1
   EnableBlockWeaponContact: 1
   EnableWeaponGripGrab: 1
+  EnableBackpackItemPassThrough: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

@@ -13,6 +13,14 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 
+## 2026-10-24: the dead stay down
+
+- Dead NPCs and monsters stay where they died and keep lying there when you come back (they stood up into a T-pose with
+  their legs in the ground), and show 0 HP.
+- Dead, you stay dead until you load a game - closing the menu no longer lets you walk around and get "knocked out"
+  again.
+- Arrows and bolts that missed lie in the ground without blocking your way (an archer's bolts piled up in front of you).
+
 ## 2026-10-23: you can die
 
 - An enemy who knocks you out walks up and finishes you off like in Gothic - you die with the hero's death scream.

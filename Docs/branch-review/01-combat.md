@@ -138,6 +138,16 @@
   from the hand) - `FIG_SwordFinal` and a haptic pulse; then a 45 degree wrist twist around the blade (like the lock
   picks) while the blade rests (< 0.6 m/s, faster restarts the angle - a slash after the stab turned it) kills through
   `FightFinishingMove`. Pulled back 15 cm / 25 cm sideways, let go or 4 s: no finish. Fists can't finish off.
+- **The dead stay dead** (`457d61cf` `EnableDeathZeroHitPoints`, `e90a5c1d` `EnableDeadSkipsRoutine`): a finished off
+  NPC kept the knockout's 1 HP - `OnNpcDied` sets 0. Corpses stood up: `AiHandler.ReEnableNpc` (culled in again) moved
+  them to their routine waypoint and started the routine with no animation (bind pose, legs in the ground), a queued
+  `AI_ContinueRoutine` did the same, and `ClearState` (every state change) set `BS_STAND`. A dead NPC now lies where he
+  died (`S_DEADB`; G1 crawler queen, harpy, meatbug only have `S_DEAD`). The dead hero (`VRHeroBody` death phase) stays
+  `BS_DEAD` until a load and is locked again when the death menu closes - after Esc he walked, took hits, was knocked
+  out and recovered with 1 HP.
+- **Dropped items don't block** (`0e7fa467`, `EnableDroppedItemColliderLayer`): `DropItemAtPosition`'s resting box was on
+  the loader (Default) - missed bolts in the ground blocked the hero and the next bolts hit them (piled up in one spot).
+  It's on a TransparentFX child now (world only; not Player/Hand/VobHitbox, not in the projectile mask).
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
@@ -163,6 +173,8 @@ minimal damage · `e62a1a23`/`f93c37a9`/`03b61a16` projectile triggers, auto-aim
 
 2026-10-23: `d0cb1968` finishing moves, hero death, VR fall camera · `b53715a9` death scream · `3c23821d` kill with the
 stab's sound · `dad7ec3c` VR finishing move (stab and twist)
+
+2026-10-24: `0e7fa467` dropped items don't block · `457d61cf` dead = 0 HP · `e90a5c1d` the dead stay dead
 
 2026-10-22: `443948e5` fight turn tolerance · `df525fb4` NPC projectiles · `36bfce77` archers need ammo · `c1eb596c`
 archers get around cover
@@ -198,6 +210,8 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 `EnableBlockedShotMoveInterrupt`
 
 2026-10-23: `EnableEngineFinishingMove`, `EnableHeroDeath`, `EnableHeroFallCamera`, `EnableFinishWithStabSound`, `EnableVrStabFinish`
+
+2026-10-24: `EnableDroppedItemColliderLayer`, `EnableDeathZeroHitPoints`, `EnableDeadSkipsRoutine`
 
 ## Review notes
 

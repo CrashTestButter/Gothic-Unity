@@ -315,6 +315,8 @@ MonoBehaviour:
   EnableBlockWeaponContact: 1
   EnableWeaponGripGrab: 1
   EnableBackpackItemPassThrough: 1
+  EnableRingWeaponSlots: 1
+  EnableRingItemSlots: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

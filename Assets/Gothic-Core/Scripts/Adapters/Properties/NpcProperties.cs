@@ -25,6 +25,9 @@ namespace Gothic.Core.Adapters.Properties
 
         // NPC items/talents/...
         public List<ItemInstance> EquippedItems = new();
+        // DeveloperConfig.EnableRingItemSlots: the hero's favorite (not equippable) items in the VR favorites ring -
+        // Daedalus symbol names, saved in UNITYSAVE.json.
+        public List<string> FavoriteItems = new();
         public string UsedItemSlot;
         public bool HasItemEquipped;
         public int CurrentItem = -1;

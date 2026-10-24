@@ -103,7 +103,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         public HVRHandSide? RingHand { get; set; }
 
         /// <summary>
-        /// Aiming, charging or casting - the ring's idle effect in the hand hides meanwhile (VRSpellRingItem).
+        /// Aiming, charging or casting - the ring's idle effect in the hand hides meanwhile (VRFavoritesRingSpell).
         /// </summary>
         public bool IsBusy => _isTargeting || _isCasting;
 

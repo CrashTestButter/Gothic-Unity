@@ -687,8 +687,8 @@ namespace Gothic.Core.Models.Config
 
         [Tooltip("V1 (VR): Gothic's spell selection - both empty hands above the head + both triggers (1 s) open a " +
                  "carousel of the equipped runes/scrolls (max 8) in front of you. Grip takes a spell, trigger + move " +
-                 "turns it, a trigger click unequips; a rune/scroll held into the empty slot is equipped. 'Spell ring' " +
-                 "Immersion option.")]
+                 "turns it, a trigger click unequips; a rune/scroll held into the empty slot is equipped. 'Favorites " +
+                 "ring' Immersion option (ini spellRing); with EnableRingWeaponSlots also the equipped weapons.")]
         public bool EnableVrSpellRing = true;
 
         [Tooltip("V1: Projectile spells (VISUALFX CAST key with a TARGET trajectory: Firebolt, Fireball, Thunderbolt, " +
@@ -1284,6 +1284,17 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1: A backpack (the hero's, an NPC's loot backpack) collides with the world and vobs only - items " +
                  "(a held potion, a sword, items lying around) pass through it instead of pushing it.")]
         public bool EnableBackpackItemPassThrough = true;
+
+        [Tooltip("V1: The favorites ring (EnableVrSpellRing) also holds the equipped melee weapon and bow/crossbow - at " +
+                 "most 8 spells + 2 weapons. Grip takes the weapon into the hand, a weapon held into the empty slot (or " +
+                 "onto the equipped one of its kind) is equipped, a trigger click unequips.")]
+        public bool EnableRingWeaponSlots = true;
+
+        [Tooltip("V1: The favorites ring (EnableVrSpellRing) also holds up to 3 favorite items (a torch, a key, potions, " +
+                 "food) and the money (G1 ore, G2 gold) - let go at its empty slot to put one in, grabbed out one at " +
+                 "a time (grip held at a stack takes more and more), a trigger click takes one off the ring. Saved in " +
+                 "UNITYSAVE.json.")]
+        public bool EnableRingItemSlots = true;
 
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +

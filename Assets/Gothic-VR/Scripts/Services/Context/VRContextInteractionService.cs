@@ -138,11 +138,11 @@ namespace Gothic.VR.Services.Context
             if (developerConfig.EnableUiGrabBars)
                 AddMarvinGrabBar();
 
-            // DeveloperConfig.EnableVrSpellRing: in the player's space, it moves with him.
+            // DeveloperConfig.EnableVrSpellRing: the favorites ring, in the player's space - it moves with him.
             if (developerConfig.EnableVrSpellRing)
             {
-                var spellRing = new GameObject("_SpellRing").AddComponent<VRSpellRing>();
-                spellRing.transform.SetParent(_playerController.transform, false);
+                var favoritesRing = new GameObject("_FavoritesRing").AddComponent<VRFavoritesRing>();
+                favoritesRing.transform.SetParent(_playerController.transform, false);
             }
 
             // DeveloperConfig.EnableVrPickpocket: purses on the hips of NPCs who can't see the sneaking hero (G1).

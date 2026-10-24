@@ -620,6 +620,7 @@ namespace Gothic.Core.Services.World
                 HeroInventory = heroInventory,
                 HeroProtection = Enumerable.Range(0, ProtectionCount).Select(i => vob.GetProtection(i)).ToArray(),
                 HeroEquippedItems = GetEquippedSymbolNames(heroContainer),
+                HeroFavoriteItems = heroContainer.Props.FavoriteItems.ToList(),
                 GuildAttitudes = _gameStateService.GuildAttitudes != null
                     ? (int[])_gameStateService.GuildAttitudes.Clone()
                     : null
@@ -1042,6 +1043,7 @@ namespace Gothic.Core.Services.World
             // default gear with effects. Replace both with the saved state - no re-applying, the saved protection and
             // attributes already include everything that was worn.
             RestoreEquipment(heroContainer, data.HeroProtection, data.HeroEquippedItems);
+            heroContainer.Props.FavoriteItems = data.HeroFavoriteItems?.ToList() ?? new List<string>();
             Logger.Log($"ApplyHeroRestore: equipped items={heroContainer.Props.EquippedItems.Count}, " +
                        $"protection={string.Join(",", data.HeroProtection ?? Array.Empty<int>())}", LogCat.Loading);
 

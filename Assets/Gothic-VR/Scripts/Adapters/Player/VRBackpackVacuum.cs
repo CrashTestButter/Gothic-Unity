@@ -186,8 +186,10 @@ namespace Gothic.VR.Adapters.Player
 
         private bool IsPullable(HVRGrabbable grabbable)
         {
-            // Held, socketed (holster, backpack slot, loot panel, chest) or part of the backpack itself.
-            if (grabbable.IsBeingHeld || grabbable.IsSocketed || grabbable.transform.IsChildOf(transform))
+            // Held, socketed (holster, backpack slot, loot panel, chest), part of the backpack itself or shown in the
+            // favorites ring (still in the inventory).
+            if (grabbable.IsBeingHeld || grabbable.IsSocketed || grabbable.transform.IsChildOf(transform) ||
+                grabbable.GetComponentInParent<VRFavoritesRing>() != null)
                 return false;
 
             var container = grabbable.GetComponentInParent<VobLoader>()?.Container;

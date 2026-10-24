@@ -19,13 +19,13 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.Player
 {
     /// <summary>
-    /// DeveloperConfig.EnableVrSpellRing: the spell taken out of the ring - an invisible rune riding on one hand (not
+    /// DeveloperConfig.EnableVrSpellRing: the spell taken out of the favorites ring - an invisible rune riding on one hand (not
     /// grabbed, the grip does nothing), cast by that hand (VRRuneCaster.RingHand). The spell stays in the inventory.
     /// - The hand shows the spell's effect while it isn't aiming/charging (then VRRuneCaster shows its own).
     /// - A trigger click of the other, empty hand puts it away. So does grabbing something with the spell hand, being
     ///   knocked out or dying.
     /// </summary>
-    public class VRSpellRingItem : MonoBehaviour
+    public class VRFavoritesRingSpell : MonoBehaviour
     {
         [Inject] private readonly PlayerService _playerService;
         [Inject] private readonly VobService _vobService;
@@ -132,7 +132,7 @@ namespace Gothic.VR.Adapters.Player
                 Destroy(_effect);
             _effect = null;
             _hapticsService.Vibrate(_hand, VrHapticsService.VibrationType.Info);
-            Logger.Log($"[VRSpellRing] {VRSpellRing.GetSpellName(_item)} put away ({reason})", LogCat.VR);
+            Logger.Log($"[FavoritesRing] {VRFavoritesRing.GetSpellName(_item)} put away ({reason})", LogCat.VR);
 
             // Destroys this GameObject with its VRRuneCaster (magic mode off).
             if (_container != null)

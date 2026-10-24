@@ -116,6 +116,10 @@ namespace Gothic.Core.Services.World
         // Restored without re-applying effects, as HeroProtection/HeroAttributes already contain them. Null in older saves.
         public List<string> HeroEquippedItems;
 
+        // DeveloperConfig.EnableRingItemSlots: Daedalus symbol names of the hero's favorite items (VR favorites ring).
+        // Null in older saves.
+        public List<string> HeroFavoriteItems;
+
         // Guild attitude matrix — flat int[] indexed as [guild1 * GuildCount + guild2]
         public int[] GuildAttitudes;
 

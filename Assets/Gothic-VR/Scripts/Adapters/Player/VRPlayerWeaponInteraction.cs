@@ -5,6 +5,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Models.Marvin;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
+using Gothic.Core.Services.Config;
 using Gothic.VR.Models.Vob;
 using Gothic.VR.Services;
 using HurricaneVR.Framework.Core;
@@ -19,6 +20,11 @@ namespace Gothic.VR.Adapters.Player
     {
         [Inject] private readonly VRWeaponService _weaponService;
         [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly ConfigService _configService;
+
+        // DeveloperConfig.EnableRingWeaponSlots: the melee weapon equipped before one was grabbed.
+        private ZenKit.Daedalus.ItemInstance _equippedBeforeGrab;
+        private bool _isEquippedBeforeGrabKept;
 
 
         // FIXME - All of these values will be dynamic in the future. Based on skill level and weapon type.
@@ -95,6 +101,31 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             var equippedItems = heroContainer.Props.EquippedItems;
+
+            // DeveloperConfig.EnableRingWeaponSlots: the held weapon counts as equipped only while held - letting go
+            // gives the equipped one back (the favorites ring shows it). Before, any weapon grabbed and let go left
+            // the hero with no equipped melee weapon at all (Rockefeller's orc hammer was gone after the first grab).
+            if (_configService.Dev.EnableRingWeaponSlots)
+            {
+                if (equip)
+                {
+                    if (!_isEquippedBeforeGrabKept)
+                    {
+                        _equippedBeforeGrab = equippedItems.Find(i => i.MainFlag == itemInstance.MainFlag);
+                        _isEquippedBeforeGrabKept = true;
+                    }
+                }
+                else
+                {
+                    equippedItems.RemoveAll(i => i.MainFlag == itemInstance.MainFlag);
+                    if (_equippedBeforeGrab != null && _equippedBeforeGrab.Index != itemInstance.Index)
+                        equippedItems.Add(_equippedBeforeGrab);
+                    _equippedBeforeGrab = null;
+                    _isEquippedBeforeGrabKept = false;
+                    return;
+                }
+            }
+
             equippedItems.RemoveAll(i => i.MainFlag == itemInstance.MainFlag);
             if (equip)
                 equippedItems.Add(itemInstance);

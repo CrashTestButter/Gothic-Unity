@@ -20,6 +20,8 @@ namespace Gothic.VR
             public const string StabFinish = "stabFinish";
             // 1 = a crossbow is reloaded by pulling its string (default), 0 = by itself.
             public const string CrossbowReload = "crossbowReload";
+            // 1 = the spell ring opens with the gesture (both hands up, both triggers), 0 = off.
+            public const string SpellRing = "spellRing";
         }
         
         public const string IniSectionAccessibility = "GOTHIC_VR_ACCESSIBILITY";

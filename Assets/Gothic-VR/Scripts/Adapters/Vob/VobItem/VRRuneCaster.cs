@@ -95,6 +95,18 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private GameObject _spellVfxGo;
         public bool IsTargetingActive => _isTargeting;
 
+        /// <summary>
+        /// DeveloperConfig.EnableVrSpellRing: a spell taken out of the ring (an invisible rune attached to this hand,
+        /// not grabbed) - this hand alone casts it: its trigger aims/casts, throwable spells are charged and thrown
+        /// with it.
+        /// </summary>
+        public HVRHandSide? RingHand { get; set; }
+
+        /// <summary>
+        /// Aiming, charging or casting - the ring's idle effect in the hand hides meanwhile (VRSpellRingItem).
+        /// </summary>
+        public bool IsBusy => _isTargeting || _isCasting;
+
         // Throwable spells (DeveloperConfig.EnableThrowableSpells) - see vr-ranged-spells-plan.md section 3.
         public bool IsThrowable => _throwCastKey != null;
         private ParticleEffectEmitKeyInstance _throwCastKey;
@@ -156,7 +168,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _throwCastKey = GetThrowableCastKey(_item.Spell);
 
             // DeveloperConfig.EnableThrowRuneOneHand: the throwing hand (grip + trigger) can't grab the rune.
-            if (IsThrowable && _configService.Dev.EnableThrowRuneOneHand &&
+            if (IsThrowable && !RingHand.HasValue && _configService.Dev.EnableThrowRuneOneHand &&
                 TryGetComponent<HVRGrabbable>(out var grabbable) && GetComponent<VRThrowRuneGrabFilter>() == null)
             {
                 gameObject.AddComponent<VRThrowRuneGrabFilter>().Grabbable = grabbable;
@@ -217,7 +229,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_vrPlayerService.VRPlayerInputs.UseWASD)
                 triggered = Keyboard.current[Key.R].wasPressedThisFrame;
             else
-                triggered = HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).JustActivated;
+                triggered = HVRController.GetButtonState(RingHand ?? HVRHandSide.Right, HVRButtons.Trigger)
+                    .JustActivated;
 
             // Transformed: the orb hand's trigger transforms back (VRTransformPuppet) - no second transformation.
             if (_vrTransformService.IsTransformed && IsTransformSpell())
@@ -243,7 +256,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             {
                 // Trigger 1: enter targeting mode — extend rune-hand bags, SFX starts
                 _isTargeting = true;
-                _runeHandSide = (_vrPlayerService.GrabbedItemLeft == gameObject) ? HVRHandSide.Left : HVRHandSide.Right;
+                var isRuneLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
+                _runeHandSide = RingHand ?? (isRuneLeft ? HVRHandSide.Left : HVRHandSide.Right);
                 _vrPlayerService.ActivateSpellTargeting(_runeHandSide, _targetRange);
                 StartInvestSound(_item.Spell);
                 SpawnSpellVfx();
@@ -980,6 +994,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private bool TryGetThrowHand(out HVRHandSide handSide)
         {
+            // A ring spell: the hand holding it charges and throws.
+            if (RingHand.HasValue)
+            {
+                handSide = RingHand.Value;
+                return true;
+            }
+
             var isRuneLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
             var isRuneRight = _vrPlayerService.GrabbedItemRight == gameObject;
             handSide = isRuneLeft ? HVRHandSide.Right : HVRHandSide.Left;
@@ -993,7 +1014,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private void StartThrowCharge(HVRHandSide handSide)
         {
             _throwHandSide = handSide;
-            _runeHandSide = handSide == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left;
+            _runeHandSide = RingHand ?? (handSide == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left);
             _isCasting = true;
             _isThrowCharged = false;
             _manaInvested = 0;

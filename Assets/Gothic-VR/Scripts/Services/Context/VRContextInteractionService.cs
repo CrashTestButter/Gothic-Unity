@@ -137,6 +137,13 @@ namespace Gothic.VR.Services.Context
             _marvinRoot = activeScene.GetComponentInChildren<MarvinRootHandler>(true)!.gameObject;
             if (developerConfig.EnableUiGrabBars)
                 AddMarvinGrabBar();
+
+            // DeveloperConfig.EnableVrSpellRing: in the player's space, it moves with him.
+            if (developerConfig.EnableVrSpellRing)
+            {
+                var spellRing = new GameObject("_SpellRing").AddComponent<VRSpellRing>();
+                spellRing.transform.SetParent(_playerController.transform, false);
+            }
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera

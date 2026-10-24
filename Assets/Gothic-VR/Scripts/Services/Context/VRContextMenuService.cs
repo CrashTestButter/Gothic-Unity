@@ -106,6 +106,17 @@ namespace Gothic.VR.Services.Context
                     VRConstants.IniNames.CrossbowReload, menuStartY + menuDY * nextRow, 1));
                 nextRow++;
             }
+            // DeveloperConfig.EnableVrSpellRing: Gesture (both hands up, both triggers) or Off.
+            if (_configService.Dev.EnableVrSpellRing)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "SPELL_RING", "Spell ring",
+                    "Both hands up + both triggers: equipped spells", menuStartY + menuDY * nextRow));
+                var spellRingChoice = CreateToggleChoice(gameMenu, "SPELL_RING", VRConstants.IniNames.SpellRing,
+                    menuStartY + menuDY * nextRow, 1);
+                spellRingChoice.SetText(0, "Off|Gesture");
+                vrImmersionMenu.Items.Add(spellRingChoice);
+                nextRow++;
+            }
             var restartRow = nextRow;
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
             var backButton = CreateImmersionBackButton(mainMenu);

@@ -680,6 +680,12 @@ namespace Gothic.Core.Models.Config
                  "another line; the last one in the file wins when loading.")]
         public bool EnableIniWriteInSection = true;
 
+        [Tooltip("V1 (VR): Gothic's spell selection - both empty hands above the head + both triggers (1 s) open a " +
+                 "carousel of the equipped runes/scrolls (max 8) in front of you. Grip takes a spell, trigger + move " +
+                 "turns it, a trigger click unequips; a rune/scroll held into the empty slot is equipped. 'Spell ring' " +
+                 "Immersion option.")]
+        public bool EnableVrSpellRing = true;
+
         [Tooltip("V1: Projectile spells (VISUALFX CAST key with a TARGET trajectory: Firebolt, Fireball, Thunderbolt, " +
                  "Icecube, ...) are thrown: hold the rune in one hand, hold trigger to charge, swing + release trigger to " +
                  "throw. Soft homing towards the NPC closest to the throw direction. Other spells stay as they are.")]

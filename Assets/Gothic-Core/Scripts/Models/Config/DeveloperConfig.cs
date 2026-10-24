@@ -1208,6 +1208,13 @@ namespace Gothic.Core.Models.Config
                  "an NPC's back looked silly.")]
         public bool EnableSneakSlowSprint = true;
 
+        [Tooltip("V1: G1 pickpocketing in VR (the engine's steal window; G2 does it in dialogs). Sneaking with the " +
+                 "pickpocket talent, a purse shows on the right hip of humans who can't see you - grip it and their " +
+                 "pockets open as a backpack in that hand. Every item taken can get you caught (the talent value: " +
+                 "50 % trained, 10 % master): the backpack is gone, the victim gets PERC_CATCHTHIEF, witnesses " +
+                 "PERC_ASSESSTHEFT.")]
+        public bool EnableVrPickpocket = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

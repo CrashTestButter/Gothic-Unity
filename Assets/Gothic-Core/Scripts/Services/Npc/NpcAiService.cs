@@ -1295,6 +1295,21 @@ namespace Gothic.Core.Services.Npc
             return notified;
         }
 
+        /// <summary>
+        /// A perception the engine sends to one NPC (PERC_CATCHTHIEF to a pickpocketed victim). A state function
+        /// (ZS_CatchThief) starts as his new state like a passive perception. False if he didn't register it.
+        /// </summary>
+        public bool ExecuteSinglePerception(VmGothicEnums.PerceptionType perception, NpcContainer receiver,
+            NpcInstance victim, NpcInstance other)
+        {
+            if (receiver?.Props == null || !receiver.Props.Perceptions.TryGetValue(perception, out var function) ||
+                function < 0)
+                return false;
+
+            ExecutePassivePerception(perception, function, receiver, victim, other);
+            return true;
+        }
+
         private bool IsFriendlyNonHumanWarner(NpcContainer receiver, NpcInstance warner, NpcInstance threat)
         {
             return warner != null && threat != null && warner.Guild > (int)VmGothicEnums.Guild.GIL_SEPERATOR_HUM &&

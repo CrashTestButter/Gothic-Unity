@@ -299,6 +299,7 @@ MonoBehaviour:
   EnableAiWhirlAround: 1
   EnableSneakBehindGuards: 1
   EnableSneakSlowSprint: 1
+  EnableVrPickpocket: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

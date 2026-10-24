@@ -144,6 +144,13 @@ namespace Gothic.VR.Services.Context
                 var spellRing = new GameObject("_SpellRing").AddComponent<VRSpellRing>();
                 spellRing.transform.SetParent(_playerController.transform, false);
             }
+
+            // DeveloperConfig.EnableVrPickpocket: purses on the hips of NPCs who can't see the sneaking hero (G1).
+            if (developerConfig.EnableVrPickpocket)
+            {
+                var pickpocket = new GameObject("_Pickpocket").AddComponent<VRPickpocket>();
+                pickpocket.transform.SetParent(_playerController.transform, false);
+            }
             ApplyMarvinVisibility();
 
             // PrintScreen() messages in front of the camera

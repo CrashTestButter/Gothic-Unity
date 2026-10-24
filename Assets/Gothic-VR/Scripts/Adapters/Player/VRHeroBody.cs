@@ -117,6 +117,7 @@ namespace Gothic.VR.Adapters.Player
         private float _downStartEyeHeight = -1f;
         private float _deathTime;
         private bool _isDeathMenuOpened;
+        private bool _wasMenuOpenWhileDead;
         private Transform[] _bodyBones;
 
 
@@ -162,6 +163,23 @@ namespace Gothic.VR.Adapters.Player
         private bool UpdateDown(NpcContainer hero, Transform head, float feetY)
         {
             var bodyState = hero.Props.BodyState;
+            // DeveloperConfig.EnableHeroDeath: dead until a save is loaded - after closing the death menu (Esc) the hero
+            // stood up again (body state reset), could walk, took hits and recovered from "knockouts" with 1 HP.
+            if (_configService.Dev.EnableHeroDeath && _downPhase == DownPhase.Dead)
+            {
+                if (bodyState != VmGothicEnums.BodyState.BsDead)
+                {
+                    Logger.LogWarning($"[VRHeroBody] Dead hero's body state was set to {bodyState} - stays dead",
+                        LogCat.VR);
+                    hero.Props.BodyState = bodyState = VmGothicEnums.BodyState.BsDead;
+                }
+
+                var menu = _playerController != null ? _playerController.MenuHandler : null;
+                var isMenuOpen = menu != null && menu.gameObject.activeSelf;
+                if (_wasMenuOpenWhileDead && !isMenuOpen)
+                    _contextInteractionService.LockPlayerInPlace(_configService.Dev.EnableKnockoutTurning);
+                _wasMenuOpenWhileDead = isMenuOpen;
+            }
             var isDown = bodyState is VmGothicEnums.BodyState.BsUnconscious or VmGothicEnums.BodyState.BsDead;
             if (!_configService.Dev.EnableHeroFallCamera || _animator == null || !_animator.IsValid ||
                 _headBone == null || _standingScale <= 0f)
@@ -261,6 +279,7 @@ namespace Gothic.VR.Adapters.Player
             _downBaseCameraOffset = rig != null ? rig.CameraYOffset : 0f;
             _downStartEyeHeight = -1f;
             _isDeathMenuOpened = false;
+            _wasMenuOpenWhileDead = false;
             _bodyBones = null;
             _downPhase = DownPhase.Knockout;
             IsHeroDown = true;

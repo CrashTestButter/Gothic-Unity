@@ -28,6 +28,15 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
                 return;
             }
 
+            // DeveloperConfig.EnableDeadSkipsRoutine: the dead don't go back to their routine (engine: a dead NPC only
+            // runs ZS_Dead) - Ghorri, killed while knocked out, stood up in a T-pose for ZS_StandAround later.
+            if (_configService.Dev.EnableDeadSkipsRoutine && Props.BodyState == VmGothicEnums.BodyState.BsDead)
+            {
+                Logger.Log($"[ContinueRoutine] {NpcGo.name} is dead - no routine", LogCat.Ai);
+                IsFinishedFlag = true;
+                return;
+            }
+
             ai.ClearState(false);
 
             // DeveloperConfig.EnableRoutineHolstersWeapon: back to the routine with the weapon away - after

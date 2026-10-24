@@ -59,7 +59,7 @@ namespace Gothic.Core.Adapters.Npc
             if (spawnHp <= 0 || Properties.BodyState == VmGothicEnums.BodyState.BsDead)
             {
                 Properties.BodyState = VmGothicEnums.BodyState.BsDead;
-                PrefabProps.AnimationSystem.PlayAnimation("S_DEADB");
+                PlayDeadPose();
                 Logger.Log($"[AiHandler] {NpcInstance.GetName(NpcNameSlot.Slot0)}: dead on spawn HP={spawnHp}", LogCat.Npc);
 
                 // NPC died before this session (e.g. killed before save). Run ZS_Dead so Daedalus quest
@@ -633,6 +633,16 @@ namespace Gothic.Core.Adapters.Npc
                 }
 
                 Properties.CurrentAction = new None(new AnimationAction(), NpcData);
+
+                // DeveloperConfig.EnableDeadSkipsRoutine: a state change doesn't stand the dead up - it set BS_STAND
+                // and stopped S_DEADB: the dead hero took hits again (knocked out, back on his feet with 1 HP).
+                if (_configService.Dev.EnableDeadSkipsRoutine && Properties.BodyState == VmGothicEnums.BodyState.BsDead)
+                {
+                    Logger.LogWarning($"[AiHandler] {NpcInstance.GetName(NpcNameSlot.Slot0)}: state cleared while " +
+                                      "dead - stays dead", LogCat.Ai);
+                    return;
+                }
+
                 Properties.BodyState = VmGothicEnums.BodyState.BsStand;
 
                 PrefabProps.AnimationSystem.StopAllAnimations();
@@ -646,11 +656,32 @@ namespace Gothic.Core.Adapters.Npc
         }
 
         /// <summary>
+        /// Lying dead. G1 crawler queen, harpy and meatbug have no S_DEADB, only S_DEAD.
+        /// </summary>
+        private void PlayDeadPose()
+        {
+            if (!PrefabProps.AnimationSystem.PlayAnimation("S_DEADB"))
+                PrefabProps.AnimationSystem.PlayAnimation("S_DEAD");
+        }
+
+        /// <summary>
         /// Fully reset NPC state.
         /// Called after an NPC is re-enabled in the scene.
         /// </summary>
         public void ReEnableNpc()
         {
+            // DeveloperConfig.EnableDeadSkipsRoutine: a corpse stays where it died and lies again - it was moved to its
+            // routine waypoint and started its routine: Lukis and Ghorri stood in the bind pose, legs in the ground.
+            if (_configService.Dev.EnableDeadSkipsRoutine && Properties.BodyState == VmGothicEnums.BodyState.BsDead)
+            {
+                Properties.AnimationQueue.Clear();
+                Properties.CurrentAction = new None(new AnimationAction(), NpcData);
+                PlayDeadPose();
+                Logger.Log($"[AiHandler] {NpcInstance.GetName(NpcNameSlot.Slot0)}: re-enabled dead - lies again",
+                    LogCat.Npc);
+                return;
+            }
+
             // Spawn to initial spawn location
             var currentRoutine = Properties.RoutineCurrent;
             if (currentRoutine != null)

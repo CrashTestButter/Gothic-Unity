@@ -1206,6 +1206,10 @@ namespace Gothic.Core.Models.Config
                  "(shown on his bar) and stood in a T-pose when he was culled in again.")]
         public bool EnableDeathZeroHitPoints = true;
 
+        [Tooltip("V1: A dead NPC doesn't go back to his routine (AI_ContinueRoutine left in his queue) - Ghorri, killed " +
+                 "while knocked out, stood up in a T-pose later.")]
+        public bool EnableDeadSkipsRoutine = true;
+
         [Tooltip("V1: A dropped item (also a missed arrow/bolt lying in the ground) rests on the world but doesn't block " +
                  "the hero or stop arrows - an archer's missed bolts blocked the hero's way and piled up in one spot.")]
         public bool EnableDroppedItemColliderLayer = true;

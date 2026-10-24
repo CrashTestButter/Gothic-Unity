@@ -300,6 +300,7 @@ MonoBehaviour:
   EnableFinishWithStabSound: 1
   EnableVrStabFinish: 1
   EnableDeathZeroHitPoints: 1
+  EnableDeadSkipsRoutine: 1
   EnableDroppedItemColliderLayer: 1
   EnableHeroDeath: 1
   EnableHeroFallCamera: 1

@@ -34,14 +34,17 @@ namespace Gothic.Core.Domain.Meshes
         private const float _minBoxSize = 0.015f;
         private const float _weldPrecision = 1000f;
 
-        public static List<Box> Fit(Vector3[] vertices, int[] triangles)
+        /// <summary>
+        /// keepThinParts: melee weapons keep line-thin parts (a poker's rod, an axe's thin shaft) - they're held there.
+        /// </summary>
+        public static List<Box> Fit(Vector3[] vertices, int[] triangles, bool keepThinParts = false)
         {
             var boxes = new List<Box>();
             if (vertices == null || triangles == null || triangles.Length < 3)
                 return boxes;
 
             foreach (var part in GetParts(vertices, triangles))
-                FitPart(Sample(vertices, triangles, part), 0, boxes);
+                FitPart(Sample(vertices, triangles, part), 0, boxes, keepThinParts);
             return boxes;
         }
 
@@ -113,7 +116,7 @@ namespace Gothic.Core.Domain.Meshes
             return points;
         }
 
-        private static void FitPart(List<Vector3> points, int depth, List<Box> boxes)
+        private static void FitPart(List<Vector3> points, int depth, List<Box> boxes, bool keepThinParts)
         {
             if (points.Count == 0)
                 return;
@@ -133,8 +136,8 @@ namespace Gothic.Core.Domain.Meshes
                 if (left.Count > 0 && right.Count > 0 &&
                     GetVolume(left) + GetVolume(right) < Volume(size) * _splitVolumeRatio)
                 {
-                    FitPart(left, depth + 1, boxes);
-                    FitPart(right, depth + 1, boxes);
+                    FitPart(left, depth + 1, boxes, keepThinParts);
+                    FitPart(right, depth + 1, boxes, keepThinParts);
                     return;
                 }
             }
@@ -142,7 +145,7 @@ namespace Gothic.Core.Domain.Meshes
             // A string: thin in two directions.
             var sorted = new[] { size.x, size.y, size.z };
             System.Array.Sort(sorted);
-            if (sorted[1] < _stringThickness)
+            if (sorted[1] < _stringThickness && !keepThinParts)
                 return;
 
             box.Size = Vector3.Max(size, Vector3.one * _minBoxSize);

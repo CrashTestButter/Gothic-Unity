@@ -845,7 +845,16 @@ namespace Gothic.Core.Domain.Meshes.Builder
         /// </summary>
         private bool TryAddRangedFittedColliders(GameObject rootGo, Mesh mesh)
         {
-            return _builderConfigService.Dev.EnableRangedFittedColliders && mesh != null && MeshName != null &&
+            if (mesh == null || MeshName == null)
+                return false;
+
+            // DeveloperConfig.EnableMeleeFittedColliders: melee weapons (ItMw_*) too - the cached colliders are boxes
+            // along the mesh axes, a slanted cross guard (ItMw_2H_Sword_Light_03) got a box of 28 x 20 cm.
+            if (_builderConfigService.Dev.EnableMeleeFittedColliders &&
+                MeshName.StartsWith("ITMW", System.StringComparison.OrdinalIgnoreCase))
+                return AddFittedColliders(rootGo, mesh, keepThinParts: true);
+
+            return _builderConfigService.Dev.EnableRangedFittedColliders &&
                    MeshName.StartsWith("ITRW", System.StringComparison.OrdinalIgnoreCase) &&
                    (AddFittedColliders(rootGo, mesh) || AddSlicedBoxColliders(rootGo, mesh));
         }
@@ -857,14 +866,14 @@ namespace Gothic.Core.Domain.Meshes.Builder
         /// Oriented boxes along the item's parts (ItemColliderFittingDomain) as convex mesh colliders on the item itself:
         /// child objects would keep their layer when the grabbed item switches to VobItemNoWorldCollision.
         /// </summary>
-        private bool AddFittedColliders(GameObject rootGo, Mesh mesh)
+        private bool AddFittedColliders(GameObject rootGo, Mesh mesh, bool keepThinParts = false)
         {
             if (!mesh.isReadable)
                 return false;
 
             if (!_fittedColliderMeshes.TryGetValue(MeshName, out var boxMeshes))
             {
-                var boxes = ItemColliderFittingDomain.Fit(mesh.vertices, mesh.triangles);
+                var boxes = ItemColliderFittingDomain.Fit(mesh.vertices, mesh.triangles, keepThinParts);
                 boxMeshes = new Mesh[boxes.Count];
                 for (var i = 0; i < boxes.Count; i++)
                     boxMeshes[i] = CreateBoxMesh(boxes[i], $"{MeshName}_FitCollider{i}");

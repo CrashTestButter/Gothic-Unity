@@ -616,6 +616,11 @@ namespace Gothic.Core.Models.Config
                  "grab and hold.")]
         public bool EnableRangedFittedColliders = true;
 
+        [Tooltip("V1: Melee weapons get boxes fitted to their parts too (blade, guard, grip, pommel, axe head - turned " +
+                 "along them) instead of the cached boxes along the mesh axes - a slanted cross guard got a box of " +
+                 "28 x 20 cm, axe and hammer heads boxes full of air. They are the hitboxes of the hero's swings.")]
+        public bool EnableMeleeFittedColliders = true;
+
         [Tooltip("Npc_ClearAIQueue no longer restarts an NPC's running idle animation (engine: only the queue is " +
                  "cleared). Summoned demons flapped their wings every 0.5 s (B_FullStop on each ASSESSPLAYER).")]
         public bool EnableKeepIdleOnClearAiQueue = true;

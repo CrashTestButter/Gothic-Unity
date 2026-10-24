@@ -160,6 +160,7 @@ MonoBehaviour:
   EnableVrCrossbow: 1
   EnableItemColliderFallback: 1
   EnableRangedFittedColliders: 1
+  EnableMeleeFittedColliders: 1
   EnableKeepIdleOnClearAiQueue: 1
   EnableCinemaSkipHint: 1
   EnableEndingReturnsToMenu: 1

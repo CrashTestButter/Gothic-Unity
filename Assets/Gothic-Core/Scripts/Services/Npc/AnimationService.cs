@@ -279,6 +279,30 @@ namespace Gothic.Core.Services.Npc
         }
 
         /// <summary>
+        /// The animation's sound events. DeveloperConfig.EnableFootstepSounds: its ground sounds (*eventSFXGrnd, the
+        /// steps of walk/run loops) too, marked - the ground's material is added when they play (GroundSoundDomain).
+        /// They were skipped: no footsteps at all.
+        /// </summary>
+        private List<IEventSoundEffect> GetSoundEffects(IAnimation anim)
+        {
+            var soundEffects = anim.SoundEffects.Select(i => i.Cache()).ToList();
+            if (!_configService.Dev.EnableFootstepSounds || anim.SoundEffectGroundCount == 0)
+                return soundEffects;
+
+            foreach (var ground in anim.SoundEffectsGround)
+            {
+                soundEffects.Add(new CachedEventSoundEffect
+                {
+                    Frame = ground.Frame,
+                    Name = Gothic.Core.Domain.Audio.GroundSoundDomain.GroundEventPrefix + ground.Name,
+                    Range = ground.Range,
+                    EmptySlot = ground.EmptySlot
+                });
+            }
+            return soundEffects;
+        }
+
+        /// <summary>
         /// Own lists: tracks sharing baked data share the variant's (empty) event lists too.
         /// </summary>
         private static void AddCombineEvents(AnimationTrack track, int frame,
@@ -372,7 +396,7 @@ namespace Gothic.Core.Services.Npc
                 // Cache() turns the native interop objects into plain managed copies once. The event lists are
                 // read-only at runtime, so tracks sharing baked data also share them instead of re-marshalling.
                 EventTags = bakedSource?.EventTags ?? anim.EventTags.Select(i => i.Cache()).ToList(),
-                SoundEffects = bakedSource?.SoundEffects ?? anim.SoundEffects.Select(i => i.Cache()).ToList(),
+                SoundEffects = bakedSource?.SoundEffects ?? GetSoundEffects(anim),
                 ParticleEffects = bakedSource?.ParticleEffects ?? anim.ParticleEffects.Select(i => i.Cache()).ToList(),
                 MorphAnimations = bakedSource?.MorphAnimations ?? anim.MorphAnimations.Select(i => i.Cache()).ToList(),
                 ParticleEffectsStop = bakedSource?.ParticleEffectsStop ??

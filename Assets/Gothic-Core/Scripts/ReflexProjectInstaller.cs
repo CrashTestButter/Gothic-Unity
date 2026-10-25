@@ -118,6 +118,7 @@ namespace Gothic.Core
 
             // Misc
             containerBuilder.AddSingleton(typeof(AudioService));
+            containerBuilder.AddSingleton(typeof(Services.Audio.GroundSoundService));
             containerBuilder.AddSingleton(typeof(VideoService));
             
             // Meshes

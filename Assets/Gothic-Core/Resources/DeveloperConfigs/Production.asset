@@ -350,6 +350,8 @@ MonoBehaviour:
   EnableProfileMenuTextFit: 1
   EnableSneakNeedsTalent: 1
   EnableEnvironmentReverb: 1
+  EnableFootstepSounds: 1
+  EnableGroundTextureGuess: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

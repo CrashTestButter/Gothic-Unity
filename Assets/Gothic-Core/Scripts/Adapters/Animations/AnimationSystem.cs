@@ -51,6 +51,7 @@ namespace Gothic.Core.Adapters.Animations
         [Inject] private readonly VobService _vobService;
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly Services.Audio.GroundSoundService _groundSoundService;
         [Inject] private readonly NpcWaterService _npcWaterService;
         [Inject] private readonly Gothic.Core.Services.Meshes.MeshService _meshService;
         [Inject] private readonly Gothic.Core.Services.Caches.VmCacheService _vmCacheService;
@@ -914,6 +915,19 @@ namespace Gothic.Core.Adapters.Animations
 
             foreach (var sfx in sfxEvents)
             {
+                // DeveloperConfig.EnableFootstepSounds: a step - its sound by the ground below (RUN_EARTH, RUN_STONE),
+                // on top of the other sounds (it mustn't cut a swing or a scream).
+                if (sfx.Name.StartsWith(Domain.Audio.GroundSoundDomain.GroundEventPrefix))
+                {
+                    var stepName = _groundSoundService.GetSoundName(
+                        sfx.Name.Substring(Domain.Audio.GroundSoundDomain.GroundEventPrefix.Length),
+                        transform.position);
+                    var stepClip = _audioService.GetRandomSoundClip(stepName);
+                    if (stepClip != null)
+                        PrefabProps.NpcSound.PlayOneShot(stepClip);
+                    continue;
+                }
+
                 var clip = _audioService.GetRandomSoundClip(sfx.Name);
                 PrefabProps.NpcSound.clip = clip;
                 PrefabProps.NpcSound.maxDistance = sfx.Range.ToMeter();

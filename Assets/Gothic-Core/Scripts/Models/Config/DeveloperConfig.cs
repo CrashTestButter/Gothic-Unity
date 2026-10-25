@@ -1449,6 +1449,16 @@ namespace Gothic.Core.Models.Config
                  "listener (cave, or stone corridor when the walls are near). Gothic's zCZoneReverb isn't read.")]
         public bool EnableEnvironmentReverb = true;
 
+        [Tooltip("V1: Footsteps - the animations' ground sounds (*eventSFXGrnd, walk/run loops of NPCs, monsters and the " +
+                 "hero's body) play with the ground's suffix like the engine (RUN_EARTH, RUN_STONE, RUN_WOOD, " +
+                 "RUN_WATER); the material is guessed (wading, a VOB below, under a ceiling). They were skipped.")]
+        public bool EnableFootstepSounds = true;
+
+        [Tooltip("V1: A step on a texture whose material group is UNDEF (G1's world: 2246 of 2263 materials - the engine " +
+                 "played stone everywhere) guesses the ground from the texture's name: grass/earth/moss = earth, wood/" +
+                 "plank/barrel = wood, sand, metal, stone/rock/wall = stone.")]
+        public bool EnableGroundTextureGuess = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

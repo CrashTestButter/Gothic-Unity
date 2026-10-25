@@ -1478,6 +1478,10 @@ namespace Gothic.Core.Models.Config
                  "monster run / human run (a wolf moved 2.1 m/s).")]
         public bool EnableTransformAbsoluteSpeed = true;
 
+        [Tooltip("V1: Transformed, back on land the monster's speeds are set again - leaving the water restored the " +
+                 "human ones (a meatbug too fast, a shadowbeast too slow).")]
+        public bool EnableTransformLandSpeedKept = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

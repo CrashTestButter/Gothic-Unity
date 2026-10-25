@@ -98,6 +98,9 @@ namespace Gothic.VR.Adapters.Player
         private float _originalMoveSpeed;
         private float _originalRunSpeed;
         private bool _hasSpeedScale;
+        // DeveloperConfig.EnableTransformLandSpeedKept: the monster's speeds, set again after the water changed them.
+        private float _monsterMoveSpeed;
+        private float _monsterRunSpeed;
         private const string _humanRunAnimation = "S_RUNL";
         private const float _waterRayAboveEyes = 1f;
         // DeveloperConfig.EnableTransformAbsoluteSpeed: sprinting as a monster, times its run loop's speed.
@@ -222,6 +225,7 @@ namespace Gothic.VR.Adapters.Player
                 aiHandler.enabled = false;
             _monster.Props.AnimationQueue.Clear();
 
+            KeepMonsterSpeed();
             UpdateAnimation();
             UpdateAttack();
             UpdateTransformBackInput();
@@ -755,13 +759,35 @@ namespace Gothic.VR.Adapters.Player
                 _playerController.RunSpeed = monsterSpeed * _monsterSprintFactor;
                 Logger.Log($"[VRTransform] Speed {monsterSpeed:F2} m/s, sprint {_playerController.RunSpeed:F2} m/s " +
                            $"({run}).", LogCat.VR);
-                return;
             }
+            else
+            {
+                _playerController.MoveSpeed *= factor;
+                _playerController.RunSpeed *= factor;
+                Logger.Log($"[VRTransform] Speed x{factor:F2} ({run}: {monsterSpeed:F2} m/s, human {humanSpeed:F2} " +
+                           "m/s).", LogCat.VR);
+            }
+            _monsterMoveSpeed = _playerController.MoveSpeed;
+            _monsterRunSpeed = _playerController.RunSpeed;
+        }
 
-            _playerController.MoveSpeed *= factor;
-            _playerController.RunSpeed *= factor;
-            Logger.Log($"[VRTransform] Speed x{factor:F2} ({run}: {monsterSpeed:F2} m/s, human {humanSpeed:F2} m/s).",
-                LogCat.VR);
+        /// <summary>
+        /// DeveloperConfig.EnableTransformLandSpeedKept: water sets the player's speeds (swimming, wading) and back on
+        /// land the human ones it saved at the start - a meatbug left the water faster than it should, a shadowbeast
+        /// slower. On land the monster's speeds are set again.
+        /// </summary>
+        private void KeepMonsterSpeed()
+        {
+            if (!_hasSpeedScale || !_configService.Dev.EnableTransformLandSpeedKept || _playerController == null ||
+                IsInWater() || _waterDepth > 0f)
+                return;
+            if (Mathf.Approximately(_playerController.MoveSpeed, _monsterMoveSpeed) &&
+                Mathf.Approximately(_playerController.RunSpeed, _monsterRunSpeed))
+                return;
+
+            _playerController.MoveSpeed = _monsterMoveSpeed;
+            _playerController.RunSpeed = _monsterRunSpeed;
+            Logger.Log($"[VRTransform] Back on land - speed {_monsterMoveSpeed:F2} m/s again.", LogCat.VR);
         }
 
         /// <summary>

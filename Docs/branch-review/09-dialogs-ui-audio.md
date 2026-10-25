@@ -15,6 +15,7 @@
   - [Added 2026-10-22](#added-2026-10-22)
   - [Added 2026-10-23](#added-2026-10-23)
   - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -120,6 +121,12 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 - **Clear key** (`4acb1acb`, `EnableKeyboardClearButton`): `VirtualKeyboard` copies the backspace key at runtime (prefab
   untouched) between it and OK - it empties the text.
 
+### Added 2026-10-26
+
+- **Teacher choices stay complete** (`f8e78a6d`): the chosen choice leaves the list before its function runs
+  (engine) - the function clears the choices and adds "+5"/"+1" again.
+- **Profile menu titles fit** (`ad811d75`): auto-size 16-34 pt.
+
 ## Key commits
 
 `ee4dbc2a` dialog bubble · `c1a4c1ad` free movement · `d109a6aa`/`cd10002c` on top · `bf3703ca` subtitles on death ·
@@ -139,6 +146,7 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 `dbf99c7f` dialog body turn
 
 2026-10-25: `4acb1acb` keyboard Clear key
+2026-10-26: `f8e78a6d` teacher choices · `ad811d75` profile menu text fit
 
 ## Main files
 
@@ -166,6 +174,7 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 2026-10-23: `EnableSfxFromSfxFolder`, `EnableHeroHurtSound`, `EnableSfxNumberedVariants`, `EnableDialogBodyTurn`
 
 2026-10-25: `EnableKeyboardClearButton`
+2026-10-26: `EnableChoiceRemovedBeforeCall`, `EnableProfileMenuTextFit`
 
 ## Review notes
 

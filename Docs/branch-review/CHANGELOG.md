@@ -85,6 +85,8 @@ Link), not on Quest/Pico standalone.
 - A game profile can offer the mod's modes: Mroczne Tajemnice asks easy / normal / hard, saves stay per mode.
 - Every game session writes its own log with the local time on every line (stream chapters, bug reports).
 - The laser is drawn over the virtual keyboard.
+- A teacher's "+5"/"+1" choices both stay after a pick; a torch in a holder lights again when grabbed; long mod
+  titles fit the profile menu.
 - Experience only for your own kills, your summons' and your party's (Mordrag leading you) - not for every death
   anywhere. Immersion option "XP for every death" brings that back as a cheat.
 - Summons that weaken over time (G1) die at 0 hit points instead of standing on.

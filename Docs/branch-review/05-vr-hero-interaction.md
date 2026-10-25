@@ -14,6 +14,7 @@
   - [Added 2026-10-15](#added-2026-10-15)
   - [Added 2026-10-24](#added-2026-10-24)
   - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -88,6 +89,10 @@
   sockets, collected again every 0.5 s - pair by pair (`Physics.IgnoreCollision`; a pair is forgotten once a collider is
   disabled, so it's checked again). The world and vobs still collide, the socket triggers stay.
 
+### Added 2026-10-26
+
+- **Torch holders** (`df649780`): the grip grab's item cast broke grabbing a torch from its holder.
+
 ## Key commits
 
 `7227eb60`/`1e7389ac`/`05dfa9f7`/`434432cd` hero body · `84a84753` equip · `c62882ff` pouches · `567fc20d`/`bdda2d2a`
@@ -103,6 +108,7 @@ food · `f49f47e6`/`b0703e75`/`9edce695` smoking · `ea038cb0` torch · `adc2067
 2026-10-24: `0ca89b3b` slower sprint while sneaking
 
 2026-10-25: `82f127cd` grab at the grip · `878b276f` `6c941ebb` items pass through backpacks
+2026-10-26: `df649780` torch holder grab
 
 ## Main files
 

@@ -147,6 +147,7 @@ namespace Gothic.VR.Interaction.Components
         private bool _isRigPoseKnown;
         private Vector3 _lastRigPosition;
         private Quaternion _lastRigRotation = Quaternion.identity;
+        private Vector3 _rigVelocity;
 
         // Inactive hand: offset of the visual from its rest pose (controller space), blended to 0.
         private Vector3 _inactiveOffsetPosition;
@@ -724,9 +725,10 @@ namespace Gothic.VR.Interaction.Components
 
         private void Drive(Vector3 targetPosition, Quaternion targetRotation, float deltaTime)
         {
-            // Position: the velocity that reaches the target in this step, reached with limited force.
-            var desiredVelocity = Vector3.ClampMagnitude((targetPosition - _rigidbody.position) / deltaTime,
-                _maxSpeed);
+            // Position: the velocity that reaches the target in this step, reached with limited force. Max Speed is
+            // relative to the rig: falling (up to 20 m/s) or a fast dive must not leave the hand behind.
+            var followVelocity = (targetPosition - _rigidbody.position) / deltaTime;
+            var desiredVelocity = _rigVelocity + Vector3.ClampMagnitude(followVelocity - _rigVelocity, _maxSpeed);
             var maxVelocityChange = _maxForce / _rigidbody.mass * deltaTime;
             var velocityChange = Vector3.ClampMagnitude(desiredVelocity - _rigidbody.linearVelocity,
                 maxVelocityChange);
@@ -852,9 +854,13 @@ namespace Gothic.VR.Interaction.Components
             _isTeleportPending = false;
             if (!hasJumped)
             {
+                var deltaTime = Time.deltaTime;
+                _rigVelocity = deltaTime > 0f ? (rigPosition - _lastRigPosition) / deltaTime : Vector3.zero;
                 StoreRigPose(rigPosition, rigRotation);
                 return;
             }
+
+            _rigVelocity = Vector3.zero;
 
             var deltaRotation = rigRotation * Quaternion.Inverse(_lastRigRotation);
             var isItemMoved = MoveHeldItemWithRig(_lastRigPosition, rigPosition, deltaRotation);

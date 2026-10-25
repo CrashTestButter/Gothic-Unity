@@ -1362,6 +1362,10 @@ namespace Gothic.Core.Models.Config
                  "human one, x0.3-x3) - a wolf runs faster than a human, a meatbug slower.")]
         public bool EnableTransformMonsterSpeed = true;
 
+        [Tooltip("V1: A transformation scroll whose script passes a monster without a visual turns into the monster the " +
+                 "spell is named after (SPL_TRF_LURKER -> LURKER) - Mroczne Tajemnice's lurker scroll passes BLACKDRAGON.")]
+        public bool EnableTransformFallbackInstance = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

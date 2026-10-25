@@ -617,8 +617,17 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     var caster = _npcService.GetHeroContainer();
                     if (caster != null && caster.ActiveSpellInfo > 1)
                     {
-                        var isTransformed = _vrTransformService.Transform(caster.ActiveSpellInfo, _runeHandSide);
+                        var monster = caster.ActiveSpellInfo;
+                        var isTransformed = _vrTransformService.Transform(monster, _runeHandSide);
                         caster.ActiveSpellInfo = 0;
+                        // DeveloperConfig.EnableTransformFallbackInstance: the script's monster has no visual - the
+                        // one the spell is named after (SPL_TRF_LURKER -> LURKER).
+                        if (!isTransformed && _configService.Dev.EnableTransformFallbackInstance)
+                        {
+                            var named = _vrTransformService.GetSpellNamedMonster(_item.Spell);
+                            if (named >= 0 && named != monster)
+                                isTransformed = _vrTransformService.Transform(named, _runeHandSide);
+                        }
                         // DeveloperConfig.EnableTransformCancelKeepsScroll: no monster to become (no visual) - the
                         // scroll stays and the mana comes back.
                         if (!isTransformed && _configService.Dev.EnableTransformCancelKeepsScroll)

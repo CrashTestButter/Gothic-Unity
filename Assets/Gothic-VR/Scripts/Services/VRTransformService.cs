@@ -4,12 +4,14 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Adapters.Player;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
+using ZenKit;
 using ZenKit.Daedalus;
 using Logger = Gothic.Core.Logging.Logger;
 
@@ -32,6 +34,9 @@ namespace Gothic.VR.Services
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
+        [Inject] private readonly GameStateService _gameStateService;
+
+        private const string _transformSpellPrefix = "SPL_TRF_";
 
         private VRTransformPuppet _puppet;
         private int _originalGuild;
@@ -97,6 +102,28 @@ namespace Gothic.VR.Services
             Logger.Log($"[VRTransform] Hero transformed into {monster.Instance.GetName(NpcNameSlot.Slot0)} " +
                        $"(guild {_originalGuild} -> {monster.Instance.Guild}).", LogCat.VR);
             return true;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableTransformFallbackInstance: the monster the spell is named after - SPL_TRF_LURKER (the
+        /// spell's id) -> instance LURKER. For a script that passes a monster without a visual (Mroczne Tajemnice's
+        /// lurker scroll passes BLACKDRAGON). -1 if there's none.
+        /// </summary>
+        public int GetSpellNamedMonster(int spellId)
+        {
+            var vm = _gameStateService.GothicVm;
+            if (vm == null || spellId < 0)
+                return -1;
+            for (var i = 0; i < vm.SymbolCount; i++)
+            {
+                var symbol = vm.GetSymbolByIndex(i);
+                if (symbol == null || !symbol.IsConst || symbol.Type != DaedalusDataType.Int ||
+                    !symbol.Name.StartsWith(_transformSpellPrefix) || symbol.GetInt(0) != spellId)
+                    continue;
+                var monster = vm.GetSymbolByName(symbol.Name.Substring(_transformSpellPrefix.Length));
+                return monster != null && monster.Type == DaedalusDataType.Instance ? monster.Index : -1;
+            }
+            return -1;
         }
 
         public void TransformBack()

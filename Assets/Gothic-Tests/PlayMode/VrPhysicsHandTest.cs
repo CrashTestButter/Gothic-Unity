@@ -33,6 +33,7 @@ namespace Gothic.Tests.PlayMode
             }
 
             _created.Clear();
+            Time.captureDeltaTime = 0f;
         }
 
         [UnityTest]
@@ -121,6 +122,67 @@ namespace Gothic.Tests.PlayMode
             yield return WaitFixed(5);
             AssertFollows(rig, 0.01f, "The hand must come back through the wall with the controller.");
             Assert.IsFalse(IsIgnoredByHand(rig, wall), "Collisions with the wall must be back.");
+        }
+
+        [UnityTest]
+        public IEnumerator ClimbStartAndEndDontPop()
+        {
+            var rig = CreateRig(Vector3.zero);
+            CreateBox(new Vector3(0, 1, WallFront + 0.1f), new Vector3(1, 1, 0.2f));
+            yield return WaitFixed(5);
+
+            // Hand resting on the "rung", controller 10 cm inside it.
+            yield return MoveController(rig, new Vector3(0, 1, WallFront + 0.05f), 20);
+            var blocked = rig.Hand.transform.position;
+            Assert.That(Vector3.Distance(blocked, rig.Controller.position), Is.GreaterThan(0.05f));
+
+            // Climbing starts: the body turns off, the visual blends to the controller instead of jumping.
+            // Fixed 100 fps, so that two frames are less than the blend time (0.15 s) on a slow machine as well.
+            Time.captureDeltaTime = 0.01f;
+            rig.IsClimbing = true;
+            yield return null;
+            yield return null;
+            Assert.IsFalse(rig.Hand.Body.gameObject.activeSelf, "The body must be off while climbing.");
+            Assert.That(Vector3.Distance(rig.Hand.transform.position, blocked), Is.LessThan(0.05f),
+                "The visual must not pop to the controller when climbing starts.");
+            yield return new WaitForSeconds(0.3f);
+            Assert.That(Vector3.Distance(rig.Hand.transform.position, rig.Controller.position), Is.LessThan(0.001f),
+                "The visual must reach the controller while climbing.");
+
+            // Climbing ends with the hand moved out of the rung: the body starts at the visual, no pop.
+            rig.Controller.position = new Vector3(0, 1, 0);
+            yield return null;
+            var visual = rig.Hand.transform.position;
+            rig.IsClimbing = false;
+            yield return WaitFixed(1);
+            Assert.IsTrue(rig.Hand.Body.gameObject.activeSelf);
+            Assert.That(Vector3.Distance(rig.Hand.Body.position, visual), Is.LessThan(0.01f),
+                "The body must start where the visual is.");
+            yield return WaitFixed(5);
+            AssertFollows(rig, 0.01f, "The hand must follow the controller after climbing.");
+        }
+
+        [UnityTest]
+        public IEnumerator HandKeepsUpWithFallingRig()
+        {
+            var rig = CreateRig(new Vector3(0, 500, 0));
+            yield return WaitFixed(5);
+
+            // Falling with gravity up to 20 m/s (XriRig's terminal speed), faster than the hand's max. speed
+            // (15 m/s). Moved per frame like the CharacterController, at a fixed 100 fps (headset-like): the
+            // editor's irregular frame times would move the rig in bigger jumps than one physics step can follow.
+            Time.captureDeltaTime = 0.01f;
+            var speed = 0f;
+            for (var frame = 0; frame < 260; frame++)
+            {
+                speed = Mathf.Min(speed + 9.81f * Time.deltaTime, 20f);
+                rig.transform.position += Vector3.down * (speed * Time.deltaTime);
+                yield return null;
+                Assert.That(rig.Hand.Separation, Is.LessThan(0.5f),
+                    $"The hand must not fall behind the rig (frame {frame}, {speed:0.0} m/s).");
+            }
+
+            Assert.That(speed, Is.EqualTo(20f).Within(0.01f));
         }
 
         private static bool IsIgnoredByHand(TestRig rig, Collider other)
@@ -256,7 +318,7 @@ namespace Gothic.Tests.PlayMode
             public CharacterController CharacterController => null;
             public float CameraHeight => 1.6f;
             public bool IsGrounded => true;
-            public bool IsClimbing => false;
+            public bool IsClimbing { get; set; }
             public bool MovementEnabled { get; set; }
             public bool TurnEnabled { get; set; }
             public bool TeleportEnabled { get; set; }

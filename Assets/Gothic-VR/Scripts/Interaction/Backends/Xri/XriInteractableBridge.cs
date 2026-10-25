@@ -24,6 +24,11 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// </summary>
     public class XriInteractableBridge : MonoBehaviour, IVrInteractableBackend
     {
+        [Tooltip("Trigger colliders that count for hovering and grabbing by hand anyway (XRI ignores triggers). " +
+                 "E.g. the backpack's grab volume, which HVR used, as its hull alone is hard to grab.")]
+        [SerializeField]
+        private Collider[] _grabTriggers;
+
         [Inject] private readonly IVrBackend _vrBackend;
 
         private readonly Dictionary<IXRInteractor, VrGrabArgs> _selectArgs = new();
@@ -180,6 +185,16 @@ namespace Gothic.VR.Interaction.Backends.Xri
             }
 
             _colliderBuffer.Clear();
+
+            // Only the near casters of the hands see them (XriGrabberBridge), the far ray ignores triggers.
+            if (_grabTriggers != null)
+            {
+                foreach (var grabTrigger in _grabTriggers)
+                {
+                    if (grabTrigger != null && !_xrInteractable.colliders.Contains(grabTrigger))
+                        _xrInteractable.colliders.Add(grabTrigger);
+                }
+            }
 
             if (_xrInteractable.colliders.Count == 0)
                 Logger.LogWarning($"[XRI] {name} has no colliders. It can't be grabbed or hovered.", LogCat.VR);

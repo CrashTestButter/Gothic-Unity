@@ -69,6 +69,11 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 farCaster.castDistance = VRConstants.DistanceGrabMaxDistance;
                 farCaster.coneCastAngle = VRConstants.DistanceGrabConeAngle;
             }
+
+            // Grab triggers (XriInteractableBridge, e.g. the backpack's grab volume) are hit by the hand. Triggers of
+            // nothing grabbable are hit as well, but don't map to an interactable and are skipped.
+            if (Interactor.nearInteractionCaster is SphereInteractionCaster nearCaster)
+                nearCaster.physicsTriggerInteraction = QueryTriggerInteraction.Collide;
         }
 
         private void Start()

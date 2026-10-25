@@ -2279,6 +2279,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d53defac19fbb474d81910e60e275fd7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Interaction.Backends.Xri.XriInteractableBridge
+  _grabTriggers:
+  - {fileID: 8221808169109762332}
 --- !u!114 &8572402590685869353
 MonoBehaviour:
   m_ObjectHideFlags: 0

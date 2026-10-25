@@ -24,7 +24,7 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 | 5a | Block hand visual (palm + finger block, grip hinge), `VRHandsOnTop` | S | done |
 | 5b | `PhysicsHand` core: rigidbody follow, strength limit, ghost hand, max-distance snap, collision layers, setting | M | done |
 | 5c | Held items follow the physics hand, contact haptics | M | done |
-| 5d | Teleport, Marvin "goto", ladder, swim/dive handling + PlayMode tests | S-M | planned |
+| 5d | Teleport, Marvin "goto", ladder, swim/dive handling + PlayMode tests | S-M | done |
 | 5e | `FingerCurlProvider` (buttons, touches, XR Hands) | S-M | on hold (articulated hands) |
 | 5f | `ProceduralHandPoser` + few authored poses | M-L | on hold (articulated hands) |
 
@@ -35,7 +35,8 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 - [ ] With physical hands on (default), hands stop at walls, chests, doors, tables and mobs; held items stop too;
       a ghost hand shows the real controller pose when separated.
 - [ ] Touching or hitting a surface plays a contact haptic, scaled by impact speed.
-- [ ] Teleport, Marvin "goto", ladders, swimming, dialogs and `KeepPlayerWithin` never leave a hand or held item stuck.
+- [x] Teleport, Marvin "goto", ladders, swimming, dialogs and `KeepPlayerWithin` never leave a hand or held item stuck.
+      (5d; editor + simulator and PlayMode tests, headset playtest pending)
 - [ ] With physical hands off (comfort setting), hands follow the controllers directly (Phase 2 state).
 
 ## 5a - Block hands (visual)
@@ -172,6 +173,49 @@ and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimmin
   produced item speeds of 10-16 m/s on contact, so held-item haptics reported too high speeds in the editor; on a
   headset the target is updated more often than the physics step.
 
+**Where reality deviated (5d, `engine/hvr-replacement-5d`):**
+- All teleports go through `IVrRig.Teleport` (Marvin goto via `MarvinCheatDomain.TeleportToWaypoint`, world start /
+  savegame load via `WorldScene`, loading and menu scenes, `VrLadderExit`), so there's one place to handle. No code
+  moves the rig root directly. `KeepPlayerWithin` (dialogs) and swimming/diving only `CharacterController.Move` the
+  rig in small steps, which the hand follows like walking. Nothing to do there.
+- Rig jumps are detected in `VrPhysicsHand.LateUpdate`, not in `FixedUpdate`: `IVrRig.Teleported`, or a rig
+  turn of more than 10° / move of more than 1 m **per frame**. LateUpdate is after all locomotion and before the next physics step; XRI's
+  VelocityTracking runs before our `FixedUpdate` (interaction manager execution order) and would fling the item at
+  its old pose towards the new hand for one step. On a jump the hand snaps to the controller and the **held item is
+  moved by the rig's delta** (position, rotation, velocities; once per item if both hands hold it), also with the
+  setting off. At low editor frame rates a fast fall (> 1 m per frame) counts as a jump; harmless, the item is moved
+  with the rig and the hand snaps.
+- Overlaps after a jump: `VrCollisionPassThrough` (plain C#) ignores the pairs the hand or item overlaps at the new
+  pose (`OverlapBox` + `ComputePenetration`, layer matrix, pairs already ignored are left alone) and restores each
+  once it no longer penetrates **and** the other collider isn't between the head and the hand/item (`Collider.Raycast`).
+  Instead of being pushed out to the nearest side (possibly behind a wall), they pass through until clear. No item is
+  released for overlapping. Released items get all pairs back at once (they would fall through a floor otherwise).
+- Stuck snap (> 0.5 m for > 0.2 s) uses the same: the blocks are box-cast from 5 cm behind the hand to the
+  controller and what they hit passes through. Fixes the "snaps twice" issue of 5b: the hand can be pulled back
+  through the wall it got stuck behind. The held item is still released (5c behaviour).
+- Ladders: no pop at climb start or end. When the body turns off (climbing, setting off), the visual's offset blends
+  to the controller in 0.15 s (offsets > 0.5 m pop); when it turns on again, the body starts at the visual's pose
+  and passes through what it overlaps (e.g. the rung). Climbing itself still has no physical hands (the
+  `ClimbProvider` moves the rig by the controller). `VrLadderExit`'s floor search ignored nothing but the ladder
+  (`~0`); it now uses the player's collision layers without `Hand` and skips dynamic rigidbodies (hands, items) and
+  the player.
+- Falling: the hand's max. speed (15 m/s) is relative to the rig's velocity now (measured per frame). Falling at the
+  XriRig terminal speed (20 m/s) left both hands behind, they snapped every 0.2 s and dropped the held item as
+  "stuck" (found in the editor, 5b behaviour).
+- Swimming/diving: physical hands need nothing special (the Water layer isn't in the Hand's collision mask, the lake
+  floor stops the hands). `SetGrabbingEnabled(false)` drops held items (XRI ends the selection, as in G1; `XriRig`'s
+  doc comment claimed otherwise). Found and fixed on the way: teleporting out of the water (Marvin goto, savegame
+  load) left the player in swim mode (no gravity, no grabbing) - the old `VRSwimDive` FIXME. Without a water surface
+  within 100 m above, `VRSwimDive.LeaveWater()` switches back to walking (log `[VRSwimDive] Out of the water ...`).
+- World change / savegame load while holding an item: the item is in the world scene and destroyed with it, XRI ends
+  the selection; the hand body lives in the Player scene and only snaps (teleport to the start point).
+- PlayMode tests `VrPhysicsHandTest` (no Gothic installation, no XRI, a test `IVrRig`): stops at a static box and
+  reconnects; hand and held item arrive after a teleport (with a 90° turn); hand teleported into a box passes
+  through and collisions come back once clear; a stuck hand snapped behind a wall comes back through it; climb
+  start/end blend without pops; a rig falling up to 20 m/s doesn't leave the hand behind.
+- Not solved (from 5b/5c): ghost hand hidden inside walls; held sword wedged up to ~30° when hand and sword are both
+  pressed against a wall.
+
 ## 5e - Finger curls (`FingerCurlProvider`) - ON HOLD (needs articulated hands)
 
 Replaces `HVRHandAnimator` + `HVRFingerSettings` + `HVROpenXRFingerCurls`. Block hands use the simple grip hinge
@@ -224,7 +268,7 @@ Budget: ~15 bones × ~20 steps × 1 capsule query = ~300 queries per grab, done 
       (C# + menu + ini). (`VrPhysicsHand`, `VrGhostHand`; see "Where reality deviated (5b)" below.)
 - [x] 5c: attach transform on the physics hand, hand ↔ held item collision ignore, contact haptics.
       (`VrPhysicsHand.CreateAttachPoint`/`SetHeldItem`, `VrPhysicsHandContact`; see "Where reality deviated (5c)".)
-- [ ] 5d: teleport/goto/ladder/swim handling; PlayMode test: physics hand pushed against a static box stops at its
+- [x] 5d: teleport/goto/ladder/swim handling; PlayMode test: physics hand pushed against a static box stops at its
       surface and reconnects when the target moves back; after a rig teleport the hand isn't left behind
       (`Gothic.Tests.PlayMode`).
 - [ ] 5e/5f: re-plan once an articulated hand model exists.

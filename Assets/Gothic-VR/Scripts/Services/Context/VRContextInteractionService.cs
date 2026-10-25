@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core;
 using Gothic.Core.Const;
@@ -12,6 +13,7 @@ using Gothic.Core.Services.Context;
 using Gothic.VR.Adapters.Marvin;
 using Gothic.VR.Adapters.Player;
 using Gothic.VR.Adapters.UI;
+using Gothic.VR.Interaction.Components;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
@@ -50,6 +52,7 @@ namespace Gothic.VR.Services.Context
         private GameObject _marvinRoot;
         private int _keepWithinLastFrame = -1;
         private Vector3 _keepWithinLastPosition;
+        private VrPhysicsHand[] _physicsHands = System.Array.Empty<VrPhysicsHand>();
 
         /// <summary>
         /// The player body of the active VR backend. null before SetupPlayerController().
@@ -60,6 +63,11 @@ namespace Gothic.VR.Services.Context
         /// Gothic side of the player prefab (menu, Gothic inputs). null before SetupPlayerController().
         /// </summary>
         public VRPlayer Player => _player;
+
+        /// <summary>
+        /// Physical hands of the player (Xri backend). Empty for backends with their own hand physics (HVR).
+        /// </summary>
+        public IReadOnlyList<VrPhysicsHand> PhysicsHands => _physicsHands;
 
         public VRContextInteractionService()
         {
@@ -73,6 +81,7 @@ namespace Gothic.VR.Services.Context
             {
                 SetRenderDistance(_configService.Gothic.IniVisualRange);
                 ApplyComfortSettings();
+                ApplyPhysicalHands();
             });
             GlobalEventDispatcher.PlayerPrefUpdated.AddListener(PlayerPrefsUpdated);
             GlobalEventDispatcher.MarvinModeChanged.AddListener(OnMarvinModeChanged);
@@ -136,6 +145,10 @@ namespace Gothic.VR.Services.Context
             _defaultStepOffset = _rig.StepOffset;
             ApplyComfortSettings(true);
 
+            _physicsHands = _player.GetComponentsInChildren<VrPhysicsHand>(true);
+            if (_configService.Gothic != null)
+                ApplyPhysicalHands();
+
             // XRDeviceSimulator
             _vrInput.SetDeviceSimulatorActive(developerConfig.EnableVRDeviceSimulator);
 
@@ -187,6 +200,22 @@ namespace Gothic.VR.Services.Context
                 // Just update everything.
                 ApplyComfortSettings();
             }
+            else if (key == VRConstants.IniNames.PhysicalHands)
+            {
+                ApplyPhysicalHands();
+            }
+        }
+
+        /// <summary>
+        /// Immersion setting "physical hands" from Gothic.ini. Off: hands follow the controllers directly.
+        /// </summary>
+        private void ApplyPhysicalHands()
+        {
+            var isPhysical = _configService.Gothic.GetInt(VRConstants.IniNames.PhysicalHands,
+                VRConstants.PhysicalHandsDefaultValue) != 0;
+
+            foreach (var hand in _physicsHands)
+                hand.IsPhysical = isPhysical;
         }
 
         /// <summary>

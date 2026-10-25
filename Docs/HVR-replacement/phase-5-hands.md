@@ -120,7 +120,10 @@ and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimmin
   late-latched controller pose; a blocked hand stays where the physics left it. `VrBlockHand` is unchanged.
   Rigidbody interpolation is therefore off.
 - Follow: `AddForce(VelocityChange)` towards `(target - pos) / dt`, clamped to 15 m/s; the velocity change per step
-  is limited by `MaxForce / Mass` (200 N / 1 kg) = the strength limit. Rotation the same with 50 rad/s and
+  is limited by `MaxForce / Mass` (200 N / 1 kg) = the strength limit. The limit applies only to catching up on what
+  a contact held back, not to following the controller's own acceleration: the rig and the controller move once per
+  frame, so per 50 Hz step the target moves 0, 1 or 2 frames' worth, and a fully limited hand lagged and stuttered
+  while walking (ghost hand flashing on frame drops). Rotation the same with 50 rad/s and
   2500 rad/s². Fixed center of mass/inertia (finger colliders move). `maxDepenetrationVelocity` 2 m/s.
 - Ghost: unlit transparent copy (`VRBlockHands-Ghost.mat`, URP Unlit) under the controller, shows above 5 cm
   separation, hides below 3 cm. It's occluded by the wall the hand is stuck in (no "see through" yet).

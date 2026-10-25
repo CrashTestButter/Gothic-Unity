@@ -38,7 +38,7 @@ namespace Gothic.VR.Interaction.Components
 
         [Tooltip(
             "Strength limit: max. force in N the hand applies. Pushes items, doors and chest lids, but not NPCs. " +
-            "Also limits the acceleration of the free hand (Max Force / Mass).")]
+            "Following the controller itself isn't limited.")]
         [SerializeField]
         private float _maxForce = 200f;
 
@@ -104,6 +104,7 @@ namespace Gothic.VR.Interaction.Components
         private float _separation;
         private Vector3 _lastTargetPosition;
         private Quaternion _lastTargetRotation = Quaternion.identity;
+        private Vector3 _lastTargetVelocity;
         private Vector3 _lastRigPosition;
         private Quaternion _lastRigRotation = Quaternion.identity;
 
@@ -441,13 +442,21 @@ namespace Gothic.VR.Interaction.Components
 
         private void Drive(Vector3 targetPosition, Quaternion targetRotation, float deltaTime)
         {
-            // Position: the velocity that reaches the target in this step, reached with limited force.
+            // Position: the velocity that reaches the target in this step.
             var desiredVelocity = Vector3.ClampMagnitude((targetPosition - _rigidbody.position) / deltaTime,
                 _maxSpeed);
+
+            // Following the controller costs no strength. Walking and the arm reach the controller once per frame,
+            // not per physics step, so its speed jumps between steps (0, 1 or 2 frames of movement) and a limited
+            // hand would lag and stutter. Only catching up on what a contact held back is limited (= pushing).
+            var targetVelocity = (targetPosition - _lastTargetPosition) / deltaTime;
+            var followChange = targetVelocity - _lastTargetVelocity;
+            _lastTargetVelocity = targetVelocity;
+
             var maxVelocityChange = _maxForce / _rigidbody.mass * deltaTime;
-            var velocityChange = Vector3.ClampMagnitude(desiredVelocity - _rigidbody.linearVelocity,
+            var pushChange = Vector3.ClampMagnitude(desiredVelocity - _rigidbody.linearVelocity - followChange,
                 maxVelocityChange);
-            _rigidbody.AddForce(velocityChange, ForceMode.VelocityChange);
+            _rigidbody.AddForce(followChange + pushChange, ForceMode.VelocityChange);
 
             // Rotation: angular velocity from the quaternion delta.
             var delta = targetRotation * Quaternion.Inverse(_rigidbody.rotation);
@@ -480,6 +489,7 @@ namespace Gothic.VR.Interaction.Components
 
             _lastTargetPosition = targetPosition;
             _lastTargetRotation = targetRotation;
+            _lastTargetVelocity = Vector3.zero;
             StoreRigPose();
         }
 

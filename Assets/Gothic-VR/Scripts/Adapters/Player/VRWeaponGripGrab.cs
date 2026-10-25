@@ -175,7 +175,8 @@ namespace Gothic.VR.Adapters.Player
 
         private static bool IsWeapon(HVRGrabbable grabbable)
         {
-            var item = grabbable.GetComponentInParent<VobLoader>()?.Container?.PropsAs<VobItemProperties2>()?.Instance;
+            // Not every grabbable is an item (a torch in a holder is a fire VOB) - the cast threw and broke its grab.
+            var item = (grabbable.GetComponentInParent<VobLoader>()?.Container?.Props as VobItemProperties2)?.Instance;
             if (item == null)
                 return false;
             var mainFlag = (VmGothicEnums.ItemFlags)item.MainFlag;

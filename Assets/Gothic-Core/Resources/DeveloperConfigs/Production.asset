@@ -345,6 +345,7 @@ MonoBehaviour:
   EnableScriptHitPointsDeath: 1
   EnableKillerXpOnly: 1
   EnableRangedCriticalHits: 1
+  EnableModPercentTalents: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

@@ -1614,7 +1614,7 @@ namespace Gothic.Core.Services.Npc
             {
                 var talentId = vm.GetSymbolByName(isTwoHanded ? "NPC_TALENT_2H" : "NPC_TALENT_1H")?.GetInt(0) ??
                                (isTwoHanded ? 2 : 1);
-                isCritical = weapon != null && _npcHelperService.ExtNpcGetTalentValue(attacker.Instance, talentId) > roll;
+                isCritical = weapon != null && GetG1CriticalChance(attacker, talentId) > roll;
             }
             var multiplier = vm.GetSymbolByName("DAM_CRITICAL_MULTIPLIER")?.GetInt(0) ?? 2;
             var strength = attacker.Vob.GetAttribute((int)NpcAttribute.Strength);
@@ -1670,13 +1670,49 @@ namespace Gothic.Core.Services.Npc
         /// the hit chance, which a VR projectile doesn't need (it physically hit). G2 has no ranged critical hits: its
         /// hitchance[bow/crossbow] is the hit chance, dexterity adds to the damage.
         /// </summary>
+        // DeveloperConfig.EnableModPercentTalents: Mroczne Tajemnice's teachers (B_GiveprocentSkill) keep a weapon's
+        // percent in another talent's value - the one its status menu shows as the critical hit chance.
+        private const string _modPercentSkillFunction = "B_GIVEPROCENTSKILL";
+        private static readonly (string Weapon, string Percent)[] _modPercentTalents =
+        {
+            ("NPC_TALENT_1H", "NPC_TALENT_SNEAK"),
+            ("NPC_TALENT_2H", "NPC_TALENT_REGENERATE"),
+            ("NPC_TALENT_BOW", "NPC_TALENT_FIREMASTER"),
+            ("NPC_TALENT_CROSSBOW", "NPC_TALENT_ACROBAT")
+        };
+
+        /// <summary>
+        /// G1's critical hit chance: the weapon talent's value. DeveloperConfig.EnableModPercentTalents: with Mroczne
+        /// Tajemnice's percent system the talent its teachers raise counts too (the higher one) - a hero trained by
+        /// Cavalorn had his bow percent in NPC_TALENT_FIREMASTER and never hit critically.
+        /// </summary>
+        private int GetG1CriticalChance(NpcContainer npc, int talentId)
+        {
+            var chance = _npcHelperService.ExtNpcGetTalentValue(npc.Instance, talentId);
+            var vm = _gameStateService.GothicVm;
+            if (!_configService.Dev.EnableModPercentTalents || vm?.GetSymbolByName(_modPercentSkillFunction) == null)
+                return chance;
+
+            foreach (var (weapon, percent) in _modPercentTalents)
+            {
+                if (vm.GetSymbolByName(weapon)?.GetInt(0) != talentId)
+                    continue;
+                var percentTalent = vm.GetSymbolByName(percent);
+                if (percentTalent != null)
+                    chance = Mathf.Max(chance,
+                        _npcHelperService.ExtNpcGetTalentValue(npc.Instance, percentTalent.GetInt(0)));
+                break;
+            }
+            return chance;
+        }
+
         private int ApplyRangedCriticalHit(NpcContainer shooter, ItemInstance weapon, int damage)
         {
             var vm = _gameStateService.GothicVm;
             var isCrossbow = ((VmGothicEnums.ItemFlags)weapon.Flags & VmGothicEnums.ItemFlags.ItemCrossbow) != 0;
             var talentId = vm.GetSymbolByName(isCrossbow ? "NPC_TALENT_CROSSBOW" : "NPC_TALENT_BOW")?.GetInt(0) ??
                            (isCrossbow ? 4 : 3);
-            var chance = _npcHelperService.ExtNpcGetTalentValue(shooter.Instance, talentId);
+            var chance = GetG1CriticalChance(shooter, talentId);
             var roll = Random.Range(0, 100);
             if (chance <= roll)
                 return damage;

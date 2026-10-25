@@ -1426,6 +1426,12 @@ namespace Gothic.Core.Models.Config
                  "the damage is multiplied by DAM_CRITICAL_MULTIPLIER. G2 has none (its hit chance is the talent).")]
         public bool EnableRangedCriticalHits = true;
 
+        [Tooltip("V1 (Mroczne Tajemnice): critical hits count the weapon percent its teachers raise (B_GiveprocentSkill " +
+                 "keeps 1H/2H/bow/crossbow in the SNEAK/REGENERATE/FIREMASTER/ACROBAT values - what its status menu " +
+                 "shows as the critical hit chance); the higher of that and the weapon talent's value. In the engine " +
+                 "only the weapon talent counted - trained heroes never hit critically.")]
+        public bool EnableModPercentTalents = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

@@ -56,6 +56,12 @@ namespace Gothic.VR.Interaction.Backends.Xri
             Interactor.selectEntered.AddListener(OnSelectEntered);
             Interactor.selectExited.AddListener(OnSelectExited);
             _isSubscribed = true;
+
+            if (Interactor.farInteractionCaster is CurveInteractionCaster farCaster)
+            {
+                farCaster.castDistance = VRConstants.DistanceGrabMaxDistance;
+                farCaster.coneCastAngle = VRConstants.DistanceGrabConeAngle;
+            }
         }
 
         private void OnDestroy()

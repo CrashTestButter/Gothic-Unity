@@ -13,8 +13,9 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// per hand, GothicGrabInteractable + XriInteractableBridge on oCItem), using mobs/NPCs and the socket core
     /// (VrSocketSlot + XriSocketBridge, "VR Socket Slot.prefab"), the backpack ("BackPack XRI.prefab") on the
     /// shoulder and the hip/shoulder holsters (VrBodyAnchor "Shoulders"/"Waist" on the rig), chest slots
-    /// (VrChestSlots, lid opened by hand: VrHinge), NPC loot slots and doors (VrHinge).
-    /// Missing: ladders (4c) and hands (5).
+    /// (VrChestSlots, lid opened by hand: VrHinge), NPC loot slots, doors (VrHinge) and ladders (ClimbProvider
+    /// on the rig, ClimbInteractable + VrLadderExit on oCMobLadder).
+    /// Missing: hands (5).
     /// </summary>
     public class XriBackend : IVrBackend
     {
@@ -25,8 +26,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         {
             Logger.LogWarning("XRI backend is work in progress: rig, locomotion, input, haptics, UI laser pointers, " +
                               "screen fades, the XR Interaction Simulator, grabbing (items, mobs, NPCs), the " +
-                              "backpack, holsters, chest slots (lid opens by using it) and NPC loot work. " +
-                              "Physical doors/chest lids/ladders (4) and hands (5) are missing.", LogCat.VR);
+                              "backpack, holsters, chest slots, doors, chest lids, ladders and NPC loot work. " +
+                              "Hands (5) are missing.", LogCat.VR);
 
             containerBuilder.AddSingleton(typeof(XriInput), typeof(IVrInput), typeof(XriInput));
             containerBuilder.AddSingleton(typeof(XriHaptics), typeof(IVrHaptics));

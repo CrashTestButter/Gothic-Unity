@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Climbing;
 using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Interaction.Backends.Xri
@@ -94,6 +95,11 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
             // Gothic meshes and their colliders are created at runtime, after XRI collected the colliders in Awake.
             CollectColliders();
+
+            // The climb range (ClimbInteractable.maxInteractionDistance) is measured to the ladder's body.
+            if (_xrInteractable is ClimbInteractable)
+                _xrInteractable.getDistanceOverride = GetDistanceToBounds;
+
             _xrInteractable.enabled = true;
         }
 
@@ -177,6 +183,30 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
             if (_xrInteractable.colliders.Count == 0)
                 Logger.LogWarning($"[XRI] {name} has no colliders. It can't be grabbed or hovered.", LogCat.VR);
+        }
+
+        /// <summary>
+        /// Distance to the colliders' bounds. XRI's own modes measure to the collider's transform (the ladder's base)
+        /// or need Collider.ClosestPoint, which Gothic's concave mesh colliders don't support.
+        /// </summary>
+        private DistanceInfo GetDistanceToBounds(IXRInteractable interactable, Vector3 position)
+        {
+            var result = new DistanceInfo { distanceSqr = float.MaxValue, point = position };
+            foreach (var itemCollider in interactable.colliders)
+            {
+                if (itemCollider == null || !itemCollider.enabled)
+                    continue;
+
+                var distanceSqr = itemCollider.bounds.SqrDistance(position);
+                if (distanceSqr >= result.distanceSqr)
+                    continue;
+
+                result.distanceSqr = distanceSqr;
+                result.point = itemCollider.bounds.ClosestPoint(position);
+                result.collider = itemCollider;
+            }
+
+            return result;
         }
 
         private VrGrabArgs CreateSelectArgs(IXRInteractor interactor)

@@ -15,7 +15,8 @@ on `VrHinge` (replaces the interim `VrChestLidToggle`), **4c** ladders + `KeepPl
 - [x] Locked doors don't move; lock picking unlocks them (`VRContainerDoorPickingInteraction`). (4a: `Lock()` holds the
       leaf at 0° and a hand can't pull it open; the picking script is unchanged. Unlock + push: see status below.)
 - [x] Chest lids open 0-110°. The first open spawns the content (Phase 3); closing hides the slots; lock picking works.
-- [ ] Ladders can be climbed hand over hand. `IVrRig.IsClimbing` is true while climbing (used by `KeepPlayerWithin`).
+- [x] Ladders can be climbed hand over hand. `IVrRig.IsClimbing` is true while climbing (used by `KeepPlayerWithin`).
+      (4c: `ClimbInteractable` + `ClimbProvider`; stepping off at the top by `VrLadderExit`.)
 
 ## Behaviour spec (what we use from `HVRPhysicsDoor` today)
 
@@ -82,7 +83,7 @@ movement onto the hinge plane, clamp to the limits). (4a: this is what `VrHinge`
 
 - [x] `VrHinge` (+ `IVrHinge` implementation). (4a: `Interaction/Components/VrHinge.cs`, kinematic angle solver, no
       joint. 4b moved `Opened`/`Closed` onto `IVrHinge`; `HvrHingeBridge` raises them from `HVRPhysicsDoor.Opened/Closed`.)
-- [ ] `VrLadderExit` (4c).
+- [x] `VrLadderExit` (4c: `Interaction/Components/VrLadderExit.cs`, see status after 4c).
 - [x] `VRVobContainerPhysicsChest` → `VrChestSlots` (logic) + `VrHinge` (lid); delete the subclassing on the Xri path.
       (3c: `VrChestSlots` exists and has `Open()`/`Close()`; `HvrPhysicsChest` is only the HVR lid. On Xri the lid is
       the interim `VrChestLidToggle` (use = swing open/closed, kinematic, `IVrHinge`) - replace it with `VrHinge`.
@@ -91,8 +92,9 @@ movement onto the hinge plane, clamp to the limits). (4a: this is what `VrHinge`
 - [ ] **Prefabs (UnityMCP):** `oCMobDoor.prefab` (VrHinge + grab interactable + bridge) (4a done: the VR prefab's door
       leaf got `VrHinge`, `GothicGrabInteractable` (disabled, Kinematic movement, tracking off, no unparenting) and
       `XriInteractableBridge`; `HvrHingeBridge` now switches `HVRPhysicsDoor` off on other
-      backends), `oCMobContainer.prefab` (lid, 4b: done, see below), `oCMobLadder.prefab` (ClimbInteractable + bridge, 4c).
-- [ ] `VRContextInteractionService.KeepPlayerWithin` uses `IVrRig.IsClimbing`; verify with a dialog at a ladder.
+      backends), `oCMobContainer.prefab` (lid, 4b: done, see below), `oCMobLadder.prefab` (ClimbInteractable + bridge, 4c: done, see below).
+- [x] `VRContextInteractionService.KeepPlayerWithin` uses `IVrRig.IsClimbing` (it already did since Phase 0/1; now `XriRig.IsClimbing`
+      is real). Not verified with a dialog at a ladder.
 
 ## Test plan
 
@@ -155,10 +157,54 @@ Xri + simulator, scripted hand (`TrackedPoseDriver` of the controller disabled, 
 - Known differences to the interim toggle: the lid has to be pulled by hand (use = grab no longer opens it by a click);
   the lid has no gravity (stays where it's let go, closes softly only below 5°).
 
+## HVR ladders today (behaviour only)
+
+`oCMobLadder.prefab` has an `HVRGrabbable` + `HVRClimbable` on the ladder's collider (one mesh collider along the whole
+ladder, the hand can grab anywhere on it). A hand that holds a climbable makes `IsClimbing` true; the player controller
+then moves the rig by the opposite of the hands' movement (both hands: summed, clamped to the faster hand) through the
+CharacterController, and teleporting is off while climbing. Gravity does not pull meanwhile; letting go falls. There is
+no auto-mantle: at the top the player lets go and walks (or is pushed) onto the floor by hand. Not replayed on Hvr again.
+
+## Status after 4c
+
+Xri + simulator, scripted hand (the Near-Far interactor's transform moved, `SelectEnter`/`SelectExit` via the interaction
+manager), G1 `LADDER_4.ASC` at (34.7, 60.3, 323.1), 4.9 m, editor at a few fps:
+- **Rig:** `ClimbProvider` next to the other providers on the rig's "Locomotion" object, wired to `XriRig._climbProvider`
+  (it forces gravity off through the `GravityProvider` lock while a hand holds a `ClimbInteractable`).
+  `XriRig.IsClimbing` = the provider has a climb anchor. `providersToDisable` stays empty: `XriRig` itself switches the
+  move and jump providers off while climbing and restores what the game set (`MovementEnabled`/`CanJump` are stored, so
+  a dialog that disables movement is not undone by the end of a climb).
+- **Prefab:** `BIP01 LADDER` (the one collider along the ladder) got `ClimbInteractable` (disabled, multiple selection,
+  range 0.15 m), `XriInteractableBridge` (enables it at `Start`; hover label/brightness through `VRFocus` unchanged) and
+  `VrLadderExit`. `ClimbInteractable` demands a `Rigidbody` (kinematic, no gravity); for `HVRGrabbable` next to it that
+  is the same as before (it already set itself `Stationary` without a body).
+- **Distance:** XRI measures the climb range to the collider's transform (the ladder's base) or needs
+  `Collider.ClosestPoint` (not supported by concave mesh colliders). `XriInteractableBridge` therefore sets
+  `getDistanceOverride` to the distance to the collider's bounds for `ClimbInteractable` (bounds of a vertical ladder are
+  tight enough).
+- **`VrLadderExit`** (backend-neutral, inactive on Hvr): counts the hands on the ladder (`VrInteractable.Grabbed/Released`).
+  When the head is 0.15 m above the highest point of the ladder's colliders, it looks for a floor 0.5 m, then 0.8 m in
+  front of the head (ray down, normal up, within 0.5 m of the top edge) with room for the CharacterController (capsule
+  overlap against the player's colliding layers). Found: the hands let go and `IVrRig.Teleport` puts the player there
+  looking the same way; not found: stays on the ladder, a one-time warning, retry every 0.5 s. There is no
+  thumbstick-forward condition: `IVrInput` has no stick axis, and the head rising over the edge is the signal.
+- Hover on the ladder with the hand at its surface works. Grab at 1.2 m, pulled the hand down relative to the rig in
+  steps of 0.4-1.2 m: the rig follows 1:1 and is not pulled down meanwhile (gravity lock), `IsClimbing` true, move/jump
+  providers off. Released at 62.1 and at 63.0 m: `IsClimbing` false, falls with gravity (63.0 → 60.2 m within two
+  frames), providers restored.
+- At the top (test platform at the ladder's top edge, created at runtime): head over the edge → the player stands on it
+  0.9 m further, `IsClimbing` false, grounded, move provider back on.
+- Not tested: a real hand-over-hand climb with two hands (one hand), climbing down, the Hvr ladder (not replayed), a
+  headset, thumbstick/teleport input while climbing (`TeleportEnabled` isn't touched; a teleport from code lets go of
+  the ladder first (review fix: `XriRig.ReleaseClimb()`, otherwise the ClimbProvider pulls the rig back), untested), the exit in the real world: the two ladders around the start had no adjacent floor at the top edge (they
+  belong to a different structure), so the exit rule was only run against a platform.
+- Known differences to HVR: the player steps onto the top floor automatically; the climb sticks to the hand position and
+  not to the CharacterController's collision (XRI's body transformer still stops at walls).
+
 ## Risks
 
 | Risk | Mitigation |
 |------|-----------|
 | VelocityTracking + HingeJoint jitter | Try kinematic angle solving (see above) before adding tuning knobs. |
 | The player's CharacterController pushes doors | Put door leaves on a layer the CharacterController doesn't push against, or make the leaf kinematic while not held. |
-| Ladder dismount feels worse than HVR | Playtest HVR first and record the expected behaviour in the PR. |
+| Ladder dismount feels worse than HVR | HVR has no mantle; ours steps off only with a floor and room (see status after 4c). |

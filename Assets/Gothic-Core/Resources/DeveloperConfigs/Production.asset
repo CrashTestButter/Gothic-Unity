@@ -349,6 +349,7 @@ MonoBehaviour:
   EnableChoiceRemovedBeforeCall: 1
   EnableProfileMenuTextFit: 1
   EnableSneakNeedsTalent: 1
+  EnableEnvironmentReverb: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

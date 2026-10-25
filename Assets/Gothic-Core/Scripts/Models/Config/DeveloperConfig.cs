@@ -1445,6 +1445,10 @@ namespace Gothic.Core.Models.Config
                  "Npc::canSneak) - without it the hero just walks: guards turn to him, NPCs notice him coming.")]
         public bool EnableSneakNeedsTalent = true;
 
+        [Tooltip("V1: Sounds echo in mines, caves and temples - under a ceiling of the world mesh a reverb zone at the " +
+                 "listener (cave, or stone corridor when the walls are near). Gothic's zCZoneReverb isn't read.")]
+        public bool EnableEnvironmentReverb = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

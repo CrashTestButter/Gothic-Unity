@@ -46,6 +46,12 @@ namespace Gothic.Core.Manager
             GlobalEventDispatcher.MainMenuSceneLoaded.AddListener(OnMainMenuLoaded);
             GlobalEventDispatcher.LoadingSceneLoaded.AddListener(OnLoadingSceneLoaded);
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(_musicDomain.OnWorldLoaded);
+            // DeveloperConfig.EnableEnvironmentReverb: echo in mines, caves and temples - one per world scene.
+            GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>
+            {
+                if (_configService.Dev.EnableEnvironmentReverb)
+                    new GameObject("_EnvironmentReverb").AddComponent<Gothic.Core.Adapters.Audio.EnvironmentReverb>();
+            });
 
             GlobalEventDispatcher.MusicZoneEntered.AddListener(_musicDomain.MusicZoneEntered);
             GlobalEventDispatcher.MusicZoneExited.AddListener(_musicDomain.MusicZoneExited);

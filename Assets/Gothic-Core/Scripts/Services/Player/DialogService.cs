@@ -692,6 +692,16 @@ namespace Gothic.Core.Manager
             _gameStateService.Dialogs.IsChoosing = false;
             _gameStateService.Dialogs.ExitInfo = null;
 
+            // DeveloperConfig.EnableChoiceRemovedBeforeCall: like the engine the chosen choice leaves the list before
+            // its function runs - a teacher's "+5"/"+1" function clears the choices and adds both again; removing the
+            // chosen one afterwards took the new "+5" away and only "+1" was left.
+            if (_configService.Dev.EnableChoiceRemovedBeforeCall)
+            {
+                var chosen = _gameStateService.Dialogs.CurrentOptions.FirstOrDefault(o => o.Function == information);
+                if (chosen != null)
+                    _gameStateService.Dialogs.CurrentOptions.Remove(chosen);
+            }
+
             // We always need to set "self" before executing any Daedalus function.
             _gameStateService.GothicVm.GlobalSelf = npcContainer.Instance;
             _gameStateService.GothicVm.GlobalOther = _gameStateService.GothicVm.GlobalHero;

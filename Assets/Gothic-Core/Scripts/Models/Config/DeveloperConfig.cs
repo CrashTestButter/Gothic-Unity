@@ -1432,6 +1432,11 @@ namespace Gothic.Core.Models.Config
                  "only the weapon talent counted - trained heroes never hit critically.")]
         public bool EnableModPercentTalents = true;
 
+        [Tooltip("V1: A teacher's choices stay complete - like the engine the chosen choice leaves the list before its " +
+                 "function runs; the function clears the choices and adds \"+5\"/\"+1\" again, removing the chosen one " +
+                 "afterwards took the new \"+5\" away.")]
+        public bool EnableChoiceRemovedBeforeCall = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

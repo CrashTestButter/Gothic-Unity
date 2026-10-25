@@ -1412,6 +1412,11 @@ namespace Gothic.Core.Models.Config
                  "the transformation's lightning trails were 0.2 mm (2 cm x 1 cm particles).")]
         public bool EnablePfxTrailAbsoluteWidth = true;
 
+        [Tooltip("V1: A script taking an NPC's last hit points (Npc_ChangeAttribute) kills him like the engine - G1 " +
+                 "summons lose 1 HP every few seconds and stood on at 0 until hit once more. With the scripts' other as " +
+                 "the attacker it counts as his (death or Ranged knockout); a summon weakening by itself gives no XP.")]
+        public bool EnableScriptHitPointsDeath = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

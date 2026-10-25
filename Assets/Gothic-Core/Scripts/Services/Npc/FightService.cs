@@ -53,6 +53,7 @@ namespace Gothic.Core.Services.Npc
             GlobalEventDispatcher.SpellSpreadHit.AddListener((caster, pos, damage) => ApplySpreadHit(caster, pos, damage, null));
             GlobalEventDispatcher.FallDamage.AddListener(OnFallDamage);
             GlobalEventDispatcher.CheatKill.AddListener(OnCheatKill);
+            GlobalEventDispatcher.ScriptHitPointsDepleted.AddListener(OnScriptHitPointsDepleted);
             GlobalEventDispatcher.RangedHit.AddListener(OnRangedHit);
             GlobalEventDispatcher.FightFinishingMove.AddListener(OnFinishingMove);
             GlobalEventDispatcher.HeroMeleeSwing.AddListener(OnHeroMeleeSwing);
@@ -334,6 +335,34 @@ namespace Gothic.Core.Services.Npc
             npc.Props.BodyState = VmGothicEnums.BodyState.BsDead;
             OnDyingChangeAnimation(npc);
             OnNpcDied(npc, npc);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableScriptHitPointsDeath: a script took the NPC's last hit points (OpenGothic
+        /// Npc::changeAttribute -> checkHealth). With the scripts' `other` as the attacker (B_MagicHurtNpc of a zapped
+        /// victim: the caster) it's handled like script damage (death, or a knockout with the Ranged knockout option);
+        /// an NPC weakening by itself (G1 summons in ZS_MM_SummonedByPC_Loop) just dies - nobody gets experience.
+        /// </summary>
+        private void OnScriptHitPointsDepleted(NpcContainer victim)
+        {
+            // Only an NPC standing in the world: the scripts' startup kills NPCs that aren't built yet (corpses) - they
+            // spawn dead by their hit points; dying them here threw in the middle of the VM call and the loading hung.
+            if (victim?.Props == null || victim.Go == null || victim.PrefabProps?.AnimationSystem == null ||
+                NpcHelperService.IsDown(victim) || victim.PrefabProps.IsHero())
+                return;
+
+            var other = (_gameStateService.GothicVm?.GlobalOther as NpcInstance)?.GetUserData();
+            if (other != null && other != victim && victim.SummonedBy == null)
+            {
+                OnScriptDamageDepleted(victim, other);
+                return;
+            }
+
+            Logger.Log($"[FightService] {victim.Instance.GetName(NpcNameSlot.Slot0)} lost its last hit points by " +
+                       "script - dies", LogCat.Fight);
+            victim.Props.BodyState = VmGothicEnums.BodyState.BsDead;
+            OnDyingChangeAnimation(victim);
+            OnNpcDied(victim, victim);
         }
 
         private bool IsHeroInGodMode(NpcContainer npc)

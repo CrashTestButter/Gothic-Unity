@@ -372,6 +372,12 @@ namespace Gothic.Core.Services.Npc
             }
 
             SetAttribute(container, (NpcAttribute)attributeId, newValue);
+
+            // DeveloperConfig.EnableScriptHitPointsDeath: like the engine a script taking the last hit points kills
+            // (G1 summons lose 1 HP every few seconds in ZS_MM_SummonedByPC_Loop - at 0 they stood on).
+            if (_configService.Dev.EnableScriptHitPointsDeath && attributeId == (int)NpcAttribute.HitPoints &&
+                value < 0 && newValue <= 0)
+                GlobalEventDispatcher.ScriptHitPointsDepleted.Invoke(container);
         }
 
         /// <summary>

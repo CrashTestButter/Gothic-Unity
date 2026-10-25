@@ -142,6 +142,8 @@ namespace Gothic.Core
         public static readonly UnityEvent<NpcContainer, int> FallDamage = new();
         // Marvin's "kill" (DeveloperConfig.EnableMarvinKill): the NPC dies at once, no killer (no experience).
         public static readonly UnityEvent<NpcContainer> CheatKill = new();
+        // DeveloperConfig.EnableScriptHitPointsDeath: a script (Npc_ChangeAttribute) took an NPC's last hit points.
+        public static readonly UnityEvent<NpcContainer> ScriptHitPointsDepleted = new();
 
         /// <summary>
         /// Arrow/bolt hit (VR crossbow/bow projectiles).

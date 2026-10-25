@@ -118,7 +118,12 @@ and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimmin
   *current controller pose + what the last physics step blocked* (`body - lastTarget`). A free hand therefore has no
   lag (fixed step is 50 Hz, interpolation would trail by up to 2 frames while walking) and still gets the
   late-latched controller pose; a blocked hand stays where the physics left it. `VrBlockHand` is unchanged.
-  Rigidbody interpolation is therefore off.
+  Rigidbody interpolation is therefore off. Once the hand is blocked (offset > `BlockedDistance`, 5 mm, blended
+  below), the visual shows the physics pose only: with the controller delta added, the frames between two 50 Hz steps
+  pushed the hand a few mm into the wall and the next step put it back (jitter while pressing against a wall). That
+  pose is the **interpolated** body transform (rigidbody interpolation on, one step behind), so sliding along a wall
+  doesn't step at 50 Hz; the free hand still uses `Rigidbody.position` (no lag). HVR instead sets the fixed timestep
+  to the headset refresh rate (`HVRTimeManager`), which costs physics time for the whole world.
 - Follow: `AddForce(VelocityChange)` towards `(target - pos) / dt`, clamped to 15 m/s; the velocity change per step
   is limited by `MaxForce / Mass` (200 N / 1 kg) = the strength limit. The limit applies only to catching up on what
   a contact held back, not to following the controller's own acceleration: the rig and the controller move once per

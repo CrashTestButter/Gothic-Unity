@@ -52,6 +52,11 @@ namespace Gothic.VR.Interaction.Components
         [SerializeField]
         private float _maxDepenetrationSpeed = 2f;
 
+        [Tooltip("Distance in m between physical hand and controller from which the visual shows the physics pose " +
+                 "only. Below, it blends towards the controller pose (no lag while the hand is free).")]
+        [SerializeField]
+        private float _blockedDistance = 0.005f;
+
         [Header("Ghost hand")]
         [Tooltip("Distance in m between physical hand and controller above which the ghost hand shows.")]
         [SerializeField]
@@ -286,12 +291,18 @@ namespace Gothic.VR.Interaction.Components
             if (!_isActive)
                 return;
 
-            // The visual = the current controller pose plus what the last physics step blocked. Free hands therefore
-            // have no lag, blocked hands stay where the physics left them.
+            // Free hand: the current controller pose plus what the last physics step blocked, so there is no lag.
+            // Blocked hand: the interpolated physics pose. Otherwise the controller's movement since the last physics
+            // step pushes the visual a few mm into the wall until the next step puts it back (jitter at 50 Hz).
+            // Interpolated (one physics step behind), so sliding along a wall doesn't step at 50 Hz either.
             GetTargetPose(out var targetPosition, out var targetRotation);
             var positionOffset = _rigidbody.position - _lastTargetPosition;
             var rotationOffset = _rigidbody.rotation * Quaternion.Inverse(_lastTargetRotation);
-            transform.SetPositionAndRotation(targetPosition + positionOffset, rotationOffset * targetRotation);
+            var blocked = _blockedDistance > 0f ? Mathf.Clamp01(positionOffset.magnitude / _blockedDistance) : 1f;
+            _body.transform.GetPositionAndRotation(out var bodyPosition, out var bodyRotation);
+            transform.SetPositionAndRotation(
+                Vector3.Lerp(targetPosition + positionOffset, bodyPosition, blocked),
+                Quaternion.Slerp(rotationOffset * targetRotation, bodyRotation, blocked));
 
             UpdateGhost();
         }
@@ -360,7 +371,9 @@ namespace Gothic.VR.Interaction.Components
             _rigidbody.useGravity = false;
             _rigidbody.linearDamping = 0f;
             _rigidbody.angularDamping = 0f;
-            _rigidbody.interpolation = RigidbodyInterpolation.None;
+            // The interpolated transform is shown while the hand is blocked (smooth between the 50 Hz steps). The free
+            // hand uses Rigidbody.position, which isn't interpolated.
+            _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
             _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _rigidbody.maxAngularVelocity = _maxAngularSpeed;
             _rigidbody.maxDepenetrationVelocity = _maxDepenetrationSpeed;

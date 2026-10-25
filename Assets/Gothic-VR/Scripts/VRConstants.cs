@@ -32,5 +32,11 @@ namespace Gothic.VR
         public static float SpectatorSmoothingLow = 0.02f;
         public static float SpectatorSmoothingMedium = 0.08f;
         public static float SpectatorSmoothingHigh = 0.15f;
+
+        // Distance grab (Xri backend, far ray of both hands). HVR: HVRForceGrabber.MaxRayCastDistance = 10.
+        // Max distance in meters between hand and object to highlight and pull it.
+        public const float DistanceGrabMaxDistance = 5f;
+        // Cone angle in degrees of the far ray. The wider, the less precisely you need to point at an object.
+        public const float DistanceGrabConeAngle = 3f;
     }
 }

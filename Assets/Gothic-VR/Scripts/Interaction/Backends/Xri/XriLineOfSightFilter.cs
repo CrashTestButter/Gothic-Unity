@@ -18,9 +18,6 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [Tooltip("Layers which block the line of sight.")]
         [SerializeField] private LayerMask _blockingLayers = 1;
 
-        [Tooltip("Targets further away (m) can't be hovered or grabbed.")]
-        [SerializeField] private float _maxDistance = 10f;
-
         [Tooltip("Targets closer to the hand (m) skip the check.")]
         [SerializeField] private float _minCheckDistance = 0.15f;
 
@@ -56,7 +53,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
             var toTarget = closestPoint - origin;
             var distance = toTarget.magnitude;
-            if (distance > _maxDistance)
+            if (distance > VRConstants.DistanceGrabMaxDistance)
                 return false;
 
             if (distance <= _minCheckDistance)

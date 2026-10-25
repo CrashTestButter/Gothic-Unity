@@ -1,57 +1,98 @@
-# Phase 5 - Hands (models, finger curls, procedural posing, physics hands)
+# Phase 5 - Hands (physical hand presence, block hands, finger curls, procedural posing)
 
-**Goal:** hands that look and feel at least as good as HVR's on the Xri backend: our own hand meshes, fingers
-driven by input and finger tracking, fingers wrapping around any runtime-loaded Gothic item, and optional physics
-hands that don't pass through walls.
+**Goal:** hands that have a physical presence in the world, as HVR's do: they stop at walls, chests, doors and
+tables, push loose objects, carry held items with them (a sword stops at the wall together with the hand), and give
+contact haptics. This physical feedback is a core part of how the game feels in VR.
 
-**Size:** L-XL (3-5 weeks) · **Depends on:** Phases 1-3 · **Riskiest phase** (see 04, "What we accept")
+**Size:** L (2-4 weeks for 5a + 5b) · **Depends on:** Phases 1-4 · **Riskiest phase** (see 04, "What we accept")
 
-> **Decision 2026-10-22 (team): Phase 5 is on hold, 5d is skipped.**
-> - **5d physics hands: skipped.** Not part of the HVR replacement. Hands follow the controllers directly (Phase 2
->   state incl. the interim "parent the hand visual to the held item" fix).
-> - **Hand models: Gothic's own fist meshes**, loaded at runtime via ZenKit like every other asset (future task).
->   **Nothing is imported or copied from UltimateXR** - no hand meshes, no pose editor, no code. The UXR references
->   below are history.
-> - 5a-5c are designed for articulated hands. With fist-only meshes, finger curls (5b) and procedural finger posing
->   (5c) probably don't apply; re-plan them once the Gothic fist meshes are in. Until then the Xri rig shows a simple
->   placeholder (or no) hand visual.
-> - Phase 6 doesn't wait for Phase 5.
->
-> The rest of this document is the original plan, kept for reference.
+> **Decision 2026-10-25 (supersedes the 2026-10-22 note):**
+> - **Physical hand presence (5b) is in scope and the core of Phase 5.** The 2026-10-22 "skip physics hands" note was
+>   a misunderstanding: what was rejected was UltimateXR's hand meshes, not physics hands.
+> - **No imported hand meshes.** Nothing from UltimateXR (meshes, pose editor, code). HVR's hand meshes are licensed
+>   and go away in Phase 6, so they can't stay either.
+> - **Hand visual: Minecraft-style block hands** built from Unity primitives (5a). They can later be swapped for
+>   Gothic's own fist meshes, loaded at runtime via ZenKit (separate future task).
+> - Finger curls (5e) and procedural finger posing (5f) are designed for articulated hands. They stay **on hold**
+>   until we have an articulated hand model; block hands get a simple two-part "grip" animation instead (5a).
+> - Phase 6 has no technical dependency on Phase 5 (5a-5d don't use HVR) and can land before or after it.
 
-Split into four parts that ship separately. 5a-5c are required, 5d is optional.
+Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 
-| Part | Content | Size |
-|------|---------|------|
-| 5a | Hand models + rig + `VRHandsOnTop` | S |
-| 5b | `FingerCurlProvider` (buttons, touches, XR Hands) | S-M |
-| 5c | `ProceduralHandPoser` + few authored poses | M-L |
-| 5d | ~~`PhysicsHand` (joint-driven), ghost hand, teleport handling~~ **skipped** | L |
+| Part | Content | Size | Status |
+|------|---------|------|--------|
+| 5a | Block hand visual (palm + finger block, grip hinge), `VRHandsOnTop` | S | planned |
+| 5b | `PhysicsHand` core: rigidbody follow, strength limit, ghost hand, max-distance snap, collision layers, setting | M | planned |
+| 5c | Held items follow the physics hand, contact haptics | M | planned |
+| 5d | Teleport, Marvin "goto", ladder, swim/dive handling + PlayMode tests | S-M | planned |
+| 5e | `FingerCurlProvider` (buttons, touches, XR Hands) | S-M | on hold (articulated hands) |
+| 5f | `ProceduralHandPoser` + few authored poses | M-L | on hold (articulated hands) |
 
 ## Exit criteria
 
 - [ ] No HVR hand/controller meshes, poses or settings are referenced by the Xri rig.
-- [ ] Fingers react to grip, trigger and capacitive touch on Quest/Pico/Touch; on Index (and Steam Frame, if its
-      runtime exposes hand joints, see 5b), middle/ring/pinky follow the real fingers.
-- [ ] Holding any Gothic item (sword, apple, torch, bottle, scroll, ring) shows fingers closed around it, not inside
-      it and not floating.
-- [ ] 5d: with "physics hands" on (immersion setting), hands stop at walls, chests and doors; held items too; a ghost
-      hand shows the real controller pose when separated.
+- [ ] Block hands replace the `Hand Placeholder` spheres; the finger block closes with the grip value.
+- [ ] With physical hands on (default), hands stop at walls, chests, doors, tables and mobs; held items stop too;
+      a ghost hand shows the real controller pose when separated.
+- [ ] Touching or hitting a surface plays a contact haptic, scaled by impact speed.
+- [ ] Teleport, Marvin "goto", ladders, swimming, dialogs and `KeepPlayerWithin` never leave a hand or held item stuck.
+- [ ] With physical hands off (comfort setting), hands follow the controllers directly (Phase 2 state).
 
-## 5a - Hand models
+## 5a - Block hands (visual)
 
-- **Source:** UltimateXR hand meshes (`ultimatexr-unity/Runtime/Art/Avatars/BigHands`, `SmallHands`, MIT). Copy
-  them into `Gothic-VR/Art/Hands/` with `THIRD-PARTY-NOTICES` (MIT text, VRMADA copyright). Alternative: any CC0
-  rigged hand. Avoid Meta/Oculus hand assets (license).
-- Rig: wrist + 3 bones per finger + thumb. Write a `VrHandSkeleton` component that maps the bones once (name pattern
-  per model), so the poser and the curl logic don't depend on bone names.
-- Materials: URP Lit, plus the on-top variant for `VRHandsOnTop` (render queue 3950, as today).
+- Per hand, built from primitives (UnityMCP, no imported art): a **palm block** (~8 × 3 × 9 cm) and a **finger block**
+  (~8 × 2.5 × 5 cm) on a hinge at the knuckles, plus a small **thumb block**. URP Lit, Gothic-ish skin/leather colour.
+- "Animation": the finger block rotates around the knuckle hinge by `grip` (0 = open, 1 = ~100° closed); the thumb
+  block by `max(primary/secondary/thumbstick touch)`. Index-specific trigger curl is optional (split the finger block
+  in two: index + rest). That's a cheap stand-in for 5c and reads well with the blocky style.
+- While holding an item: the finger block closes to a fixed "holding" angle so it doesn't clip deep into the item.
+- Swimming: `IVrRig.SetGrabbingEnabled(false)` also forces open hands.
+- Materials: plus the on-top variant for `VRHandsOnTop` (render queue 3950, as today).
 - Hand layer stays `Hand` (`Constants.HandLayer`). `VRFistAttackAdapter` resets the attack collider layer; keep it.
-- Controller models: not needed (the hands replace them). The simulator shows hands as well.
+- Controller models: not needed. The simulator shows the block hands as well.
+- The visual sits under the **physics hand** (5b) when physical hands are on, under the controller when off.
 
-## 5b - Finger curls (`FingerCurlProvider`)
+## 5b-5d - Physical hand presence (`PhysicsHand`)
 
-Replaces `HVRHandAnimator` + `HVRFingerSettings` + `HVROpenXRFingerCurls`.
+Replaces `HVRJointHand` + `HVRHandPhysics` + `HVRGhostHand` + the hand part of `HVRTeleportCollisonHandler`.
+
+PR split: **5b** = follow, strength limit, ghost hand, max distance, collision layers, setting. **5c** = held items
+and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimming) + PlayMode tests.
+
+- Physics hand = `Rigidbody` (interpolated, continuous dynamic collision) with box colliders matching the block hand
+  (palm + finger block + thumb). Block hands make the colliders trivial: the visual *is* the collider shape.
+- Driven towards the tracked controller pose every `FixedUpdate`:
+  - Position: velocity-based (`rb.linearVelocity = (target - pos) / dt`, clamped to max speed) to start with. Fewer
+    parameters than a `ConfigurableJoint` and the same approach XRI's VelocityTracking uses for items. Switch to a
+    joint with drives only if playtests show it's needed (e.g. for strength limits).
+  - Rotation: angular velocity from the quaternion delta, clamped.
+  - **Strength limit:** clamp the force the hand can apply (via max velocity change per step or mass), so hands push
+    apples and bottles but can't launch heavy chests or shove NPCs.
+- **Ghost hand:** a transparent copy of the block hand follows the controller when physics hand ↔ controller > ~5 cm.
+- **Max distance:** if physics hand ↔ controller > ~0.5 m for > 0.2 s (stuck behind a wall), snap the physics hand
+  back to the controller; release the held item if it's the one stuck (HVR's `MaxDistanceBehaviour`).
+- **Held items:** the Near-Far interactor's attach transform follows the **physics hand**, not the controller, so
+  VelocityTracking pulls the item to the physics hand and the sword stops at the wall together with the hand. Ignore
+  collisions between a hand and the item it holds (Phase 2 already ignores held item ↔ player).
+- **Contact haptics:** `OnCollisionEnter` on the physics hand (and on a held item) → `IVrHaptics.Vibrate(side, …)`,
+  amplitude from the relative impact speed, with a short cooldown per hand so sliding along a wall doesn't buzz
+  constantly. Add a `VrHapticPreset` for contact if the existing presets don't fit; an amplitude parameter may be
+  needed on `IVrHaptics`.
+- **Teleport and scene changes:** after `IVrRig.Teleported`, move hands and held items with the rig (same offset),
+  then sweep; if they overlap geometry, snap to the controller. Most of HVR's fixes were here (see 04 data points).
+  Also covers ladders (Phase 4 climb moves the rig) and the swim/dive rig changes.
+- **Collision layers:** hands collide with the world, mobs, doors, chests, items and NPCs; not with the player's
+  CharacterController, not with UI, not with the item held by the same hand. Doors/chest lids (Phase 4 hinges) can be
+  pushed open with the hand.
+- **Setting:** "physical hands" in the immersion menu (`VRSettingsImmersionMenu`, Gothic.ini key in
+  `VRConstants.IniNames`), **on by default**. Off = hands follow the controllers directly.
+- Fist attacks (`VRFistAttackAdapter`, disabled today) become possible with physical hands. Enabling them is a
+  separate gameplay task.
+
+## 5e - Finger curls (`FingerCurlProvider`) - ON HOLD (needs articulated hands)
+
+Replaces `HVRHandAnimator` + `HVRFingerSettings` + `HVROpenXRFingerCurls`. Block hands use the simple grip hinge
+from 5a instead.
 
 - Output: `float[5]` curls per hand (thumb…pinky, 0 = open, 1 = fist).
 - Input source per finger (configurable ScriptableObject `VrFingerSettings`, replacing `HVR_FingerSettings.asset`):
@@ -68,17 +109,14 @@ Replaces `HVRHandAnimator` + `HVRFingerSettings` + `HVROpenXRFingerCurls`.
   - Index under SteamVR OpenXR exposes controller-driven hand joints through `XR_EXT_hand_tracking`. That's what HVR
     uses today via `USING_XRHANDS`.
   - Steam Frame: verify on a device that its runtime exposes the same. If yes, it works without extra code.
-  - Quest/Pico controller-free hand tracking is out of scope (HVR doesn't support it either). The provider design
-    allows adding it later.
+  - Quest/Pico controller-free hand tracking is out of scope (HVR doesn't support it either).
 - The pose blend per finger: `curl` lerps between the open and the fist pose (two `VrHandPose` assets), unless a
-  grab pose overrides that finger (5c).
-- Swimming: `IVrRig.SetGrabbingEnabled(false)` also forces open hands (today `VRPlayerController.ChangeGrabbing`
-  disables poses).
+  grab pose overrides that finger (5f).
 
-## 5c - Procedural hand posing (`ProceduralHandPoser`)
+## 5f - Procedural hand posing (`ProceduralHandPoser`) - ON HOLD (needs articulated hands)
 
-Replaces `HVRPhysicsPoser` (`PoseType: PhysicPoser` on every `oCItem`). It's needed because no one can author
-poses for thousands of runtime-loaded Gothic items.
+Replaces `HVRPhysicsPoser` (`PoseType: PhysicPoser` on every `oCItem`). Needed only once hands have finger bones,
+because no one can author poses for thousands of runtime-loaded Gothic items.
 
 Algorithm (one-shot on grab, not every frame):
 1. Hand attach: with XRI dynamic attach (Phase 2), the item is held where the palm touched. Align the palm normal
@@ -89,68 +127,42 @@ Algorithm (one-shot on grab, not every frame):
    hits, then step back one increment. Cap at the fist pose.
 3. Thumb: same, but with its opposition axis first.
 4. Store the result as a `VrHandPose` and apply it while held (the item doesn't change shape).
-5. Cache per item **instance name** + attach-point bucket (e.g. a 2 cm grid in item space). Gothic has many copies of
-   the same item, so most grabs are cache hits.
+5. Cache per item **instance name** + attach-point bucket (e.g. a 2 cm grid in item space).
 
-Budget: ~15 bones × ~20 steps × 1 capsule query = ~300 queries per grab, done once. Fine even on Quest. Measure with
-the profiler (`unity_profiler_frame`).
-
-Reference implementations to read for ideas (not to copy): HVR's poser (licensed, read only for behaviour); the
-UltimateXR Hand Pose Editor (MIT, authored poses).
+Budget: ~15 bones × ~20 steps × 1 capsule query = ~300 queries per grab, done once. Fine even on Quest.
 
 **Authored poses** (few): backpack strap (today `backpack_left/right_hand_pose.asset`), ladder, door handle (optional).
-`VrHandPose` asset = per-bone local rotations; capture them in the editor from the posed hand (a small "Save pose"
-inspector button) instead of porting a full pose editor.
-
-## 5d - Physics hands (optional, immersion setting) - SKIPPED (see decision at the top)
-
-Replaces `HVRJointHand` + `HVRHandPhysics` + `HVRGhostHand` + the hand part of `HVRTeleportCollisonHandler`.
-
-- Physics hand = `Rigidbody` (interpolated, continuous dynamic collision) with simple colliders (palm box + finger
-  capsules), driven towards the tracked controller pose every `FixedUpdate`:
-  - Position: velocity-based (`rb.linearVelocity = (target - pos) / dt`, clamped to max speed) or a
-    `ConfigurableJoint` with drives. Start velocity-based: fewer parameters, and it's what XRI's VelocityTracking
-    already does for items.
-  - Rotation: angular velocity from the quaternion delta, clamped.
-- The visible hand follows the physics hand. A ghost hand (transparent) follows the controller when the distance is
-  > ~5 cm.
-- Max distance: if physics hand ↔ controller > ~0.5 m for > 0.2 s (stuck behind a wall), snap the physics hand back
-  to the controller (with the held item released if it's stuck, as HVR's `MaxDistanceBehaviour`).
-- Teleport and scene changes: after `IVrRig.Teleported`, move the hands and held items with the rig (same offset),
-  then sweep; if they overlap geometry, snap to the controller. HVR spent most of its fixes here (see 04 data points).
-- Held items: Phase 2 VelocityTracking targets the **physics hand's** attach point, not the controller, so the item
-  stops at walls together with the hand.
-- Collision layers: hands collide with the world, mobs, doors and NPCs; not with the player's CharacterController,
-  not with held items of the same hand.
-- Comfort: a setting "physics hands" in the immersion menu (`VRSettingsImmersionMenu`, Gothic.ini key in
-  `VRConstants.IniNames`). Off = hands follow the controllers directly (Phase 2 state + interim parenting fix).
-- Fist attacks (`VRFistAttackAdapter`, disabled today) become possible with physics hands. Enabling them is a
-  separate gameplay task.
 
 ## Work items
 
-- [ ] 5a: art import + notices, `VrHandSkeleton`, hand prefabs (UnityMCP), `VRHandsOnTop` renderers.
-- [ ] 5b: `VrFingerSettings` asset, `FingerCurlProvider`, `VrHandPose` asset type, open/fist poses.
-- [ ] 5c: `ProceduralHandPoser` + cache, authored backpack/ladder poses, an editor "Save pose" button.
-- [ ] 5d: `PhysicsHand`, `GhostHand`, teleport handling, immersion setting (C# + menu + ini), retarget VelocityTracking.
-- [ ] PlayMode test: poser produces no finger-collider overlaps for a sword, an apple and a bottle (`Gothic.Tests.PlayMode`).
+- [ ] 5a: block hand prefabs (UnityMCP), grip hinge driver, `VRHandsOnTop` renderers, replace `Hand Placeholder`.
+- [ ] 5b: `PhysicsHand`, `GhostHand`, strength limit, max-distance snap, collision layer matrix, immersion setting
+      (C# + menu + ini).
+- [ ] 5c: attach transform on the physics hand, hand ↔ held item collision ignore, contact haptics.
+- [ ] 5d: teleport/goto/ladder/swim handling; PlayMode test: physics hand pushed against a static box stops at its
+      surface and reconnects when the target moves back; after a rig teleport the hand isn't left behind
+      (`Gothic.Tests.PlayMode`).
+- [ ] 5e/5f: re-plan once an articulated hand model exists.
 
 ## Test plan
 
-1. Quest 3, Pico 4: grip/trigger/touch animate the fingers; the menu laser hand pose is readable.
-2. Index (and Steam Frame): middle/ring/pinky follow the real fingers; the index finger follows the trigger.
-3. Grab 20 different items (weapons of each category, food, potions, scrolls, runes, rings, torch, lock pick): fingers
-   wrap plausibly; regrab the same item → instant (cache).
-4. Backpack strap and ladder use the authored poses.
-5. 5d on: punch a wall → the hand stops, ghost visible; pull back → reconnects; hold a sword against a wall → it
-   stops; teleport and Marvin "goto" while holding → nothing stuck; dialog + `KeepPlayerWithin` unaffected.
-6. 5d off: same as the Phase 2 state.
-7. Performance: Quest 3 frame time with 5d on during a fight in the old camp.
+1. Quest 3, Pico 4, Index: grip closes the finger block, thumb touch moves the thumb block.
+2. Push a hand into a wall, a table, a chest and a door → the hand stops, ghost hand visible, haptic pulse; pull back
+   → reconnects. Slide along a wall → no constant buzzing.
+3. Hold a sword against a wall → sword and hand stop together, no visual separation. Swing into an NPC → the hit
+   still registers (combat velocity stays rigidbody-based, Phase 2).
+4. Push an apple/bottle on a table → it moves; push a chest or an NPC → it doesn't fly away.
+5. Teleport, Marvin "goto", climb a ladder, swim/dive while holding an item → nothing stuck, nothing left behind.
+6. Dialog + `KeepPlayerWithin` unaffected; menu laser pointer works with physical hands on.
+7. Setting off: same as the Phase 2 state.
+8. Performance: Quest 3 frame time with physical hands on during a fight in the old camp.
 
 ## Risks
 
 | Risk | Mitigation |
 |------|-----------|
-| Poser looks wrong on odd meshes (rings, runes, tiny items) | Fallback: if fewer than 2 fingers make contact, use a generic "pinch" pose for small bounds and a "power grip" for long bounds. |
-| Physics hands tuning eats time (HVR history: ~170 release-note lines on this) | Keep 5d optional and off by default until playtests approve it; ship 5a-5c first. |
-| Steam Frame doesn't expose hand joints via OpenXR | Fall back to button curls (Index-like capacitive data may still come through the interaction profile). |
+| Physics hands tuning eats time (HVR history: ~170 release-note lines on this) | Start velocity-based with few parameters; block-hand box colliders keep the contact shapes simple; keep the off switch. |
+| Hand jitter at low/uneven frame rates (Quest) | Interpolated rigidbody, fixed timestep matched to display rate, visual hand follows the interpolated pose. |
+| Hands get stuck after teleport/climb/swim | Central handling on `IVrRig.Teleported` + max-distance snap; covered by test 5. |
+| Contact haptics too noisy | Impact-speed threshold + per-hand cooldown. |
+| Block hands look out of place | Accepted as interim; swap for Gothic's fist meshes (ZenKit) later without touching 5b. |

@@ -61,6 +61,24 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Grip Value",
+                    "type": "Value",
+                    "id": "a8a3900f-4a9c-4856-b5e8-fff7c5320b57",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Thumb Touch",
+                    "type": "Button",
+                    "id": "b3099f33-521a-4c6e-a537-96dd285571c3",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Velocity",
                     "type": "Value",
                     "id": "c2928db7-b442-4c80-8a5b-ead41abd27bb",
@@ -143,6 +161,50 @@
                     "processors": "",
                     "groups": "",
                     "action": "Joystick Button",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "104c26a4-c071-4e9b-83aa-5ac5b76bdbcf",
+                    "path": "<XRController>{LeftHand}/{Grip}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Grip Value",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "44a4a649-fc6d-45b2-850e-204b233b9f78",
+                    "path": "<XRController>{LeftHand}/{PrimaryTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumb Touch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "da77ea1e-4ec8-429a-9f0a-2799f0c19f2e",
+                    "path": "<XRController>{LeftHand}/{SecondaryTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumb Touch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "336af92c-f30a-4732-a6a4-be04df346208",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumb Touch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -240,6 +302,24 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Grip Value",
+                    "type": "Value",
+                    "id": "fb98dcc7-f03a-464a-b6ef-1ca6ef2f11dc",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                },
+                {
+                    "name": "Thumb Touch",
+                    "type": "Button",
+                    "id": "d27c5691-5233-4006-8063-820115422191",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Velocity",
                     "type": "Value",
                     "id": "cbad0a47-85ee-4e98-ad6c-f8049a67bfe2",
@@ -322,6 +402,50 @@
                     "processors": "",
                     "groups": "",
                     "action": "Joystick Button",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3b049c18-5820-4a15-9582-7b5c2ebb4d00",
+                    "path": "<XRController>{RightHand}/{Grip}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Grip Value",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "cb267312-f120-4a36-b178-84d13079d43c",
+                    "path": "<XRController>{RightHand}/{PrimaryTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumb Touch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "fac38f45-f9fa-44d6-bde9-69a7a761d74e",
+                    "path": "<XRController>{RightHand}/{SecondaryTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumb Touch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "6351a3ad-dffc-4d8f-968c-4afaf176fae8",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Thumb Touch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

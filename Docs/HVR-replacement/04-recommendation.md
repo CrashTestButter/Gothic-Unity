@@ -45,11 +45,12 @@ containers/doors), and **borrow selectively from UltimateXR (MIT)**, mainly its 
     strength … too under damped". The notes have no dates, so the timespan isn't measurable from the repo.
   - Takeaway: a basic joint hand is small (a few hundred LoC). The cost is in the edge cases: teleport, stuck
     hands, held-object return, two-hand strength, and tuning across Quest/Pico/PCVR frame rates. Treat Phase 5 as
-    the phase most likely to overrun, and keep physics hands optional.
+    the phase most likely to overrun, and keep a comfort switch to turn physics hands off.
 - During the transition there are two backends. Phase 0 keeps that cheap.
 
-> **Update 2026-10-22:** physics hands (5d) are skipped, hands will be Gothic's own fist meshes, and nothing is
-> taken from UltimateXR. Phase 5 is on hold; see `phase-5-hands.md`.
+> **Update 2026-10-25:** physical hand presence (5b-5d) is in scope and on by default; hands are Minecraft-style block
+> hands (Gothic's fist meshes later), and nothing is taken from UltimateXR. Finger curls and procedural posing are on
+> hold; see `phase-5-hands.md`.
 
 ## Target architecture
 
@@ -86,7 +87,7 @@ Each phase is its own PR (see `commit-pr` skill) and is playable on Quest, Pico 
 | **2 - Grabbing** | `XRGrabInteractable` (VelocityTracking) on `oCItem`, mobs, NPCs; near-far interactor for distance grab with line-of-sight; hover → `VRFocus`; inventory bookkeeping in `VRPlayerService` on the new events; collision ignore for held items; combat velocity stays rigidbody-based. | H2, H6, grab events | M-L (2 wk) |
 | **3 - Sockets & inventory** | Socket interactor wrapper that reparents the `VobLoader` root (today's `VRSocket` behaviour), category rotation, filters by item flag (replaces tag socketables), hover scale/material, backpack + shoulder socket, hip holsters, chest slots resized to mesh, NPC loot sockets, "drop into chest" volume. | H7, `VRSocket`, `VRShoulderSocket`, `GUZ-VR-Socketables` | L (2-3 wk) |
 | **4 - Mechanics** | `VrDoor`: HingeJoint + grab, lock/unlock, open/close threshold → Gothic SFX (replaces `HVRPhysicsDoor` + `HVRRotationTracker`, used by `VRVobDoor`, `VRVobContainerPhysicsChest`, lock picking). Ladders via XRI `ClimbInteractable`. | H8, H9 | M (1-2 wk) |
-| **5 - Hands** | Hand meshes (UXR MIT hands or other CC0). `FingerCurlProvider`: grip/trigger/touch + `XRHandSubsystem` curls (Index, Steam Frame). `ProceduralHandPoser`: per-finger sweep until contact, cached per item instance. Authored poses for backpack/ladder. `PhysicsHand` (ConfigurableJoint follow, ghost hand, fist collider layer) behind an immersion setting. | H1, H3, H4, H5, H13 tuning | L-XL (3-5 wk) |
+| **5 - Hands** | Block hands from primitives (grip hinge). `PhysicsHand` (rigidbody follow, ghost hand, held items follow the physics hand, contact haptics, teleport handling) behind an immersion setting, on by default. On hold until articulated hands: `FingerCurlProvider`, `ProceduralHandPoser`, authored poses. | H1, H13 tuning (H3-H5 on hold) | L (2-4 wk) |
 | **6 - Removal** | Delete HVR backend, `Assets/HurricaneVR`, `GOTHIC_HVR_INSTALLED`, `HurricaneActions.cs`, `VRContextToolActions.cs`, CI private-repo injection, hvr-simulator package; update CLAUDE.md, wiki, CONTRIBUTING (VR now builds for everyone). | everything | S (2-3 d) |
 
 \*Rough single-developer estimates, including playtesting on three platforms. Total ≈ **12-18 weeks**. Phases 2-4
@@ -99,15 +100,15 @@ can run in parallel once Phase 1 has landed.
 - Phase 1 already unblocks contributors for menus, dialogs, UI, cinema, subtitles and locomotion work. To get there
   early, the VR scene can boot with the XRI rig while grabbing is still missing (DeveloperConfig flag
   `VrInteractionBackend`, see `feature-checklist` skill).
-- Phase 5 is last because it carries the most tuning risk and the game is playable without it (non-physics hands
-  with procedural poses are acceptable first).
+- Phase 5 comes after the mechanics because it carries the most tuning risk and needs Phases 2-4 (grab attach,
+  sockets, doors, ladders) to tune against. Physical hand presence is required for the intended feel, not optional.
 
 ## Assets plan (Prefabs via UnityMCP only, per CLAUDE.md)
 
 | HVR asset | Replacement |
 |-----------|-------------|
 | TechDemo XR rig | New `VR - Player.prefab` from XRI Starter Assets as reference, built through UnityMCP |
-| Hand models / controller models | Gothic's own fist meshes at runtime via ZenKit (future task, decision 2026-10-22; nothing from UXR); controller models none |
+| Hand models / controller models | Block hands from Unity primitives (Phase 5a), later Gothic's own fist meshes at runtime via ZenKit; nothing from UXR; controller models none |
 | Socket rings, teleport marker | Simple procedural/CC0 meshes + our URP materials |
 | Backpack prefab + SFX | Gothic asset at runtime (a bag/pouch mesh from the Gothic install, loaded via ZenKit) + Gothic SFX - keeps the "no bundled assets" principle |
 | Input maps, controller offsets | XRI Input Actions asset + per-profile pose offsets (OpenXR grip/aim poses mostly make them unnecessary) |

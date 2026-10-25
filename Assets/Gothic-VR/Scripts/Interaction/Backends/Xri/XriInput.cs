@@ -23,6 +23,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private const string _gothicMapName = "Gothic";
         private const string _velocityActionName = "Velocity";
         private const string _hapticActionName = "Haptic";
+        private const string _gripValueActionName = "Grip Value";
+        private const string _thumbTouchActionName = "Thumb Touch";
 
         // Binding groups of the "Gothic" map: controller bindings ("XR") are always used, the keyboard shortcuts
         // ("Simulator") only while the XR Interaction Simulator is active.
@@ -40,6 +42,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private readonly InputAction[,] _buttons = new InputAction[2, _buttonActionNames.Length];
         private readonly InputAction[] _velocities = new InputAction[2];
         private readonly InputAction[] _haptics = new InputAction[2];
+        private readonly InputAction[] _gripValues = new InputAction[2];
+        private readonly InputAction[] _thumbTouches = new InputAction[2];
         private readonly InputAction[] _gothicActions = new InputAction[_gothicActionNames.Length];
 
         // Simulator only: velocity from the controller's position change, as simulated devices have no velocity.
@@ -86,12 +90,29 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
             _velocities[(int)side] = map.FindAction(_velocityActionName, true);
             _haptics[(int)side] = map.FindAction(_hapticActionName, true);
+            _gripValues[(int)side] = map.FindAction(_gripValueActionName, true);
+            _thumbTouches[(int)side] = map.FindAction(_thumbTouchActionName, true);
             map.Enable();
         }
 
         public VrButtonState GetButton(VrHandSide side, VrButton button)
         {
             return ToState(_buttons[(int)side, (int)button]);
+        }
+
+        public float GetGripValue(VrHandSide side)
+        {
+            var action = _gripValues[(int)side];
+            return action == null ? 0f : Mathf.Clamp01(action.ReadValue<float>());
+        }
+
+        /// <summary>
+        /// Primary/secondary button or thumbstick touched. Controllers without touch sensors never report it.
+        /// </summary>
+        public bool IsThumbTouching(VrHandSide side)
+        {
+            var action = _thumbTouches[(int)side];
+            return action != null && action.IsPressed();
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using Gothic.Core;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Adapters.Player;
@@ -30,6 +31,7 @@ namespace Gothic.VR.Services
     {
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
 
         private VRTransformPuppet _puppet;
         private int _originalGuild;
@@ -44,14 +46,16 @@ namespace Gothic.VR.Services
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(() => _puppet = null);
         }
 
-        public void Transform(int monsterInstanceIndex, HVRHandSide castingHand)
+        /// <returns>False if the hero wasn't transformed (DeveloperConfig.EnableTransformCancelKeepsScroll: the scroll
+        /// isn't used up then).</returns>
+        public bool Transform(int monsterInstanceIndex, HVRHandSide castingHand)
         {
             if (!_configService.Dev.EnableVrTransformations || IsTransformed)
-                return;
+                return false;
 
             var hero = _npcService.GetHeroContainer();
             if (hero?.Go == null)
-                return;
+                return false;
 
             var heroPosition = Camera.main != null ? Camera.main.transform.position : hero.Go.transform.position;
             var spawnPosition = new Vector3(heroPosition.x, hero.Go.transform.position.y, heroPosition.z);
@@ -60,10 +64,11 @@ namespace Gothic.VR.Services
             if (monster == null)
             {
                 Logger.LogWarning($"[VRTransform] Can't spawn the monster instance {monsterInstanceIndex}.", LogCat.VR);
-                return;
+                return false;
             }
 
-            // Its constructor (Set_X_Visuals) sets the model - without it the NPC can't be built (seen with the MT Lurker).
+            // Its constructor (Set_X_Visuals) sets the model - without it the NPC can't be built (Mroczne Tajemnice's
+            // Spell_Logic_Trf_Lurker passes BLACKDRAGON, an instance without a visual).
             var instanceName = loaderGo.name;
             Logger.Log($"[VRTransform] {instanceName}: visual='{monster.Props.MdsNameBase}', body='{monster.Props.MdmName}', " +
                        $"guild={monster.Instance.Guild}", LogCat.VR);
@@ -72,7 +77,10 @@ namespace Gothic.VR.Services
                 Logger.LogWarning($"[VRTransform] {instanceName} has no visual (Mdl_SetVisual/Mdl_SetVisualBody not called " +
                                   "by its constructor) - transformation cancelled.", LogCat.VR);
                 loaderGo.transform.position = new Vector3(0f, -10000f, 0f);
-                return;
+                // Out of the culling's NPC list too - it tried to build the parked NPC (NullReferenceException).
+                if (_configService.Dev.EnableTransformCancelKeepsScroll)
+                    _multiTypeCacheService.NpcCache.Remove(monster);
+                return false;
             }
 
             // Like the engine (OpenGothic Npc::TransformBack): scripts see the hero as the monster.
@@ -88,6 +96,7 @@ namespace Gothic.VR.Services
 
             Logger.Log($"[VRTransform] Hero transformed into {monster.Instance.GetName(NpcNameSlot.Slot0)} " +
                        $"(guild {_originalGuild} -> {monster.Instance.Guild}).", LogCat.VR);
+            return true;
         }
 
         public void TransformBack()

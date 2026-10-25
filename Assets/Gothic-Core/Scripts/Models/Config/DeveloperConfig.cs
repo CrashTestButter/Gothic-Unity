@@ -1353,6 +1353,11 @@ namespace Gothic.Core.Models.Config
                  "again (and used up a scroll) right after transforming back.")]
         public bool EnableRingSpellReplacesHandSpell = true;
 
+        [Tooltip("V1: A transformation that can't happen (the monster has no visual - Mroczne Tajemnice's lurker scroll " +
+                 "turns into BLACKDRAGON) keeps its scroll and gives the mana back; the never-built monster leaves the " +
+                 "NPC culling (it threw building it).")]
+        public bool EnableTransformCancelKeepsScroll = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

@@ -593,6 +593,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             DestroySpellVfx();
             DestroyBodyFx();
             PlayCastSound(_item.Spell);
+            var isScrollKept = false;
             if (applyEffect)
             {
                 SpawnCastFx();
@@ -616,8 +617,15 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     var caster = _npcService.GetHeroContainer();
                     if (caster != null && caster.ActiveSpellInfo > 1)
                     {
-                        _vrTransformService.Transform(caster.ActiveSpellInfo, _runeHandSide);
+                        var isTransformed = _vrTransformService.Transform(caster.ActiveSpellInfo, _runeHandSide);
                         caster.ActiveSpellInfo = 0;
+                        // DeveloperConfig.EnableTransformCancelKeepsScroll: no monster to become (no visual) - the
+                        // scroll stays and the mana comes back.
+                        if (!isTransformed && _configService.Dev.EnableTransformCancelKeepsScroll)
+                        {
+                            RefundInvestedMana();
+                            isScrollKept = true;
+                        }
                     }
                 }
                 else
@@ -659,7 +667,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 }
             }
 
-            if (applyEffect)
+            if (applyEffect && !isScrollKept)
                 TryUseUpScroll();
 
             _isCasting = false;

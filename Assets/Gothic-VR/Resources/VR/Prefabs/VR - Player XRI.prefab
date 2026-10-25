@@ -310,6 +310,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2376180024608205536}
   - component: {fileID: 4334339425288666171}
+  - component: {fileID: 4817165771560183810}
   m_Layer: 21
   m_Name: Block Hand
   m_TagString: Untagged
@@ -356,6 +357,33 @@ MonoBehaviour:
   _thumbAxis: {x: 1, y: 0, z: 0}
   _thumbClosedAngle: 35
   _angleSpeed: 900
+--- !u!114 &4817165771560183810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1555737781587704419}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae4a05f0a63254547904f973d0d3e606, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Interaction.Components.VrPhysicsHand
+  _side: 0
+  _ghostMaterial: {fileID: 2100000, guid: 386eab04aa58d654abe37c8a3a258215, type: 2}
+  _mass: 1
+  _maxSpeed: 15
+  _maxForce: 200
+  _maxAngularSpeed: 50
+  _maxAngularAcceleration: 2500
+  _maxDepenetrationSpeed: 2
+  _ghostShowDistance: 0.05
+  _ghostHideDistance: 0.03
+  _maxDistance: 0.5
+  _maxDistanceTime: 0.2
+  _rigSnapAngle: 10
+  _rigSnapDistance: 1
+  _restoreCollisionMargin: 0.02
 --- !u!1 &1610683798722831076
 GameObject:
   m_ObjectHideFlags: 0
@@ -1250,6 +1278,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7895370072324715875}
   - component: {fileID: 4929682280827338707}
+  - component: {fileID: 3575337337559521390}
   m_Layer: 21
   m_Name: Block Hand
   m_TagString: Untagged
@@ -1296,6 +1325,33 @@ MonoBehaviour:
   _thumbAxis: {x: 1, y: 0, z: 0}
   _thumbClosedAngle: 35
   _angleSpeed: 900
+--- !u!114 &3575337337559521390
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4284475928212711861}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae4a05f0a63254547904f973d0d3e606, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Interaction.Components.VrPhysicsHand
+  _side: 1
+  _ghostMaterial: {fileID: 2100000, guid: 386eab04aa58d654abe37c8a3a258215, type: 2}
+  _mass: 1
+  _maxSpeed: 15
+  _maxForce: 200
+  _maxAngularSpeed: 50
+  _maxAngularAcceleration: 2500
+  _maxDepenetrationSpeed: 2
+  _ghostShowDistance: 0.05
+  _ghostHideDistance: 0.03
+  _maxDistance: 0.5
+  _maxDistanceTime: 0.2
+  _rigSnapAngle: 10
+  _rigSnapDistance: 1
+  _restoreCollisionMargin: 0.02
 --- !u!1 &4786995511277724993
 GameObject:
   m_ObjectHideFlags: 0

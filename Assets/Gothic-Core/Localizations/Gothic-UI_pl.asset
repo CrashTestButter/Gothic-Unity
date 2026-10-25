@@ -194,6 +194,19 @@ MonoBehaviour:
     m_Localized: Brak
     m_Metadata:
       m_Items: []
+  - m_Id: 186269666525962240
+    m_Localized: "Fizyczne d\u0142onie"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265408
+    m_Localized: "D\u0142onie zatrzymuj\u0105 si\u0119 na \u015Bcianach i obiektach
+      i popychaj\u0105 lu\u017Ane przedmioty"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265409
+    m_Localized: "wy\u0142\u0105czone|w\u0142\u0105czone"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

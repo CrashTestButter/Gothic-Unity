@@ -22,7 +22,7 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 | Part | Content | Size | Status |
 |------|---------|------|--------|
 | 5a | Block hand visual (palm + finger block, grip hinge), `VRHandsOnTop` | S | done |
-| 5b | `PhysicsHand` core: rigidbody follow, strength limit, ghost hand, max-distance snap, collision layers, setting | M | planned |
+| 5b | `PhysicsHand` core: rigidbody follow, strength limit, ghost hand, max-distance snap, collision layers, setting | M | done |
 | 5c | Held items follow the physics hand, contact haptics | M | planned |
 | 5d | Teleport, Marvin "goto", ladder, swim/dive handling + PlayMode tests | S-M | planned |
 | 5e | `FingerCurlProvider` (buttons, touches, XR Hands) | S-M | on hold (articulated hands) |
@@ -108,6 +108,39 @@ and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimmin
 - Fist attacks (`VRFistAttackAdapter`, disabled today) become possible with physical hands. Enabling them is a
   separate gameplay task.
 
+**Where reality deviated (5b, `engine/hvr-replacement-5b`):**
+- Names: `VrPhysicsHand` and `VrGhostHand` (`Gothic.VR.Interaction.Components`, repo prefix). `VrPhysicsHand` sits on
+  each `Block Hand` next to `VrBlockHand` (prefab: only the component + ghost material). Everything else is built at
+  runtime: the rigidbody `Physics Hand (Left|Right)` is a **root GameObject in the Player scene** (not under the
+  moving rig, so the CharacterController can't drag it through walls), with one `BoxCollider` per block
+  (`Palm/Fingers/Thumb Collider`, layer `Hand`) that copies the block poses every physics step (grip curl, rig scale).
+- **The visual is not reparented.** `Block Hand` stays under the controller; in `LateUpdate` it's placed at
+  *current controller pose + what the last physics step blocked* (`body - lastTarget`). A free hand therefore has no
+  lag (fixed step is 50 Hz, interpolation would trail by up to 2 frames while walking) and still gets the
+  late-latched controller pose; a blocked hand stays where the physics left it. `VrBlockHand` is unchanged.
+  Rigidbody interpolation is therefore off.
+- Follow: `AddForce(VelocityChange)` towards `(target - pos) / dt`, clamped to 15 m/s; the velocity change per step
+  is limited by `MaxForce / Mass` (200 N / 1 kg) = the strength limit. Rotation the same with 50 rad/s and
+  2500 rad/s². Fixed center of mass/inertia (finger colliders move). `maxDepenetrationVelocity` 2 m/s.
+- Ghost: unlit transparent copy (`VRBlockHands-Ghost.mat`, URP Unlit) under the controller, shows above 5 cm
+  separation, hides below 3 cm. It's occluded by the wall the hand is stuck in (no "see through" yet).
+- Max distance: > 0.5 m for > 0.2 s → snap (log `[VrPhysicsHand] … Snapped back.`, editor only). Snap turns
+  (> 10° rig rotation per physics step), rig jumps (> 1 m) and `IVrRig.Teleported` snap as well (minimal 5d part).
+- While `IVrRig.IsClimbing` and with the setting off, the body is inactive and the visual follows the controller
+  directly (5a state). Ladders are left to 5d.
+- Collisions: matrix change **Hand ↔ VobItemNoWorldCollision off** (items in the first second of a grab and the XRI
+  backpack, which is on that layer). Held and socketed items are ignored by **both** hands, not only the holding one:
+  `VRPlayerService.IgnorePlayerCollision` (already used for the CharacterController) also calls
+  `VrPhysicsHand.IgnoreCollisions`. On release the pair is restored only once the item's bounds no longer touch the
+  hand (no depenetration kick). Pairs are re-applied when a body is re-activated (Unity resets them).
+- What the hand meets in Gothic worlds: world items lie **kinematic** until first grabbed (so the hand stops at them
+  like at a table); dropped items are dynamic and get pushed. Closed chest lids are kinematic (hand rests on them).
+  NPC `RootMotionCollider`s are dynamic (80 kg) but X/Z-frozen, so NPCs never move. Doors (dynamic hinge, 10 kg) should
+  be pushable (not tested yet).
+- Setting: Gothic.ini `[GOTHIC_VR_IMMERSION] physicalHands` (1 default), menu "Physical Hands" (en/de/pl), applied by
+  `VRContextInteractionService.ApplyPhysicalHands()` on ini load and change. `VRContextInteractionService.PhysicsHands`
+  lists the hands (empty on Hvr).
+
 ## 5e - Finger curls (`FingerCurlProvider`) - ON HOLD (needs articulated hands)
 
 Replaces `HVRHandAnimator` + `HVRFingerSettings` + `HVROpenXRFingerCurls`. Block hands use the simple grip hinge
@@ -156,8 +189,8 @@ Budget: ~15 bones × ~20 steps × 1 capsule query = ~300 queries per grab, done 
 
 - [x] 5a: block hand prefabs (UnityMCP), grip hinge driver, `VRHandsOnTop` renderers, replace `Hand Placeholder`.
       (Built inside `VR - Player XRI.prefab`, no separate hand prefab; driver `VrBlockHand`.)
-- [ ] 5b: `PhysicsHand`, `GhostHand`, strength limit, max-distance snap, collision layer matrix, immersion setting
-      (C# + menu + ini).
+- [x] 5b: `PhysicsHand`, `GhostHand`, strength limit, max-distance snap, collision layer matrix, immersion setting
+      (C# + menu + ini). (`VrPhysicsHand`, `VrGhostHand`; see "Where reality deviated (5b)" below.)
 - [ ] 5c: attach transform on the physics hand, hand ↔ held item collision ignore, contact haptics.
 - [ ] 5d: teleport/goto/ladder/swim handling; PlayMode test: physics hand pushed against a static box stops at its
       surface and reconnects when the target moves back; after a rig teleport the hand isn't left behind

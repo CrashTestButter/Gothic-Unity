@@ -123,10 +123,15 @@ namespace Gothic.VR.Services
         /// <summary>
         /// The player collides with VobItems (stuck at a sword in the ground like in Gothic). Items in our hands or
         /// sockets (hips, back) would push our own CharacterController, so they ignore it while being held.
+        /// The same goes for our physical hands (a held sword would push the hand holding it).
         /// </summary>
         public void IgnorePlayerCollision(VrInteractable grabbable, bool ignore)
         {
-            var characterController = VRContextInteractionService.Rig?.CharacterController;
+            var context = VRContextInteractionService;
+            foreach (var hand in context.PhysicsHands)
+                hand.IgnoreCollisions(grabbable.Colliders, ignore);
+
+            var characterController = context.Rig?.CharacterController;
             if (characterController == null)
                 return;
 

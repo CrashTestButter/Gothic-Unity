@@ -58,6 +58,8 @@ namespace Gothic.VR.Services.Context
             vrImmersionMenu.Items.Add(CreateImmersionHeadline(gameMenu));
             vrImmersionMenu.Items.Add(CreateMicrophoneLabel(gameMenu, menuStartY + menuDY * 0));
             vrImmersionMenu.Items.Add(CreateMicrophoneChoice(gameMenu, menuStartY + menuDY * 0));
+            vrImmersionMenu.Items.Add(CreatePhysicalHandsLabel(gameMenu, menuStartY + menuDY * 1));
+            vrImmersionMenu.Items.Add(CreatePhysicalHandsChoice(gameMenu, menuStartY + menuDY * 1));
             vrImmersionMenu.Items.Add(CreateImmersionBackButton(mainMenu));
         }
 
@@ -356,6 +358,37 @@ namespace Gothic.VR.Services.Context
             microphoneSetting.OnChgSetOptionSection = VRConstants.IniSectionImmersion;
             
             return microphoneSetting;
+        }
+
+        private AbstractMenuItemInstance CreatePhysicalHandsLabel(AbstractMenuInstance gameMenu, int posY)
+        {
+            var subtitlesLabel = gameMenu.FindMenuItem("MENUITEM_GAME_SUB_TITLES", out _);
+            var physicalHandsLabel =
+                new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_IMMERSION_PHYSICAL_HANDS", subtitlesLabel);
+
+            physicalHandsLabel.PosY = posY;
+
+            physicalHandsLabel.SetText(0, _localizationService.GetText("menuitem.physicalHands.label"));
+            physicalHandsLabel.SetText(1, _localizationService.GetText("menuitem.physicalHands.description"));
+
+            return physicalHandsLabel;
+        }
+
+        private AbstractMenuItemInstance CreatePhysicalHandsChoice(AbstractMenuInstance gameMenu, int posY)
+        {
+            var subtitlesChoice = gameMenu.FindMenuItem("MENUITEM_GAME_SUB_TITLES_CHOICE", out _);
+            var physicalHandsSetting =
+                new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_IMMERSION_PHYSICAL_HANDS_CHOICE", subtitlesChoice);
+
+            physicalHandsSetting.PosY = posY;
+            // Default value if no INI value exists.
+            physicalHandsSetting.SetUserFloat(3, VRConstants.PhysicalHandsDefaultValue);
+
+            physicalHandsSetting.SetText(0, _localizationService.GetText("menuitem.physicalHands.value"));
+            physicalHandsSetting.OnChgSetOption = VRConstants.IniNames.PhysicalHands;
+            physicalHandsSetting.OnChgSetOptionSection = VRConstants.IniSectionImmersion;
+
+            return physicalHandsSetting;
         }
 
         private string GetMicrophoneList()

@@ -134,6 +134,15 @@ namespace Gothic.VR.Adapters.Player
                 PutAway("trigger click of the other hand");
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableRingSpellReplacesHandSpell: another spell taken into this hand replaces this one.
+        /// </summary>
+        public void Replace()
+        {
+            if (!_isPutAway)
+                PutAway("another spell taken into this hand");
+        }
+
         private void PutAway(string reason)
         {
             _isPutAway = true;

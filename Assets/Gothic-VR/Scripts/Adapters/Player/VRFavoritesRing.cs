@@ -966,6 +966,14 @@ namespace Gothic.VR.Adapters.Player
             if (handModel == null || string.IsNullOrEmpty(slot.InstanceName))
                 return;
 
+            // DeveloperConfig.EnableRingSpellReplacesHandSpell: the hand's spell taken before stayed with its own
+            // VRRuneCaster - both charged and cast at once (a waiting transformation cast again on transforming back).
+            if (_configService.Dev.EnableRingSpellReplacesHandSpell)
+            {
+                foreach (var oldSpell in handModel.GetComponentsInChildren<VRFavoritesRingSpell>())
+                    oldSpell.Replace();
+            }
+
             var container = CreateItem(slot.InstanceName);
             var grabbable = container?.Go != null ? container.Go.GetComponentInChildren<HVRGrabbable>() : null;
             if (grabbable == null)

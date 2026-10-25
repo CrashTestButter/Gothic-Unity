@@ -209,6 +209,20 @@ namespace Gothic.Core.Adapters.Vob
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableVisualFxLights: a pooled light that changes (a spell's animated light preset) - new
+        /// color, range and position into its slot.
+        /// </summary>
+        public void UpdateRuntime(Color color, float range)
+        {
+            Color = color;
+            Range = range;
+            RuntimeLinearColor = color.linear;
+            CachedPosition = transform.position;
+            CachedRange = range;
+            LightsService.UpdatePooledLight(this);
+        }
+
+        /// <summary>
         /// The pool gave this light a shader slot: light the renderers around it.
         /// </summary>
         public void AttachSlot(int index)

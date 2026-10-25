@@ -159,6 +159,13 @@ namespace Gothic.VR.Services.Context
                 heroBlock.transform.SetParent(_playerController.transform, false);
             }
 
+            // DeveloperConfig.EnableVisualFxEarthquake: FX_EarthQuake rumbles the controllers.
+            if (developerConfig.EnableVisualFxEarthquake)
+            {
+                var earthquakeRumble = new GameObject("_EarthquakeRumble").AddComponent<VREarthquakeRumble>();
+                earthquakeRumble.transform.SetParent(_playerController.transform, false);
+            }
+
             // DeveloperConfig.EnableBackpackEquipToggle: a trigger click at a worn item in the backpack equips it.
             if (developerConfig.EnableBackpackEquipToggle)
             {

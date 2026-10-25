@@ -321,6 +321,9 @@ MonoBehaviour:
   EnableRingWeaponLeavesOnDrop: 1
   EnableGameProfileIniChoice: 1
   EnableScrollUseOption: 1
+  EnableVisualFxLights: 1
+  EnableVisualFxEarthquake: 1
+  EnableBodyFxAtGround: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

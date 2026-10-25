@@ -69,6 +69,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private readonly System.Collections.Generic.List<GameObject> _bodyFxGos = new();
         private const float _bodyFxHeight = 1f; // BIP01 above the feet
         private const float _bodyFxFadeSeconds = 2f;
+        // DeveloperConfig.EnableBodyFxAtGround: a body effect with a downward offset ends this far above the ground.
+        private const float _groundFxClearance = 0.05f;
+        // DeveloperConfig.EnableVisualFxLights: the light while charging, and the cast's flash.
+        private Gothic.Core.Adapters.Vob.VisualFxLight _investLight;
+        private int _bodyInvestLevel;
+        private const float _castLightSeconds = 0.3f;
+        private const float _castLightFadeSeconds = 1.5f;
 
         private const string _telekinesisName = "Telekinesis";
         private const float _telekinesisRange = 5000f;
@@ -327,6 +334,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _castThisGrab = true;
                 return;
             }
+
+            if (result == _splNextlevel)
+                NextBodyInvestLevel();
 
             // Ready at once (instant spell): its effects stay in the hand for the minimum cast time first.
             if (result == _splSendcast && Time.time - _castStartTime < _configService.Dev.MinSpellCastSeconds)
@@ -852,6 +862,50 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (isHandKeyUsed && !string.IsNullOrEmpty(investKey?.VisNameS))
                 SpawnSpellVfx(_runeHandSide, investKey.VisNameS);
             SpawnFxChain(investKey?.EmCreateFxId, true);
+
+            _bodyInvestLevel = 1;
+            CreateInvestLight(mfxName, investKey);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVisualFxLights: the spell's light while charging, at the body (OpenGothic: the spell
+        /// effect's light with the INVEST key) - the key's lightPresetName or the spell's, the key's lightRange
+        /// (summoning: 0 while held, 4 m from the first level). Gone with the other charging effects.
+        /// </summary>
+        private void CreateInvestLight(string mfxName, ParticleEffectEmitKeyInstance investKey)
+        {
+            var hero = _npcService.GetHeroContainer();
+            if (hero?.Go == null)
+                return;
+            var preset = !string.IsNullOrEmpty(investKey?.LightPresetName)
+                ? investKey.LightPresetName
+                : _vmCacheService.TryGetVfxData($"spellFX_{mfxName}")?.LightPresetName;
+            var range = investKey != null && investKey.LightRange > 0f ? investKey.LightRange / 100f : -1f;
+            _investLight = _particleService.CreateVisualFxLight(preset, hero.Go.transform,
+                hero.Go.transform.position + Vector3.up * _bodyFxHeight, range);
+            if (_investLight == null)
+                return;
+            _bodyFxGos.Add(_investLight.gameObject);
+            Logger.Log($"[VRRuneCaster] Spell light {preset} while charging ({range:F1} m)", LogCat.VR);
+        }
+
+        /// <summary>
+        /// SPL_NEXTLEVEL of a spell charged at the body (summoning, fire rain): like the engine's next INVEST key -
+        /// its lightRange, its emCreateFXID (summoning's third level: FX_EarthQuake). Throwables: NextInvestLevel.
+        /// </summary>
+        private void NextBodyInvestLevel()
+        {
+            if (IsThrowable || !_configService.Dev.EnableSpellBodyFx || _bodyInvestLevel >= _maxInvestLevel)
+                return;
+            _bodyInvestLevel++;
+            var mfxName = GetSpellMfxName(_item.Spell);
+            var levelKey = _vmCacheService.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_INVEST_{_bodyInvestLevel}");
+            if (levelKey == null)
+                return;
+            if (levelKey.LightRange > 0f)
+                _investLight?.SetRange(levelKey.LightRange / 100f);
+            SpawnFxChain(levelKey.EmCreateFxId, true);
+            Logger.Log($"[VRRuneCaster] {mfxName} charge level {_bodyInvestLevel}", LogCat.VR);
         }
 
         /// <summary>
@@ -864,7 +918,28 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             var mfxName = GetSpellMfxName(_item.Spell);
             if (mfxName == null)
                 return;
-            SpawnFxChain(_vmCacheService.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_CAST")?.EmCreateFxId, false);
+            var castKey = _vmCacheService.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_CAST");
+            SpawnFxChain(castKey?.EmCreateFxId, false);
+            SpawnCastLight(mfxName, castKey);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVisualFxLights: the spell's light flashes when it's cast (OpenGothic: the spell effect
+        /// with the CAST key and its light) - summoning's red REDAMBIENCE around the caster. Thrown spells carry
+        /// their own light on the projectile.
+        /// </summary>
+        private void SpawnCastLight(string mfxName, ParticleEffectEmitKeyInstance castKey)
+        {
+            var hero = _npcService.GetHeroContainer();
+            if (IsThrowable || hero?.Go == null)
+                return;
+            var preset = !string.IsNullOrEmpty(castKey?.LightPresetName)
+                ? castKey.LightPresetName
+                : _vmCacheService.TryGetVfxData($"spellFX_{mfxName}")?.LightPresetName;
+            var range = castKey != null && castKey.LightRange > 0f ? castKey.LightRange / 100f : -1f;
+            var light = _particleService.CreateVisualFxLight(preset, null,
+                hero.Go.transform.position + Vector3.up * _bodyFxHeight, range);
+            light?.FadeOut(_castLightFadeSeconds, _castLightSeconds);
         }
 
         /// <summary>
@@ -900,7 +975,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             var position = origin == handGo?.transform || origin == target
                 ? origin.position
-                : origin.position + Vector3.up * _bodyFxHeight;
+                : origin.position + Vector3.up * GetBodyFxHeight(fx.VisNameS);
             // shpType MESH effects glow on the VR body (teleport silhouette).
             var bodyMesh = FindFirstObjectByType<Gothic.VR.Adapters.Player.VRHeroBody>()?.BodyRenderer;
             var created = _particleService.PlayVisualFx(fxName, position, isWhileInvesting ? origin : null,
@@ -911,12 +986,32 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             Logger.Log($"[VRRuneCaster] Spell FX {fxName} at {at} ({created.Count} PFX)", LogCat.VR);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableBodyFxAtGround: Gothic places body effects at BIP01 (about hip height) - one shifted down
+        /// by its PFX (summoning's fire ring: shpOffsetVec_s "0 -120 0") is lifted so it lies on the ground.
+        /// </summary>
+        private float GetBodyFxHeight(string pfxName)
+        {
+            if (!_configService.Dev.EnableBodyFxAtGround || string.IsNullOrEmpty(pfxName))
+                return _bodyFxHeight;
+            var offset = _vmCacheService.TryGetPfxData(pfxName)?.ShpOffsetVecS?
+                .Split((char[])null, System.StringSplitOptions.RemoveEmptyEntries);
+            if (offset == null || offset.Length < 2 ||
+                !float.TryParse(offset[1], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var offsetY) || offsetY >= 0f)
+                return _bodyFxHeight;
+            return Mathf.Max(_bodyFxHeight, -offsetY / 100f + _groundFxClearance);
+        }
+
         private void DestroyBodyFx()
         {
+            _investLight = null;
             foreach (var fxGo in _bodyFxGos)
             {
                 if (fxGo == null)
                     continue;
+                foreach (var fxLight in fxGo.GetComponentsInChildren<Gothic.Core.Adapters.Vob.VisualFxLight>(true))
+                    fxLight.FadeOut(_bodyFxFadeSeconds);
                 foreach (var ps in fxGo.GetComponentsInChildren<ParticleSystem>(true))
                     ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
                 Destroy(fxGo, _bodyFxFadeSeconds);

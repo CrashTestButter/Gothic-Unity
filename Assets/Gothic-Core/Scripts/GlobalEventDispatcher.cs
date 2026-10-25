@@ -222,6 +222,10 @@ namespace Gothic.Core
         // Game menu (MenuHandler) got closed completely.
         public static readonly UnityEvent MenuClosed = new();
 
+        // DeveloperConfig.EnableVisualFxEarthquake: FX_EarthQuake played (summoning, fire rain) - position, radius in
+        // meters, seconds. VR rumbles the controllers instead of shaking the camera.
+        public static readonly UnityEvent<Vector3, float, float> VisualFxEarthquake = new();
+
         // Marvin: the list of recently executed commands changed.
         public static readonly UnityEvent MarvinRecentCommandsChanged = new();
         // Marvin mode got activated (true) or deactivated (false).

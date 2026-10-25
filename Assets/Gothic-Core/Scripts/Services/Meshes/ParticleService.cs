@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Adapters.Vob;
+using Gothic.Core.Domain.Vobs;
 using Gothic.Core.Const;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
@@ -20,6 +22,13 @@ namespace Gothic.Core.Services.Meshes
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly Gothic.Core.Services.Config.ConfigService _npcSpellConfigService;
+        [Inject] private readonly ResourceCacheService _resourceCacheService;
+
+        private const string _lightPresetsFile = "LIGHTPRESETS.ZEN";
+        private const string _earthquakeVisual = "earthquake.eqk";
+        // A one-shot effect's light dims this long before the effect is gone.
+        private const float _fxLightFadeSeconds = 1f;
+        private System.Collections.Generic.Dictionary<string, LightPresetLoader.LightPreset> _lightPresets;
 
         private const int _maxFxChainDepth = 3;
         private const string _defaultBloodEmitter = "PFX_BLOOD";
@@ -44,7 +53,8 @@ namespace Gothic.Core.Services.Meshes
         /// <summary>
         /// Plays a VISUALFX instance (spellFX_*, VOB_*): its PFX upright at the position (following `follow` if set),
         /// its sound and its emFXCreate_S chain. One-shot effects end on their own; looping ones (isLooping) stay
-        /// until the caller destroys the returned roots. Camera effects (FX_EarthQuake, ...) are skipped.
+        /// until the caller destroys the returned roots. Its light preset glows with it (EnableVisualFxLights), camera
+        /// effects only rumble (FX_EarthQuake, EnableVisualFxEarthquake).
         /// </summary>
         public List<GameObject> PlayVisualFx(string fxName, Vector3 position, Transform follow = null,
             bool isLooping = false, string skippedSfx = null, SkinnedMeshRenderer ownerMesh = null)
@@ -57,9 +67,13 @@ namespace Gothic.Core.Services.Meshes
         private void PlayVisualFx(string fxName, Vector3 position, Transform follow, bool isLooping, string skippedSfx,
             SkinnedMeshRenderer ownerMesh, List<GameObject> created, int depth)
         {
-            if (string.IsNullOrEmpty(fxName) || depth > _maxFxChainDepth ||
-                fxName.StartsWith("FX_", StringComparison.OrdinalIgnoreCase))
+            if (string.IsNullOrEmpty(fxName) || depth > _maxFxChainDepth)
                 return;
+            if (fxName.StartsWith("FX_", StringComparison.OrdinalIgnoreCase))
+            {
+                PlayGlobalFx(fxName, position);
+                return;
+            }
             var fx = _vmCacheService.TryGetVfxData(fxName);
             if (fx == null)
             {
@@ -96,6 +110,7 @@ namespace Gothic.Core.Services.Meshes
                         UnityEngine.Object.Destroy(anchor, Mathf.Max(fx.EmFxLifespan, GetPlaySeconds(anchor)));
                     }
                     UseOwnerMesh(fx.VisNameS, anchor, ownerMesh);
+                    AddLight(fx.LightPresetName, anchor, position, isLooping);
                     created.Add(anchor);
                 }
             }
@@ -109,6 +124,70 @@ namespace Gothic.Core.Services.Meshes
             }
 
             PlayVisualFx(fx.EmFxCreateS, position, follow, isLooping, skippedSfx, ownerMesh, created, depth + 1);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVisualFxLights: a light preset by name (LIGHTPRESETS.ZEN, read once).
+        /// </summary>
+        public LightPresetLoader.LightPreset TryGetLightPreset(string presetName)
+        {
+            if (string.IsNullOrEmpty(presetName) || !_npcSpellConfigService.Dev.EnableVisualFxLights)
+                return null;
+            if (_lightPresets == null)
+            {
+                _lightPresets = LightPresetLoader.Load(_resourceCacheService.Vfs.Find(_lightPresetsFile)?.Buffer.Bytes);
+                Logger.Log($"[VisualFx] {_lightPresets.Count} light presets loaded", LogCat.Mesh);
+            }
+            if (_lightPresets.TryGetValue(presetName, out var preset))
+                return preset;
+            Logger.LogWarning($"[VisualFx] Unknown light preset {presetName}", LogCat.Mesh);
+            return null;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVisualFxLights: a VISUALFX's light (OpenGothic Effect::setupLight) - rangeMeters is a
+        /// key's lightRange, below 0 the preset's. Null without a preset.
+        /// </summary>
+        public VisualFxLight CreateVisualFxLight(string presetName, Transform parent, Vector3 position,
+            float rangeMeters = -1f)
+        {
+            var preset = TryGetLightPreset(presetName);
+            return preset == null ? null : VisualFxLight.Create(parent, position, preset, rangeMeters);
+        }
+
+        private void AddLight(string presetName, GameObject anchor, Vector3 position, bool isLooping)
+        {
+            var light = CreateVisualFxLight(presetName, anchor.transform, position);
+            if (light == null || isLooping)
+                return;
+            var seconds = GetPlaySeconds(anchor);
+            light.FadeOut(_fxLightFadeSeconds, Mathf.Max(0f, seconds - _fxLightFadeSeconds));
+        }
+
+        /// <summary>
+        /// Camera effects (FX_*): DeveloperConfig.EnableVisualFxEarthquake - FX_EarthQuake (earthquake.eqk) plays its
+        /// sound and tells VR to rumble the controllers (no camera shake in VR) within its radius (userString[0],
+        /// cm) for its seconds (userString[1]). Time and screen effects (time.slw, screenblend.scx) are skipped.
+        /// </summary>
+        private void PlayGlobalFx(string fxName, Vector3 position)
+        {
+            var fx = _vmCacheService.TryGetVfxData(fxName);
+            if (fx == null || !_npcSpellConfigService.Dev.EnableVisualFxEarthquake ||
+                !_earthquakeVisual.Equals(fx.VisNameS, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var radius = float.TryParse(fx.GetUserString(0), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var radiusCm) ? radiusCm / 100f : 10f;
+            var seconds = float.TryParse(fx.GetUserString(1), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var s) ? s : 3f;
+            if (!string.IsNullOrEmpty(fx.SfxId))
+            {
+                var clip = _audioService.GetRandomSoundClip(fx.SfxId);
+                if (clip != null)
+                    AudioSource.PlayClipAtPoint(clip, position);
+            }
+            Logger.Log($"[VisualFx] {fxName}: earthquake {radius:F0} m, {seconds:F1} s", LogCat.Mesh);
+            GlobalEventDispatcher.VisualFxEarthquake.Invoke(position, radius, seconds);
         }
 
         private static float GetPlaySeconds(GameObject root)

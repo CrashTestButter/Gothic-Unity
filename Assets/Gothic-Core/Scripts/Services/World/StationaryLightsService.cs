@@ -489,6 +489,27 @@ namespace Gothic.Core.Services.World
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableVisualFxLights: a pooled light changed (StationaryLight.UpdateRuntime) - its slot gets
+        /// the new values with the next upload; without a slot it competes with the others at the next rebalance.
+        /// </summary>
+        public void UpdatePooledLight(StationaryLight light)
+        {
+            if (light == null || _lightPositionsAndAttenuation == null)
+                return;
+            if (light.Index <= DynamicLightIndex || light.Index >= _lightPositionsAndAttenuation.Length)
+            {
+                _isPoolDirty = true;
+                return;
+            }
+
+            var position = light.CachedPosition;
+            _lightPositionsAndAttenuation[light.Index] = new Vector4(position.x, position.y, position.z,
+                1f / Mathf.Max(0.01f, light.CachedRange * light.CachedRange));
+            _lightColors[light.Index] = light.RuntimeLinearColor;
+            _isUploadDirty = true;
+        }
+
+        /// <summary>
         /// A pooled light was unloaded (culling, world change): its slot is free right away.
         /// </summary>
         public void UnregisterPooledLight(StationaryLight light)

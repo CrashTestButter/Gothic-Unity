@@ -1314,6 +1314,21 @@ namespace Gothic.Core.Models.Config
                  "it up like in Gothic - held stacks and scrolls from the favorites ring. Scrolls were cast forever.")]
         public bool EnableScrollUseOption = true;
 
+        [Tooltip("V1: Spell effects light up like in Gothic (OpenGothic Effect::setupLight): a VISUALFX lightPresetName " +
+                 "from LIGHTPRESETS.ZEN with its color/range animation - summoning glows red around the caster while " +
+                 "charging (the key's lightRange, growing per level) and flashes when cast, fire rain's glow and rain " +
+                 "light the area. Lights the world too (pooled stationary lights).")]
+        public bool EnableVisualFxLights = true;
+
+        [Tooltip("V1: FX_EarthQuake (summoning's 3rd charge level, fire rain while charging) plays its sound and rumbles " +
+                 "both VR controllers for its seconds within its radius - it was skipped (no camera shake in VR).")]
+        public bool EnableVisualFxEarthquake = true;
+
+        [Tooltip("V1: A spell's charging effect around the body sits on the ground: Gothic places it at BIP01 with a " +
+                 "downward offset (summoning's fire ring: -120 cm) - from our fixed body height it ended under the " +
+                 "ground, only a few sparks showed.")]
+        public bool EnableBodyFxAtGround = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

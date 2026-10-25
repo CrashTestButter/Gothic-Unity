@@ -719,6 +719,12 @@ namespace Gothic.Core.Domain.Vm
             if (string.IsNullOrWhiteSpace(fileName))
                 return 0;
 
+            if (_configService.Dev.SkipVideos)
+            {
+                Logger.Log($"[PlayVideo] {fileName} skipped (DeveloperConfig.SkipVideos).", LogCat.Misc);
+                return 1;
+            }
+
             Logger.Log($"[PlayVideo] {fileName}", LogCat.Misc);
             GlobalEventDispatcher.PlayVideo.Invoke(fileName);
             return 1;

@@ -54,3 +54,4 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 - Simulator: Very complex to traverse. Why not having it like the one from https://github.com/AdrielHercules/hvr-simulator (aka Controller handling etc.)
 - Rotation + Scaling of objects inside Slots is broken
 - Lockpicking - finalizing the minigame should open the door directly. Currently: Nothing.
+- Raycaster feels "wobbly". Should be a sharp and straight line

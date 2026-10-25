@@ -161,7 +161,10 @@ namespace Gothic.VR.Adapters.HVROverrides
             // DeveloperConfig.EnableHeroSneakBodyState: crouched (head below CrouchMinHeight) = sneaking.
             // Lying or standing up (VRHeroBody's fall camera lowers the head) isn't sneaking - an NPC asked "why are you
             // sneaking around" while the hero got up.
-            if (_configService.Dev.EnableHeroSneakBodyState && IsCrouching && !VRHeroBody.IsHeroDown)
+            // DeveloperConfig.EnableSneakNeedsTalent: like the engine (OpenGothic Npc::canSneak) only with the sneak
+            // talent - without it a crouching hero just walks: guards turn to him, Lukis hears him coming.
+            if (_configService.Dev.EnableHeroSneakBodyState && IsCrouching && !VRHeroBody.IsHeroDown &&
+                CanHeroSneak(heroInstance))
             {
                 props.BodyState = VmGothicEnums.BodyState.BsSneak;
                 return;
@@ -195,6 +198,30 @@ namespace Gothic.VR.Adapters.HVROverrides
 
             props.BodyState = bodyState;
         }
+
+        private bool CanHeroSneak(NpcInstance heroInstance)
+        {
+            if (!_configService.Dev.EnableSneakNeedsTalent)
+                return true;
+            var sneakTalent = _gameStateService.GothicVm.GetSymbolByName(_sneakTalentSymbol)?.GetInt(0) ??
+                              _defaultSneakTalent;
+            var vob = heroInstance.GetUserData()?.Vob;
+            var canSneak = vob == null || vob.GetTalent(sneakTalent)?.Skill > 0;
+            if (!canSneak && !_isNoSneakLogged)
+            {
+                _isNoSneakLogged = true;
+                Gothic.Core.Logging.Logger.Log("[VRPlayerController] Crouching without the sneak talent - the hero " +
+                                               "walks (not BS_SNEAK)", Gothic.Core.Logging.LogCat.VR);
+            }
+            if (canSneak)
+                _isNoSneakLogged = false;
+            return canSneak;
+        }
+
+        // DeveloperConfig.EnableSneakNeedsTalent: NPC_TALENT_SNEAK (G1/G2: 8) - read from the scripts.
+        private const string _sneakTalentSymbol = "NPC_TALENT_SNEAK";
+        private const int _defaultSneakTalent = 8;
+        private bool _isNoSneakLogged;
 
         private void OnDestroy()
         {

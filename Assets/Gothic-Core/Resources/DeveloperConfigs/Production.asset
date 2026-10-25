@@ -348,6 +348,7 @@ MonoBehaviour:
   EnableModPercentTalents: 1
   EnableChoiceRemovedBeforeCall: 1
   EnableProfileMenuTextFit: 1
+  EnableSneakNeedsTalent: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

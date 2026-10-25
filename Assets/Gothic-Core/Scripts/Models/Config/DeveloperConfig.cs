@@ -1441,6 +1441,10 @@ namespace Gothic.Core.Models.Config
                  "wrapped into three lines over the next button.")]
         public bool EnableProfileMenuTextFit = true;
 
+        [Tooltip("V1: Crouching is sneaking (BS_SNEAK) only with the sneak talent like the engine (OpenGothic " +
+                 "Npc::canSneak) - without it the hero just walks: guards turn to him, NPCs notice him coming.")]
+        public bool EnableSneakNeedsTalent = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

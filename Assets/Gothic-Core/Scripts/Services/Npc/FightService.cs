@@ -1607,6 +1607,51 @@ namespace Gothic.Core.Services.Npc
             return false;
         }
 
+        // Gothic's NPC_TALENT_MAGE (G1/G2: 7) - read from the scripts, the talent enums of the games differ.
+        private const int _defaultMageTalent = 7;
+
+        /// <summary>
+        /// DeveloperConfig.EnableRuneCircleRequirement: does the hero know the rune's magic circle (C_ITEM.mag_circle vs
+        /// NPC_TALENT_MAGE)? If not, like the engine the scripts' G_CanNotCast says how many circles are missing - at
+        /// most every few seconds. Such a rune can't be equipped nor cast; scrolls have no circle.
+        /// </summary>
+        public bool CheckHeroRuneCircle(ItemInstance rune, bool isMessageShown)
+        {
+            if (!_configService.Dev.EnableRuneCircleRequirement || rune == null || rune.MagCircle <= 0)
+                return true;
+
+            var hero = _npcService.GetHeroContainer();
+            var vm = _gameStateService.GothicVm;
+            if (hero == null || vm == null)
+                return true;
+            var mageTalent = vm.GetSymbolByName("NPC_TALENT_MAGE")?.GetInt(0) ?? _defaultMageTalent;
+            var circle = _npcHelperService.ExtNpcGetTalentSkill(hero.Instance, mageTalent);
+            if (circle >= rune.MagCircle)
+                return true;
+
+            if (isMessageShown && Time.time - _lastCannotUseMessageTime > _cannotUseMessageSeconds)
+            {
+                _lastCannotUseMessageTime = Time.time;
+                Logger.Log($"[FightService] The hero knows circle {circle}, '{rune.Description}' needs {rune.MagCircle}",
+                    LogCat.Fight);
+                var function = vm.GetSymbolByName("G_CanNotCast");
+                if (function != null)
+                {
+                    var oldSelf = vm.GlobalSelf;
+                    vm.GlobalSelf = hero.Instance;
+                    try
+                    {
+                        vm.Call<int, int, int>(function.Index, 1, rune.MagCircle, circle);
+                    }
+                    finally
+                    {
+                        vm.GlobalSelf = oldSelf;
+                    }
+                }
+            }
+            return false;
+        }
+
         private void PrintCannotUse(NpcContainer hero, int attribute, int value)
         {
             var vm = _gameStateService.GothicVm;

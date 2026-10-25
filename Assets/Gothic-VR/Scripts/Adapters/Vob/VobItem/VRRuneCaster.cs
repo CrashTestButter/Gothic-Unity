@@ -64,6 +64,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         [Inject] private readonly VRTransformService _vrTransformService;
         [Inject] private readonly Gothic.Core.Services.Player.PlayerService _playerService;
         [Inject] private readonly Gothic.Core.Services.Vobs.VobService _vobService;
+        [Inject] private readonly FightService _fightService;
         private const string _transformName = "Transform";
         // DeveloperConfig.EnableSpellBodyFx: VISUALFX effects at the body/hand while charging and when cast.
         private readonly System.Collections.Generic.List<GameObject> _bodyFxGos = new();
@@ -244,6 +245,19 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             // Transformed: the orb hand's trigger transforms back (VRTransformPuppet) - no second transformation.
             if (_vrTransformService.IsTransformed && IsTransformSpell())
                 return;
+
+            // DeveloperConfig.EnableRuneCircleRequirement: a rune of a higher circle than the hero's doesn't cast - a
+            // trigger press says how many circles are missing (G_CanNotCast).
+            if (!_fightService.CheckHeroRuneCircle(_item, false))
+            {
+                if (triggered || HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Trigger).JustActivated ||
+                    HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).JustActivated)
+                {
+                    _fightService.CheckHeroRuneCircle(_item, true);
+                    _hapticsService.Vibrate(RingHand ?? HVRHandSide.Right, VrHapticsService.VibrationType.Error);
+                }
+                return;
+            }
 
             // Telekinesis uses a 2-trigger system and skips Daedalus entirely.
             if (IsTelekinesisSpell())

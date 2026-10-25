@@ -1335,6 +1335,11 @@ namespace Gothic.Core.Models.Config
                  "no file.")]
         public bool EnableSessionLogFiles = true;
 
+        [Tooltip("V1: Magic circles like in Gothic - a rune of a higher circle than the hero's (mag_circle vs " +
+                 "NPC_TALENT_MAGE) can't be equipped (favorites ring) nor cast; the scripts' G_CanNotCast says how many " +
+                 "circles are missing. Scrolls have no circle.")]
+        public bool EnableRuneCircleRequirement = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

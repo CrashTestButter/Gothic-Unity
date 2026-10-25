@@ -1339,6 +1339,9 @@ namespace Gothic.VR.Adapters.Player
                     case SlotKind.Spell when _slots.Count(s => s.Kind == SlotKind.Spell) >= _maxSpells:
                         rejection = "8 spells already";
                         break;
+                    case SlotKind.Spell when !_fightService.CheckHeroRuneCircle(item, true):
+                        rejection = "magic circle too low (EnableRuneCircleRequirement)";
+                        break;
                     case SlotKind.Spell:
                         action = "equipped";
                         break;

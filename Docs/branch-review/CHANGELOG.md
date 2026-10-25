@@ -57,7 +57,6 @@ Link), not on Quest/Pico standalone.
 
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
-- Bows and crossbows hit critically by their talent (G1).
 - Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR).
 
 ## The ring around you, spells like in Gothic · 2026-10-26
@@ -75,6 +74,7 @@ Link), not on Quest/Pico standalone.
 - G1 chain lightning: hold it - it zaps the one in front of you, jumps on to the next every few seconds, and with nobody
   left it turns back on you.
 - Windfist and Stormfist throw their victims away; they land lying and get up.
+- G1: bows and crossbows hit critically (double damage) by their talent's percent.
 - Spell effects light up the world (summoning glows red around you, fire rain lights the area) and the summoning's
   earthquake rumbles the controllers. Effects in your hand and in the ring move like in Gothic: summoning glows,
   transformation scrolls crackle, chain lightning and the fire storm show theirs.

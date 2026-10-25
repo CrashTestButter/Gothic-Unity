@@ -55,3 +55,4 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 - Rotation + Scaling of objects inside Slots is broken
 - Lockpicking - finalizing the minigame should open the door directly. Currently: Nothing.
 - Raycaster feels "wobbly". Should be a sharp and straight line
+- Items on holster do collide. e.g., a coin in left hip and we can "fly" with it.

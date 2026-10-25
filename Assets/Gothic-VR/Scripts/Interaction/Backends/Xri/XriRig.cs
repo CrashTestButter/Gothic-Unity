@@ -52,6 +52,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [SerializeField] private GravityProvider _gravityProvider;
         [SerializeField] private JumpProvider _jumpProvider;
 
+        [Header("Teleport")]
+        [Tooltip("Thumbstick teleport (arc + ring). Child of this GameObject.")]
+        [SerializeField] private XriTeleportAimer _teleportAimer;
+
         [Header("Movement")]
         [Tooltip("Walking speed in m/s.")]
         [SerializeField] private float _moveSpeed = 1.5f;
@@ -128,7 +132,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         /// <summary>
         /// Player-initiated teleporting. Teleports from code (Teleport()) always work, therefore the
-        /// TeleportationProvider itself stays enabled. There are no teleport interactors yet (HVR phase 2).
+        /// TeleportationProvider itself stays enabled. Disabling only stops the thumbstick teleport (XriTeleportAimer).
         /// </summary>
         public bool TeleportEnabled
         {
@@ -240,6 +244,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
             if (_xriInput == null)
                 Logger.LogError("XriRig needs the XRI backend (XriInput). Sprinting and crouching won't work.",
                     LogCat.VR);
+            else
+                CreateTeleportAimer();
         }
 
         private void OnDestroy()
@@ -252,6 +258,31 @@ namespace Gothic.VR.Interaction.Backends.Xri
         {
             UpdateSprint();
             UpdateCrouch();
+        }
+
+        /// <summary>
+        /// Right thumbstick forward aims, releasing teleports, grip cancels.
+        /// </summary>
+        private void CreateTeleportAimer()
+        {
+            var map = _xriInput.Actions?.FindActionMap("XRI Right Locomotion");
+            var stickAction = map?.FindAction("Teleport Mode");
+            if (stickAction == null)
+            {
+                Logger.LogError("[XRI] Action 'XRI Right Locomotion/Teleport Mode' not found. " +
+                                "Teleporting with the thumbstick won't work.", LogCat.VR);
+                return;
+            }
+
+            var cancelAction = map.FindAction("Teleport Mode Cancel");
+            if (cancelAction == null)
+                Logger.LogWarning("[XRI] Action 'XRI Right Locomotion/Teleport Mode Cancel' not found. " +
+                                  "Aiming a teleport can't be canceled.", LogCat.VR);
+
+            // While crouching, the CharacterController is lower than the player once standing up at the target.
+            _teleportAimer.Init(stickAction, cancelAction, _rightController, _camera.transform, _characterController,
+                GetCollidingLayers(gameObject.layer), () => _teleportEnabled, () => IsGrounded,
+                () => CameraHeight + _crouchOffset, Teleport);
         }
 
         private void UpdateSprint()

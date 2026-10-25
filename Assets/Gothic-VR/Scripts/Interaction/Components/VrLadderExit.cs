@@ -1,3 +1,4 @@
+using Gothic.Core.Const;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Context;
 using Gothic.Core.Services.Context;
@@ -156,12 +157,19 @@ namespace Gothic.VR.Interaction.Components
         {
             floor = default;
 
-            var hits = Physics.RaycastAll(rayStart, Vector3.down, _floorTolerance * 2f, ~0,
+            // What the player can stand on. Not the physical hands reaching over the edge, not loose or held items
+            // (dynamic rigidbodies) and not the player.
+            var mask = GetCollidingLayers(_rig.Root.gameObject.layer) & ~(1 << Constants.HandLayer);
+            var hits = Physics.RaycastAll(rayStart, Vector3.down, _floorTolerance * 2f, mask,
                 QueryTriggerInteraction.Ignore);
             var closest = float.MaxValue;
             foreach (var hit in hits)
             {
                 if (hit.distance >= closest || IsOwnCollider(hit.collider) || hit.normal.y < 0.7f)
+                    continue;
+
+                var body = hit.collider.attachedRigidbody;
+                if ((body != null && !body.isKinematic) || hit.collider.transform.IsChildOf(_rig.Root))
                     continue;
 
                 closest = hit.distance;

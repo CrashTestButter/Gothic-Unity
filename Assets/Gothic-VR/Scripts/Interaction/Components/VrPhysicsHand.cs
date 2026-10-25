@@ -21,6 +21,10 @@ namespace Gothic.VR.Interaction.Components
     /// step blocked: no interpolation lag while walking, and the late-latched controller pose still applies.
     ///
     /// Off (comfort setting, while climbing): the visual follows the controller directly, the body is inactive.
+    ///
+    /// Rig jumps (teleport, Marvin goto, world change, ladder exit, snap turn): the hand snaps with the rig and the
+    /// held item is moved by the same offset. What they overlap at the new place doesn't push them out, they pass
+    /// through until clear (VrCollisionPassThrough).
     /// </summary>
     public class VrPhysicsHand : MonoBehaviour
     {
@@ -64,14 +68,18 @@ namespace Gothic.VR.Interaction.Components
         [Tooltip("Time in s a stuck hand waits before it snaps back to the controller.")]
         [SerializeField] private float _maxDistanceTime = 0.2f;
 
-        [Tooltip("A rig turn larger than this (degrees per physics step) is a snap turn: the hand snaps with the rig.")]
+        [Tooltip("A rig turn larger than this (degrees per frame) is a snap turn: the hand snaps with the rig.")]
         [SerializeField] private float _rigSnapAngle = 10f;
 
-        [Tooltip("A rig move larger than this (m per physics step) is a teleport: the hand snaps with the rig.")]
+        [Tooltip("A rig move larger than this (m per frame) is a teleport: the hand snaps with the rig.")]
         [SerializeField] private float _rigSnapDistance = 1f;
 
         [Tooltip("Margin in m around the hand: collisions with a released item come back once it is further away.")]
         [SerializeField] private float _restoreCollisionMargin = 0.02f;
+
+        [Tooltip("Time in s the visual moves back to the controller when the physics hand turns off (ladder grabbed, " +
+                 "setting off), instead of popping there. Offsets above Max Distance pop.")]
+        [SerializeField] private float _inactiveBlendTime = 0.15f;
 
         [Header("Held item")]
         [Tooltip("While the held item touches something solid, the hand moves at most this far (m) ahead of where " +
@@ -107,6 +115,16 @@ namespace Gothic.VR.Interaction.Components
         private readonly List<Collider> _handColliders = new();
         private readonly HashSet<Collider> _ignoredColliders = new();
         private readonly List<Collider> _pendingRestoreColliders = new();
+        private readonly List<Collider> _heldColliders = new();
+        private readonly VrCollisionPassThrough _passThrough = new();
+        private readonly VrCollisionPassThrough _heldPassThrough = new();
+
+        // Distance in m a stuck hand's blocks are cast from behind the hand to find what holds it back.
+        private const float _snapCastBackOff = 0.05f;
+
+        // A held item is moved with the rig once per jump, also when both hands hold it.
+        private static Rigidbody _lastMovedHeldBody;
+        private static int _lastMovedHeldFrame = -1;
 
         private IVrRig _rig;
         private Transform _target;
@@ -125,8 +143,16 @@ namespace Gothic.VR.Interaction.Components
         private float _separation;
         private Vector3 _lastTargetPosition;
         private Quaternion _lastTargetRotation = Quaternion.identity;
+        private bool _isTeleportPending;
+        private bool _isRigPoseKnown;
         private Vector3 _lastRigPosition;
         private Quaternion _lastRigRotation = Quaternion.identity;
+
+        // Inactive hand: offset of the visual from its rest pose (controller space), blended to 0.
+        private Vector3 _inactiveOffsetPosition;
+        private Quaternion _inactiveOffsetRotation = Quaternion.identity;
+        private float _inactiveBlendSpeed;
+        private float _inactiveBlendAngularSpeed;
 
         private Transform _attachPoint;
         private Rigidbody _heldBody;
@@ -299,6 +325,12 @@ namespace Gothic.VR.Interaction.Components
             _lastHeldContactTime = float.NegativeInfinity;
             _isHeldItemSettled = false;
 
+            foreach (var itemCollider in body.GetComponentsInChildren<Collider>())
+            {
+                if (!itemCollider.isTrigger && itemCollider.attachedRigidbody == body)
+                    _heldColliders.Add(itemCollider);
+            }
+
             _heldContact = body.gameObject.AddComponent<VrPhysicsHandContact>();
             _heldContact.Init(this, true);
         }
@@ -308,6 +340,9 @@ namespace Gothic.VR.Interaction.Components
             if (_heldContact != null)
                 Destroy(_heldContact);
 
+            // A dropped item that still passes through a floor would fall through it.
+            _heldPassThrough.RestoreAll();
+            _heldColliders.Clear();
             _heldContact = null;
             _heldBody = null;
             _heldBlockedTime = float.NegativeInfinity;
@@ -355,6 +390,9 @@ namespace Gothic.VR.Interaction.Components
 
         private void FixedUpdate()
         {
+            // Also with the setting off: the item may pass through a wall after a teleport either way.
+            _heldPassThrough.Update(GetViewpoint());
+
             if (!_isActive)
                 return;
 
@@ -373,9 +411,10 @@ namespace Gothic.VR.Interaction.Components
             // Result of the last step: how far the physics kept the hand from where it should be.
             _separation = Vector3.Distance(_rigidbody.position, _lastTargetPosition);
 
-            if (_isSnapRequested || HasRigJumped())
+            if (_isSnapRequested)
             {
-                Snap(targetPosition, targetRotation);
+                Snap(targetPosition, targetRotation, targetPosition, targetRotation);
+                PassThroughOverlaps();
                 return;
             }
 
@@ -386,7 +425,7 @@ namespace Gothic.VR.Interaction.Components
                 {
                     Logger.LogEditor($"[VrPhysicsHand] {_side} hand stuck {_separation:0.00} m away from the " +
                                      "controller. Snapped back.", LogCat.VR);
-                    Snap(targetPosition, targetRotation);
+                    SnapThroughBlockers(targetPosition, targetRotation);
                     ReleaseStuckItem();
                     return;
                 }
@@ -398,6 +437,7 @@ namespace Gothic.VR.Interaction.Components
 
             SyncColliders();
             RestorePendingCollisions();
+            _passThrough.Update(GetViewpoint());
 
             // A held item that touches a wall holds the hand back. The visual offset and the separation are still
             // measured against the controller (target), so the ghost hand shows and a stuck hand snaps.
@@ -418,8 +458,15 @@ namespace Gothic.VR.Interaction.Components
 
         private void LateUpdate()
         {
+            // After all locomotion of this frame, before the next physics step (XRI's VelocityTracking runs before
+            // our FixedUpdate and would fling the item at the old pose towards the new hand).
+            HandleRigJump();
+
             if (!_isActive)
+            {
+                UpdateInactiveVisual();
                 return;
+            }
 
             // The visual = the current controller pose plus what the last physics step blocked. Free hands therefore
             // have no lag, blocked hands stay where the physics left them.
@@ -475,7 +522,8 @@ namespace Gothic.VR.Interaction.Components
             if (!_isPhysical || !isActiveAndEnabled)
                 return false;
 
-            // Ladders: the ClimbProvider moves the rig by the hand, blocked hands would fight it. (5d)
+            // Ladders: the ClimbProvider moves the rig by the hand, blocked hands would fight it. The visual blends
+            // to the controller meanwhile and the body starts from there again afterwards.
             return _rig == null || !_rig.IsClimbing;
         }
 
@@ -493,20 +541,84 @@ namespace Gothic.VR.Interaction.Components
 
                 _body.SetActive(true);
                 ReapplyIgnoredCollisions();
+
+                // Starts where the visual is (still blending back after a ladder): no pop. Overlaps pass through.
                 GetTargetPose(out var targetPosition, out var targetRotation);
-                Snap(targetPosition, targetRotation);
+                Snap(transform.position, transform.rotation, targetPosition, targetRotation);
+                PassThroughOverlaps();
+                ClearInactiveOffset();
             }
             else
             {
+                // Unity can't change pairs of inactive colliders.
+                _passThrough.RestoreAll();
                 if (_body != null)
                     _body.SetActive(false);
 
-                // Direct follow (5a state).
-                transform.SetLocalPositionAndRotation(_restPosition, _restRotation);
+                // Direct follow (5a state), reached by a short blend from where the physics hand was (ladder grabbed
+                // while the hand rests on a rung).
+                StartInactiveBlend();
                 _separation = 0f;
                 _stuckTime = 0f;
                 SetGhostVisible(false);
             }
+        }
+
+        /// <summary>
+        /// The visual's offset from its rest pose becomes the start of a blend back to the controller.
+        /// </summary>
+        private void StartInactiveBlend()
+        {
+            var localPosition = transform.localPosition;
+            var localRotation = transform.localRotation;
+            transform.SetLocalPositionAndRotation(_restPosition, _restRotation);
+
+            if (_target == null || _inactiveBlendTime <= 0f)
+            {
+                ClearInactiveOffset();
+                return;
+            }
+
+            // Offset in the controller's space, applied on top of the rest pose.
+            var offsetPosition = localPosition - _restPosition;
+            var offsetRotation = localRotation * Quaternion.Inverse(_restRotation);
+            var distance = _target.TransformVector(offsetPosition).magnitude;
+            if (distance > _maxDistance)
+            {
+                ClearInactiveOffset();
+                return;
+            }
+
+            _inactiveOffsetPosition = offsetPosition;
+            _inactiveOffsetRotation = offsetRotation;
+            _inactiveBlendSpeed = offsetPosition.magnitude / _inactiveBlendTime;
+            _inactiveBlendAngularSpeed = Quaternion.Angle(Quaternion.identity, offsetRotation) / _inactiveBlendTime;
+            ApplyInactiveOffset();
+        }
+
+        private void UpdateInactiveVisual()
+        {
+            if (_inactiveOffsetPosition == Vector3.zero && _inactiveOffsetRotation == Quaternion.identity)
+                return;
+
+            var deltaTime = Time.deltaTime;
+            _inactiveOffsetPosition = Vector3.MoveTowards(_inactiveOffsetPosition, Vector3.zero,
+                _inactiveBlendSpeed * deltaTime);
+            _inactiveOffsetRotation = Quaternion.RotateTowards(_inactiveOffsetRotation, Quaternion.identity,
+                _inactiveBlendAngularSpeed * deltaTime);
+            ApplyInactiveOffset();
+        }
+
+        private void ApplyInactiveOffset()
+        {
+            transform.SetLocalPositionAndRotation(_restPosition + _inactiveOffsetPosition,
+                _inactiveOffsetRotation * _restRotation);
+        }
+
+        private void ClearInactiveOffset()
+        {
+            _inactiveOffsetPosition = Vector3.zero;
+            _inactiveOffsetRotation = Quaternion.identity;
         }
 
         private void CreateBody()
@@ -636,52 +748,181 @@ namespace Gothic.VR.Interaction.Components
             _rigidbody.AddTorque(angularVelocityChange, ForceMode.VelocityChange);
         }
 
-        private void Snap(Vector3 targetPosition, Quaternion targetRotation)
+        /// <summary>
+        /// Puts the body at the given pose, at rest. The target is what the next step measures the separation
+        /// against (the visual's offset).
+        /// </summary>
+        private void Snap(Vector3 bodyPosition, Quaternion bodyRotation, Vector3 targetPosition,
+            Quaternion targetRotation)
         {
             _isSnapRequested = false;
             _isHeldItemSettled = false;
             _stuckTime = 0f;
-            _separation = 0f;
+            _separation = Vector3.Distance(bodyPosition, targetPosition);
 
             SyncColliders();
-            _body.transform.SetPositionAndRotation(targetPosition, targetRotation);
-            _rigidbody.position = targetPosition;
-            _rigidbody.rotation = targetRotation;
+            _body.transform.SetPositionAndRotation(bodyPosition, bodyRotation);
+            _rigidbody.position = bodyPosition;
+            _rigidbody.rotation = bodyRotation;
             _rigidbody.linearVelocity = Vector3.zero;
             _rigidbody.angularVelocity = Vector3.zero;
 
             _lastTargetPosition = targetPosition;
             _lastTargetRotation = targetRotation;
-            StoreRigPose();
         }
 
         /// <summary>
-        /// Snap turns and teleports move the controller in one step. The hand jumps with them instead of flying.
+        /// A hand stuck behind something snaps to the controller. What held it back stays ignored until the hand is
+        /// clear and back on the head's side of it. Otherwise, pulling the hand back would get it stuck again on the
+        /// other side, and a snap into a wall would push the hand out to the wrong side.
         /// </summary>
-        private bool HasRigJumped()
+        private void SnapThroughBlockers(Vector3 targetPosition, Quaternion targetRotation)
         {
-            if (_rig == null)
-                return false;
+            var path = targetPosition - _rigidbody.position;
+            var distance = path.magnitude;
+            if (distance > 0.001f)
+            {
+                SyncColliders();
+                Physics.SyncTransforms();
+                var direction = path / distance;
+                var mask = VrCollisionPassThrough.GetCollidingLayers(_body.layer);
 
-            var root = _rig.Root;
-            var hasJumped = Quaternion.Angle(_lastRigRotation, root.rotation) > _rigSnapAngle
-                            || (root.position - _lastRigPosition).sqrMagnitude > _rigSnapDistance * _rigSnapDistance;
-            StoreRigPose();
-            return hasJumped;
+                // Cast each block from a bit behind the hand: it touches what blocks it, and casts don't report
+                // colliders they start in.
+                foreach (var handCollider in _handColliders)
+                {
+                    if (handCollider is not BoxCollider box)
+                        continue;
+
+                    var boxTransform = box.transform;
+                    var center = boxTransform.TransformPoint(box.center) - direction * _snapCastBackOff;
+                    var halfExtents = Vector3.Scale(box.size, boxTransform.lossyScale) * 0.5f;
+                    foreach (var hit in Physics.BoxCastAll(center, halfExtents, direction, boxTransform.rotation,
+                                 distance + _snapCastBackOff, mask, QueryTriggerInteraction.Ignore))
+                        PassThrough(hit.collider);
+                }
+            }
+
+            Snap(targetPosition, targetRotation, targetPosition, targetRotation);
+            PassThroughOverlaps();
         }
 
-        private void StoreRigPose()
+        private void PassThrough(Collider other)
+        {
+            foreach (var handCollider in _handColliders)
+                _passThrough.Add(handCollider, other);
+        }
+
+        /// <summary>
+        /// Everything the hand overlaps at its new pose doesn't push it out, the hand passes through until clear.
+        /// </summary>
+        private void PassThroughOverlaps()
+        {
+            Physics.SyncTransforms();
+            var count = _passThrough.AddOverlapping(_handColliders);
+            if (count > 0)
+                Logger.LogEditor($"[VrPhysicsHand] {_side} hand overlaps {count} collider pair(s) after a snap. " +
+                                 "Passing through until clear.", LogCat.VR);
+        }
+
+        /// <summary>
+        /// Teleports, snap turns and other rig jumps move the controller in one frame. The hand snaps with them
+        /// instead of flying, and the held item is moved by the same offset (it would fly after the hand and catch on
+        /// walls otherwise). Both pass through what they overlap at the new place until clear.
+        /// </summary>
+        private void HandleRigJump()
         {
             if (_rig == null)
                 return;
 
-            _lastRigPosition = _rig.Root.position;
-            _lastRigRotation = _rig.Root.rotation;
+            var root = _rig.Root;
+            var rigPosition = root.position;
+            var rigRotation = root.rotation;
+            if (!_isRigPoseKnown)
+            {
+                _isRigPoseKnown = true;
+                _isTeleportPending = false;
+                StoreRigPose(rigPosition, rigRotation);
+                return;
+            }
+
+            var hasJumped = _isTeleportPending
+                            || Quaternion.Angle(_lastRigRotation, rigRotation) > _rigSnapAngle
+                            || (rigPosition - _lastRigPosition).sqrMagnitude > _rigSnapDistance * _rigSnapDistance;
+            _isTeleportPending = false;
+            if (!hasJumped)
+            {
+                StoreRigPose(rigPosition, rigRotation);
+                return;
+            }
+
+            var deltaRotation = rigRotation * Quaternion.Inverse(_lastRigRotation);
+            var isItemMoved = MoveHeldItemWithRig(_lastRigPosition, rigPosition, deltaRotation);
+            StoreRigPose(rigPosition, rigRotation);
+
+            if (_isActive && _body != null)
+            {
+                GetTargetPose(out var targetPosition, out var targetRotation);
+                Snap(targetPosition, targetRotation, targetPosition, targetRotation);
+                PassThroughOverlaps();
+            }
+            else
+            {
+                ClearInactiveOffset();
+                ApplyInactiveOffset();
+            }
+
+            if (isItemMoved)
+            {
+                Physics.SyncTransforms();
+                _heldPassThrough.AddOverlapping(_heldColliders);
+            }
+        }
+
+        private bool MoveHeldItemWithRig(Vector3 fromRigPosition, Vector3 toRigPosition, Quaternion deltaRotation)
+        {
+            if (_heldBody == null)
+                return false;
+
+            if (_lastMovedHeldBody == _heldBody && _lastMovedHeldFrame == Time.frameCount)
+                return true;
+
+            _lastMovedHeldBody = _heldBody;
+            _lastMovedHeldFrame = Time.frameCount;
+
+            var itemTransform = _heldBody.transform;
+            var position = toRigPosition + deltaRotation * (_heldBody.position - fromRigPosition);
+            var rotation = deltaRotation * _heldBody.rotation;
+            itemTransform.SetPositionAndRotation(
+                toRigPosition + deltaRotation * (itemTransform.position - fromRigPosition),
+                deltaRotation * itemTransform.rotation);
+            _heldBody.position = position;
+            _heldBody.rotation = rotation;
+            if (!_heldBody.isKinematic)
+            {
+                _heldBody.linearVelocity = deltaRotation * _heldBody.linearVelocity;
+                _heldBody.angularVelocity = deltaRotation * _heldBody.angularVelocity;
+            }
+
+            Logger.LogEditor($"[VrPhysicsHand] {_side} hand moved its held item {_heldBody.name} with the rig.",
+                LogCat.VR);
+            return true;
+        }
+
+        private void StoreRigPose(Vector3 position, Quaternion rotation)
+        {
+            _lastRigPosition = position;
+            _lastRigRotation = rotation;
+        }
+
+        private Vector3? GetViewpoint()
+        {
+            return _rig != null && _rig.Head != null ? _rig.Head.position : null;
         }
 
         private void OnTeleported(Vector3 position)
         {
-            _isSnapRequested = true;
+            _isTeleportPending = true;
         }
 
         private void GetTargetPose(out Vector3 position, out Quaternion rotation)

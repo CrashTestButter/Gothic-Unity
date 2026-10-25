@@ -625,7 +625,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         /// <summary>
         /// Grabbing and hovering (direct and distance) of both hands. UI pointing keeps working.
-        /// Objects already held stay in the hand.
+        /// Disabling drops what the hands hold: XRI ends the selection of an interactor that may not select
+        /// (swimming: as in G1, no items in the hands).
         /// </summary>
         public void SetGrabbingEnabled(bool isEnabled)
         {

@@ -44,7 +44,6 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 - Taking items from a chest doesn't change the chest's saved contents.
 - Chest slot spheres overlap on small chests (same as with HVR).
 
-
 ## Misc
 - Head never sticks into the wall as it is blocked from going into (poking back)
 - Marvin menu is rotated wrong (fixed later, when we have a hand and actually see, where it should be placed).
@@ -55,3 +54,4 @@ Move them to GitHub issues when the branch is merged, if they are still open.
 - Simulator: Very complex to traverse. Why not having it like the one from https://github.com/AdrielHercules/hvr-simulator (aka Controller handling etc.)
 - Rotation + Scaling of objects inside Slots is broken
 - Lockpicking - finalizing the minigame should open the door directly. Currently: Nothing.
+- Raycaster feels "wobbly". Should be a sharp and straight line

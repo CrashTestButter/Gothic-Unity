@@ -1398,6 +1398,11 @@ namespace Gothic.Core.Models.Config
                  "or smaller (x0.5-x2) - like the menu's distance. Kept for the session.")]
         public bool EnableRingZoom = true;
 
+        [Tooltip("V1: Spells are cast like Gothic's cast key: press = aim and charge at once, hold = charge, let go " +
+                 "early = Spell_ProcessMana_Release decides (fireball goes off, the rest stops). Off: one press to aim, " +
+                 "a second to charge, a third to fire.")]
+        public bool EnableSpellHoldToCast = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

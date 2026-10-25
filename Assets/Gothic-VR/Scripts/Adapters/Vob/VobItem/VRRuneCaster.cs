@@ -275,7 +275,15 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             UpdateSpellTarget();
 
-            if (triggered && !_isTargeting && !_isCasting)
+            // DeveloperConfig.EnableSpellHoldToCast: like Gothic's cast key - pressed it aims and charges at once, held
+            // it charges, let go early Spell_ProcessMana_Release decides. Was: one press to aim, a second to charge.
+            if (_configService.Dev.EnableSpellHoldToCast)
+            {
+                UpdateHoldToCast(triggered);
+                if (!_isCasting)
+                    return;
+            }
+            else if (triggered && !_isTargeting && !_isCasting)
             {
                 // Trigger 1: enter targeting mode — extend rune-hand bags, SFX starts
                 _isTargeting = true;
@@ -291,18 +299,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 // Trigger 2: confirm target and start mana investment. The effect stays in the hand while charging.
                 _isTargeting = false;
                 _vrPlayerService.DeactivateSpellTargeting();
-                _isCasting = true;
-                _castStartTime = Time.time;
-                _isSendcastPending = false;
-                _manaInvested = 0;
-                _manaTickTimer = GetManaTickInterval();
-
-                SpawnInvestFx(true);
-
-                // Like the engine: NPCs notice the casting (B_AssessCaster -> reacts to offensive spells only).
-                if (_configService.Dev.EnableCasterPerception)
-                    _npcAiService.SendHeroCasterPerception();
-                Logger.Log($"[VRRuneCaster] Cast confirmed — target={_spellTarget?.Instance?.GetName(NpcNameSlot.Slot0) ?? "none"}", LogCat.VR);
+                StartCasting();
             }
             else if (triggered && _isCasting && _manaInvested > 0)
             {
@@ -368,6 +365,73 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     RefundInvestedMana();
                 FinalizeCast(applyEffect: result == _splSendcast);
             }
+        }
+
+        /// <summary>
+        /// Mana investment starts. The effect stays in the hand while charging.
+        /// </summary>
+        private void StartCasting()
+        {
+            _isCasting = true;
+            _castStartTime = Time.time;
+            _isSendcastPending = false;
+            _manaInvested = 0;
+            _manaTickTimer = GetManaTickInterval();
+
+            SpawnInvestFx(true);
+
+            // Like the engine: NPCs notice the casting (B_AssessCaster -> reacts to offensive spells only).
+            if (_configService.Dev.EnableCasterPerception)
+                _npcAiService.SendHeroCasterPerception();
+            Logger.Log($"[VRRuneCaster] Cast confirmed — target={_spellTarget?.Instance?.GetName(NpcNameSlot.Slot0) ?? "none"}", LogCat.VR);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableSpellHoldToCast: the press starts aiming (the target follows the hand while charging)
+        /// and charging together; letting go before the spell is cast works like the third trigger press did - the
+        /// spells Spell_ProcessMana_Release allows fire at the level reached, the rest stop.
+        /// </summary>
+        private void UpdateHoldToCast(bool isPressed)
+        {
+            // The cast ended (cast, stopped, out of mana) - aiming ends with it.
+            if (_isTargeting && !_isCasting)
+            {
+                _isTargeting = false;
+                _vrPlayerService.DeactivateSpellTargeting();
+            }
+
+            if (isPressed && !_isCasting)
+            {
+                _isTargeting = true;
+                var isRuneLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
+                _runeHandSide = RingHand ?? (isRuneLeft ? HVRHandSide.Left : HVRHandSide.Right);
+                _vrPlayerService.ActivateSpellTargeting(_runeHandSide, _targetRange);
+                StartInvestSound(_item.Spell);
+                SpawnSpellVfx();
+                StartCasting();
+                return;
+            }
+
+            if (!_isCasting || _isSendcastPending || !IsCastButtonReleased())
+                return;
+
+            if (_manaInvested <= 0 || !IsEarlyReleaseCastAllowed())
+            {
+                CancelCast("released early - Spell_ProcessMana_Release: SPL_SENDSTOP");
+                _isTargeting = false;
+                _vrPlayerService.DeactivateSpellTargeting();
+                return;
+            }
+
+            Logger.Log($"[VRRuneCaster] Released at level {_manaInvested} - cast", LogCat.VR);
+            FinalizeCast(applyEffect: true);
+        }
+
+        private bool IsCastButtonReleased()
+        {
+            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+                return Keyboard.current[Key.R].wasReleasedThisFrame;
+            return HVRController.GetButtonState(RingHand ?? HVRHandSide.Right, HVRButtons.Trigger).JustDeactivated;
         }
 
         /// <summary>

@@ -339,6 +339,7 @@ MonoBehaviour:
   EnableRingSpellPreviewAlpha: 1
   EnableRingFreeSpin: 1
   EnableRingZoom: 1
+  EnableSpellHoldToCast: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

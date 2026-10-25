@@ -21,7 +21,7 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 
 | Part | Content | Size | Status |
 |------|---------|------|--------|
-| 5a | Block hand visual (palm + finger block, grip hinge), `VRHandsOnTop` | S | planned |
+| 5a | Block hand visual (palm + finger block, grip hinge), `VRHandsOnTop` | S | done |
 | 5b | `PhysicsHand` core: rigidbody follow, strength limit, ghost hand, max-distance snap, collision layers, setting | M | planned |
 | 5c | Held items follow the physics hand, contact haptics | M | planned |
 | 5d | Teleport, Marvin "goto", ladder, swim/dive handling + PlayMode tests | S-M | planned |
@@ -31,7 +31,7 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 ## Exit criteria
 
 - [ ] No HVR hand/controller meshes, poses or settings are referenced by the Xri rig.
-- [ ] Block hands replace the `Hand Placeholder` spheres; the finger block closes with the grip value.
+- [x] Block hands replace the `Hand Placeholder` spheres; the finger block closes with the grip value. (5a)
 - [ ] With physical hands on (default), hands stop at walls, chests, doors, tables and mobs; held items stop too;
       a ghost hand shows the real controller pose when separated.
 - [ ] Touching or hitting a surface plays a contact haptic, scaled by impact speed.
@@ -51,6 +51,25 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 - Hand layer stays `Hand` (`Constants.HandLayer`). `VRFistAttackAdapter` resets the attack collider layer; keep it.
 - Controller models: not needed. The simulator shows the block hands as well.
 - The visual sits under the **physics hand** (5b) when physical hands are on, under the controller when off.
+
+**Where reality deviated (5a, `engine/hvr-replacement-5a`):**
+- Hierarchy per hand: `Left/Right Controller/Block Hand` (`VrBlockHand`, the visual root to reparent in 5b) →
+  `Palm`, `Finger Hinge/Fingers`, `Thumb Hinge/Thumb`. Unity cubes without colliders, layer `Hand`, no shadows.
+  The root sits directly under the controller (sibling of the Near-Far interactor), not under the interactor like
+  the old `Hand Placeholder`. Left and right are built mirrored (no negative scale, so 5b's box colliders work).
+  Hand frame: the controller is the aim pose (XRI binds `pointerPosition` first), +Z forward; palm faces inwards,
+  knuckles at z ≈ 0, the fingers wrap around the controller. Offsets are guesses, check them on a headset.
+- No index/rest split; one finger block (grip). Thumb: 35° at touch, binary (touch is a button).
+- Material: `Gothic/Lit/Misc` like the old hands, not plain URP Lit. Gothic worlds have flat ambient light only, so
+  the cube faces had no shading and the blocks merged into one shape. A generated 16 × 16 px texture
+  (`VRBlockHands.png`, skin noise with a dark 1 px border per face, point filtered) gives the Minecraft look and
+  readable edges. `VRBlockHands-OnTop.mat` is the `VRHandsOnTop` variant (queue set in code, as before).
+- Ports: `IVrInput.GetGripValue` / `IsThumbTouching` and `IVrRig.IsGrabbingEnabled(side)` have **default
+  implementations** (grip button 1/0, primary/secondary/stick pressed, always true), so the Hvr backend stays
+  untouched. Xri reads the new actions `Grip Value` (`{Grip}`) and `Thumb Touch` (`{PrimaryTouch}`,
+  `{SecondaryTouch}`, `{Primary2DAxisTouch}`) of the `Gothic Left/Right` maps.
+- While grabbing is disabled XRI also drops the held item (Near-Far `allowSelect = false`), so "open hand while
+  holding during swimming" can't happen on Xri anyway.
 
 ## 5b-5d - Physical hand presence (`PhysicsHand`)
 
@@ -135,7 +154,8 @@ Budget: ~15 bones × ~20 steps × 1 capsule query = ~300 queries per grab, done 
 
 ## Work items
 
-- [ ] 5a: block hand prefabs (UnityMCP), grip hinge driver, `VRHandsOnTop` renderers, replace `Hand Placeholder`.
+- [x] 5a: block hand prefabs (UnityMCP), grip hinge driver, `VRHandsOnTop` renderers, replace `Hand Placeholder`.
+      (Built inside `VR - Player XRI.prefab`, no separate hand prefab; driver `VrBlockHand`.)
 - [ ] 5b: `PhysicsHand`, `GhostHand`, strength limit, max-distance snap, collision layer matrix, immersion setting
       (C# + menu + ini).
 - [ ] 5c: attach transform on the physics hand, hand ↔ held item collision ignore, contact haptics.

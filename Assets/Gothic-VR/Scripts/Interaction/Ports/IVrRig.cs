@@ -77,6 +77,15 @@ namespace Gothic.VR.Interaction.Ports
         void SetGrabbingEnabled(bool isEnabled);
 
         /// <summary>
+        /// false after SetGrabbingEnabled(false) (e.g. swimming). The block hands open meanwhile.
+        /// Default: true, for backends whose hand visuals open by themselves (HVR).
+        /// </summary>
+        bool IsGrabbingEnabled(VrHandSide side)
+        {
+            return true;
+        }
+
+        /// <summary>
         /// Fades the screen towards alpha (0 = clear, 1 = black) with speed alpha per second.
         /// </summary>
         void Fade(float alpha, float speed);

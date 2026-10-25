@@ -23,6 +23,25 @@ namespace Gothic.VR.Interaction.Ports
         VrButtonState GetButton(VrHandSide side, VrButton button);
 
         /// <summary>
+        /// Analog grip value (0 = open, 1 = fully pressed). Drives the block hands' finger curl.
+        /// Default: the grip button's state, for backends without an analog value.
+        /// </summary>
+        float GetGripValue(VrHandSide side)
+        {
+            return GetButton(side, VrButton.Grip).IsActive ? 1f : 0f;
+        }
+
+        /// <summary>
+        /// The thumb rests on the primary or secondary button or on the thumbstick. Drives the block hands' thumb.
+        /// Default: one of these buttons is pressed, for backends without touch input.
+        /// </summary>
+        bool IsThumbTouching(VrHandSide side)
+        {
+            return GetButton(side, VrButton.Primary).IsActive || GetButton(side, VrButton.Secondary).IsActive ||
+                   GetButton(side, VrButton.JoystickButton).IsActive;
+        }
+
+        /// <summary>
         /// Velocity of the tracked controller, relative to IVrRig.TrackingSpace.
         /// </summary>
         Vector3 GetControllerVelocity(VrHandSide side);

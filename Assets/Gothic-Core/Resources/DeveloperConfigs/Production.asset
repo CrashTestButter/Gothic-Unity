@@ -35,6 +35,7 @@ MonoBehaviour:
   PreselectWorldToSpawn: 0
   SpawnAtWaypoint: 
   SpeedUpLoading: 0
+  SkipVideos: 0
   EnableVOBs: 1
   SpawnVOBTypes:
     Value: 

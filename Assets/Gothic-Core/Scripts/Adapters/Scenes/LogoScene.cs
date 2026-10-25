@@ -28,6 +28,13 @@ namespace Gothic.Core.Adapters.Scenes
         public void Init()
         {
             Logger.Log($"INI: playLogoVideos = {_configService.Gothic.IniPlayLogoVideos}", LogCat.Loading);
+            if (_configService.Dev.SkipVideos)
+            {
+                Logger.Log("DeveloperConfig.SkipVideos is on. Skipping logo videos.", LogCat.Loading);
+                LoadMainMenu();
+                return;
+            }
+
             if (!_configService.Gothic.IniPlayLogoVideos)
             {
                 LoadMainMenu();

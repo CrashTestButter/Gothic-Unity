@@ -13,6 +13,19 @@ before pushing. Goal: make Gothic 1 and Gothic 2 completable in VR — a "game c
 | Tested on | PCVR, G1 (vanilla + Mroczne Tajemnice mod), G2 NotR (played to the end: Irdorath, undead dragon, ending). **Not** built or tested: Quest/Pico, Flat mode |
 | Docs up to | `6c941ebb` (2026-10-25) - see the [changelog](CHANGELOG.md) for what changed since |
 
+<!-- toc -->
+## Contents
+
+- [Author's note](#authors-note)
+- [Changelog](#changelog)
+- [How to read this](#how-to-read-this)
+- [Headline features](#headline-features)
+- [Must fix before merge](#must-fix-before-merge)
+- [Testing status](#testing-status)
+- [Licensing](#licensing)
+- [Process notes](#process-notes)
+<!-- /toc -->
+
 ## Author's note
 
 This branch is **my individual vision** of where the project could go, and any of it may change for the full

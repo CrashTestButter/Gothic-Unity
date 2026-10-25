@@ -2,6 +2,18 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Added 2026-10-13](#added-2026-10-13)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
 - **Runtime NavMesh** for chases: NPCs avoid obstacles, use ladders, jump down to the hero from small heights,
@@ -13,7 +25,7 @@
 - **Ladders:** smooth climbing — stance in front of the rungs, no root hiccup between cycles, snap to the top.
 - Skeletons no longer float or fall through geometry; NPC-NPC separation.
 
-**Added 2026-10-13**
+### Added 2026-10-13
 
 - **Fast waypoint paths:** Dijkstra with a binary heap that stops at the destination. The list based search put every
   waypoint of the world in, searched it linearly and walked the path back on every step - quadratic on G1's waynet: a

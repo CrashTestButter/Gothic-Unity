@@ -2,9 +2,32 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Hero casting in VR](#hero-casting-in-vr)
+  - [NPC casters](#npc-casters)
+  - [Summons](#summons)
+  - [Transformation scrolls](#transformation-scrolls)
+  - [Other spells](#other-spells)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-15](#added-2026-10-15)
+  - [Added 2026-10-24](#added-2026-10-24)
+  - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+  - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
-**Hero casting in VR**
+### Hero casting in VR
+
 - Spell casting overhaul: the rune is held in one hand; the spell effect glows in the hand while mana is invested
   (at the spell's own `time_per_mana`), minimum cast time configurable for "instant" G2 spells.
 - Projectile spells (fireball, fire arrow, lightning, ice block…) are charged in the free hand and thrown; throw
@@ -13,24 +36,28 @@
 - Telekinesis (capsule range, bag targeting), Light spell, teleports put the held rune into the backpack.
 - Spells without `MFX_<name>_INIT` show their own `VISUALFX` in the hand (ice wave shows ice, not a fireball).
 
-**NPC casters**
+### NPC casters
+
 - Mages and archers complete their casts (protected from `Npc_ClearAIQueue` resets), get real spell effects,
   fire `PERC_ASSESSMAGIC` so Daedalus drives the reaction (sleep, freeze, fear, berserk…).
 
-**Summons**
+### Summons
+
 - Spawned beside the caster, never fight their master (`NpcContainer.SummonedBy` ↔ Friendly), run, defend the
   hero, and are a training dummy for their own summoner (hits don't turn them hostile).
 - NPCs treat the hero's summons the way they treat the hero: enemies fight them, everyone else ignores them.
   **Deviation:** vanilla G2 makes humans hostile to the `GIL_SUMMONED_*` guilds (`B_InitMonsterAttitudes`), so guards
   attack summons there.
 
-**Transformation scrolls**
+### Transformation scrolls
+
 - The hero becomes the monster: a puppet without AI, camera at its eyes, walks/strafes/swims/sneaks like Gothic.
 
-**Other spells**
+### Other spells
+
 - Shrink scales monsters (`Mdl_SetModelScale`, kept on load). Fear: NPCs flee (`AI_Flee`). Berserk.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Burning:** fire spells (`DAM_FIRE`) set NPCs on fire for 4 s like the engine - `VOB_BURN` flames over the whole
   skinned body, fire light, burn sound and the `s_Fire_Victim` dance; another hit extends it.
@@ -39,7 +66,7 @@
 - **NPC mages** cast one spell per attack (wind-up `t_MagRun_2_FBTShoot`, then `t_FBTShoot_2_Stand`) instead of bursts.
 - Spamming a charged spell no longer stacks its effects in the hand; a throw clears them.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Charged spells can't be spammed:** firing before the spell is cast asks the game's `Spell_ProcessMana_Release`
   like the engine - fireball, fire storm, wind fist, ... go off at their level, fire rain, summons, transformations and
@@ -62,13 +89,13 @@
   can't move for `SPL_TIME_SLEEP`/`SPL_TIME_FREEZE`, damage wakes him up. NPC spells follow the "only `SPELL_BAD`
   hurts" rule too.
 
-**Added 2026-10-15**
+### Added 2026-10-15
 
 - **NPC spells can be dodged:** a flying spell steers to a mix of where its target was at the cast and where it is now
   (`NpcSpellHoming` = 0.2), hits only within 0.8 m and otherwise flies on and fades - fully homing, nobody could dodge
   a crawler's web.
 
-**Added 2026-10-24**
+### Added 2026-10-24
 
 - **Spell ring** (`59fe4f51`, `EnableVrSpellRing`, ini `spellRing`): Gothic's spell selection (hold the magic key, the
   equipped spells circle the hero). Both hands empty, ~10 cm above the eyes, both triggers for 1 s (haptic ramp) open/close
@@ -83,13 +110,13 @@
   click of the other empty hand (also when the spell hand grabs something or the hero is down). The spell stays in the
   inventory throughout, like Gothic's readied spell.
 
-**Added 2026-10-25 (afternoon)**
+### Added 2026-10-25 (afternoon)
 
 - **Spell damage types** (`42b42b6d`, `EnableEngineMeleeDamage`): a spell's hit took fire protection for every spell -
   `OnSpellHit` passes the protection of the spell's own `damageType` (Windfist `DAM_FLY`, lightning `DAM_MAGIC`).
 - **Ranged knockout** for spells too (`7542c3d0`) - see [Combat](01-combat.md).
 
-**Added 2026-10-25 (evening)**
+### Added 2026-10-25 (evening)
 
 - **The spell ring became the favorites ring** (`ceeee724`): `VRSpellRing` -> `VRFavoritesRing`, `VRSpellRingItem` ->
   `VRFavoritesRingSpell`; spells work as before. Weapons, items and money in it: see

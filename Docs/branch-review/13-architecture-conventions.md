@@ -5,6 +5,19 @@
 How far the branch diverges from the rules in `CLAUDE.md`, `.editorconfig` and the Coding Style Guide. Checked
 automatically over all 190 changed C# files, plus a manual look at the biggest classes.
 
+<!-- toc -->
+## Contents
+
+- [Summary](#summary)
+- [Findings in detail](#findings-in-detail)
+  - [⚠️ Logic in adapters (main divergence)](#-logic-in-adapters-main-divergence)
+  - [⚠️ God classes keep growing](#-god-classes-keep-growing)
+  - [⚠️ Patterns outside the project conventions](#-patterns-outside-the-project-conventions)
+  - [ℹ️ Domain classes injecting services](#ℹ-domain-classes-injecting-services)
+  - [✅ Things that fit the architecture well](#-things-that-fit-the-architecture-well)
+- [Recommended follow-ups (not blockers)](#recommended-follow-ups-not-blockers)
+<!-- /toc -->
+
 ## Summary
 
 | Rule | Result |

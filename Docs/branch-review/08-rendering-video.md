@@ -2,6 +2,25 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Lights](#lights)
+  - [Day and night](#day-and-night)
+  - [Particles](#particles)
+  - [Bink video](#bink-video)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-15](#added-2026-10-15)
+  - [Added 2026-10-13](#added-2026-10-13)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
 > **2026-10-22: main's PR #400 (lighting) and PR #401 (Bink) merged** ([merge notes](merge-2026-10-22.md)). The base is
@@ -10,35 +29,39 @@
 > VOB world light, indoor darkness, the cinema's skip label, spectator camera and return to the menu after the ending,
 > stereo instancing for the video shader.
 
-**Lights**
+### Lights
+
 - Static lights in light mapped areas (caves, huts) light the walls — Gothic used lightmaps there, which we don't
   render. Light mapped polygons are marked while building the world mesh.
 - **Light pool like OpenGothic:** all world lights (fires and static) share the shader's light array, the ones
   closest to the camera get a slot (re-sorted every 2 s, immediately freed when unloaded). Array size 1023 on PC,
   512 on mobile (`SHADER_API_MOBILE`). G2 had ~700 fire lights, more than the old 512 array.
 
-**Day and night**
+### Day and night
+
 - Gothic's sky `polyColor` scales the outdoor (vertex lit, no lightmap) world light and the sun/ambient of VOB and
   NPC shaders. Rooms, caves and fires keep their light.
 
-**Particles**
+### Particles
+
 - Spell effects around the caster, hit effects, animation PFX, `Wld_PlayEffect`, blood; world particle
   controllers and particle VOBs show up (Saturas' pentagram); loops emit at Gothic's rate (full torch flames).
 - Smoke and other `BLEND` particles use plain alpha blending: the premultiplied blend relied on the URP
   `_ALPHAPREMULTIPLY_ON` variant, which builds strip for runtime-made materials (square smoke in builds only).
 
-**Bink video**
+### Bink video
+
 - Original `.bik` videos play in a dark VR cinema, decoded by a C# port of OpenGothic's decoder on a background
   thread, synced to the audio sample position. World paused during videos, skippable ("(Trigger) skip" under
   the screen, localized: en/pl/de, English otherwise).
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - The Bink video cinema and the lightning strips render in both eyes (stereo instancing macros were missing -
   single-pass instanced drew them only for the left eye).
 - The video cinema shows on the monitor/stream (spectator camera) too, its smoothing runs on unscaled time.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Particle controllers** show their particle visual like the engine (`zCPFXControler`, OpenGothic `PfxController`) -
   `pfxName` is mostly an empty Spacer leftover `.PFX`: G2's active teleport platforms (`RESURRECTION.pfx`, visible once
@@ -47,7 +70,7 @@
   `i` got the material of Gothic's sub mesh `i`: palm leaves sampled the opaque array with alpha indices (stone
   textures without alpha on G2 addon palms, fishing nets and Mroczne Tajemnice meshes).
 
-**Added 2026-10-15**
+### Added 2026-10-15
 
 - **Lightmaps:** light mapped polygons (caves, mines, houses - 92% of the Old Mine, 7.7% of G1's world) show Gothic's
   lightmaps: the world's pages go into one texture array (smaller pages in a corner, uv scaled), u/v come from
@@ -67,7 +90,7 @@
   downscaled with a generated chain (their slices stayed empty: black/stone patterns); uv scale and mip limit follow
   the slice. Meshes are cached separately for texture array and single texture use.
 
-**Added 2026-10-13**
+### Added 2026-10-13
 
 - **Rain around the player:** the `Rain` object sat at the world's origin below the player rig's root, which doesn't
   move - it now follows the player's head.

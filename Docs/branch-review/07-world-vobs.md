@@ -2,6 +2,22 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-13](#added-2026-10-13)
+  - [Added 2026-10-16](#added-2026-10-16)
+  - [Added 2026-10-17](#added-2026-10-17)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
 > **2026-10-18: main's PR #399 merged** ([merge notes](merge-2026-10-18.md)). The base is main's now: trigger VOBs as
@@ -27,7 +43,7 @@
   VOBs of their own. Child VOBs sit at their own position (ZEN positions are world positions) instead of their
   parent's origin. Movers and children of visual-less VOBs get precached bounds (static cache v6).
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Logic VOBs below other VOBs** (triggers, trigger lists, code masters, movers, message filters) are registered and
   get their children; children of VOBs we don't build (cutscene cameras, fog zones, …) and of decal/particle VOBs with
@@ -45,7 +61,7 @@
   ones; treasure X marks are visible in builds (URP Unlit placeholder material).
 - Result: **G2 Irdorath is completable** (bridges, traps, gates, wheels, pillars, main door, last door).
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Smithing:** crafting mobs move their `useWithItem` like the engine's human animation events (`HUMANS.MDS`
   `T_<scheme>_S0_2_S1`/`_S1_2_S0`: `ItemInsert`, `ItemExchange`, `ItemRemove`, `ItemDestroy`) - the forge turns raw
@@ -60,7 +76,7 @@
 - **Fireplaces keep their children:** `CreateFire` returned null without a fire tree and the child VOBs were dropped
   (Mroczne Tajemnice's smithy furnace on the smugglers' beach).
 
-**Added 2026-10-13**
+### Added 2026-10-13
 
 - **Fires burn where they are:** fire trees (`oCMobFire` vobTree) place their VOBs relative to the fire's slot. The
   cached tree zeroed only its roots, so the smoke under a fire's light kept the tree's absolute position (every
@@ -71,7 +87,7 @@
   mapped: houses, mines) always burn; touching one in VR lights it or puts it out until the routine switches; further
   than 60 m the effects are off. A fire that is out gives no light, smoke nor sound.
 
-**Added 2026-10-16**
+### Added 2026-10-16
 
 - **Level change arrival:** a `oCTriggerChangeLevel`'s start VOB is looked up as a free point, a waypoint or any
   named VOB. When it's missing (Mroczne Tajemnice's temple sends you to `TEMPLE_TO_CAVE`, which the abandoned mine
@@ -79,7 +95,7 @@
   weighted triple so it's the same floor - instead of a null reference and a stalled loading screen. The engine would
   use START, which in that mine is over the void.
 
-**Added 2026-10-17**
+### Added 2026-10-17
 
 - **Animation combinations** (`aniComb`): a combination names numbered variants of one animation (the engine picks
   one by the angle to a target). The ore vein's S1 (`t_Ore_S0_2_S1`, `s_Ore_S1`, `t_Ore_S1_2_S0` -> `c_Ore_*_1..3`)

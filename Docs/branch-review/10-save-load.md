@@ -2,6 +2,20 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-17](#added-2026-10-17)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
 - Two layers: ZenKit's native save plus a `UNITYSAVE.json` with hero and NPC state the native save doesn't carry
@@ -12,14 +26,14 @@
   `INIT_` with `Wld_InsertNpc` suppressed.
 - G2 menus: New Game, save slots 16–20, foreign saves.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Movers and triggers are saved:** keyframe, open and disabled state of every changed mover plus trigger activation
   counts, per world in `UNITYSAVE.json`; restored on load and when coming back to a world (level change). Before, every
   mover was closed again after loading - softlocks in Irdorath, the Adanos temple, the Jharkendar portal.
   Movers/triggers take their entry when they're created, lazy loaded ones too.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Movers keep their pose:** a mover restored from a save takes its saved pose only in `Start`, after its child VOBs
   exist - G2's canyon teleport platform, its trigger and the focus stone were 9 m underground after loading.
@@ -29,7 +43,7 @@
 - **Every visited world keeps its NPCs** (position, HP, dead, spawned ones) in the save and when leaving it - also in a
   game started new.
 
-**Added 2026-10-17**
+### Added 2026-10-17
 
 - **Items and chests** (`WorldItemSaveDomain`): a world is built from its world file on load (`WORLD.SAV` isn't read),
   so taken items lay there again. Each world's items and chests are captured against the world file's

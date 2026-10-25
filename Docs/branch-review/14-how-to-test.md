@@ -4,6 +4,19 @@
 
 Setup for testers, then where to look. Each theme page also has its own "How to test" section.
 
+<!-- toc -->
+## Contents
+
+- [1. Point the game at your Gothic folders](#1-point-the-game-at-your-gothic-folders)
+  - [Game and mod: Editor vs. build](#game-and-mod-editor-vs-build)
+  - [One build, all games and mods](#one-build-all-games-and-mods)
+- [2. Pick a developer config (for cheats)](#2-pick-a-developer-config-for-cheats)
+- [3. Which hero to play](#3-which-hero-to-play)
+- [4. Gothic 2 test items (Marvin "Give items")](#4-gothic-2-test-items-marvin-give-items)
+- [5. Traders for the trade test](#5-traders-for-the-trade-test)
+- [6. Logs](#6-logs)
+<!-- /toc -->
+
 ## 1. Point the game at your Gothic folders
 
 Create `Assets/StreamingAssets/GameSettings.dev.json`. It's gitignored and overrides `GameSettings.json` field by

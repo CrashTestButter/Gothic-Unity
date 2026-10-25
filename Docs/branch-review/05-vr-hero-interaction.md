@@ -2,15 +2,36 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Hero body](#hero-body)
+  - [Items in hand](#items-in-hand)
+  - [Docs and maps](#docs-and-maps)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-15](#added-2026-10-15)
+  - [Added 2026-10-24](#added-2026-10-24)
+  - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
-**Hero body**
+### Hero body
+
 - The hero's armor (torso, legs, arms) is drawn under the VR head; arms reach the HVR hands with a stretching
   two-bone IK, the wrist rolls with the hand; legs/torso play Gothic's walk/run/strafe/turn animations.
 - Hands are cut out of the mesh, sleeves rolled up over the bare forearm. Armor changes swap the body.
 - Body states for scripts: `BS_WALK`/`BS_RUN` from movement, `BS_SNEAK` when crouched.
 
-**Items in hand**
+### Items in hand
+
 - Equip armor, amulets and rings in VR (both hands), protection and effects from the scripts.
 - Pouches open with both hands; food eaten at the VR mouth (stacks decrement); swampweed joints smoked at the mouth
   (puffs, smoke); torches lit/put out with the trigger, with a moving light.
@@ -18,12 +39,13 @@
 - Teleports put the held rune/items into the backpack. The unconscious hero can't attack or cast; he drops melee
   weapons when knocked out.
 
-**Docs and maps**
+### Docs and maps
+
 - `Doc_*` externals: maps, letters and books in a VR viewer in the hand. Pages are no longer upside down.
 - Hero arrow on the world map, turning with the hero: G2 from `Doc_SetLevelCoords`, G1 from bounds calibrated in VR
   (`G1WorldMapBounds`), because G1 maps carry no coordinates.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Personal space:** NPC bodies are pushed out to 1 m from the VR hero's camera (position only, AI unchanged) - orc
   attack animations no longer go into the camera and push the hands.
@@ -31,7 +53,7 @@
   collected again once the mesh exists, child colliders get `HVRGrabbableChild`.
 - Items without a `VobLoader` (backpack/hot slot items after a world change) can be grabbed again.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Talking works again:** the personal space around the VR hero (NPC bodies 1 m from the head) leaves out humans with
   their weapon away - NPCs were out of the hands' reach and none could be grabbed to talk. Monsters and anyone with a
@@ -40,18 +62,18 @@
   players couldn't look around while down.
 - **Fists** (see [Combat](01-combat.md)): grip + trigger on an empty hand.
 
-**Added 2026-10-15**
+### Added 2026-10-15
 
 - **Skin colored hands:** the `VRHands` material gets the hero's arm skin tint (`HandSkinTint`); lights and the sky
   colored ambient tint it only 30% (`HandLightInfluence`), emission with the skin texture carries the rest, no
   highlights or reflections (matte, not waxy). Fully lit they turned navy at night, red in the evening.
 
-**Added 2026-10-24**
+### Added 2026-10-24
 
 - **Slower sprint while sneaking** (`0ca89b3b`, `EnableSneakSlowSprint`, opinion): `VRPlayerController.
   HandleHorizontalMovement` halves HVR's `RunSpeed` for the frame while the hero sprints in `BS_SNEAK` (crouched).
 
-**Added 2026-10-25 (evening)**
+### Added 2026-10-25 (evening)
 
 - **Grab at the grip** (`82f127cd`, `EnableWeaponGripGrab`): our items have no grab points, so HVR's physics poser
   (`DynamicGrab` -> `FindClosestPoint` over the enabled colliders) closed the hand on the collider nearest to the palm -

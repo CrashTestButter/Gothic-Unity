@@ -2,27 +2,50 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Dialogs](#dialogs)
+  - [UI](#ui)
+  - [Audio](#audio)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-18](#added-2026-10-18)
+  - [Added 2026-10-22](#added-2026-10-22)
+  - [Added 2026-10-23](#added-2026-10-23)
+  - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
-**Dialogs**
+### Dialogs
+
 - Free movement during dialogs within range; a "dialog bubble": while someone talks you can't leave (skip first),
   with the choices shown leaving ends the dialog. Far NPCs don't open dialogs.
 - Dialog box and subtitles drawn on top (never cut by walls or NPCs), subtitles hidden beyond 12 m, removed when
   the speaker dies. Dialog closes when the NPC draws a weapon.
 - Robustness: null audio, missing subtitle blocks, VM exceptions guarded; G2/mod SVM lines unknown to ZenKit play.
 
-**UI**
+### UI
+
 - Script print events reach VR (`PrintScreen` messages, 2D sounds, taken items); repeated messages don't lag.
 - Status menu: right protection values, talent rows, weapon ranks and percentages in MT and G2.
 - Menu pictures with an alpha mode (the G2 "Noc Kruka" logo) use plain alpha blending: `ToTransparentMode` relied on
   the `_ALPHATEST_ON` variant, which builds strip for runtime-made materials (the logo looked different in builds).
 - HP bars reflect live damage/healing and the loaded health; chapter screen waits for its jingle.
 
-**Audio**
+### Audio
+
 - WAV parser reads chunks by declared size; 8-bit WAV conversion fixed.
 - Ogg Vorbis decoding via NVorbis for mod dubbing; dmusic crash escape hatch (`EnableMusic`).
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Monster dialogs:** the hero is told apart by instance, not `id == 0` (monsters have id 0 too - the undead dragon's
   lines went to the hero's queue); `Npc_CheckInfo(important=0)`; dialog range and voice range grow with the body size;
@@ -32,7 +55,7 @@
 - **HUD on top:** HP/mana bars, screen messages, the chapter popup and menus draw on top of the world like the dialog
   box; VR hands and the UI laser draw above it.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Music zones like the engine** (OpenGothic `WorldSound`): the zone comes from the player's position every 2 s (the
   current zone stays while inside, else the last zone containing us, else the default zone), themes fall back NGT→DAY,
@@ -58,7 +81,7 @@ versions - `VRScreenMessages` and `VRMenuBillboard` are gone. Kept on top: the m
 body size, polling HP bars and `VRUiOnTop.CopyTo` for the hero's bars and the chapter screen (the bar fill gets a sprite
 of its material's texture - `main`'s shader samples the Canvas texture, the fill came out white).
 
-**Added 2026-10-18**
+### Added 2026-10-18
 
 - **Dialog until AI_StopProcessInfos** (`17bcdbf0`, `EnableDialogUntilStopProcessInfos`): an NPC drawing his weapon
   mid-dialog (Lukis, Rust) closed it at once (main) - his last lines ran without the dialog bubble and couldn't be
@@ -66,7 +89,7 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 - **Pointer line on top** (`1978c18e`, `EnablePointerLineOnTop`): the red UI pointer line (queue 3000) was hidden by the
   on-top in-game menu (3900); like the hands it's drawn in 3950 while a menu or dialog is open.
 
-**Added 2026-10-22**
+### Added 2026-10-22
 
 - **NPC faces** (`e077c111`, `EnableFaceAnimations`): the talking mouth was a stub (`PlayHeadAnimation` FIXME) and
   `Mdl_StartFaceAni` / `Mdl_ApplyRandomFaceAni` weren't registered. Head morphs are now blended like the engine: each
@@ -76,7 +99,7 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
   (`EnableNpcEyeBlinking`) was WIP and off; with the flag the head blinks on its own. VISEME loops for an NPC's line,
   MDS morph events (T_HURT loops) are held 1 s. `VobAnimateMorph` keeps the old path.
 
-**Added 2026-10-23**
+### Added 2026-10-23
 
 - **Sound effects from SOUND/SFX** (`c9b61548`, `EnableSfxFromSfxFolder`): the VFS finds files by name; G1 has
   `SVM_2_DEAD.WAV` in `sound.VDF` (`_WORK/DATA/SOUND/SFX`, 63928 B) and in the newer `Speech.vdf` (`SOUND/SPEECH`,
@@ -92,7 +115,7 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 - **Hero pain sound** (`51550b1c`, `EnableHeroHurtSound`): `SVM_<voice>_AARGH` from the hero's voice source - he has no
   `NpcSound`, nothing was heard.
 
-**Added 2026-10-25 (afternoon)**
+### Added 2026-10-25 (afternoon)
 
 - **Clear key** (`4acb1acb`, `EnableKeyboardClearButton`): `VirtualKeyboard` copies the backspace key at runtime (prefab
   untouched) between it and OK - it empties the text.

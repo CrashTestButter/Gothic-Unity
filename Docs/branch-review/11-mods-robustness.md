@@ -2,6 +2,20 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-15](#added-2026-10-15)
+  - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
 - **Mod loading:** a mod folder is a game root (`ModPath`, `ModIni` in `GameSettings.json`); mod `OU.BIN`/`CSL`
@@ -17,12 +31,12 @@
 Status: G1 **Mroczne Tajemnice** is playable. G2 Union mods boot (Renovation); some (Dolina Zombie, Świat
 Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope for this branch.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - Mroczne Tajemnice: the missing smithy furnace (fireplace children, [World](07-world-vobs.md)) and stone textures on
   palms/nets (texture array materials, [Rendering](08-rendering-video.md)) are fixed.
 
-**Added 2026-10-15**
+### Added 2026-10-15
 
 - Mroczne Tajemnice: 1024x1024 single mip textures (Siekacz's tavern, catapult, roofs) and the abandoned mine's
   dynamic lights work ([Rendering](08-rendering-video.md)); the web crawler bites frozen/close targets
@@ -59,7 +73,7 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
   ZenKitCS' cast, the stack stayed broken and the VM crashed natively (Mroczne Tajemnice's giant skeleton by Fellan's
   armor). Loading a game also resets the item/SVM/spell instances cached from the old VM.
 
-**Added 2026-10-25 (afternoon)**
+### Added 2026-10-25 (afternoon)
 
 - **Mroczne Tajemnice: Rockefeller's armor** (`186898ea`, `EnableNpcItemsSpareHeroArmor`): the mod's helmet/armor item
   functions (`Equip_helms`, `Equip_ARMORx`) check and undress `hero` instead of `self`; NPCs we create after the hero

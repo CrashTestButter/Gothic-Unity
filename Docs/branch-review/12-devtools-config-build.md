@@ -2,17 +2,38 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Marvin (cheat panel)](#marvin-cheat-panel)
+  - [DeveloperConfig](#developerconfig)
+  - [Build and project settings](#build-and-project-settings)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-16](#added-2026-10-16)
+  - [Added 2026-10-18](#added-2026-10-18)
+- [Key commits](#key-commits)
+  - [Added 2026-10-23](#added-2026-10-23)
+- [Main files](#main-files)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
-**Marvin (cheat panel)**
+### Marvin (cheat panel)
+
 - Minimize/restore, configurable waypoint teleport, time skip, level +5 (with mana), guild cheats, NPC spawn by
   symbol, give items from a config list.
 
-**DeveloperConfig**
+### DeveloperConfig
+
 - **116 new fields**, almost all `Enable…` feature flags with `[Tooltip]`s, plus tuning values.
 - `Production.asset` is now serialized in full.
 
-**Build and project settings**
+### Build and project settings
+
 - VR build switches the platform first and asks to start again (Unity 6 "Unable to build with the current
   configuration").
 - Physics: Player ↔ VobMovable collision (locked doors block). Graphics: `Gothic/UI` always included.
@@ -23,7 +44,7 @@
 - HVR keyboard/mouse simulator in PC builds via `GameSettings.json` `"EnableVRDeviceSimulator"` (it is plain runtime
   code; only the old XRIT simulator was Editor-only). XR is stopped while it runs.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Game profiles:** pick G1, G2 or a mod from a list at start (`GameSettings.json`
   `EnableGameProfiles`/`GameProfiles`).
@@ -32,7 +53,7 @@
   spawns a list of NPCs (e.g. the Irdorath crew); the panel scrolls with more than 6 options.
 - After the ending's videos and credits the game returns to the main menu / profiles instead of quitting.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Licenses in every build:** `LICENSE` and `THIRD_PARTY_NOTICES.md` (Bink decoder LGPL-2.1+/MIT, NVorbis, Uber Logger,
   package dependencies; OpenGothic as behavior reference; no Gothic data shipped) are copied next to the PC executable
@@ -44,7 +65,7 @@
 - **Fall rescue** goes back to the last spot the hero stood on (`642070e5`) - Mroczne Tajemnice's abandoned mine has
   its START over the void.
 
-**Added 2026-10-16**
+### Added 2026-10-16
 
 - **`main` merged** (`f9b48c31`: split/02-mods, split/03-devtools). From `main`: Marvin mode toggled in game
   (`MarvinService.IsMarvinMode`; `DeveloperConfig.PreselectMarvinMode` only starts with it on - was
@@ -63,7 +84,7 @@
   `MarvinSpawnNpcSymbol`, `MarvinGiveItems` are unused now (the console has these commands) - to be removed; two
   screen message paths (scripts: ours, Marvin: `main`'s overlay) - to be unified.
 
-**Added 2026-10-18**
+### Added 2026-10-18
 
 - **Marvin start commands** (`27aa8bf6`, `MarvinStartCommands`): commands from the developer config (';' separated)
   are in Marvin's recent list from the start - one click, not run. Recents dedupe ignoring case.
@@ -80,7 +101,7 @@
 
 2026-10-16: `f9b48c31` merge `main` (Marvin console, in-game Marvin mode, keyboard, NVorbis package)
 
-**Added 2026-10-23**
+### Added 2026-10-23
 
 - **Marvin `kill`** (`8ed54eb7`, `EnableMarvinKill`), like OpenGothic's `C_Kill`: the focus NPC loses all hit points
   and dies (no killer, no experience); immortal ones (`NPC_FLAG_IMMORTAL`) are left alone silently. The focus is the

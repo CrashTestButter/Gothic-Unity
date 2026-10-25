@@ -2,35 +2,60 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [NPC melee (was mostly missing on `main`)](#npc-melee-was-mostly-missing-on-main)
+  - [Knockouts and death](#knockouts-and-death)
+  - [VR weapons](#vr-weapons)
+  - [Fixes worth knowing](#fixes-worth-knowing)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-16](#added-2026-10-16)
+  - [Added 2026-10-18](#added-2026-10-18)
+  - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+  - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
-**NPC melee** (was mostly missing on `main`)
+### NPC melee (was mostly missing on `main`)
+
 - `AI_Attack` with Gothic's fight AI moves, combos cut at `DEF_WINDOW`, hits fired at `DEF_OPT_FRAME`
   (or at the animation's end when it has none — wolves).
 - Weapon draw/sheath with the right animations, sounds and fight overlays; two-handers on the back.
 - Chase give-up (`$RUNCOWARD`) after ~15 s, approach spread so NPCs don't stack.
 - NPC vs NPC hit detection: reach + 60° arc check (not bone colliders yet).
 
-**Knockouts and death**
+### Knockouts and death
+
 - Engine rule (OpenGothic `checkHealth`): a human beaten in melee goes unconscious unless hostile to the attacker
   (permanent attitude to the hero, guild attitude between NPCs). Bandits die, citizens don't. Arrows kill.
 - `ZS_Dead` runs on death (XP, loot init, quest variables), deferred one frame (G2 `ZS_Dead` is heavy).
 - Hero knockout: attackers reset their temp attitude, sheathe and clear their AI queue, so the fight ends at once.
 - NPCs drop their held weapon on death/knockout; the dropped weapon is a usable world item.
 
-**VR weapons**
+### VR weapons
+
 - Bows with a real string (grab with Grip, draw), aim along drawing hand → bow hand, two-handed hold.
 - Crossbows shoot bolts from the inventory; 60 %+ skill (G1: master rank) allows one hand.
 - Arrows/bolts that miss stay in the world. Thin box colliders along bow meshes.
 - NPC weapon hitbox covers the whole body.
 
-**Fixes worth knowing**
+### Fixes worth knowing
+
 - `Npc_ChangeAttribute` adds a delta instead of setting the value; no more clamping strength to dexterity.
 - Bystanders don't turn on whoever beats the hero; an NPC's started swing isn't cut by another NPC's hit
   (two bandits stunlocked Cavalorn).
 - Berserk (G1): victims attack the next living NPC; guards knock the berserker out instead of killing.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Strike out of the run:** NPCs and monsters running at the hero strike out of the run half of the time
   (`t_<weapon>AttackMove`: fist/1h humans, orcs, wolves, scavengers); the run animation keeps playing under the strike
@@ -45,7 +70,7 @@
   `reactToOnDamage` once per projectile, home on them within 12° (they're often invisible) and such targets get a green
   X where to shoot (see [World](07-world-vobs.md)).
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Knocked out NPCs fall down** like in the engine (`T_Stand_2_Wounded` → `S_Wounded`). G2's `ZS_Unconscious` only
   calls `Mdl_ApplyRandomAni` for a third of the tough guys (G1 always), everybody else stood or T-posed while down
@@ -69,14 +94,14 @@
 - **Web crawler melee:** Mroczne Tajemnice's mage crawler casts from afar but uses its melee table (`FAI_MINECRAWLER`)
   and bites when its target is frozen or within twice its fist range.
 
-**Added 2026-10-16**
+### Added 2026-10-16
 
 - **The winner knows it won:** G1's `ZS_Unconscious` ends with `if (Npc_IsPlayer(self))
   other.aivar[AIV_HASDEFEATEDSC] = TRUE`; the hero runs no Daedalus states, so the NPC who knocked him out (or
   executed him) gets it set in C#. Dialogs after a lost duel check it - Mroczne Tajemnice's Sheer'Ghar
   (`Info_Sheer_After`) had nothing to say after beating the hero.
 
-**Added 2026-10-18**
+### Added 2026-10-18
 
 - **NPCs react to the hero's swings** (`b34c58ba`), like OpenGothic's `FightAlgo::fillQueue`: the VR swing (the held
   weapon passing the attack speed) is the hero's "prehit" for 0.4 s (`GlobalEventDispatcher.HeroMeleeSwing`). An NPC
@@ -169,7 +194,7 @@
 - **Fight turns** (`443948e5`, `EnableFightTurnTolerance`): the turn move ends within 20 degrees (focus is 30) or after
   2 s - 1 degree on a circling scavenger kept Ratford turning forever.
 
-**Added 2026-10-25 (afternoon)**
+### Added 2026-10-25 (afternoon)
 
 - **Blocking** (`c321ebb6`, `EnableVrHeroBlock`): Gothic's parry animation holds the weapon with both hands for one- and
   two-handed weapons alike - `VRHeroBlock`: both hands on the same melee weapon (`IsDualGrabbed`, `ITEM_KAT_NF`) and
@@ -197,7 +222,7 @@
   bolt or spell kills; on it knocks out (`IsKnockedOutNotKilled`) and the next one finishes. Area/spread spells
   (`IsSparedByAreaSpell`) hit the knocked out too.
 
-**Added 2026-10-25 (evening)**
+### Added 2026-10-25 (evening)
 
 - **Block by weapon contact** (`8118ce45`, `EnableBlockWeaponContact`): a block held anywhere in front (above the NPC's
   head too) stopped every hit. While blocking, `VRHeroBlock.ReportWeaponContacts` samples each armed NPC within 4 m - the

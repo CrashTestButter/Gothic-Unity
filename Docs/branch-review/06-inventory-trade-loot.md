@@ -2,6 +2,23 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
+  - [Added 2026-10-18](#added-2026-10-18)
+  - [Added 2026-10-25](#added-2026-10-25)
+  - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+  - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
 - **Trading in VR:** "Show me your goods" puts a counter between hero and trader: his goods, both offers, the
@@ -20,25 +37,25 @@
 - Fixes: backpack UI froze after a page click during a refresh; food in the backpack isn't eaten; quick slots no
   longer resize items; script inventory changes reach VR.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Lidless containers** (no `.MDS`, e.g. the orc mummies in the Sleeper's temple) are mobs: highlight and click like a
   switch, the click shows a loot backpack with their items on the hero's side.
 
-**Added 2026-10-11 – 2026-10-13**
+### Added 2026-10-11 – 2026-10-13
 
 - **Quick loot:** the loot backpack of a dead NPC or a lidless container (mummy) gets a green **X** above the right page
   arrow (a copy of the arrow, Gothic font) - it moves everything into the hero's inventory at once. Not for knocked out
   NPCs (robbed item by item) nor traders.
 
-**Added 2026-10-18**
+### Added 2026-10-18
 
 - **Plundering** (`60fb9190`, `EnableInvItemBySlot`): an NPC who knocked out the hero takes half his ore and says so
   (G1 `B_Plunder`). `Npc_GetInvItemBySlot` only found the equipped weapon/armor - with 1000 ore he said "not even
   ore". Like OpenGothic's `Inventory::findByFlags` it returns the slot-th item of the `INV_*` category from the packed
   inventory.
 
-**Added 2026-10-25**
+### Added 2026-10-25
 
 - **Pickpocketing, G1** (`0ecdf3d7`, `EnableVrPickpocket`): G1 steals through the engine's steal window, G2 in
   dialogs (`DIA_*_PICKPOCKET`, `C_Beklauen`) - only G1 gets this; OpenGothic has no G1 pickpocketing. `PickpocketService`
@@ -56,7 +73,7 @@
   purse (+1 s) or the NPC is robbed - HVR grabs the NPC with the same grip. Runtime only; the items are in the saved
   inventories.
 
-**Added 2026-10-25 (afternoon)**
+### Added 2026-10-25 (afternoon)
 
 - **Equip from the backpack** (`cdb58a50`, `EnableBackpackEquipToggle`): `VRBackpackEquipToggle` - an empty hand at a
   wearable (armor, amulet, ring, belt) in the hero's backpack and a trigger click (under 0.5 s, under 3 cm) equips or
@@ -64,7 +81,7 @@
 - **Pickpocketing in menus** (`4a199637`): `PickpocketService.IsEnabled` checks the Gothic config and the VM before the
   game version - it threw every frame in the profile menu.
 
-**Added 2026-10-25 (evening)**
+### Added 2026-10-25 (evening)
 
 - **Favorites ring** (`ceeee724`, `d644e599`, `EnableRingWeaponSlots`, `EnableRingItemSlots`,
   `EnableRingWeaponLeavesOnDrop`): the spell ring ([Magic](02-magic.md)) also holds the equipped melee weapon and

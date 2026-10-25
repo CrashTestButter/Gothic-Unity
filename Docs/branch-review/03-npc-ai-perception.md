@@ -2,9 +2,30 @@
 
 [← Overview](README.md)
 
+<!-- toc -->
+## Contents
+
+- [What changed](#what-changed)
+  - [Perceptions like the engine](#perceptions-like-the-engine)
+  - [Targeting](#targeting)
+  - [Routines](#routines)
+  - [Added 2026-10-10 – 2026-10-11](#added-2026-10-10--2026-10-11)
+  - [Added 2026-10-13](#added-2026-10-13)
+  - [Added 2026-10-16](#added-2026-10-16)
+  - [Added 2026-10-17](#added-2026-10-17)
+  - [Added 2026-10-24](#added-2026-10-24)
+  - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+- [Key commits](#key-commits)
+- [Main files](#main-files)
+- [Config flags](#config-flags)
+- [Review notes](#review-notes)
+- [How to test](#how-to-test)
+<!-- /toc -->
+
 ## What changed
 
-**Perceptions like the engine**
+### Perceptions like the engine
+
 - `Npc_SendPassivePerc` reaches the NPCs around the sender (was: executed on the sender itself). Fixes guard
   warnings (`ASSESSWARN`), `NPCCOMMAND` and others.
 - Active perceptions (enemies, bodies) work without the hero nearby — NPCs fight monsters on their own.
@@ -14,18 +35,20 @@
   started as states (with loop/end), like the engine.
 - NPCs react to the hero readying a weapon or rune in VR, and to casting (`ASSESSCASTER`).
 
-**Targeting**
+### Targeting
+
 - `Npc_GetNextTarget`, target switching for non-hero attackers, party members never auto-targeted, summons never
   target their master, `AIV_EnemyOverride` road bandits don't pick the hero (G2).
 - `CheckForArmedNpcThreat` (NPC→NPC armed threat) no longer restarts `ZS_AssessFighter` on the hero every tick.
 
-**Routines**
+### Routines
+
 - Culled NPCs move to their routine waypoint on schedule change; route resume from the nearest waypoint;
   free point (FP) locking so guards keep their posts; perceptions reset on routine change.
 - Important dialogs checked in `nr` order like the engine; loopless states end like the engine.
 - `AI_UseItem` (NPCs drink potions after fights), `AI_Flee`, `Npc_GetLookAtTarget`.
 
-**Added 2026-10-10 – 2026-10-11**
+### Added 2026-10-10 – 2026-10-11
 
 - **Senses like the engine:** sight in the full senses range but only in front (FOV), hearing only while the target
   walks/runs and within half the range, smell 3 m - before NPCs sensed the hero all around.
@@ -44,7 +67,7 @@
   `UndeadDragonIsDead`).
 - `AI_ContinueRoutine` on an NPC without a routine goes back to its start state instead of throwing.
 
-**Added 2026-10-13**
+### Added 2026-10-13
 
 - **Guides wait again:** guides and followers (`ZS_GuidePC`/`ZS_FollowPC`, G2 `ZS_Guide_Player`/`ZS_Follow_Player`) sense
   the hero all around their senses range like the engine's smell. With the quiet senses (smell 3 m) a guide running
@@ -56,14 +79,14 @@
   interrupts an NPC's walking (the engine's stumble) so `ZS_ReactToDamage`'s `AI_StartState` doesn't wait behind a long
   `AI_GotoWP`.
 
-**Added 2026-10-16**
+### Added 2026-10-16
 
 - **`Hlp_GetNpc(self)`:** like the engine, `Hlp_GetNpc` resolves instance variables (`SELF`, `OTHER`, ...) to the NPC
   they point to, not only NPC instance definitions. Mroczne Tajemnice's `ZS_DragonEscape_Loop` calls
   `B_KillNpc(self)` and then `Wld_InsertNpc(NON_2013_ALGIRION)`: the null NPC threw in `Npc_ChangeAttribute`, the
   function stopped before the insert and the dragon only vanished. `Npc_ChangeAttribute` without an NPC now warns.
 
-**Added 2026-10-17**
+### Added 2026-10-17
 
 - **`AI_StartState(..., 1, ...)` ends the old state:** `ExtAiStartState` zeroed the current state's `_End` and cleared
   the queue right away, so the `_End` never ran. A dialog ending in a fight (`AI_StartState(self, ZS_Attack, 1, "")`)
@@ -87,7 +110,7 @@
   `AI_StartState(..., 1, ...)` - that took the running `ZS_Attack_End` as the old state's `_End` and ran it again. A
   state in its End/AfterEnd phase passes no `_End` on.
 
-**Added 2026-10-24**
+### Added 2026-10-24
 
 - **Whirl around** (`bda6d4e1`, `EnableAiWhirlAround`): `AI_WhirlAround` was a plain turn. `WhirlAround` plays
   Humans.mds `t_surprise_CW`/`t_surprise_CCW` by the turn's side (then `s_surprise`) and turns the body along with the
@@ -103,7 +126,7 @@
   the senses range regardless of sneaking, hearing only through noise perceptions - the sneaking hero's steps send no
   `PERC_ASSESSQUIETSOUND` (ours: `EnableQuietSenses`, smell 3 m).
 
-**Added 2026-10-25 (afternoon)**
+### Added 2026-10-25 (afternoon)
 
 - **Proclaim from afar** (`7d91ccdb`, `EnableProclaimFromAfar`, opinion): `ZS_ProclaimAndPunish_Loop` only runs once
   `AI_GotoNpc` reached the hero - a hero running away right after his attack was chased forever, the loop's 5 m and

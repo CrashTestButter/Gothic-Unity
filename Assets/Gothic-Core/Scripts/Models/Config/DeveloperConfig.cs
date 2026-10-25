@@ -1344,6 +1344,10 @@ namespace Gothic.Core.Models.Config
                  "land lying and get up; thrown off a ledge, the fall hurts. Not the hero.")]
         public bool EnableWindfistThrow = true;
 
+        [Tooltip("V1: While the virtual keyboard is open, the UI lasers are drawn over it - they ended under its canvas " +
+                 "(sorting order 100), aiming at a key was guesswork.")]
+        public bool EnableKeyboardPointerOnTop = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

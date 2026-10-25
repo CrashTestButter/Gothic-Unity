@@ -67,6 +67,7 @@ namespace Gothic.VR.Adapters.UI
         private VirtualKeyboardKey[] _keys;
         private TMP_Text _spaceLabel;
         private readonly List<string> _suggestions = new();
+        private readonly List<(LineRenderer Line, int SortingOrder)> _raisedPointerLines = new();
 
         public string Text => _text;
 
@@ -164,6 +165,8 @@ namespace Gothic.VR.Adapters.UI
             // A canvas created at runtime: the UI laser only hits canvases HVRInputModule knows.
             if (HVRInputModule.Instance != null)
                 HVRInputModule.Instance.AddCanvas(GetComponent<Canvas>());
+            if (ReflexProjectInstaller.DIContainer.Resolve<ConfigService>().Dev.EnableKeyboardPointerOnTop)
+                RaisePointerLines();
 #endif
             Logger.Log("[VirtualKeyboard] Shown", LogCat.Ui);
         }
@@ -423,6 +426,37 @@ namespace Gothic.VR.Adapters.UI
         {
             if (_current == this)
                 _current = null;
+            RestorePointerLines();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableKeyboardPointerOnTop: the keyboard canvas sorts above the rest (sortingOrder 100) - the
+        /// UI laser (sorting order 0, same transparent queue) was drawn under it, aiming at a key was guesswork. While
+        /// it's open, the lasers sort above it.
+        /// </summary>
+        private void RaisePointerLines()
+        {
+#if GOTHIC_HVR_INSTALLED
+            var order = GetComponent<Canvas>().sortingOrder + 1;
+            foreach (var pointer in FindObjectsByType<HVRUIPointer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var line = pointer.GetComponent<LineRenderer>();
+                if (line == null || line.sortingOrder >= order)
+                    continue;
+                _raisedPointerLines.Add((line, line.sortingOrder));
+                line.sortingOrder = order;
+            }
+#endif
+        }
+
+        private void RestorePointerLines()
+        {
+            foreach (var (line, sortingOrder) in _raisedPointerLines)
+            {
+                if (line != null)
+                    line.sortingOrder = sortingOrder;
+            }
+            _raisedPointerLines.Clear();
         }
     }
 }

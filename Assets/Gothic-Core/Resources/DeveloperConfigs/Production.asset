@@ -327,6 +327,7 @@ MonoBehaviour:
   EnableSessionLogFiles: 1
   EnableRuneCircleRequirement: 1
   EnableWindfistThrow: 1
+  EnableKeyboardPointerOnTop: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

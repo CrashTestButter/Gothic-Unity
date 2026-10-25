@@ -59,7 +59,6 @@ Link), not on Quest/Pico standalone.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 - Bows and crossbows hit critically by their talent (G1).
 - Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR).
-- Summons that weaken over time (G1) die at 0 hit points instead of standing on.
 
 ## The ring around you, spells like in Gothic · 2026-10-26
 
@@ -85,6 +84,9 @@ Link), not on Quest/Pico standalone.
 - A game profile can offer the mod's modes: Mroczne Tajemnice asks easy / normal / hard, saves stay per mode.
 - Every game session writes its own log with the local time on every line (stream chapters, bug reports).
 - The laser is drawn over the virtual keyboard.
+- Experience only for your own kills, your summons' and your party's (Mordrag leading you) - not for every death
+  anywhere. Immersion option "XP for every death" brings that back as a cheat.
+- Summons that weaken over time (G1) die at 0 hit points instead of standing on.
 
 ## Favorites ring, blocking, dying · 2026-10-23 – 2026-10-25
 

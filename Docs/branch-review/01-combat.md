@@ -238,6 +238,11 @@
 ### Added 2026-10-26
 
 - **Windfist/Stormfist throw their victims** (`56681067`) - see [Magic](02-magic.md).
+- **XP only for the hero's kills** (`95beafa9`): `ZS_Dead` gets the real killer as `other` (it was always the hero -
+  XP for every death anywhere); his summons and party members count (`AIV_PARTYMEMBER`, `AIV_MM_PARTYMEMBER`).
+  Immersion option "XP for every death" (`xpForAnyKill`) as a cheat.
+- **Death by script** (`a81da24e`): `Npc_ChangeAttribute` taking the last hit points kills (G1 summons weakening in
+  `ZS_MM_SummonedByPC_Loop` stood on at 0); a summon dying by itself gives no XP.
 
 ## Key commits
 
@@ -271,7 +276,7 @@ archers get around cover
 2026-10-25: `c321ebb6` blocking · `42b42b6d` engine melee damage · `0cc510ad` weapon requirements · `6a8015ba` fitted melee hitboxes · `7542c3d0` ranged knockout
 
 2026-10-25: `167edcf7` blood only on hit · `8118ce45` block by weapon contact
-2026-10-26: `56681067` windfist throw
+2026-10-26: `56681067` windfist throw · `95beafa9` killer-only XP · `a81da24e` death by script
 
 ## Main files
 
@@ -311,7 +316,7 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 2026-10-25: `EnableVrHeroBlock`, `EnableEngineMeleeDamage`, `EnableWeaponRequirementCap`, `EnableMeleeFittedColliders`, `EnableRangedKnockoutOption`, `RangedKnockoutByDefault`
 
 2026-10-25: `EnableBloodOnlyOnHit`, `EnableBlockWeaponContact`
-2026-10-26: `EnableWindfistThrow`
+2026-10-26: `EnableWindfistThrow`, `EnableKillerXpOnly`, `EnableScriptHitPointsDeath`
 
 ## Review notes
 
@@ -354,3 +359,5 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 - G2: a shadowbeast - one swing takes your HP once; hit its head; it doesn't push its head into the camera. A sword
   fighter's full combo: every swing hurts (log `[Combo] ... continues s_1hAttack with part 2/2`).
 - Windfist at a monster: it flies back.
+- A guard kills a wolf: no XP; you kill one: XP; your summon kills one: XP.
+- G1: summon a skeleton and wait - it weakens and dies at 0 hit points, no XP.

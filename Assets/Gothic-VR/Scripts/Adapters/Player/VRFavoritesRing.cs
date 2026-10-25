@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core;
 using Gothic.Core.Adapters.UI;
+using Gothic.Core.Const;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Adapters.Vob;
@@ -40,7 +41,8 @@ namespace Gothic.VR.Adapters.Player
     /// favorite items and the money.
     /// - Open/close: both hands empty and raised above the head, both triggers held for _gestureSeconds. Loading a game
     ///   closes it.
-    /// - A carousel in front of the player (between chest and eyes): at most _maxSpells (8) spells; with
+    /// - A carousel in front of the player (between chest and eyes) - with EnableRingAroundPlayer around him at eye
+    ///   level, the slot looked at selected: at most _maxSpells (8) spells; with
     ///   DeveloperConfig.EnableRingWeaponSlots the equipped melee weapon and bow/crossbow (Gothic's one of each); with
     ///   EnableRingItemSlots up to _maxItems (3) favorite items (a torch, a key, potions, food) and the trade currency
     ///   (G1 ore, G2 gold: TRADE_CURRENCY_INSTANCE). The front spell shows its effect after _previewSeconds (like
@@ -74,6 +76,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VobMeshCullingService _vobMeshCullingService;
         [Inject] private readonly FightService _fightService;
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
+        [Inject] private readonly DynamicMaterialService _dynamicMaterialService;
 
         private const int _maxSpells = 8;
         private const int _maxWeapons = 2;
@@ -83,13 +86,19 @@ namespace Gothic.VR.Adapters.Player
         private const float _gestureSeconds = 1f;
         // Meters the hands must be above the eyes for the gesture.
         private const float _gestureHeightAboveEyes = 0.1f;
-        private const float _previewSeconds = 2f;
+        private const float _previewSeconds = 1f;
         private const float _ringDistance = 0.55f;
         private const float _ringRadius = 0.28f;
         private const float _ringHeightBelowEyes = 0.2f;
         private const float _spellSize = 0.09f;
+        private const float _spellModelTilt = -90f;
         // DeveloperConfig.EnableSpellEffectGothicMotion: the effect's radius in the slot, a share of the rune's size.
         private const float _effectFitShare = 0.7f;
+        // DeveloperConfig.EnableRingSpellPreviewAlpha: the rune behind its effect / the effect while a hand is at it.
+        private const float _previewModelAlpha = 0.5f;
+        private const float _previewEffectHoverAlpha = 0.5f;
+        private static readonly int _baseColorProperty = Shader.PropertyToID("_BaseColor");
+        private static readonly int _colorProperty = Shader.PropertyToID("_Color");
         // Weapons stand upright (blade up) and are longer than the runes.
         private const float _weaponSize = 0.16f;
         private const float _itemSize = 0.1f;
@@ -103,6 +112,9 @@ namespace Gothic.VR.Adapters.Player
         private const float _snapSpeed = 360f;
         private const float _spinSpeed = 30f;
         private const float _labelWorldScale = 0.013f;
+        // DeveloperConfig.EnableRingAroundPlayer: the ring circles the player at eye level, 2.2 times the size (radius
+        // ~0.6 m) - the slot looked at is the selected one.
+        private const float _aroundPlayerScale = 2.2f;
         // An item grabbed out of the ring that HVR didn't end up holding after this goes back.
         private const float _takeTimeoutSeconds = 1f;
         // Stacks: grip held at the slot this long takes more - first _transferStartRate per second, doubling every
@@ -135,6 +147,8 @@ namespace Gothic.VR.Adapters.Player
         private Slot _front;
         private float _frontSince;
         private TextMeshPro _label;
+        // The selected (front) slot's name - always shown.
+        private TextMeshPro _frontLabel;
         private Material _emptySlotMaterial;
         private string _lastRejection;
 
@@ -167,6 +181,10 @@ namespace Gothic.VR.Adapters.Player
             public GameObject FocusName;
             public GameObject Effect;
             public bool HasNoEffect;
+            // DeveloperConfig.EnableRingSpellPreviewAlpha: the materials of its effect with their own alpha, and the
+            // look shown (-1 none yet, 0 rune only, 1 effect in front, 2 effect while hovered).
+            public List<(Material Material, Color Color)> EffectMaterials;
+            public int PreviewState = -1;
             public float Angle;
 
             // Weapons and items: the real item, shrunk into the slot until a hand grabs it.
@@ -274,6 +292,7 @@ namespace Gothic.VR.Adapters.Player
             UpdatePendingPutIn();
             if (!_isOpen)
                 return;
+            UpdateZoom();
             UpdateDrag();
             UpdateLayout();
             UpdateHover();
@@ -341,9 +360,19 @@ namespace Gothic.VR.Adapters.Player
         {
             var forward = Vector3.ProjectOnPlane(head.forward, Vector3.up);
             forward = forward.sqrMagnitude < 0.01f ? Vector3.forward : forward.normalized;
-            transform.SetPositionAndRotation(
-                head.position + forward * _ringDistance + Vector3.down * _ringHeightBelowEyes,
-                Quaternion.LookRotation(forward, Vector3.up));
+            if (IsAroundPlayer)
+            {
+                // The player stands in its middle; turned around, the first slot is in front of him.
+                transform.SetPositionAndRotation(head.position, Quaternion.LookRotation(-forward, Vector3.up));
+                _aroundPlayerRotation = transform.rotation;
+            }
+            else
+            {
+                transform.SetPositionAndRotation(
+                    head.position + forward * _ringDistance + Vector3.down * _ringHeightBelowEyes,
+                    Quaternion.LookRotation(forward, Vector3.up));
+            }
+            transform.localScale = Vector3.one * RingScale;
 
             _isOpen = true;
             _ringAngle = _targetAngle = 0f;
@@ -366,6 +395,8 @@ namespace Gothic.VR.Adapters.Player
             ClearSlots();
             if (_label != null)
                 _label.gameObject.SetActive(false);
+            if (_frontLabel != null)
+                _frontLabel.gameObject.SetActive(false);
             Logger.Log($"[FavoritesRing] Closed ({reason})", LogCat.VR);
         }
 
@@ -566,6 +597,8 @@ namespace Gothic.VR.Adapters.Player
             _vobService.CreateItemMesh(item.Index, slot.Model);
             foreach (var collider in slot.Model.GetComponentsInChildren<Collider>(true))
                 Destroy(collider);
+            // Runes and scrolls lie flat - stood up, their picture faces the player.
+            slot.Model.transform.localRotation = Quaternion.Euler(_spellModelTilt, 0f, 0f);
             FitSize(slot.Model, _spellSize);
             return slot;
         }
@@ -720,6 +753,16 @@ namespace Gothic.VR.Adapters.Player
 
         private void ClearSlots()
         {
+            // The labels hang at a slot - they'd go with it.
+            foreach (var label in new[] { _label, _frontLabel })
+            {
+                if (label == null)
+                    continue;
+                label.transform.SetParent(transform, false);
+                label.gameObject.SetActive(false);
+            }
+            _hovered = null;
+            _front = null;
             foreach (var slot in _slots)
             {
                 if (slot.Container != null)
@@ -730,13 +773,94 @@ namespace Gothic.VR.Adapters.Player
             _slots.Clear();
         }
 
+        private bool IsAroundPlayer => _configService.Dev.EnableRingAroundPlayer;
+        private Quaternion _aroundPlayerRotation = Quaternion.identity;
+        private float RingScale => (IsAroundPlayer ? _aroundPlayerScale : 1f) *
+                                   (_configService.Dev.EnableRingZoom ? _ringZoom : 1f);
+
+        // DeveloperConfig.EnableRingZoom: the ring's size, changed with the right stick (simulator: mouse wheel) like
+        // the menu's distance - kept for the session.
+        private static float _ringZoom = 1f;
+        private const float _minRingZoom = 0.5f;
+        private const float _maxRingZoom = 2f;
+        private const float _ringZoomSpeed = 1f;
+        private const float _ringZoomPerWheelNotch = 0.05f;
+        private const float _mouseWheelNotch = 120f;
+        private const float _zoomStickDeadZone = 0.2f;
+
+        // DeveloperConfig.EnableRingFreeSpin: a carousel - let go while turning it, it spins on and slows down; a
+        // trigger press stops it. Degrees per second, the drag's last speed.
+        private float _spinVelocity;
+        private float _lastDragAngle;
+        private bool _isSpinStoppedByPress;
+        private float _dragStartHandAngle;
+        private const float _spinDamping = 1.5f;
+        private const float _minSpinVelocity = 5f;
+        private const float _stopSpinVelocity = 20f;
+        private const float _minDragAxisDistance = 0.1f;
+
+        private bool IsFreeSpin => _configService.Dev.EnableRingFreeSpin && IsAroundPlayer;
+
         /// <summary>
-        /// The front slot (angle 0) is closest to the player; positive angles go to the right.
+        /// DeveloperConfig.EnableRingZoom: the right stick up/down (mouse wheel) makes the ring bigger/smaller - it moves
+        /// away from or towards the eyes with its slots.
+        /// </summary>
+        private void UpdateZoom()
+        {
+            if (!_configService.Dev.EnableRingZoom)
+                return;
+
+            var change = 0f;
+            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            {
+                var mouse = UnityEngine.InputSystem.Mouse.current;
+                if (mouse != null)
+                    change = mouse.scroll.ReadValue().y / _mouseWheelNotch * _ringZoomPerWheelNotch;
+            }
+            else
+            {
+                var controller = HurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.RightController;
+                if (controller != null && Mathf.Abs(controller.JoystickAxis.y) >= _zoomStickDeadZone)
+                    change = controller.JoystickAxis.y * _ringZoomSpeed * Time.deltaTime;
+            }
+            if (Mathf.Approximately(change, 0f))
+                return;
+
+            _ringZoom = Mathf.Clamp(_ringZoom + change, _minRingZoom, _maxRingZoom);
+            transform.localScale = Vector3.one * RingScale;
+        }
+
+        /// <summary>
+        /// The hand's angle around the ring's axis (0 = the front slot's direction, like the slots' angles) - turning the
+        /// ring around the player follows the hand from any side.
+        /// </summary>
+        private static float GetHandAngle(Vector3 local)
+        {
+            return Mathf.Atan2(local.x, -local.z) * Mathf.Rad2Deg;
+        }
+
+        /// <summary>
+        /// The front slot (angle 0) is closest to the player; positive angles go to the right. Around the player
+        /// (EnableRingAroundPlayer) the selected slot is the one the head looks at - turning the head selects too.
         /// </summary>
         private void UpdateLayout()
         {
-            if (!_isDragging)
+            // Around the player it keeps its direction in the world: it hangs at the player controller, which turns
+            // with a turn (simulator: the mouse look) - the head couldn't look at another slot.
+            if (IsAroundPlayer)
+                transform.rotation = _aroundPlayerRotation;
+
+            if (!_isDragging && IsFreeSpin)
+            {
+                _ringAngle += _spinVelocity * Time.deltaTime;
+                _spinVelocity *= Mathf.Exp(-_spinDamping * Time.deltaTime);
+                if (Mathf.Abs(_spinVelocity) < _minSpinVelocity)
+                    _spinVelocity = 0f;
+            }
+            else if (!_isDragging)
+            {
                 _ringAngle = Mathf.MoveTowardsAngle(_ringAngle, _targetAngle, _snapSpeed * Time.deltaTime);
+            }
 
             var putInTarget = _putInCandidates.FirstOrDefault(c => c != null)?.Target;
             Slot front = null;
@@ -753,7 +877,9 @@ namespace Gothic.VR.Adapters.Player
                 if (slot.Container != null && slot.TakenTime < 0f)
                     UpdateBodyCollisions(slot);
 
-                var distance = Mathf.Abs(Mathf.DeltaAngle(0f, slot.Angle + _ringAngle));
+                var distance = IsAroundPlayer
+                    ? GetHeadAngle(slot)
+                    : Mathf.Abs(Mathf.DeltaAngle(0f, slot.Angle + _ringAngle));
                 if (distance < frontDistance)
                 {
                     frontDistance = distance;
@@ -763,17 +889,32 @@ namespace Gothic.VR.Adapters.Player
 
             if (front != _front)
             {
-                SetPreview(_front, false);
                 _front = front;
                 _frontSince = Time.time;
             }
+            UpdateLabels();
+        }
+
+        /// <summary>
+        /// Degrees between where the head looks and the slot (flat, seen from the head).
+        /// </summary>
+        private float GetHeadAngle(Slot slot)
+        {
+            var head = Camera.main != null ? Camera.main.transform : null;
+            if (head == null)
+                return float.MaxValue;
+            var look = Vector3.ProjectOnPlane(head.forward, Vector3.up);
+            var toSlot = Vector3.ProjectOnPlane(slot.Root.transform.position - head.position, Vector3.up);
+            return look.sqrMagnitude < 0.0001f || toSlot.sqrMagnitude < 0.0001f
+                ? float.MaxValue
+                : Vector3.Angle(look, toSlot);
         }
 
         private void UpdateHover()
         {
             Slot hovered = null;
             var hoveredSide = HVRHandSide.Right;
-            var best = _hoverDistance;
+            var best = _hoverDistance * RingScale;
             foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
             {
                 if (!IsHandFree(side))
@@ -798,11 +939,8 @@ namespace Gothic.VR.Adapters.Player
             {
                 _hovered = hovered;
                 if (hovered != null)
-                {
-                    SetPreview(hovered, false);
                     _hapticsService.Vibrate(hoveredSide, VrHapticsService.VibrationType.Info);
-                }
-                UpdateLabel();
+                UpdateLabels();
             }
 
             // Weapons and items are grabbed by HVR itself (OnBeforeGrabbed).
@@ -821,68 +959,126 @@ namespace Gothic.VR.Adapters.Player
             return side == HVRHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
         }
 
-        private void UpdateLabel()
+        /// <summary>
+        /// The selected (front) slot always shows its name - its effect alone doesn't tell the spell; the slot a hand
+        /// is near shows its name too. Both grow with the ring (EnableRingAroundPlayer: twice and more).
+        /// </summary>
+        private void UpdateLabels()
         {
-            if (_hovered == null)
+            ShowLabel(ref _frontLabel, "FavoriteSelectedName", _front?.Item != null ? _front : null);
+            ShowLabel(ref _label, "FavoriteName", _hovered != _front ? _hovered : null);
+        }
+
+        private void ShowLabel(ref TextMeshPro label, string labelName, Slot slot)
+        {
+            if (slot == null)
             {
-                if (_label != null)
-                    _label.gameObject.SetActive(false);
+                if (label != null)
+                    label.gameObject.SetActive(false);
                 return;
             }
 
-            if (_label == null)
+            if (label == null)
             {
-                var labelGo = new GameObject("FavoriteName");
-                _label = labelGo.AddComponent<TextMeshPro>();
-                GothicText.Apply(_label);
-                _label.fontSize = 12;
-                _label.alignment = TextAlignmentOptions.Center;
-                _label.textWrappingMode = TextWrappingModes.NoWrap;
+                var labelGo = new GameObject(labelName);
+                label = labelGo.AddComponent<TextMeshPro>();
+                GothicText.Apply(label);
+                label.fontSize = 12;
+                label.alignment = TextAlignmentOptions.Center;
+                label.textWrappingMode = TextWrappingModes.NoWrap;
                 labelGo.AddComponent<VRBillboard>();
             }
 
-            _label.gameObject.SetActive(true);
-            _label.text = GetSlotName(_hovered);
-            _label.transform.SetParent(_hovered.Root.transform, false);
-            var height = _hovered.Kind is SlotKind.Melee or SlotKind.Ranged ? _weaponSize * 0.6f : _spellSize;
-            _label.transform.localPosition = Vector3.up * (height * 0.9f);
-            _label.transform.localScale = Vector3.one * (_labelWorldScale / Mathf.Max(0.0001f,
-                _hovered.Root.transform.lossyScale.x));
+            label.gameObject.SetActive(true);
+            label.text = GetSlotName(slot);
+            label.transform.SetParent(slot.Root.transform, false);
+            var height = slot.Kind is SlotKind.Melee or SlotKind.Ranged ? _weaponSize * 0.6f : _spellSize;
+            label.transform.localPosition = Vector3.up * (height * 0.9f);
+            // Its world size grows with the ring, not with the slot's hover scale.
+            label.transform.localScale = Vector3.one * (_labelWorldScale * RingScale /
+                                                        Mathf.Max(0.0001f, slot.Root.transform.lossyScale.x));
         }
 
         /// <summary>
-        /// Like Gothic: the front spell shows its rune/scroll first, after _previewSeconds its effect instead.
-        /// Weapons and items stay as they are.
+        /// Like Gothic: the front spell shows its rune/scroll first, after _previewSeconds its effect too. With
+        /// DeveloperConfig.EnableRingSpellPreviewAlpha the rune stays, half transparent behind its effect (some
+        /// effects are huge and hid which rune it is); a hand at it turns it around: the rune whole, the effect half.
+        /// Without the flag the effect replaces the rune. Weapons and items stay as they are.
         /// </summary>
         private void UpdateFrontPreview()
         {
-            if (_front == null || _front.Kind != SlotKind.Spell || _front == _hovered || _isDragging)
-                return;
-            var isEffectShown = _front.Effect != null && _front.Effect.activeSelf;
-            if (!isEffectShown && Time.time - _frontSince >= _previewSeconds)
-                SetPreview(_front, true);
+            foreach (var slot in _slots)
+            {
+                if (slot.Kind != SlotKind.Spell || slot.Item == null || slot.Root == null)
+                    continue;
+                var isEffect = slot == _front && !_isDragging && Time.time - _frontSince >= _previewSeconds;
+                var state = !isEffect ? 0 : slot == _hovered ? 2 : 1;
+                if (!_configService.Dev.EnableRingSpellPreviewAlpha && state == 2)
+                    state = 0;
+                if (state != slot.PreviewState)
+                    SetPreview(slot, state);
+            }
         }
 
-        private void SetPreview(Slot slot, bool isEffect)
+        private void SetPreview(Slot slot, int state)
         {
-            if (slot?.Item == null || slot.Root == null || slot.Kind != SlotKind.Spell)
-                return;
-
-            if (isEffect && slot.Effect == null)
+            slot.PreviewState = state;
+            if (state > 0 && slot.Effect == null && !slot.HasNoEffect)
             {
-                if (slot.HasNoEffect)
-                    return;
                 slot.Effect = CreateSpellEffect(slot.Item, slot.Root);
-                if (slot.Effect == null)
-                {
-                    slot.HasNoEffect = true;
-                    return;
-                }
+                slot.HasNoEffect = slot.Effect == null;
             }
+
+            var isEffect = state > 0 && slot.Effect != null;
             if (slot.Effect != null)
                 slot.Effect.SetActive(isEffect);
-            if (slot.Model != null)
-                slot.Model.SetActive(!isEffect || slot.Effect == null);
+            if (slot.Model == null)
+                return;
+
+            if (!_configService.Dev.EnableRingSpellPreviewAlpha)
+            {
+                slot.Model.SetActive(!isEffect);
+                return;
+            }
+
+            slot.Model.SetActive(true);
+            if (isEffect && state == 1)
+                _dynamicMaterialService.SetDynamicValue(slot.Model, Constants.ShaderPropertyTransparency,
+                    _previewModelAlpha);
+            else
+                _dynamicMaterialService.ResetDynamicValue(slot.Model, Constants.ShaderPropertyTransparency,
+                    Constants.ShaderPropertyTransparencyDefault);
+            if (isEffect)
+                SetEffectAlpha(slot, state == 2 ? _previewEffectHoverAlpha : 1f);
+        }
+
+        /// <summary>
+        /// The effect's own materials (instanced once) with their alpha scaled - particles blend by it.
+        /// </summary>
+        private static void SetEffectAlpha(Slot slot, float alpha)
+        {
+            if (slot.EffectMaterials == null)
+            {
+                slot.EffectMaterials = new List<(Material, Color)>();
+                foreach (var renderer in slot.Effect.GetComponentsInChildren<Renderer>(true))
+                {
+                    foreach (var material in renderer.materials)
+                    {
+                        var property = material.HasProperty(_baseColorProperty) ? _baseColorProperty
+                            : material.HasProperty(_colorProperty) ? _colorProperty : -1;
+                        if (property >= 0)
+                            slot.EffectMaterials.Add((material, material.GetColor(property)));
+                    }
+                }
+            }
+
+            foreach (var (material, color) in slot.EffectMaterials)
+            {
+                if (material == null)
+                    continue;
+                var property = material.HasProperty(_baseColorProperty) ? _baseColorProperty : _colorProperty;
+                material.SetColor(property, new Color(color.r, color.g, color.b, color.a * alpha));
+            }
         }
 
         private GameObject CreateSpellEffect(ItemInstance item, GameObject parent)
@@ -912,7 +1108,12 @@ namespace Gothic.VR.Adapters.Player
                     _dragHand = side;
                     _dragStartLocal = transform.InverseTransformPoint(hand.transform.position);
                     _dragStartAngle = _ringAngle;
+                    _dragStartHandAngle = GetHandAngle(_dragStartLocal);
+                    _lastDragAngle = _ringAngle;
                     _pressedSlot = _hovered;
+                    // A press grabs the spinning carousel - it stops, nothing is unequipped by that click.
+                    _isSpinStoppedByPress = Mathf.Abs(_spinVelocity) >= _stopSpinVelocity;
+                    _spinVelocity = 0f;
                     return;
                 }
                 return;
@@ -926,9 +1127,10 @@ namespace Gothic.VR.Adapters.Player
                 if (_isDragging)
                 {
                     _isDragging = false;
-                    SnapToNearest();
+                    if (!IsFreeSpin)
+                        SnapToNearest();
                 }
-                else if (_pressedSlot != null && _pressedSlot == _hovered)
+                else if (_pressedSlot != null && _pressedSlot == _hovered && !_isSpinStoppedByPress)
                 {
                     Unequip(_pressedSlot, _dragHand);
                 }
@@ -937,6 +1139,26 @@ namespace Gothic.VR.Adapters.Player
             }
 
             var local = transform.InverseTransformPoint(dragHand.transform.position);
+            if (IsFreeSpin)
+            {
+                // Around the player the hand turns the ring around its axis - the slot under the hand goes with it,
+                // whichever way the player faces (sideways in the ring's own space was mirrored behind him).
+                var axisDistance = new Vector2(local.x, local.z).magnitude * RingScale;
+                if (axisDistance < _minDragAxisDistance)
+                    return;
+                var deltaAngle = Mathf.DeltaAngle(_dragStartHandAngle, GetHandAngle(local));
+                if (!_isDragging && Mathf.Abs(deltaAngle) * Mathf.Deg2Rad * axisDistance >= _dragStartDistance)
+                    _isDragging = true;
+                if (!_isDragging)
+                    return;
+                _ringAngle = _dragStartAngle + deltaAngle;
+                if (Time.deltaTime > 0f)
+                    _spinVelocity = Mathf.Lerp(_spinVelocity,
+                        Mathf.DeltaAngle(_lastDragAngle, _ringAngle) / Time.deltaTime, 0.5f);
+                _lastDragAngle = _ringAngle;
+                return;
+            }
+
             var deltaX = local.x - _dragStartLocal.x;
             if (!_isDragging && Mathf.Abs(deltaX) >= _dragStartDistance)
                 _isDragging = true;
@@ -1069,7 +1291,7 @@ namespace Gothic.VR.Adapters.Player
                     StartTime = Time.time
                 };
                 _hovered = slot;
-                UpdateLabel();
+                UpdateLabels();
                 return;
             }
             Close("item taken");
@@ -1093,7 +1315,7 @@ namespace Gothic.VR.Adapters.Player
                          GetHeld(_transfer.Side).GetComponentInParent<VobLoader>()?.Container == held;
             if (hand == null || !isHeld || _transfer.Slot.Root == null ||
                 Vector3.Distance(hand.transform.position, _transfer.Slot.Root.transform.position) >
-                _transferEndDistance)
+                _transferEndDistance * RingScale)
             {
                 Logger.Log($"[FavoritesRing] {_transfer.Slot.Item.Name}: {held?.VobAs<IItem>()?.Amount ?? 0} taken " +
                            $"({_transfer.Slot.Amount} left)", LogCat.VR);
@@ -1116,7 +1338,7 @@ namespace Gothic.VR.Adapters.Player
             held.VobAs<IItem>().Amount += count;
             _transfer.Slot.Amount -= count;
             _hapticsService.Vibrate(_transfer.Side, VrHapticsService.VibrationType.Info);
-            UpdateLabel();
+            UpdateLabels();
             return true;
         }
 
@@ -1185,7 +1407,7 @@ namespace Gothic.VR.Adapters.Player
                 var item = _vmCacheService.TryGetItemData(instanceName);
                 var kind = GetKind(item, instanceName);
                 var target = _slots
-                    .Where(s => s.TakenTime < 0f && IsNear(held, s))
+                    .Where(s => s.TakenTime < 0f && IsNear(held, s, _putInDistance * RingScale))
                     .OrderBy(s => IsSame(s.InstanceName, instanceName) ? 0 : s.Kind == kind ? 1 : 2)
                     .FirstOrDefault();
                 if (target == null || !TryPutIn(item, instanceName, kind, target, out var action, out var replaced))
@@ -1401,7 +1623,7 @@ namespace Gothic.VR.Adapters.Player
         /// <summary>
         /// Any part of the held item at the slot - a sword is put in with its blade, its grip stays in the hand.
         /// </summary>
-        private static bool IsNear(GameObject held, Slot slot)
+        private static bool IsNear(GameObject held, Slot slot, float distance)
         {
             if (slot.Root == null)
                 return false;
@@ -1410,10 +1632,10 @@ namespace Gothic.VR.Adapters.Player
             {
                 if (!collider.enabled || collider.isTrigger)
                     continue;
-                if ((collider.ClosestPoint(position) - position).sqrMagnitude <= _putInDistance * _putInDistance)
+                if ((collider.ClosestPoint(position) - position).sqrMagnitude <= distance * distance)
                     return true;
             }
-            return Vector3.Distance(held.transform.position, position) <= _putInDistance;
+            return Vector3.Distance(held.transform.position, position) <= distance;
         }
 
         private void OnDestroy()
@@ -1430,6 +1652,8 @@ namespace Gothic.VR.Adapters.Player
             ClearSlots();
             if (_label != null)
                 Destroy(_label.gameObject);
+            if (_frontLabel != null)
+                Destroy(_frontLabel.gameObject);
         }
     }
 }

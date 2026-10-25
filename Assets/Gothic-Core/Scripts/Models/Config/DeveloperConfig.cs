@@ -1380,6 +1380,24 @@ namespace Gothic.Core.Models.Config
                  "squares showed (G1 transformation: WAVEOFINSANITY_A0.TGA).")]
         public bool EnablePfxMissingTextureHidden = true;
 
+        [Tooltip("V1: The favorites ring opens around the player at eye level, 2.2 times the size (radius ~0.6 m), the " +
+                 "first slot in front - the slot the head looks at is the selected one (its name always shown); the " +
+                 "trigger + hand still turns it. Off: a small ring in front of the chest.")]
+        public bool EnableRingAroundPlayer = true;
+
+        [Tooltip("V1: In the favorites ring the front spell's effect doesn't hide its rune/scroll: the rune stays half " +
+                 "transparent behind it (some effects are huge), a hand at it shows the rune whole and the effect half.")]
+        public bool EnableRingSpellPreviewAlpha = true;
+
+        [Tooltip("V1: The favorites ring around the player is a carousel - the hand turns it around the player (the slot " +
+                 "under the hand follows it from any side; sideways in the ring's space was mirrored behind him), let go " +
+                 "it spins on and slows down, a trigger press stops it. Off: it snaps to the nearest slot.")]
+        public bool EnableRingFreeSpin = true;
+
+        [Tooltip("V1: While the favorites ring is open the right stick up/down (simulator: mouse wheel) makes it bigger " +
+                 "or smaller (x0.5-x2) - like the menu's distance. Kept for the session.")]
+        public bool EnableRingZoom = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

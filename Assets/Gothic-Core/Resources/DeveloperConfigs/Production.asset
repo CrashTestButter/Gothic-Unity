@@ -335,6 +335,10 @@ MonoBehaviour:
   EnableSpellEffectGothicMotion: 1
   EnablePfxVeloFacesCamera: 1
   EnablePfxMissingTextureHidden: 1
+  EnableRingAroundPlayer: 1
+  EnableRingSpellPreviewAlpha: 1
+  EnableRingFreeSpin: 1
+  EnableRingZoom: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

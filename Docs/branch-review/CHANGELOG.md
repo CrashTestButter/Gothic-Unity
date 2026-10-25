@@ -58,6 +58,7 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 - Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR).
+- Your own steps and swimming sounds (drifting, slow strokes, the crawl); no fall animation while drifting.
 
 ## The ring around you, spells like in Gothic · 2026-10-26
 
@@ -85,6 +86,9 @@ Link), not on Quest/Pico standalone.
 - A game profile can offer the mod's modes: Mroczne Tajemnice asks easy / normal / hard, saves stay per mode.
 - Every game session writes its own log with the local time on every line (stream chapters, bug reports).
 - The laser is drawn over the virtual keyboard.
+- Footsteps: NPCs and monsters are heard walking - on wood, stone, earth, sand or in water by the ground below.
+- Sounds echo in mines, caves and temples.
+- Crouching is sneaking only with the sneak talent - without it NPCs notice you.
 - A teacher's "+5"/"+1" choices both stay after a pick; a torch in a holder lights again when grabbed; long mod
   titles fit the profile menu.
 - Experience only for your own kills, your summons' and your party's (Mordrag leading you) - not for every death

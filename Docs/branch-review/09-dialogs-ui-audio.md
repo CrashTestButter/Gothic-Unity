@@ -126,6 +126,10 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 - **Teacher choices stay complete** (`f8e78a6d`): the chosen choice leaves the list before its function runs
   (engine) - the function clears the choices and adds "+5"/"+1" again.
 - **Profile menu titles fit** (`ad811d75`): auto-size 16-34 pt.
+- **Footsteps** (`1b822e93`): the animations' `*eventSFXGrnd` play as `RUN_<ground>` like OpenGothic `emitSoundGround`;
+  the ground from the texture of the triangle below (texture array index in `uv0.z` -> texture -> the world's material
+  group, an UNDEF texture guessed by its name - G1's world is almost only UNDEF).
+- **Echo** (`41389612`): a reverb zone at the listener - cave / stone corridor under a ceiling of the world mesh.
 
 ## Key commits
 
@@ -146,7 +150,7 @@ of its material's texture - `main`'s shader samples the Canvas texture, the fill
 `dbf99c7f` dialog body turn
 
 2026-10-25: `4acb1acb` keyboard Clear key
-2026-10-26: `f8e78a6d` teacher choices · `ad811d75` profile menu text fit
+2026-10-26: `f8e78a6d` teacher choices · `ad811d75` profile menu text fit · `1b822e93` footsteps · `41389612` echo
 
 ## Main files
 
@@ -174,7 +178,8 @@ Removed with the 2026-10-17 merge (`main` has them always on or replaced): `Enab
 2026-10-23: `EnableSfxFromSfxFolder`, `EnableHeroHurtSound`, `EnableSfxNumberedVariants`, `EnableDialogBodyTurn`
 
 2026-10-25: `EnableKeyboardClearButton`
-2026-10-26: `EnableChoiceRemovedBeforeCall`, `EnableProfileMenuTextFit`
+2026-10-26: `EnableChoiceRemovedBeforeCall`, `EnableProfileMenuTextFit`, `EnableFootstepSounds`,
+`EnableGroundTextureGuess`, `EnableEnvironmentReverb`
 
 ## Review notes
 

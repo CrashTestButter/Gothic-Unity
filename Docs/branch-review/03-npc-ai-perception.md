@@ -15,6 +15,7 @@
   - [Added 2026-10-17](#added-2026-10-17)
   - [Added 2026-10-24](#added-2026-10-24)
   - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -136,6 +137,11 @@
   `Npc_GetInvItemBySlot` with `AI_UseItem(self, item)` - the external got the symbol `ITEM`, not the item in it;
   `UseItemToState` had nothing to play and waited forever (Lukis stood with his crossbow half put away until talked to).
   `ResolveItemId` takes `GlobalItem`; a use with nothing to play ends at once.
+
+### Added 2026-10-26
+
+- **Sneaking needs the talent** (`f97f2a73`): crouching is `BS_SNEAK` only with `NPC_TALENT_SNEAK` (OpenGothic
+  `Npc::canSneak`).
 
 ## Key commits
 

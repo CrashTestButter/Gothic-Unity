@@ -17,6 +17,7 @@ namespace Gothic.VR.Adapters.Player
         // DeveloperConfig.EnableSpellEffectGothicMotion: at least this many particles per second (Gothic's INIT effects
         // emit 50-500/s; a few emitted ~5/s in our builder once).
         private const float _minEmissionRate = 50f;
+        private const float _minFitScale = 0.25f;
 
         /// <param name="fitRadius">The ring's slot: the whole effect is scaled down to this radius (parent's units) -
         /// Gothic's effects are hand-sized (a fireball's flames grow to 64 cm) and the ring is 2.2 times bigger.</param>
@@ -32,7 +33,9 @@ namespace Gothic.VR.Adapters.Player
             {
                 $"MFX_{mfxName.ToUpper()}_INIT",
                 vmCache.TryGetVfxData($"spellFX_{mfxName}")?.VisNameS,
-                vmCache.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_INIT")?.VisNameS
+                vmCache.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_INIT")?.VisNameS,
+                // Chain lightning: its own visual is a texture, the hand's effect is the one it creates (ORIGIN).
+                GetCreatedVisual(vmCache, mfxName)
             };
             foreach (var pfxName in candidates)
             {
@@ -51,6 +54,16 @@ namespace Gothic.VR.Adapters.Player
                 return effect;
             }
             return null;
+        }
+
+        /// <summary>
+        /// The visual of the effect the spell's VISUALFX creates with it (emFXCreate_S) - chain lightning:
+        /// spellFX_ChainLightning_ORIGIN = MFX_Lightning_Origin in the hand.
+        /// </summary>
+        public static string GetCreatedVisual(VmCacheService vmCache, string mfxName)
+        {
+            var created = vmCache.TryGetVfxData($"spellFX_{mfxName}")?.EmFxCreateS;
+            return string.IsNullOrEmpty(created) ? null : vmCache.TryGetVfxData(created)?.VisNameS;
         }
 
         /// <summary>
@@ -97,7 +110,8 @@ namespace Gothic.VR.Adapters.Player
                 extent = Mathf.Max(extent, GetExtent(ps));
             if (extent <= radius)
                 return;
-            effect.transform.localScale *= radius / extent;
+            // Not to a dot: a burst of sparks (the transformation's lightning, 1 m) stays visible over the slot.
+            effect.transform.localScale *= Mathf.Max(_minFitScale, radius / extent);
         }
 
         private static float GetExtent(ParticleSystem ps)
@@ -121,7 +135,9 @@ namespace Gothic.VR.Adapters.Player
                 sizeScale = Mathf.Max(curve.Evaluate(0f, 1f), curve.Evaluate(1f, 1f));
             }
 
-            return shapeRadius + main.startSpeed.constantMax * main.startLifetime.constantMax +
+            // The average flight, not the fastest particle's.
+            var speed = (main.startSpeed.constantMin + main.startSpeed.constantMax) * 0.5f;
+            return shapeRadius + speed * main.startLifetime.constantMax +
                    main.startSize.constantMax * sizeScale * 0.5f;
         }
     }

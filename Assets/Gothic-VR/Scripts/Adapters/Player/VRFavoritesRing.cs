@@ -785,7 +785,6 @@ namespace Gothic.VR.Adapters.Player
         private const float _maxRingZoom = 2f;
         private const float _ringZoomSpeed = 1f;
         private const float _ringZoomPerWheelNotch = 0.05f;
-        private const float _mouseWheelNotch = 120f;
         private const float _zoomStickDeadZone = 0.2f;
 
         // DeveloperConfig.EnableRingFreeSpin: a carousel - let go while turning it, it spins on and slows down; a
@@ -814,8 +813,10 @@ namespace Gothic.VR.Adapters.Player
             if (_vrPlayerService.VRPlayerInputs.UseWASD)
             {
                 var mouse = UnityEngine.InputSystem.Mouse.current;
-                if (mouse != null)
-                    change = mouse.scroll.ReadValue().y / _mouseWheelNotch * _ringZoomPerWheelNotch;
+                // A notch is 120 or 1 depending on the Input System's scroll setting - the direction counts.
+                var scroll = mouse != null ? mouse.scroll.ReadValue().y : 0f;
+                if (!Mathf.Approximately(scroll, 0f))
+                    change = Mathf.Sign(scroll) * _ringZoomPerWheelNotch;
             }
             else
             {

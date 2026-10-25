@@ -399,7 +399,9 @@ namespace Gothic.Core.Domain.Meshes.Builder
                         // have no flight direction - a plain billboard (a stretched one without speed is invisible).
                         if (_pfxConfigService.Dev.EnablePfxVeloFacesCamera)
                         {
-                            if ((pfx.VelAvg + pfx.VelVar) * _velocityScale >= _minStretchSpeed)
+                            // All of them have to fly: one at 0 m/s stretched along nothing is invisible (the fire
+                            // storm's flames: 0.008 +- 0.03).
+                            if ((pfx.VelAvg - pfx.VelVar) * _velocityScale >= _minStretchSpeed)
                             {
                                 rendererModule.renderMode = ParticleSystemRenderMode.Stretch;
                                 rendererModule.lengthScale = 1f;
@@ -590,6 +592,10 @@ namespace Gothic.Core.Domain.Meshes.Builder
                     trails.ratio = 1f;
                     trails.lifetime = 0.25f;
                     trails.widthOverTrail = pfx.TrlWidth > 0 ? new ParticleSystem.MinMaxCurve(pfx.TrlWidth / 100f) : new ParticleSystem.MinMaxCurve(0.1f);
+                    // DeveloperConfig.EnablePfxTrailAbsoluteWidth: trlWidth is the trail's width in cm - Unity multiplied
+                    // it by the particle's size (the transformation's lightning: 2 cm x 1 cm particles = 0.2 mm).
+                    if (_pfxConfigService.Dev.EnablePfxTrailAbsoluteWidth)
+                        trails.sizeAffectsWidth = false;
 
                     // Assign trail material if texture provided
                     if (!string.IsNullOrEmpty(pfx.TrlTextureS) && pfx.TrlTextureS != "=")

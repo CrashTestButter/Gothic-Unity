@@ -926,7 +926,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 var ownVisuals = new[]
                 {
                     _vmCacheService.TryGetVfxData($"spellFX_{mfxName}")?.VisNameS,
-                    _vmCacheService.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_INIT")?.VisNameS
+                    _vmCacheService.TryGetVfxEmitKey($"spellFX_{mfxName}_KEY_INIT")?.VisNameS,
+                    // DeveloperConfig.EnableSpellEffectGothicMotion: chain lightning's hand effect is the one its
+                    // VISUALFX creates (MFX_Lightning_Origin) - a fireball was shown.
+                    _configService.Dev.EnableSpellEffectGothicMotion
+                        ? Adapters.Player.VRSpellEffect.GetCreatedVisual(_vmCacheService, mfxName)
+                        : null
                 };
                 foreach (var visName in ownVisuals)
                 {

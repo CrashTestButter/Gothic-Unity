@@ -104,7 +104,11 @@ VR - Player XRI
   - `Gravity` maps to `GravityProvider.gravityAccelerationModifier` (relative to `Physics.gravity`), 0 disables gravity;
     the grounded sphere cast uses every layer the Player layer collides with. `IsGrounded` =
     `GravityProvider.isGrounded || CharacterController.isGrounded`.
-  - `TeleportEnabled` is only a flag for player-initiated teleports (no teleport interactor yet). The
+  - `TeleportEnabled` gates player-initiated teleports: `XriTeleportAimer` (right thumbstick forward = arc, release =
+    teleport, grip = cancel; driven by the `Sector` interaction of `Teleport Mode`). No `TeleportationArea`s, as the
+    world is runtime-built. Instead the arc is a sphere cast against the physics world, and a target is valid only when
+    grounded, within `MaxRise`/`MaxDrop` of the feet, flat enough, with room for the standing capsule and a free path
+    for the head (no teleports through bars or over high walls). Settings in `XriTeleportSettings`. The
     `TeleportationProvider` stays enabled, so `Teleport()` also works while the player is locked (dialogs, cinema).
   - `Teleport` queues `MatchOrientation.TargetUpAndForward` (the camera, not the origin, ends above the position and
     looks along the rotation; `default(Quaternion)` = identity). The HVR workaround of setting the rotation afterwards

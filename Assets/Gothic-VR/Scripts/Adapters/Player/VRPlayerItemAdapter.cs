@@ -1,4 +1,5 @@
 using Gothic.Core.Manager;
+using Gothic.VR.Interaction.Components;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
@@ -46,12 +47,16 @@ namespace Gothic.VR.Adapters.Player
             if (args.Kind == VrGrabberKind.Socket || args.Interactable == null)
                 return;
 
+            // The hand grabbers grab mobs (doors, chest lids, seats), NPCs and the backpack as well. Their physics
+            // stay as they are (e.g. VrHinge keeps a door leaf kinematic, XRI would restore physics on it on drop).
+            if (!VrSocketSlot.IsItem(args.Interactable))
+                return;
+
             // In Gothic, Items have no physics when lying around. We need to activate physics for HVR to properly move items into our hands.
             if (args.Interactable.TryGetComponent<Rigidbody>(out var rb))
             {
                 rb.isKinematic = false;
             }
         }
-
     }
 }

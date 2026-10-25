@@ -21,12 +21,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// </summary>
     public class GothicGrabInteractable : XRGrabInteractable
     {
-        [Tooltip("Rigidbody interpolation while held. Restored on drop.")]
-        [SerializeField] private RigidbodyInterpolation _heldInterpolation = RigidbodyInterpolation.Interpolate;
+        [Tooltip("Rigidbody interpolation while held. Restored on drop.")] [SerializeField]
+        private RigidbodyInterpolation _heldInterpolation = RigidbodyInterpolation.Interpolate;
 
         [Tooltip("While a hand holds it, other hands can neither hover nor take it (the backpack: the other hand " +
                  "takes items out of its slots).")]
-        [SerializeField] private bool _isOneHandOnly;
+        [SerializeField]
+        private bool _isOneHandOnly;
 
         private XriInteractableBridge _bridge;
         private RigidbodyInterpolation _interpolationBeforeGrab;
@@ -129,6 +130,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 _isSocketDetach = false;
                 return;
             }
+
+            // Kinematic leaves (doors, chest lids: VrHinge swings them on itself) aren't thrown either.
+            if (TryGetComponent<Rigidbody>(out var body) && body.isKinematic)
+                return;
 
             base.Detach();
         }

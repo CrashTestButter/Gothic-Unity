@@ -133,6 +133,9 @@ namespace Gothic.Core.Models.Config
         [Tooltip("Ignore frame skipping during loading.")]
         public bool SpeedUpLoading;
 
+        [Tooltip("Skips all videos (logo videos and Daedalus PlayVideo/PlayVideoEx, e.g. chapter intros).")]
+        public bool SkipVideos;
+
         /**
          * ##########
          * VOBs

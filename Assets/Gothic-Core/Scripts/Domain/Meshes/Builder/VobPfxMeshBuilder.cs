@@ -81,6 +81,8 @@ namespace Gothic.Core.Domain.Meshes.Builder
         }
 
         private const float _velocityScale = 10f;
+        // DeveloperConfig.EnablePfxVeloFacesCamera: slower particles (m/s) are plain billboards.
+        private const float _minStretchSpeed = 0.1f;
 
         /// <summary>
         /// ppsCreateEm_S: the effect creates another one at its place (fireball explosion -> sparks + wall glow, fire
@@ -354,6 +356,7 @@ namespace Gothic.Core.Domain.Meshes.Builder
                 var material = new Material(standardShader);
                 rendererModule.material = material;
                 _textureService.SetTexture(pfx.VisNameS, rendererModule.material);
+                var isTextureMissing = rendererModule.material.mainTexture == null;
                 // renderer.material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest; // First check with no change.
 
                 switch (pfx.VisAlphaFuncS.ToUpper())
@@ -389,12 +392,34 @@ namespace Gothic.Core.Domain.Meshes.Builder
                         rendererModule.alignment = ParticleSystemRenderSpace.World;
                         break;
                     case "VELO":
-                        rendererModule.alignment = ParticleSystemRenderSpace.Velocity;
+                        // DeveloperConfig.EnablePfxVeloFacesCamera: VELO is a billboard facing the camera with its
+                        // length along the flight (OpenGothic: velocity orientation) - Velocity alignment turned the
+                        // quad's face into the flight direction, seen from the side it was a thin line or nothing
+                        // (transformation glow and sparks). Particles that hardly move (summoning's glow: 0.00001)
+                        // have no flight direction - a plain billboard (a stretched one without speed is invisible).
+                        if (_pfxConfigService.Dev.EnablePfxVeloFacesCamera)
+                        {
+                            if ((pfx.VelAvg + pfx.VelVar) * _velocityScale >= _minStretchSpeed)
+                            {
+                                rendererModule.renderMode = ParticleSystemRenderMode.Stretch;
+                                rendererModule.lengthScale = 1f;
+                                rendererModule.velocityScale = 0f;
+                            }
+                        }
+                        else
+                        {
+                            rendererModule.alignment = ParticleSystemRenderSpace.Velocity;
+                        }
                         break;
                     default:
                         Logger.LogWarning($"visOrientation {pfx.VisOrientationS} not yet handled.", LogCat.Mesh);
                         break;
                 }
+
+                // DeveloperConfig.EnablePfxMissingTextureHidden: a texture the game doesn't have (G1's transformation
+                // sparks: WAVEOFINSANITY_A0.TGA isn't in its textures) drew plain white squares - only its trails show.
+                if (isTextureMissing && _pfxConfigService.Dev.EnablePfxMissingTextureHidden)
+                    rendererModule.renderMode = ParticleSystemRenderMode.None;
 
                 // Billboard vs Mesh (quad poly)
                 // 1 => quad billboard (default). 0 => tri mesh (not supported directly) -> keep billboard and warn.
@@ -583,6 +608,11 @@ namespace Gothic.Core.Domain.Meshes.Builder
                         }
                         var renderer = pfxGo.GetComponent<ParticleSystemRenderer>();
                         renderer.trailMaterial = trailMat;
+                        // DeveloperConfig.EnablePfxMissingTextureHidden: without its particles the trails are the
+                        // effect - they don't take the invisible particles' alpha (transformation: 20 of 255).
+                        if (_pfxConfigService.Dev.EnablePfxMissingTextureHidden &&
+                            renderer.renderMode == ParticleSystemRenderMode.None)
+                            trails.inheritParticleColor = false;
                     }
                 }
             }

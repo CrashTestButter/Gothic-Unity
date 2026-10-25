@@ -35,6 +35,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VmCacheService _vmCacheService;
         [Inject] private readonly MeshService _meshService;
         [Inject] private readonly VrHapticsService _hapticsService;
+        [Inject] private readonly Gothic.Core.Services.Config.ConfigService _configService;
 
         // Seconds a trigger press of the other hand may last to count as a click.
         private const float _clickSeconds = 0.6f;
@@ -100,7 +101,7 @@ namespace Gothic.VR.Adapters.Player
                 if (handGo != null && _item != null)
                 {
                     _effect = VRSpellEffect.Create(_item, handGo, _gameStateService.GothicVm, _vmCacheService,
-                        _meshService);
+                        _meshService, _configService.Dev.EnableSpellEffectGothicMotion);
                     _hasNoEffect = _effect == null;
                 }
             }

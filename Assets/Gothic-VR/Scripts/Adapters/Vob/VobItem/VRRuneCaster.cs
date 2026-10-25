@@ -853,21 +853,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _spellVfxGo = (parent != null && parent.gameObject != handGo) ? parent.gameObject : pfxLeaf;
 
                 // All systems loop: the effect stays in the hand as long as the spell is charged (it vanished before).
-                foreach (var ps in _spellVfxGo.GetComponentsInChildren<ParticleSystem>(true))
-                {
-                    var main = ps.main;
-                    main.loop = true;
-                    // Default (Local) ignores the parent's scale - the invest level size wouldn't show.
-                    main.scalingMode = ParticleSystemScalingMode.Hierarchy;
-                    main.startSpeed = new ParticleSystem.MinMaxCurve(0f, 0.05f);
-                    var velocity = ps.velocityOverLifetime;
-                    velocity.enabled = false;
-                    // Gothic INIT spell PFX use ppsValue=500 but our builder divides by 100 → only 5/s.
-                    // With 0.15s lifetime that's <1 particle visible — boost emission for VR first-person.
-                    var emission = ps.emission;
-                    emission.rateOverTime = 50f;
-                    ps.Play();
-                }
+                // DeveloperConfig.EnableSpellEffectGothicMotion: with Gothic's own motion and emission.
+                Adapters.Player.VRSpellEffect.PrepareHeldEffect(_spellVfxGo,
+                    _configService.Dev.EnableSpellEffectGothicMotion);
                 var parentName = _spellVfxGo.transform.parent != null ? _spellVfxGo.transform.parent.name : "none";
                 Logger.Log($"[VRRuneCaster] spell VFX '{pfxName}' on {parentName}", LogCat.VR);
             }

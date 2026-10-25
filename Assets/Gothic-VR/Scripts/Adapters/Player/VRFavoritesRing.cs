@@ -88,6 +88,8 @@ namespace Gothic.VR.Adapters.Player
         private const float _ringRadius = 0.28f;
         private const float _ringHeightBelowEyes = 0.2f;
         private const float _spellSize = 0.09f;
+        // DeveloperConfig.EnableSpellEffectGothicMotion: the effect's radius in the slot, a share of the rune's size.
+        private const float _effectFitShare = 0.7f;
         // Weapons stand upright (blade up) and are longer than the runes.
         private const float _weaponSize = 0.16f;
         private const float _itemSize = 0.1f;
@@ -885,7 +887,9 @@ namespace Gothic.VR.Adapters.Player
 
         private GameObject CreateSpellEffect(ItemInstance item, GameObject parent)
         {
-            return VRSpellEffect.Create(item, parent, _gameStateService.GothicVm, _vmCacheService, _meshService);
+            // DeveloperConfig.EnableSpellEffectGothicMotion: Gothic's motion, the whole effect fitted into the slot.
+            return VRSpellEffect.Create(item, parent, _gameStateService.GothicVm, _vmCacheService, _meshService,
+                _configService.Dev.EnableSpellEffectGothicMotion, _spellSize * _effectFitShare);
         }
 
         /// <summary>

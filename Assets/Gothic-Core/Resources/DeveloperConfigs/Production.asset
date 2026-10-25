@@ -332,6 +332,9 @@ MonoBehaviour:
   EnableTransformCancelKeepsScroll: 1
   EnableTransformMonsterSpeed: 1
   EnableTransformFallbackInstance: 1
+  EnableSpellEffectGothicMotion: 1
+  EnablePfxVeloFacesCamera: 1
+  EnablePfxMissingTextureHidden: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

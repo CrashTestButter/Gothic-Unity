@@ -1366,6 +1366,20 @@ namespace Gothic.Core.Models.Config
                  "spell is named after (SPL_TRF_LURKER -> LURKER) - Mroczne Tajemnice's lurker scroll passes BLACKDRAGON.")]
         public bool EnableTransformFallbackInstance = true;
 
+        [Tooltip("V1: A spell's effect in the hand and in the favorites ring keeps Gothic's own motion and emission - " +
+                 "every particle stood still at 50/s (the transformation's lightning didn't show, summoning glowed a tenth). " +
+                 "In the ring the whole effect is scaled down to fit its slot (a fireball's flames grow to 64 cm).")]
+        public bool EnableSpellEffectGothicMotion = true;
+
+        [Tooltip("V1: Particles with visOrientation VELO face the camera with their length along the flight (OpenGothic) " +
+                 "- they turned their face into the flight direction and were thin lines or invisible from the side " +
+                 "(transformation glow, sparks).")]
+        public bool EnablePfxVeloFacesCamera = true;
+
+        [Tooltip("V1: A particle texture the game doesn't have draws nothing (only the emitter's trails) - plain white " +
+                 "squares showed (G1 transformation: WAVEOFINSANITY_A0.TGA).")]
+        public bool EnablePfxMissingTextureHidden = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

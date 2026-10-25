@@ -134,9 +134,13 @@ and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimmin
   `VrPhysicsHand.IgnoreCollisions`. On release the pair is restored only once the item's bounds no longer touch the
   hand (no depenetration kick). Pairs are re-applied when a body is re-activated (Unity resets them).
 - What the hand meets in Gothic worlds: world items lie **kinematic** until first grabbed (so the hand stops at them
-  like at a table); dropped items are dynamic and get pushed. Closed chest lids are kinematic (hand rests on them).
-  NPC `RootMotionCollider`s are dynamic (80 kg) but X/Z-frozen, so NPCs never move. Doors (dynamic hinge, 10 kg) should
-  be pushable (not tested yet).
+  like at a table); dropped items are dynamic and get pushed. NPC `RootMotionCollider`s are dynamic (80 kg) but
+  X/Z-frozen, so NPCs never move.
+- Doors and chest lids: on Xri the `VrHinge` leaf is **kinematic** (own angle solver, Phase 4), so rigidbody contact
+  alone can't move it - the hand just stopped at it. `VrHinge.OnCollisionStay` now turns the leaf by the hand's blocked
+  movement (`VrPhysicsHand.PushOffset`) along the swing direction at the contact point (max `MaxHandSpeed`, swings on
+  after contact ends, not while locked or held). Pushing a door open/shut and pushing an open lid shut work; opening a
+  closed lid needs the hand under its front edge, otherwise grab it.
 - Setting: Gothic.ini `[GOTHIC_VR_IMMERSION] physicalHands` (1 default), menu "Physical Hands" (en/de/pl), applied by
   `VRContextInteractionService.ApplyPhysicalHands()` on ini load and change. `VRContextInteractionService.PhysicsHands`
   lists the hands (empty on Hvr).

@@ -22,54 +22,65 @@ namespace Gothic.VR.Interaction.Components
     /// </summary>
     public class VrPhysicsHand : MonoBehaviour
     {
-        [Tooltip("Hand side, for logs. Taken from VrBlockHand on the same GameObject if it has one.")]
-        [SerializeField] private VrHandSide _side;
+        [Tooltip("Hand side, for logs. Taken from VrBlockHand on the same GameObject if it has one.")] [SerializeField]
+        private VrHandSide _side;
 
-        [Tooltip("Material of the ghost hand (transparent).")]
-        [SerializeField] private Material _ghostMaterial;
+        [Tooltip("Material of the ghost hand (transparent).")] [SerializeField]
+        private Material _ghostMaterial;
 
         [Header("Follow")]
         [Tooltip("Mass in kg. Together with Max Force it sets how strongly the hand pushes other rigidbodies.")]
-        [SerializeField] private float _mass = 1f;
+        [SerializeField]
+        private float _mass = 1f;
 
-        [Tooltip("Max. speed in m/s the hand moves towards the controller.")]
-        [SerializeField] private float _maxSpeed = 15f;
+        [Tooltip("Max. speed in m/s the hand moves towards the controller.")] [SerializeField]
+        private float _maxSpeed = 15f;
 
-        [Tooltip("Strength limit: max. force in N the hand applies. Pushes items, doors and chest lids, but not NPCs. " +
-                 "Also limits the acceleration of the free hand (Max Force / Mass).")]
-        [SerializeField] private float _maxForce = 200f;
+        [Tooltip(
+            "Strength limit: max. force in N the hand applies. Pushes items, doors and chest lids, but not NPCs. " +
+            "Also limits the acceleration of the free hand (Max Force / Mass).")]
+        [SerializeField]
+        private float _maxForce = 200f;
 
-        [Tooltip("Max. angular speed in rad/s the hand turns towards the controller.")]
-        [SerializeField] private float _maxAngularSpeed = 50f;
+        [Tooltip("Max. angular speed in rad/s the hand turns towards the controller.")] [SerializeField]
+        private float _maxAngularSpeed = 50f;
 
-        [Tooltip("Max. angular acceleration in rad/s^2.")]
-        [SerializeField] private float _maxAngularAcceleration = 2500f;
+        [Tooltip("Max. angular acceleration in rad/s^2.")] [SerializeField]
+        private float _maxAngularAcceleration = 2500f;
 
         [Tooltip("Max. speed in m/s with which the hand is pushed out of colliders it overlaps (after a snap).")]
-        [SerializeField] private float _maxDepenetrationSpeed = 2f;
+        [SerializeField]
+        private float _maxDepenetrationSpeed = 2f;
 
         [Header("Ghost hand")]
         [Tooltip("Distance in m between physical hand and controller above which the ghost hand shows.")]
-        [SerializeField] private float _ghostShowDistance = 0.05f;
+        [SerializeField]
+        private float _ghostShowDistance = 0.05f;
 
-        [Tooltip("Distance in m below which the ghost hand hides again.")]
-        [SerializeField] private float _ghostHideDistance = 0.03f;
+        [Tooltip("Distance in m below which the ghost hand hides again.")] [SerializeField]
+        private float _ghostHideDistance = 0.03f;
 
         [Header("Max distance")]
         [Tooltip("Distance in m between physical hand and controller above which the hand counts as stuck.")]
-        [SerializeField] private float _maxDistance = 0.5f;
+        [SerializeField]
+        private float _maxDistance = 0.5f;
 
-        [Tooltip("Time in s a stuck hand waits before it snaps back to the controller.")]
-        [SerializeField] private float _maxDistanceTime = 0.2f;
+        [Tooltip("Time in s a stuck hand waits before it snaps back to the controller.")] [SerializeField]
+        private float _maxDistanceTime = 0.2f;
 
         [Tooltip("A rig turn larger than this (degrees per physics step) is a snap turn: the hand snaps with the rig.")]
-        [SerializeField] private float _rigSnapAngle = 10f;
+        [SerializeField]
+        private float _rigSnapAngle = 10f;
 
         [Tooltip("A rig move larger than this (m per physics step) is a teleport: the hand snaps with the rig.")]
-        [SerializeField] private float _rigSnapDistance = 1f;
+        [SerializeField]
+        private float _rigSnapDistance = 1f;
 
         [Tooltip("Margin in m around the hand: collisions with a released item come back once it is further away.")]
-        [SerializeField] private float _restoreCollisionMargin = 0.02f;
+        [SerializeField]
+        private float _restoreCollisionMargin = 0.02f;
+
+        private static readonly Dictionary<Rigidbody, VrPhysicsHand> _handsByBody = new();
 
         private readonly List<(Transform Block, Transform Collider)> _blocks = new();
         private readonly List<Collider> _handColliders = new();
@@ -119,6 +130,23 @@ namespace Gothic.VR.Interaction.Components
         /// </summary>
         public float Separation => _isActive ? _separation : 0f;
 
+        /// <summary>
+        /// How far the controller wants the hand to move from where the last physics step left it (world space).
+        /// Kinematic objects the hand touches (VrHinge) use it as the push of the hand. Zero while not physical.
+        /// </summary>
+        public Vector3 PushOffset => _isActive && _rigidbody != null
+            ? _lastTargetPosition - _rigidbody.position
+            : Vector3.zero;
+
+        /// <summary>
+        /// The physical hand whose rigidbody this is, e.g. the other body of a collision.
+        /// </summary>
+        public static bool TryGetByBody(Rigidbody body, out VrPhysicsHand hand)
+        {
+            hand = null;
+            return body != null && _handsByBody.TryGetValue(body, out hand);
+        }
+
         private void Awake()
         {
             var blockHand = GetComponent<VrBlockHand>();
@@ -158,6 +186,8 @@ namespace Gothic.VR.Interaction.Components
 
         private void OnDestroy()
         {
+            if (!ReferenceEquals(_rigidbody, null))
+                _handsByBody.Remove(_rigidbody);
             if (_body != null)
                 Destroy(_body);
             if (_physicsMaterial != null)
@@ -319,7 +349,12 @@ namespace Gothic.VR.Interaction.Components
             if (gameObject.scene.IsValid() && gameObject.scene.isLoaded)
                 SceneManager.MoveGameObjectToScene(_body, gameObject.scene);
 
+            // The old body may have been destroyed with its scene.
+            if (!ReferenceEquals(_rigidbody, null))
+                _handsByBody.Remove(_rigidbody);
+
             _rigidbody = _body.AddComponent<Rigidbody>();
+            _handsByBody[_rigidbody] = this;
             _rigidbody.mass = _mass;
             _rigidbody.useGravity = false;
             _rigidbody.linearDamping = 0f;

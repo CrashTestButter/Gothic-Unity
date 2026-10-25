@@ -24,54 +24,70 @@ namespace Gothic.VR.Interaction.Components
     /// </summary>
     public class VrPhysicsHand : MonoBehaviour
     {
-        [Tooltip("Hand side, for logs. Taken from VrBlockHand on the same GameObject if it has one.")]
-        [SerializeField] private VrHandSide _side;
+        [Tooltip("Hand side, for logs. Taken from VrBlockHand on the same GameObject if it has one.")] [SerializeField]
+        private VrHandSide _side;
 
-        [Tooltip("Material of the ghost hand (transparent).")]
-        [SerializeField] private Material _ghostMaterial;
+        [Tooltip("Material of the ghost hand (transparent).")] [SerializeField]
+        private Material _ghostMaterial;
 
         [Header("Follow")]
         [Tooltip("Mass in kg. Together with Max Force it sets how strongly the hand pushes other rigidbodies.")]
-        [SerializeField] private float _mass = 1f;
+        [SerializeField]
+        private float _mass = 1f;
 
-        [Tooltip("Max. speed in m/s the hand moves towards the controller.")]
-        [SerializeField] private float _maxSpeed = 15f;
+        [Tooltip("Max. speed in m/s the hand moves towards the controller.")] [SerializeField]
+        private float _maxSpeed = 15f;
 
-        [Tooltip("Strength limit: max. force in N the hand applies. Pushes items, doors and chest lids, but not NPCs. " +
-                 "Also limits the acceleration of the free hand (Max Force / Mass).")]
-        [SerializeField] private float _maxForce = 200f;
+        [Tooltip(
+            "Strength limit: max. force in N the hand applies. Pushes items, doors and chest lids, but not NPCs. " +
+            "Following the controller itself isn't limited.")]
+        [SerializeField]
+        private float _maxForce = 200f;
 
-        [Tooltip("Max. angular speed in rad/s the hand turns towards the controller.")]
-        [SerializeField] private float _maxAngularSpeed = 50f;
+        [Tooltip("Max. angular speed in rad/s the hand turns towards the controller.")] [SerializeField]
+        private float _maxAngularSpeed = 50f;
 
-        [Tooltip("Max. angular acceleration in rad/s^2.")]
-        [SerializeField] private float _maxAngularAcceleration = 2500f;
+        [Tooltip("Max. angular acceleration in rad/s^2.")] [SerializeField]
+        private float _maxAngularAcceleration = 2500f;
 
         [Tooltip("Max. speed in m/s with which the hand is pushed out of colliders it overlaps (after a snap).")]
-        [SerializeField] private float _maxDepenetrationSpeed = 2f;
+        [SerializeField]
+        private float _maxDepenetrationSpeed = 2f;
+
+        [Tooltip("Distance in m between physical hand and controller from which the visual shows the physics pose " +
+                 "only. Below, it blends towards the controller pose (no lag while the hand is free).")]
+        [SerializeField]
+        private float _blockedDistance = 0.005f;
 
         [Header("Ghost hand")]
         [Tooltip("Distance in m between physical hand and controller above which the ghost hand shows.")]
-        [SerializeField] private float _ghostShowDistance = 0.05f;
+        [SerializeField]
+        private float _ghostShowDistance = 0.05f;
 
-        [Tooltip("Distance in m below which the ghost hand hides again.")]
-        [SerializeField] private float _ghostHideDistance = 0.03f;
+        [Tooltip("Distance in m below which the ghost hand hides again.")] [SerializeField]
+        private float _ghostHideDistance = 0.03f;
 
         [Header("Max distance")]
         [Tooltip("Distance in m between physical hand and controller above which the hand counts as stuck.")]
-        [SerializeField] private float _maxDistance = 0.5f;
+        [SerializeField]
+        private float _maxDistance = 0.5f;
 
-        [Tooltip("Time in s a stuck hand waits before it snaps back to the controller.")]
-        [SerializeField] private float _maxDistanceTime = 0.2f;
+        [Tooltip("Time in s a stuck hand waits before it snaps back to the controller.")] [SerializeField]
+        private float _maxDistanceTime = 0.2f;
 
         [Tooltip("A rig turn larger than this (degrees per physics step) is a snap turn: the hand snaps with the rig.")]
-        [SerializeField] private float _rigSnapAngle = 10f;
+        [SerializeField]
+        private float _rigSnapAngle = 10f;
 
         [Tooltip("A rig move larger than this (m per physics step) is a teleport: the hand snaps with the rig.")]
-        [SerializeField] private float _rigSnapDistance = 1f;
+        [SerializeField]
+        private float _rigSnapDistance = 1f;
 
         [Tooltip("Margin in m around the hand: collisions with a released item come back once it is further away.")]
-        [SerializeField] private float _restoreCollisionMargin = 0.02f;
+        [SerializeField]
+        private float _restoreCollisionMargin = 0.02f;
+
+        private static readonly Dictionary<Rigidbody, VrPhysicsHand> _handsByBody = new();
 
         [Header("Held item")]
         [Tooltip("While the held item touches something solid, the hand moves at most this far (m) ahead of where " +
@@ -125,6 +141,7 @@ namespace Gothic.VR.Interaction.Components
         private float _separation;
         private Vector3 _lastTargetPosition;
         private Quaternion _lastTargetRotation = Quaternion.identity;
+        private Vector3 _lastTargetVelocity;
         private Vector3 _lastRigPosition;
         private Quaternion _lastRigRotation = Quaternion.identity;
 
@@ -169,6 +186,23 @@ namespace Gothic.VR.Interaction.Components
         /// </summary>
         public float Separation => _isActive ? _separation : 0f;
 
+        /// <summary>
+        /// How far the controller wants the hand to move from where the last physics step left it (world space).
+        /// Kinematic objects the hand touches (VrHinge) use it as the push of the hand. Zero while not physical.
+        /// </summary>
+        public Vector3 PushOffset => _isActive && _rigidbody != null
+            ? _lastTargetPosition - _rigidbody.position
+            : Vector3.zero;
+
+        /// <summary>
+        /// The physical hand whose rigidbody this is, e.g. the other body of a collision.
+        /// </summary>
+        public static bool TryGetByBody(Rigidbody body, out VrPhysicsHand hand)
+        {
+            hand = null;
+            return body != null && _handsByBody.TryGetValue(body, out hand);
+        }
+
         private void Awake()
         {
             var blockHand = GetComponent<VrBlockHand>();
@@ -209,6 +243,8 @@ namespace Gothic.VR.Interaction.Components
         private void OnDestroy()
         {
             ClearHeldItem();
+            if (!ReferenceEquals(_rigidbody, null))
+                _handsByBody.Remove(_rigidbody);
             if (_body != null)
                 Destroy(_body);
             if (_physicsMaterial != null)
@@ -421,12 +457,18 @@ namespace Gothic.VR.Interaction.Components
             if (!_isActive)
                 return;
 
-            // The visual = the current controller pose plus what the last physics step blocked. Free hands therefore
-            // have no lag, blocked hands stay where the physics left them.
+            // Free hand: the current controller pose plus what the last physics step blocked, so there is no lag.
+            // Blocked hand: the interpolated physics pose. Otherwise the controller's movement since the last physics
+            // step pushes the visual a few mm into the wall until the next step puts it back (jitter at 50 Hz).
+            // Interpolated (one physics step behind), so sliding along a wall doesn't step at 50 Hz either.
             GetTargetPose(out var targetPosition, out var targetRotation);
             var positionOffset = _rigidbody.position - _lastTargetPosition;
             var rotationOffset = _rigidbody.rotation * Quaternion.Inverse(_lastTargetRotation);
-            transform.SetPositionAndRotation(targetPosition + positionOffset, rotationOffset * targetRotation);
+            var blocked = _blockedDistance > 0f ? Mathf.Clamp01(positionOffset.magnitude / _blockedDistance) : 1f;
+            _body.transform.GetPositionAndRotation(out var bodyPosition, out var bodyRotation);
+            transform.SetPositionAndRotation(
+                Vector3.Lerp(targetPosition + positionOffset, bodyPosition, blocked),
+                Quaternion.Slerp(rotationOffset * targetRotation, bodyRotation, blocked));
 
             UpdateGhost();
         }
@@ -524,13 +566,20 @@ namespace Gothic.VR.Interaction.Components
             if (gameObject.scene.IsValid() && gameObject.scene.isLoaded)
                 SceneManager.MoveGameObjectToScene(_body, gameObject.scene);
 
+            // The old body may have been destroyed with its scene.
+            if (!ReferenceEquals(_rigidbody, null))
+                _handsByBody.Remove(_rigidbody);
+
             _rigidbody = _body.AddComponent<Rigidbody>();
             _body.AddComponent<VrPhysicsHandContact>().Init(this, false);
+            _handsByBody[_rigidbody] = this;
             _rigidbody.mass = _mass;
             _rigidbody.useGravity = false;
             _rigidbody.linearDamping = 0f;
             _rigidbody.angularDamping = 0f;
-            _rigidbody.interpolation = RigidbodyInterpolation.None;
+            // The interpolated transform is shown while the hand is blocked (smooth between the 50 Hz steps). The free
+            // hand uses Rigidbody.position, which isn't interpolated.
+            _rigidbody.interpolation = RigidbodyInterpolation.Interpolate;
             _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             _rigidbody.maxAngularVelocity = _maxAngularSpeed;
             _rigidbody.maxDepenetrationVelocity = _maxDepenetrationSpeed;
@@ -612,13 +661,21 @@ namespace Gothic.VR.Interaction.Components
 
         private void Drive(Vector3 targetPosition, Quaternion targetRotation, float deltaTime)
         {
-            // Position: the velocity that reaches the target in this step, reached with limited force.
+            // Position: the velocity that reaches the target in this step.
             var desiredVelocity = Vector3.ClampMagnitude((targetPosition - _rigidbody.position) / deltaTime,
                 _maxSpeed);
+
+            // Following the controller costs no strength. Walking and the arm reach the controller once per frame,
+            // not per physics step, so its speed jumps between steps (0, 1 or 2 frames of movement) and a limited
+            // hand would lag and stutter. Only catching up on what a contact held back is limited (= pushing).
+            var targetVelocity = (targetPosition - _lastTargetPosition) / deltaTime;
+            var followChange = targetVelocity - _lastTargetVelocity;
+            _lastTargetVelocity = targetVelocity;
+
             var maxVelocityChange = _maxForce / _rigidbody.mass * deltaTime;
-            var velocityChange = Vector3.ClampMagnitude(desiredVelocity - _rigidbody.linearVelocity,
+            var pushChange = Vector3.ClampMagnitude(desiredVelocity - _rigidbody.linearVelocity - followChange,
                 maxVelocityChange);
-            _rigidbody.AddForce(velocityChange, ForceMode.VelocityChange);
+            _rigidbody.AddForce(followChange + pushChange, ForceMode.VelocityChange);
 
             // Rotation: angular velocity from the quaternion delta.
             var delta = targetRotation * Quaternion.Inverse(_rigidbody.rotation);
@@ -652,6 +709,7 @@ namespace Gothic.VR.Interaction.Components
 
             _lastTargetPosition = targetPosition;
             _lastTargetRotation = targetRotation;
+            _lastTargetVelocity = Vector3.zero;
             StoreRigPose();
         }
 

@@ -1459,6 +1459,20 @@ namespace Gothic.Core.Models.Config
                  "plank/barrel = wood, sand, metal, stone/rock/wall = stone.")]
         public bool EnableGroundTextureGuess = true;
 
+        [Tooltip("V1: The VR hero body's animations sound like an NPC's - its steps (*eventSFXGrnd, by the ground below) " +
+                 "and swim strokes (the crawl once you pick up speed: Swim, SwimWaves) come from its walk/run/swim " +
+                 "animations. Off (or without the animated body): a step every stride walked.")]
+        public bool EnableHeroBodySounds = true;
+
+        [Tooltip("V1: The VR hero body (and a transformation's monster) looks at the water itself - deep water is " +
+                 "swimming, any water below is no fall: drifting at the surface played the fall animation (the swim " +
+                 "state flickered while bobbing; the monster's water ray started under the surface).")]
+        public bool EnableHeroWaterBody = true;
+
+        [Tooltip("V1: Swimming sounds by how you swim - drifting the waves (SwimWaves), slowly the strokes (Swim), the " +
+                 "crawl faster strokes, backwards SwimBack.")]
+        public bool EnableHeroSwimSounds = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

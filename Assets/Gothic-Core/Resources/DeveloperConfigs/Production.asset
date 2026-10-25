@@ -352,6 +352,9 @@ MonoBehaviour:
   EnableEnvironmentReverb: 1
   EnableFootstepSounds: 1
   EnableGroundTextureGuess: 1
+  EnableHeroBodySounds: 1
+  EnableHeroWaterBody: 1
+  EnableHeroSwimSounds: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

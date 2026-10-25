@@ -21,6 +21,19 @@ namespace Gothic.VR.Adapters.HVROverrides
     {
         [Inject] private readonly ConfigService _configService;
         [Inject] private readonly GameStateService _gameStateService;
+        [Inject] private readonly Gothic.Core.Manager.AudioService _audioService;
+        [Inject] private readonly Gothic.Core.Services.Audio.GroundSoundService _groundSoundService;
+
+        // DeveloperConfig.EnableFootstepSounds: the hero's own steps - Gothic's RUN_<ground> every stride of the way
+        // walked (the VR body plays no step events; a timer stepped on while the run state lingered after a tap).
+        // Sneaking with the talent is silent.
+        private const string _stepSound = "RUN";
+        private const float _walkStrideMeters = 0.75f;
+        private const float _runStrideMeters = 1.1f;
+        private const float _stepVolume = 1f;
+        private AudioSource _stepSource;
+        private float _strideDistance;
+        private Vector3 _lastStepPosition;
 
         public VRPlayerInputs VrInputs => (VRPlayerInputs)Inputs;
 
@@ -77,6 +90,7 @@ namespace Gothic.VR.Adapters.HVROverrides
             }
 
             UpdateHeroBodyState();
+            UpdateHeroFootsteps();
             UpdateSpeedBoost();
         }
 
@@ -197,6 +211,41 @@ namespace Gothic.VR.Adapters.HVROverrides
             }
 
             props.BodyState = bodyState;
+        }
+
+        private void UpdateHeroFootsteps()
+        {
+            // DeveloperConfig.EnableHeroBodySounds: the animated body steps itself.
+            if (!_configService.Dev.EnableFootstepSounds || VRHeroBody.IsBodySounding || !IsGrounded ||
+                _gameStateService.GothicVm?.GlobalHero is not NpcInstance heroInstance)
+                return;
+            var position = transform.position;
+            var moved = new Vector2(position.x - _lastStepPosition.x, position.z - _lastStepPosition.z).magnitude;
+            _lastStepPosition = position;
+
+            var bodyState = heroInstance.GetUserData()?.Props?.BodyState;
+            // A teleport or a fall isn't walking; sneaking (with the talent) is silent.
+            if (bodyState is not (VmGothicEnums.BodyState.BsWalk or VmGothicEnums.BodyState.BsRun) ||
+                moved > _runStrideMeters)
+                return;
+
+            _strideDistance += moved;
+            var stride = bodyState == VmGothicEnums.BodyState.BsRun ? _runStrideMeters : _walkStrideMeters;
+            if (_strideDistance < stride)
+                return;
+            _strideDistance = 0f;
+
+            var clip = _audioService.GetRandomSoundClip(_groundSoundService.GetSoundName(_stepSound, transform.position));
+            if (clip == null)
+                return;
+            if (_stepSource == null)
+            {
+                _stepSource = gameObject.AddComponent<AudioSource>();
+                _stepSource.playOnAwake = false;
+                // The player's own feet: right below him, no distance falloff.
+                _stepSource.spatialBlend = 0f;
+            }
+            _stepSource.PlayOneShot(clip, _stepVolume);
         }
 
         private bool CanHeroSneak(NpcInstance heroInstance)

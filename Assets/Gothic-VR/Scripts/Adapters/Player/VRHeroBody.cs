@@ -35,6 +35,39 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VRTransformService _vrTransformService;
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly Gothic.Core.Manager.AudioService _audioService;
+        [Inject] private readonly Gothic.Core.Services.Audio.GroundSoundService _groundSoundService;
+
+        // DeveloperConfig.EnableHeroBodySounds: the body's animations sound like an NPC's - steps by the ground below
+        // (*eventSFXGrnd), the swim strokes when the crawl leads (Swim, SwimWaves). VRPlayerController's stride steps
+        // are off then.
+        public static bool IsBodySounding { get; private set; }
+        private const float _bodySoundVolume = 1f;
+        private AudioSource _bodySoundSource;
+
+        // DeveloperConfig.EnableHeroWaterBody: the body looks at the water itself - the swim state flickered while
+        // bobbing at the surface (chest -> knee deep for a moment = walking, not grounded = the fall animation).
+        private const float _swimWaterDepth = 1.1f;
+        private const float _waterSurfaceRayLength = 3f;
+        private const float _bottomRayStart = 0.1f;
+        private const float _floatAboveBottom = 0.15f;
+
+        // DeveloperConfig.EnableHeroSwimSounds: Gothic's swim sounds by how you swim - drifting the waves (SwimWaves),
+        // swimming slowly or the crawl the strokes (Swim, faster), backwards SwimBack.
+        private const string _swimDriftSound = "SWIMWAVES";
+        private const string _swimStrokeSound = "SWIM";
+        private const string _swimBackSound = "SWIMBACK";
+        private const float _swimDriftSeconds = 2.5f;
+        private const float _swimSlowStrokeSeconds = 1.4f;
+        private const float _swimCrawlStrokeSeconds = 0.8f;
+        private const float _swimCrawlSoundWeight = 0.5f;
+        private const float _swimDriftFallbackVolume = 0.5f;
+        private Vector3 _lastPlayerPosition;
+        private Vector3 _movedVelocity;
+        private const float _movedSmoothing = 0.2f;
+        private const float _maxMovedSpeed = 15f;
+        private float _nextSwimSoundTime;
+        private bool _isSwimSounding;
 
         private const float _torsoBackOffset = 0.15f;
         private const float _hiddenBoneScale = 0.001f;
@@ -391,6 +424,20 @@ namespace Gothic.VR.Adapters.Player
             _lastBodyYaw = yaw;
 
             var velocity = _playerController != null ? _playerController.CharacterController.velocity : Vector3.zero;
+            // DeveloperConfig.EnableHeroWaterBody: swimming moves the player without a controller velocity (~0) - the
+            // movement between frames counts too (no crawl, no strokes while swimming with the stick/WASD).
+            if (_configService.Dev.EnableHeroWaterBody && _playerController != null && Time.deltaTime > 0f)
+            {
+                var position = _playerController.transform.position;
+                var moved = (position - _lastPlayerPosition) / Time.deltaTime;
+                _lastPlayerPosition = position;
+                // A teleport isn't a speed.
+                if (moved.magnitude < _maxMovedSpeed)
+                    _movedVelocity = Vector3.Lerp(_movedVelocity, moved, _movedSmoothing);
+                if (new Vector2(_movedVelocity.x, _movedVelocity.z).sqrMagnitude >
+                    new Vector2(velocity.x, velocity.z).sqrMagnitude)
+                    velocity = _movedVelocity;
+            }
             var horizontal = new Vector3(velocity.x, 0f, velocity.z);
             var speed = horizontal.magnitude;
             var local = _body.transform.InverseTransformDirection(horizontal);
@@ -399,6 +446,29 @@ namespace Gothic.VR.Adapters.Player
             var isMoving = speed >= _idleSpeed;
             var isBackwards = local.z < -_backwardsShare * speed;
 
+            // DeveloperConfig.EnableHeroWaterBody: deep water is swimming even while the state flickers, any water
+            // below is no fall.
+            var isInWater = false;
+            if (_configService.Dev.EnableHeroWaterBody && _playerController != null)
+            {
+                // Own rays from the feet: the water service's ray from the bottom up hit the player's own capsule while
+                // floating above the bottom (no water found - the body stood upright in deep water).
+                var feet = _playerController.transform.position;
+                if (Physics.Raycast(feet, Vector3.up, out var surfaceHit, _waterSurfaceRayLength,
+                        1 << Gothic.Core.Const.Constants.WaterLayer, QueryTriggerInteraction.Collide))
+                {
+                    isInWater = true;
+                    var bottom = Physics.Raycast(feet + Vector3.up * _bottomRayStart, Vector3.down, out var bottomHit,
+                        _swimWaterDepth, 1 << Gothic.Core.Const.Constants.DefaultLayer, QueryTriggerInteraction.Ignore)
+                        ? bottomHit.distance - _bottomRayStart
+                        : _swimWaterDepth;
+                    var isFloating = bottom > _floatAboveBottom;
+                    if (isFloating && surfaceHit.distance + bottom >= _swimWaterDepth &&
+                        bodyState != VmGothicEnums.BodyState.BsDive)
+                        bodyState = VmGothicEnums.BodyState.BsSwim;
+                }
+            }
+
             string animation;
             // Swimming: floating upright (s_Swim), the crawl (s_SwimF) only blended in with the speed - slowly, so the
             // legs come up towards the surface instead of jumping behind the camera.
@@ -406,12 +476,13 @@ namespace Gothic.VR.Adapters.Player
                 ? Mathf.Clamp01(speed / _swimCrawlFullSpeed) * _swimCrawlMaxWeight
                 : 0f;
             _animator.SetOverlay("S_SWIMF", swimCrawl);
+            UpdateSwimSounds(bodyState == VmGothicEnums.BodyState.BsSwim, isMoving, isBackwards, swimCrawl);
 
             if (bodyState == VmGothicEnums.BodyState.BsSwim)
                 animation = isMoving && isBackwards ? "S_SWIMB" : "S_SWIM";
             else if (bodyState == VmGothicEnums.BodyState.BsDive)
                 animation = isMoving ? "S_DIVEF" : "S_DIVE";
-            else if (_playerController != null && !_playerController.IsGrounded && velocity.y < -1f &&
+            else if (_playerController != null && !_playerController.IsGrounded && velocity.y < -1f && !isInWater &&
                 _animator.HasAnimation(_fallAnimation))
                 animation = _fallAnimation;
             else if (isCrouching)
@@ -591,8 +662,74 @@ namespace Gothic.VR.Adapters.Player
             BuildSleeves(props, mdhName, bones);
 
             _animator = new VRHeroBodyAnimator(_animationService, props.MdsNameBase, props.MdsNameOverlay, bones);
+            if (_configService.Dev.EnableHeroBodySounds && _configService.Dev.EnableFootstepSounds && _animator.IsValid)
+            {
+                _animator.SoundEvent += OnBodySoundEvent;
+                IsBodySounding = true;
+            }
             Logger.Log($"[VRHeroBody] Built {props.MdmName} (head height {_modelHeadHeight:F2} m, " +
                        $"animated: {_animator.IsValid}, bare forearms: {_bareForearms.Count}).", LogCat.VR);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableHeroSwimSounds: drifting, swimming slowly, the crawl and backwards each sound their own.
+        /// </summary>
+        private void UpdateSwimSounds(bool isSwimming, bool isMoving, bool isBackwards, float crawlWeight)
+        {
+            _isSwimSounding = isSwimming && _configService.Dev.EnableHeroSwimSounds;
+            if (!_isSwimSounding)
+            {
+                _nextSwimSoundTime = 0f;
+                return;
+            }
+            if (Time.time < _nextSwimSoundTime)
+                return;
+
+            string sound;
+            float seconds;
+            if (!isMoving)
+                (sound, seconds) = (_swimDriftSound, _swimDriftSeconds);
+            else if (isBackwards)
+                (sound, seconds) = (_swimBackSound, _swimSlowStrokeSeconds);
+            else if (crawlWeight >= _swimCrawlSoundWeight)
+                (sound, seconds) = (_swimStrokeSound, _swimCrawlStrokeSeconds);
+            else
+                (sound, seconds) = (_swimStrokeSound, _swimSlowStrokeSeconds);
+            _nextSwimSoundTime = Time.time + seconds;
+            // SwimWaves isn't in every game's sounds (Mroczne Tajemnice) - drifting is then the strokes' little waves,
+            // quieter.
+            if (!PlayBodySound(sound) && sound == _swimDriftSound)
+                PlayBodySound(_swimStrokeSound, _swimDriftFallbackVolume);
+        }
+
+        private bool PlayBodySound(string name, float volume = _bodySoundVolume)
+        {
+            var clip = _audioService.GetRandomSoundClip(name);
+            if (clip == null)
+                return false;
+            if (_bodySoundSource == null)
+            {
+                _bodySoundSource = gameObject.AddComponent<AudioSource>();
+                _bodySoundSource.playOnAwake = false;
+                // The player's own body: right with him, no distance falloff.
+                _bodySoundSource.spatialBlend = 0f;
+            }
+            _bodySoundSource.PlayOneShot(clip, volume);
+            return true;
+        }
+
+        private void OnBodySoundEvent(ZenKit.IEventSoundEffect sfx)
+        {
+            var name = sfx.Name;
+            // Swimming sounds by UpdateSwimSounds - no steps or strokes of the animations on top.
+            if (string.IsNullOrEmpty(name) || _isSwimSounding)
+                return;
+            var feet = _playerController != null ? _playerController.transform.position : transform.position;
+            if (name.StartsWith(Gothic.Core.Domain.Audio.GroundSoundDomain.GroundEventPrefix))
+                name = _groundSoundService.GetSoundName(
+                    name.Substring(Gothic.Core.Domain.Audio.GroundSoundDomain.GroundEventPrefix.Length), feet);
+
+            PlayBodySound(name);
         }
 
         /// <summary>

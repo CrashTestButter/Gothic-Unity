@@ -39,6 +39,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly NpcWaterService _npcWaterService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly Gothic.Core.Manager.AudioService _audioService;
 
         private const int _puppetLayer = 13; // PlayerPuppet
         private const float _walkSpeed = 0.2f;
@@ -98,6 +99,18 @@ namespace Gothic.VR.Adapters.Player
         private float _originalRunSpeed;
         private bool _hasSpeedScale;
         private const string _humanRunAnimation = "S_RUNL";
+        private const float _waterRayAboveEyes = 1f;
+        // DeveloperConfig.EnableHeroWaterBody / EnableHeroSwimSounds.
+        private Vector3 _lastPlayerPosition;
+        private Vector3 _movedVelocity;
+        private const float _movedSmoothing = 0.2f;
+        private const float _maxMovedSpeed = 15f;
+        private const string _swimSound = "SWIM";
+        private const float _swimDriftSeconds = 2.5f;
+        private const float _swimStrokeSeconds = 1.4f;
+        private const float _swimFastStrokeSeconds = 0.8f;
+        private const float _swimDriftVolume = 0.5f;
+        private float _nextSwimSoundTime;
         private const string _humanMds = "Humans.mds";
         private const float _minSpeedFactor = 0.3f;
         private const float _maxSpeedFactor = 3f;
@@ -257,7 +270,10 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private bool IsPuppetSwimming(float x, float z, float feetY, out float waterY)
         {
-            if (_npcWaterService.TryGetWaterSurface(new Vector3(x, feetY + 1f, z), out var groundY, out waterY))
+            // DeveloperConfig.EnableHeroWaterBody: the ray starts above the monster's eyes - drifting deeper, a ray from
+            // 1 m above its feet started under the surface, found no water and the fall animation played.
+            var rayStart = _configService.Dev.EnableHeroWaterBody ? feetY + _eyeHeight + _waterRayAboveEyes : feetY + 1f;
+            if (_npcWaterService.TryGetWaterSurface(new Vector3(x, rayStart, z), out var groundY, out waterY))
             {
                 _lastWaterY = waterY;
                 _lastWaterTime = Time.time;
@@ -373,8 +389,9 @@ namespace Gothic.VR.Adapters.Player
 
         private void UpdateAnimation()
         {
-            var velocity = _playerController != null ? _playerController.CharacterController.velocity : Vector3.zero;
+            var velocity = GetPlayerVelocity();
             var speed = new Vector2(velocity.x, velocity.z).magnitude;
+            UpdateSwimSounds(speed);
             var animationSystem = _monster.PrefabProps.AnimationSystem;
 
             // An attack plays to its end.
@@ -730,6 +747,50 @@ namespace Gothic.VR.Adapters.Player
             _hasSpeedScale = true;
             Logger.Log($"[VRTransform] Speed x{factor:F2} ({run}: {monsterSpeed:F2} m/s, human {humanSpeed:F2} m/s).",
                 LogCat.VR);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableHeroWaterBody: swimming moves the player without a controller velocity (~0) - the
+        /// movement between frames counts too: the monster drifted while it swam.
+        /// </summary>
+        private Vector3 GetPlayerVelocity()
+        {
+            var velocity = _playerController != null ? _playerController.CharacterController.velocity : Vector3.zero;
+            if (!_configService.Dev.EnableHeroWaterBody || _playerController == null || Time.deltaTime <= 0f)
+                return velocity;
+
+            var position = _playerController.transform.position;
+            var moved = (position - _lastPlayerPosition) / Time.deltaTime;
+            _lastPlayerPosition = position;
+            if (moved.magnitude < _maxMovedSpeed)
+                _movedVelocity = Vector3.Lerp(_movedVelocity, moved, _movedSmoothing);
+            return new Vector2(_movedVelocity.x, _movedVelocity.z).sqrMagnitude >
+                   new Vector2(velocity.x, velocity.z).sqrMagnitude
+                ? _movedVelocity
+                : velocity;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableHeroSwimSounds: the swimming monster sounds like the swimming hero - drifting little
+        /// waves, swimming the strokes (its swim loops have no sounds of their own).
+        /// </summary>
+        private void UpdateSwimSounds(float speed)
+        {
+            if (!_configService.Dev.EnableHeroSwimSounds || !_isSwimming || _monster?.PrefabProps?.NpcSound == null)
+            {
+                _nextSwimSoundTime = 0f;
+                return;
+            }
+            if (Time.time < _nextSwimSoundTime)
+                return;
+
+            var isMoving = speed >= _walkSpeed;
+            _nextSwimSoundTime = Time.time + (!isMoving ? _swimDriftSeconds : speed >= _runSpeed
+                ? _swimFastStrokeSeconds
+                : _swimStrokeSeconds);
+            var clip = _audioService.GetRandomSoundClip(_swimSound);
+            if (clip != null)
+                _monster.PrefabProps.NpcSound.PlayOneShot(clip, isMoving ? 1f : _swimDriftVolume);
         }
 
         private static float GetHorizontalSpeed(AnimationTrack track)

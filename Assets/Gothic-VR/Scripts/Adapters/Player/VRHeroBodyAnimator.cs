@@ -1,4 +1,5 @@
 #if GOTHIC_HVR_INSTALLED
+using System;
 using System.Collections.Generic;
 using Gothic.Core.Models.Animations;
 using Gothic.Core.Services.Npc;
@@ -30,6 +31,11 @@ namespace Gothic.VR.Adapters.Player
         private const float _overlayBlendTime = 1.5f;
 
         public bool IsValid => _nodeBones != null;
+
+        // DeveloperConfig.EnableHeroBodySounds: the sound events (*eventSFX, *eventSFXGrnd) the body's animations pass -
+        // its steps on the ground, the swim strokes. Only of the animation that leads (weight >= half).
+        public event Action<IEventSoundEffect> SoundEvent;
+        private const float _soundEventMinWeight = 0.5f;
         public string MdsBase => _mdsBase;
         public string MdsOverlay => OverlayOverride ?? _mdsOverlay;
         // A timed overlay of the hero (speed potion: HUMANS_SPRINT.MDS) - its animations come first while it's set.
@@ -145,16 +151,46 @@ namespace Gothic.VR.Adapters.Player
             foreach (var layer in _layers)
             {
                 var track = layer.Track;
+                var previousTime = layer.Time;
                 layer.Time += deltaTime * layer.Speed;
                 layer.Time = track.IsLooping || layer.IsForcedLoop
                     ? Mathf.Repeat(layer.Time, track.Duration)
                     : Mathf.Min(layer.Time, track.Duration);
+                if (layer == newest && (newest.Weight >= _soundEventMinWeight || _layers.Count == 1))
+                    FireSoundEvents(track, previousTime, layer.Time);
             }
 
             for (var i = 0; i < _layers.Count; i++)
                 ApplyLayer(_layers[i], i == 0 ? 1f : _layers[i].Weight);
 
             UpdateOverlay(deltaTime);
+        }
+
+        /// <summary>
+        /// The sound events between two times of the track - frames like AnimationTrackInstance (relative to the first
+        /// frame, at the source's fps, mirrored when played backwards); a wrap fires the tail and the start.
+        /// </summary>
+        private void FireSoundEvents(AnimationTrack track, float previousTime, float time)
+        {
+            if (SoundEvent == null || track.SoundEffects == null || track.SoundEffects.Count == 0 ||
+                track.FrameTime <= 0f)
+                return;
+
+            var previousFrame = previousTime / track.FrameTime;
+            var frame = time / track.FrameTime;
+            var isWrapped = time < previousTime;
+            foreach (var sfx in track.SoundEffects)
+            {
+                var eventFrame = (float)Math.Round((sfx.Frame - track.FirstFrame) * (track.Fps / track.FpsSource));
+                if (track.Direction == AnimationDirection.Backward)
+                    eventFrame = track.FrameCount - 1 - eventFrame;
+                eventFrame = Mathf.Clamp(eventFrame, 0, track.FrameCount - 1);
+                var isCrossed = isWrapped
+                    ? eventFrame > previousFrame || eventFrame <= frame
+                    : eventFrame > previousFrame && eventFrame <= frame;
+                if (isCrossed)
+                    SoundEvent.Invoke(sfx);
+            }
         }
 
         /// <summary>
@@ -186,7 +222,10 @@ namespace Gothic.VR.Adapters.Player
                 return;
             }
 
+            var previousTime = _overlay.Time;
             _overlay.Time = Mathf.Repeat(_overlay.Time + deltaTime, _overlay.Track.Duration);
+            if (_overlay.Weight >= _soundEventMinWeight)
+                FireSoundEvents(_overlay.Track, previousTime, _overlay.Time);
             ApplyLayer(_overlay, _overlay.Weight);
         }
 

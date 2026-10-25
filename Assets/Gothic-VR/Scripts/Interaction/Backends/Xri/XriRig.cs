@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Gothic.Core.Logging;
+using Gothic.Core.Models.Vm;
+using Gothic.Core.Services;
 using Gothic.VR.Adapters.Player;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
@@ -26,6 +28,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
     public class XriRig : MonoBehaviour, IVrRig
     {
         [Inject] private readonly IVrInput _vrInput;
+        [Inject] private readonly GameStateService _gameStateService;
 
         [Header("Rig")]
         [SerializeField] private XROrigin _origin;
@@ -282,7 +285,16 @@ namespace Gothic.VR.Interaction.Backends.Xri
             // While crouching, the CharacterController is lower than the player once standing up at the target.
             _teleportAimer.Init(stickAction, cancelAction, _rightController, _camera.transform, _characterController,
                 GetCollidingLayers(gameObject.layer), () => _teleportEnabled, () => IsGrounded,
-                () => CameraHeight + _crouchOffset, Teleport);
+                () => CameraHeight + _crouchOffset, GetMaxSlopeAngle, Teleport);
+        }
+
+        /// <summary>
+        /// Slide angle (degrees) of the human guild from Gothic's GIL_Values. Steeper ground makes Gothic's player
+        /// slide. 0 if the script isn't loaded (the aimer then falls back to the CharacterController's slope limit).
+        /// </summary>
+        private float GetMaxSlopeAngle()
+        {
+            return _gameStateService?.GuildValues?.GetSlideAngle((int)VmGothicEnums.Guild.GIL_HUMAN) ?? 0;
         }
 
         private void UpdateSprint()

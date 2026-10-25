@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 namespace Gothic.VR.Interaction.Backends.Xri
 {
     /// <summary>
-    /// Player-initiated teleport: pushing the thumbstick forward shows an arc from the hand, releasing it teleports to
+    /// Player-initiated teleport: pulling the thumbstick back shows an arc from the hand, releasing it teleports to
     /// the arc's end if the player fits there. The world is created at runtime, so there are no TeleportationArea
     /// interactables. The arc is checked against the physics world instead. The teleport itself is done by XRI's
     /// TeleportationProvider (via the onTeleport callback).
@@ -34,6 +34,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private Func<bool> _isAllowed;
         private Func<bool> _isGrounded;
         private Func<float> _getStandingHeight;
+        private Func<float> _getMaxSlopeAngle;
         private Action<Vector3, Quaternion> _onTeleport;
         private bool _isInitialized;
         private bool _isAiming;
@@ -46,7 +47,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         /// </summary>
         public void Init(InputAction stickAction, InputAction cancelAction, Transform hand, Transform head,
             CharacterController character, LayerMask blockingLayers, Func<bool> isAllowed, Func<bool> isGrounded,
-            Func<float> getStandingHeight, Action<Vector3, Quaternion> onTeleport)
+            Func<float> getStandingHeight, Func<float> getMaxSlopeAngle, Action<Vector3, Quaternion> onTeleport)
         {
             _stickAction = stickAction;
             _cancelAction = cancelAction;
@@ -57,6 +58,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
             _isAllowed = isAllowed;
             _isGrounded = isGrounded;
             _getStandingHeight = getStandingHeight;
+            _getMaxSlopeAngle = getMaxSlopeAngle;
             _onTeleport = onTeleport;
 
             _stickAction.Enable();
@@ -73,7 +75,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
             if (!_isInitialized)
                 return;
 
-            // The Sector interaction (North, Locked) performs when the stick is pushed forward first, stays performed
+            // The Sector interaction (South, Locked) performs when the stick is pulled back first, stays performed
             // when it's turned sideways and cancels once the stick returns to the center. A stick pushed sideways
             // first (snap turn) never performs.
             if (_stickAction.phase != InputActionPhase.Performed)
@@ -147,6 +149,9 @@ namespace Gothic.VR.Interaction.Backends.Xri
             }
 
             // Mid-air (jumping, falling) the arc stays red, so that teleports can't extend jumps or cancel falls.
+            if (isHit)
+                SnapToGround(ref _target, ref normal);
+
             _hasTarget = isHit && _isGrounded() && IsValidTarget(_target, normal);
 
             var color = _hasTarget ? _settings.ValidColor : _settings.InvalidColor;
@@ -162,17 +167,39 @@ namespace Gothic.VR.Interaction.Backends.Xri
         }
 
         /// <summary>
-        /// Flat enough to stand on, within the height the player could reach, reachable for the body and enough room
-        /// for the player's standing capsule (also while crouching, as the player stands up afterwards).
+        /// The sphere cast's normal is the contact normal of the sphere. On edges and steps it is tilted and says
+        /// nothing about the ground. A ray from above the hit (like HVR's downward ray) gives the surface the player
+        /// would stand on.
+        /// </summary>
+        private void SnapToGround(ref Vector3 point, ref Vector3 normal)
+        {
+            var origin = point + Vector3.up * _settings.GroundRayHeight;
+            if (Physics.Raycast(origin, Vector3.down, out var hit, _settings.GroundRayHeight * 2f, _blockingLayers,
+                    QueryTriggerInteraction.Ignore))
+            {
+                point = hit.point;
+                normal = hit.normal;
+            }
+        }
+
+        /// <summary>
+        /// Walkable slope (OpenGothic MoveAlgo::testSlide: the NPC slides once normal.y < cos(slide_angle)), height
+        /// difference to the capsule's bottom (HVR CheckVerticalDistance / CheckFallDistance), enough room for the
+        /// player's standing capsule (also while crouching, as the player stands up afterwards) and a free line of
+        /// sight from the head (HVR CheckDestinationLineOfSight).
         /// </summary>
         private bool IsValidTarget(Vector3 point, Vector3 normal)
         {
-            if (Vector3.Angle(normal, Vector3.up) > _character.slopeLimit)
+            var maxSlopeAngle = _getMaxSlopeAngle();
+            if (maxSlopeAngle <= 0f)
+                maxSlopeAngle = _character.slopeLimit;
+            if (normal.y < Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad))
                 return false;
 
-            var feet = _character.bounds.min.y;
-            var heightDifference = point.y - feet;
-            if (heightDifference > _settings.MaxRise || -heightDifference > _settings.MaxDrop)
+            // Same as HVR's GetBottom() for a CharacterController.
+            var capsuleBottom = _character.transform.TransformPoint(_character.center).y - _character.height * 0.5f;
+            if (point.y > capsuleBottom + _settings.MaxJumpDistance ||
+                point.y < capsuleBottom - _settings.MaxDropDistance)
                 return false;
 
             var radius = _character.radius;
@@ -183,13 +210,28 @@ namespace Gothic.VR.Interaction.Backends.Xri
             if (Physics.CheckCapsule(bottom, top, radius * 0.95f, _blockingLayers, QueryTriggerInteraction.Ignore))
                 return false;
 
-            // The arc can pass gaps and walls the body can't. The head has to get to where it'll be at the target.
-            var head = _head.position;
-            var targetHead = point + Vector3.up * (head.y - feet);
-            var path = targetHead - head;
+            return HasLineOfSight(point);
+        }
 
-            return !Physics.SphereCast(head, _settings.BodyPathRadius, path.normalized, out _, path.magnitude,
-                _blockingLayers, QueryTriggerInteraction.Ignore);
+        /// <summary>
+        /// One free line from the head to any of the points above the target is enough, so that stairs and ledges
+        /// near the target don't block it, but walls between player and target do.
+        /// </summary>
+        private bool HasLineOfSight(Vector3 point)
+        {
+            var head = _head.position;
+            var samples = Mathf.Max(1, _settings.LineOfSightSamples);
+
+            for (var i = 0; i < samples; i++)
+            {
+                var target = point + Vector3.up * (i / (float)samples * _settings.LineOfSightHeight);
+                var direction = target - head;
+                if (!Physics.Raycast(head, direction, direction.magnitude, _blockingLayers,
+                        QueryTriggerInteraction.Ignore))
+                    return true;
+            }
+
+            return false;
         }
 
         private void DrawReticle(Vector3 center, Vector3 normal, Color color)

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Gothic.VR.Interaction.Backends.Xri
 {
     /// <summary>
-    /// Tuning of the player-initiated teleport (right thumbstick forward, release to teleport).
+    /// Tuning of the player-initiated teleport (right thumbstick back, release to teleport).
     /// When aiming starts and ends is defined by the Sector interaction of 'XRI Right Locomotion/Teleport Mode'.
     /// </summary>
     [Serializable]
@@ -25,15 +25,25 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [Tooltip("Radius in m of the sphere cast along the arc, so that it doesn't slip through bars and small gaps.")]
         public float ArcRadius = 0.1f;
 
-        [Tooltip("Radius in m of the sphere cast from the head to the head's position at the target. " +
-                 "Blocks teleports through gaps the body doesn't fit through and over walls higher than the head.")]
-        public float BodyPathRadius = 0.15f;
+        [Tooltip("Maximum height in m the target can be above the bottom of the player's capsule " +
+                 "(HVR: MaxJumpDistance).")]
+        public float MaxJumpDistance = 1.5f;
 
-        [Tooltip("Maximum height in m the target can be above the feet. Keeps roofs and walls out of reach.")]
-        public float MaxRise = 1f;
+        [Tooltip("Maximum height in m the target can be below the bottom of the player's capsule " +
+                 "(HVR: MaxDropDistance).")]
+        public float MaxDropDistance = 3f;
 
-        [Tooltip("Maximum height in m the target can be below the feet.")]
-        public float MaxDrop = 3f;
+        [Tooltip("Height in m above the target up to which the head needs a free line of sight " +
+                 "(HVR: DestinationHeight).")]
+        public float LineOfSightHeight = 1f;
+
+        [Tooltip("Number of lines of sight from the head to the target, spread over LineOfSightHeight. " +
+                 "One free line is enough (HVR: DestinationIntervals).")]
+        public int LineOfSightSamples = 8;
+
+        [Tooltip("Height in m above the arc's hit from where the ground is found with a downward ray. " +
+                 "The ray reaches twice as far down.")]
+        public float GroundRayHeight = 0.3f;
 
         [Tooltip("Radius of the target ring in m.")]
         public float ReticleRadius = 0.25f;

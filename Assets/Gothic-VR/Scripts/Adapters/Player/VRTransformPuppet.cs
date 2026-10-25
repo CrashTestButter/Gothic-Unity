@@ -100,6 +100,8 @@ namespace Gothic.VR.Adapters.Player
         private bool _hasSpeedScale;
         private const string _humanRunAnimation = "S_RUNL";
         private const float _waterRayAboveEyes = 1f;
+        // DeveloperConfig.EnableTransformAbsoluteSpeed: sprinting as a monster, times its run loop's speed.
+        private const float _monsterSprintFactor = 1.5f;
         // DeveloperConfig.EnableHeroWaterBody / EnableHeroSwimSounds.
         private Vector3 _lastPlayerPosition;
         private Vector3 _movedVelocity;
@@ -742,9 +744,22 @@ namespace Gothic.VR.Adapters.Player
             var factor = Mathf.Clamp(monsterSpeed / humanSpeed, _minSpeedFactor, _maxSpeedFactor);
             _originalMoveSpeed = _playerController.MoveSpeed;
             _originalRunSpeed = _playerController.RunSpeed;
+            _hasSpeedScale = true;
+
+            // DeveloperConfig.EnableTransformAbsoluteSpeed: the monster's own speeds - moving is its run loop (Gothic's
+            // default walk mode, a wolf 4.6 m/s), sprinting half again; a light stick is its walk. Scaling the VR speeds
+            // (1.5 m/s moving) left a wolf at 2.1 m/s.
+            if (_configService.Dev.EnableTransformAbsoluteSpeed)
+            {
+                _playerController.MoveSpeed = monsterSpeed;
+                _playerController.RunSpeed = monsterSpeed * _monsterSprintFactor;
+                Logger.Log($"[VRTransform] Speed {monsterSpeed:F2} m/s, sprint {_playerController.RunSpeed:F2} m/s " +
+                           $"({run}).", LogCat.VR);
+                return;
+            }
+
             _playerController.MoveSpeed *= factor;
             _playerController.RunSpeed *= factor;
-            _hasSpeedScale = true;
             Logger.Log($"[VRTransform] Speed x{factor:F2} ({run}: {monsterSpeed:F2} m/s, human {humanSpeed:F2} m/s).",
                 LogCat.VR);
         }

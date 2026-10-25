@@ -1473,6 +1473,11 @@ namespace Gothic.Core.Models.Config
                  "crawl faster strokes, backwards SwimBack.")]
         public bool EnableHeroSwimSounds = true;
 
+        [Tooltip("V1: Transformed you move at the monster's own speeds - its run loop's root motion (Gothic's default " +
+                 "walk mode: a wolf 4.6 m/s), sprinting half again, a light stick its walk. Off: the VR speeds scaled by " +
+                 "monster run / human run (a wolf moved 2.1 m/s).")]
+        public bool EnableTransformAbsoluteSpeed = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

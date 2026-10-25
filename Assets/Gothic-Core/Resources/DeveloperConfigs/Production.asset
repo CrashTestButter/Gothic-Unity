@@ -340,6 +340,7 @@ MonoBehaviour:
   EnableRingFreeSpin: 1
   EnableRingZoom: 1
   EnableSpellHoldToCast: 1
+  EnableVrChainLightning: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

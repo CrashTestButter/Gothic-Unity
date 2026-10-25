@@ -43,6 +43,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private const int _splSendcast = 2;
         private const int _splSendstop = 3;
         private const int _splNextlevel = 4;
+        private const string _chainLightningName = "Chainlightning";
+        // DeveloperConfig.EnableVrChainLightning: the lightning while it's invested.
+        private VRChainLightning _chainLightning;
 
         // Raycast range for NPC targeting
         private const float _targetRange = 2000f;
@@ -208,6 +211,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             _isTargeting = false;
             _vrPlayerService.DeactivateSpellTargeting();
             _isCasting = false;
+            StopChainLightning();
 
             DestroySpellVfx();
             DestroyBodyFx();
@@ -337,6 +341,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             if (!TryInvestMana(out var result))
             {
+                StopChainLightning();
                 Logger.Log("[VRRuneCaster] Out of mana — spell cancelled", LogCat.VR);
                 StopInvestSound();
                 DestroySpellVfx();
@@ -346,8 +351,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
             }
 
+            // DeveloperConfig.EnableVrChainLightning: every level the lightning jumps on.
             if (result == _splNextlevel)
+            {
+                _chainLightning?.AddLink();
                 NextBodyInvestLevel();
+            }
 
             // Ready at once (instant spell): its effects stay in the hand for the minimum cast time first.
             if (result == _splSendcast && Time.time - _castStartTime < _configService.Dev.MinSpellCastSeconds)
@@ -379,6 +388,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             _manaTickTimer = GetManaTickInterval();
 
             SpawnInvestFx(true);
+            TryBeginChainLightning();
 
             // Like the engine: NPCs notice the casting (B_AssessCaster -> reacts to offensive spells only).
             if (_configService.Dev.EnableCasterPerception)
@@ -493,10 +503,37 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
 
         /// <summary>
+        /// DeveloperConfig.EnableVrChainLightning: G1's chain lightning zaps the NPC in front of the eyes, then jumps on
+        /// every invest level (VRChainLightning) - it was a one-time hit on everyone around.
+        /// </summary>
+        private void TryBeginChainLightning()
+        {
+            if (!_configService.Dev.EnableVrChainLightning || _chainLightning != null ||
+                !string.Equals(GetSpellMfxName(_item.Spell), _chainLightningName, System.StringComparison.OrdinalIgnoreCase))
+                return;
+
+            _chainLightning = gameObject.AddComponent<VRChainLightning>();
+            _chainLightning.Begin(_runeHandSide);
+            // The first level comes after a full time_per_mana (charging) - it zapped at once.
+            _manaTickTimer = 0f;
+        }
+
+        private bool StopChainLightning()
+        {
+            if (_chainLightning == null)
+                return false;
+
+            _chainLightning.Stop();
+            _chainLightning = null;
+            return true;
+        }
+
+        /// <summary>
         /// The spell stops without effect - casting again is possible right away.
         /// </summary>
         private void CancelCast(string reason)
         {
+            StopChainLightning();
             Logger.Log($"[VRRuneCaster] Spell {_item.Spell} cancelled ({reason}) after {_manaInvested} mana", LogCat.VR);
             StopInvestSound();
             DestroySpellVfx();
@@ -653,6 +690,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private void FinalizeCast(bool applyEffect)
         {
+            // The chain lightning did its work while invested (ZS_Zapped) - nothing more on the cast.
+            if (StopChainLightning())
+                applyEffect = false;
             StopInvestSound();
             DestroySpellVfx();
             DestroyBodyFx();
@@ -1070,8 +1110,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
 
         /// <summary>
-        /// DeveloperConfig.EnableBodyFxAtGround: Gothic places body effects at BIP01 (about hip height) - one shifted down
-        /// by its PFX (summoning's fire ring: shpOffsetVec_s "0 -120 0") is lifted so it lies on the ground.
+        /// DeveloperConfig.EnableBodyFxAtGround: Gothic places body effects at BIP01 (about hip height) - one shifted
+        /// down by its PFX (summoning's fire ring: shpOffsetVec_s "0 -120 0") is lifted so it lies on the ground.
         /// </summary>
         private float GetBodyFxHeight(string pfxName)
         {

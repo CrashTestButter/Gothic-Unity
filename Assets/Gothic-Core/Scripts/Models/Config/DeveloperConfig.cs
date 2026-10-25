@@ -1403,6 +1403,11 @@ namespace Gothic.Core.Models.Config
                  "a second to charge, a third to fire.")]
         public bool EnableSpellHoldToCast = true;
 
+        [Tooltip("V1: G1 chain lightning like the engine - the NPC in front of the eyes is zapped (ZS_Zapped hurts him " +
+                 "every second), every invest level it jumps on to the nearest NPC, with nobody left it zaps the hero. " +
+                 "The release frees them (PERC_ASSESSSTOPMAGIC). Before: one hit on everyone around.")]
+        public bool EnableVrChainLightning = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

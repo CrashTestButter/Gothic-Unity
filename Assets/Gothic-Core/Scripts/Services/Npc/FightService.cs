@@ -345,7 +345,11 @@ namespace Gothic.Core.Services.Npc
         {
             var mfxName = GetSpellMfxName(caster.ActiveSpell);
 
-            if (mfxName != null && SpellConst.AoeEffectNames.Contains(mfxName))
+            // DeveloperConfig.EnableVrChainLightning: chain lightning zaps its victims one by one (VRChainLightning, the
+            // scripts' ZS_Zapped does the damage) - not everyone around the caster at once.
+            var isChainLightning = _configService.Dev.EnableVrChainLightning &&
+                                   string.Equals(mfxName, _chainLightningName, System.StringComparison.OrdinalIgnoreCase);
+            if (mfxName != null && SpellConst.AoeEffectNames.Contains(mfxName) && !isChainLightning)
             {
                 var rangeM = GetAoeRangeMeters(mfxName);
                 var casterPos = caster.Go.transform.position;
@@ -454,6 +458,7 @@ namespace Gothic.Core.Services.Npc
                 Gothic.Core.Adapters.Npc.NpcBurnEffect.Ignite(target, _vmCacheService, _meshService, _audioService);
         }
 
+        private const string _chainLightningName = "Chainlightning";
         private const float _throwBaseSpeed = 3f;
         private const float _throwMaxSpeed = 8f;
         private const float _throwDamagePerSpeed = 25f;
@@ -475,6 +480,47 @@ namespace Gothic.Core.Services.Npc
                 away = caster.Go.transform.forward;
             var speed = Mathf.Clamp(_throwBaseSpeed + damage / _throwDamagePerSpeed, _throwBaseSpeed, _throwMaxSpeed);
             Gothic.Core.Adapters.Npc.NpcJumpFall.Get(target)?.TryThrow(away.normalized * speed, _throwUpSpeed);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVrChainLightning: a zapped victim (ZS_Zapped: B_MagicHurtNpc every second) out of hit
+        /// points dies like the engine's (OpenGothic: script damage kills) - or is knocked out with the "Ranged knockout"
+        /// option (humans).
+        /// </summary>
+        public void OnScriptDamageDepleted(NpcContainer victim, NpcContainer attacker)
+        {
+            if (victim?.Props == null || NpcHelperService.IsDown(victim) ||
+                (victim.PrefabProps != null && victim.PrefabProps.IsHero()))
+                return;
+
+            if (IsHuman(victim) && IsRangedKnockoutOn() && IsKnockedOutNotKilled(attacker, victim))
+            {
+                Logger.Log($"[FightService] {victim.Instance.GetName(NpcNameSlot.Slot0)} zapped down - UNCONSCIOUS", LogCat.Fight);
+                OnNpcKnockedOut(victim, attacker);
+                return;
+            }
+
+            Logger.Log($"[FightService] {victim.Instance.GetName(NpcNameSlot.Slot0)} zapped to death", LogCat.Fight);
+            victim.Props.BodyState = VmGothicEnums.BodyState.BsDead;
+            OnDyingChangeAnimation(victim);
+            OnNpcDied(victim, attacker);
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableVrChainLightning: the chain lightning found nobody else and zaps the hero himself
+        /// (magic damage, his protection counts) - down at 0 like any hit.
+        /// </summary>
+        public void ApplySelfSpellDamage(NpcContainer hero, int damage)
+        {
+            if (hero?.Props == null || hero.Props.BodyState is VmGothicEnums.BodyState.BsDead
+                    or VmGothicEnums.BodyState.BsUnconscious)
+                return;
+
+            if (OnHitUpdateHealth(hero, hero, damage, (int)DamageType.Magic))
+            {
+                Logger.LogWarning("[FightService] The hero zapped himself down", LogCat.Fight);
+                OnHeroKnockedOut(hero, hero);
+            }
         }
 
         private bool IsFireSpell(int spellId)

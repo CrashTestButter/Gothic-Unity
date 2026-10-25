@@ -23,7 +23,7 @@ Physical hand presence is split into three PRs (5b-5d), stacked on 5a.
 |------|---------|------|--------|
 | 5a | Block hand visual (palm + finger block, grip hinge), `VRHandsOnTop` | S | done |
 | 5b | `PhysicsHand` core: rigidbody follow, strength limit, ghost hand, max-distance snap, collision layers, setting | M | done |
-| 5c | Held items follow the physics hand, contact haptics | M | planned |
+| 5c | Held items follow the physics hand, contact haptics | M | done |
 | 5d | Teleport, Marvin "goto", ladder, swim/dive handling + PlayMode tests | S-M | planned |
 | 5e | `FingerCurlProvider` (buttons, touches, XR Hands) | S-M | on hold (articulated hands) |
 | 5f | `ProceduralHandPoser` + few authored poses | M-L | on hold (articulated hands) |
@@ -141,6 +141,37 @@ and contact haptics. **5d** = teleport and scene changes (incl. ladders, swimmin
   `VRContextInteractionService.ApplyPhysicalHands()` on ini load and change. `VRContextInteractionService.PhysicsHands`
   lists the hands (empty on Hvr).
 
+**Where reality deviated (5c, `engine/hvr-replacement-5c`):**
+- Attach: no reparenting and no XRI subclass. `XriGrabberBridge` sets the Near-Far's
+  `interactionAttachController.transformToFollow` to `Physics Hand Attach`, a child of the `Block Hand` visual at the
+  interactor's pose (`VrPhysicsHand.CreateAttachPoint`). The visual already is "controller + what the physics blocked",
+  so VelocityTracking pulls held items to the physical hand; with the setting off or while climbing the visual is at
+  its rest pose, i.e. the attach point is the interactor again. Throw and the melee velocity stay XRI/rigidbody based
+  (free hand = controller pose, as before).
+- The other direction (sword blocked → hand stops) needs feedback, because the item follows the hand but not the other
+  way round: `SetHeldItem(body, grip)` (grip = XRI's dynamic attach on the item). While the held item had a *blocking*
+  contact (static, kinematic or ≥ 5 kg) in the last 0.1 s, the hand's drive target is clamped to at most 2 cm / 5°
+  ahead of where the item holds it. The visual offset and the separation are still measured against the controller,
+  so the ghost shows and a wedged item makes the hand "stuck". Dynamic items lighter than 5 kg are pushed instead.
+  An item still flying to the hand (distance grab, after a snap) doesn't hold the hand back until its grip came
+  within 15 cm once ("settled").
+- Only velocity-tracked, non-kinematic grabs are held items (not door/chest leaves, which `VrHinge` turns).
+- Hand ↔ held item collisions: already ignored by both hands since 5b, nothing new.
+- Stuck snap (> 0.5 m for > 0.2 s) while holding an item raises `VrPhysicsHand.HeldItemStuck`; the bridge releases
+  the item (log `… released <item>, it was stuck with the hand.`). Teleport/snap-turn snaps don't release (5d).
+- Contact haptics: `VrPhysicsHandContact` forwards `OnCollisionEnter/Stay` of the body and of each held item (added on
+  grab, removed on release) to `VrPhysicsHand`. Haptic on `Enter` only, if the speed along the contact normal is
+  ≥ 0.3 m/s, the hand had no haptic for 0.15 s **and** that source touched nothing for 0.1 s (sliding along a wall or
+  over the edge of the next world chunk keeps contacts alive, so it doesn't buzz). It fires
+  `GlobalEventDispatcher.PhysicalHandContact(side, speed)`; `VrHapticsService` maps 0.3-3 m/s to amplitude
+  0.15-1 and calls `IVrHaptics.Vibrate(side, VrHapticPreset.Contact, amplitudeScale)` (new default interface overload,
+  Hvr plays the preset unscaled; Xri preset 0.8 × scale, 40 ms). `VrHapticsService` was only created lazily (first
+  lock-picking adapter); `VRContextInteractionService` now injects it, so it always listens.
+- Not solved: hand **and** item pressed against a wall at once can wedge the item up to ~30° rotated in the hand until
+  pulled back (each holds the other). XRI's VelocityTracking at low editor frame rates (≈ 12 fps, 50 Hz physics)
+  produced item speeds of 10-16 m/s on contact, so held-item haptics reported too high speeds in the editor; on a
+  headset the target is updated more often than the physics step.
+
 ## 5e - Finger curls (`FingerCurlProvider`) - ON HOLD (needs articulated hands)
 
 Replaces `HVRHandAnimator` + `HVRFingerSettings` + `HVROpenXRFingerCurls`. Block hands use the simple grip hinge
@@ -191,7 +222,8 @@ Budget: ~15 bones × ~20 steps × 1 capsule query = ~300 queries per grab, done 
       (Built inside `VR - Player XRI.prefab`, no separate hand prefab; driver `VrBlockHand`.)
 - [x] 5b: `PhysicsHand`, `GhostHand`, strength limit, max-distance snap, collision layer matrix, immersion setting
       (C# + menu + ini). (`VrPhysicsHand`, `VrGhostHand`; see "Where reality deviated (5b)" below.)
-- [ ] 5c: attach transform on the physics hand, hand ↔ held item collision ignore, contact haptics.
+- [x] 5c: attach transform on the physics hand, hand ↔ held item collision ignore, contact haptics.
+      (`VrPhysicsHand.CreateAttachPoint`/`SetHeldItem`, `VrPhysicsHandContact`; see "Where reality deviated (5c)".)
 - [ ] 5d: teleport/goto/ladder/swim handling; PlayMode test: physics hand pushed against a static box stops at its
       surface and reconnects when the target moves back; after a rig teleport the hand isn't left behind
       (`Gothic.Tests.PlayMode`).

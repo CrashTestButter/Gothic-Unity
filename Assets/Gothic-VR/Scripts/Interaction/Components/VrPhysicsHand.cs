@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using Gothic.Core;
 using Gothic.Core.Logging;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
@@ -71,6 +73,36 @@ namespace Gothic.VR.Interaction.Components
         [Tooltip("Margin in m around the hand: collisions with a released item come back once it is further away.")]
         [SerializeField] private float _restoreCollisionMargin = 0.02f;
 
+        [Header("Held item")]
+        [Tooltip("While the held item touches something solid, the hand moves at most this far (m) ahead of where " +
+                 "the item holds it. The item follows the hand, so sword and hand stop at a wall together.")]
+        [SerializeField] private float _heldLeadDistance = 0.02f;
+
+        [Tooltip("Same as Held Lead Distance for the rotation (degrees).")]
+        [SerializeField] private float _heldLeadAngle = 5f;
+
+        [Tooltip("The item doesn't block the hand until its grip got this close (m) to the hand: it's still flying " +
+                 "to the hand (distance grab, after a snap).")]
+        [SerializeField] private float _heldMaxGripDistance = 0.15f;
+
+        [Tooltip("Time in s the hand stays held back after the item's last blocking contact. Bridges contacts that " +
+                 "break for a physics step while the item is pressed against a wall.")]
+        [SerializeField] private float _heldBlockedMemory = 0.1f;
+
+        [Tooltip("Dynamic rigidbodies lighter than this (kg) are pushed by the held item, they don't block the hand.")]
+        [SerializeField] private float _heldBlockingMinMass = 5f;
+
+        [Header("Contact haptics")]
+        [Tooltip("Min. impact speed (m/s, along the contact normal) that gives a contact haptic.")]
+        [SerializeField] private float _contactMinSpeed = 0.3f;
+
+        [Tooltip("Min. time in s between two contact haptics of this hand.")]
+        [SerializeField] private float _contactCooldown = 0.15f;
+
+        [Tooltip("A new contact gives a haptic only if the hand (or its held item) touched nothing for this long " +
+                 "(s). Sliding along a wall or over the edge between two colliders doesn't buzz.")]
+        [SerializeField] private float _contactRearmTime = 0.1f;
+
         private readonly List<(Transform Block, Transform Collider)> _blocks = new();
         private readonly List<Collider> _handColliders = new();
         private readonly HashSet<Collider> _ignoredColliders = new();
@@ -95,6 +127,24 @@ namespace Gothic.VR.Interaction.Components
         private Quaternion _lastTargetRotation = Quaternion.identity;
         private Vector3 _lastRigPosition;
         private Quaternion _lastRigRotation = Quaternion.identity;
+
+        private Transform _attachPoint;
+        private Rigidbody _heldBody;
+        private VrPhysicsHandContact _heldContact;
+        private Vector3 _heldGripLocalPosition;
+        private Quaternion _heldGripLocalRotation = Quaternion.identity;
+        private float _heldBlockedTime = float.NegativeInfinity;
+        private bool _isHeldItemSettled;
+
+        private float _lastContactHapticTime = float.NegativeInfinity;
+        private float _lastBodyContactTime = float.NegativeInfinity;
+        private float _lastHeldContactTime = float.NegativeInfinity;
+
+        /// <summary>
+        /// The hand got stuck behind something while holding an item and snapped back to the controller. The holder
+        /// releases the item, it would stay stuck otherwise.
+        /// </summary>
+        public event Action HeldItemStuck;
 
         /// <summary>
         /// Physical hands (comfort setting). Off: the hand follows the controller directly.
@@ -158,6 +208,7 @@ namespace Gothic.VR.Interaction.Components
 
         private void OnDestroy()
         {
+            ClearHeldItem();
             if (_body != null)
                 Destroy(_body);
             if (_physicsMaterial != null)
@@ -193,6 +244,108 @@ namespace Gothic.VR.Interaction.Components
                     _pendingRestoreColliders.Add(other);
                 }
             }
+        }
+
+        /// <summary>
+        /// A transform at the world pose of source that moves with the hand visual: with the controller while the
+        /// hand is free, stopped where the physics hand is blocked. Grabbers attach held items to it, so the items
+        /// follow the physical hand (setting off, climbing: the controller).
+        /// </summary>
+        public Transform CreateAttachPoint(Transform source)
+        {
+            if (_attachPoint == null)
+            {
+                _attachPoint = new GameObject("Physics Hand Attach").transform;
+                _attachPoint.SetParent(transform, false);
+            }
+
+            if (_target == null)
+            {
+                _attachPoint.SetPositionAndRotation(source.position, source.rotation);
+                return _attachPoint;
+            }
+
+            // Relative to the rest pose: the visual may be offset by a blocked hand right now.
+            var sourcePosition = _target.InverseTransformPoint(source.position);
+            var sourceRotation = Quaternion.Inverse(_target.rotation) * source.rotation;
+            var inverseRestRotation = Quaternion.Inverse(_restRotation);
+            var localScale = transform.localScale;
+            var localPosition = inverseRestRotation * (sourcePosition - _restPosition);
+            _attachPoint.SetLocalPositionAndRotation(
+                new Vector3(localPosition.x / localScale.x, localPosition.y / localScale.y,
+                    localPosition.z / localScale.z),
+                inverseRestRotation * sourceRotation);
+            return _attachPoint;
+        }
+
+        /// <summary>
+        /// The hand holds a dynamic item: its collisions give contact haptics, and while it touches something solid,
+        /// the hand can't move on without it (the item follows the hand via CreateAttachPoint()).
+        /// </summary>
+        /// <param name="body">Rigidbody of the item.</param>
+        /// <param name="grip">Where the item is held: a transform on the item that matches the attach point once
+        /// the item is in the hand.</param>
+        public void SetHeldItem(Rigidbody body, Transform grip)
+        {
+            ClearHeldItem();
+            if (body == null || grip == null)
+                return;
+
+            _heldBody = body;
+            var itemTransform = body.transform;
+            _heldGripLocalPosition = itemTransform.InverseTransformPoint(grip.position);
+            _heldGripLocalRotation = Quaternion.Inverse(itemTransform.rotation) * grip.rotation;
+            _heldBlockedTime = float.NegativeInfinity;
+            _lastHeldContactTime = float.NegativeInfinity;
+            _isHeldItemSettled = false;
+
+            _heldContact = body.gameObject.AddComponent<VrPhysicsHandContact>();
+            _heldContact.Init(this, true);
+        }
+
+        public void ClearHeldItem()
+        {
+            if (_heldContact != null)
+                Destroy(_heldContact);
+
+            _heldContact = null;
+            _heldBody = null;
+            _heldBlockedTime = float.NegativeInfinity;
+        }
+
+        /// <summary>
+        /// Collision of the body or the held item (VrPhysicsHandContact).
+        /// </summary>
+        internal void OnContact(Collision collision, bool isHeldItem, bool isEnter)
+        {
+            var time = Time.fixedTime;
+            var lastContactTime = isHeldItem ? _lastHeldContactTime : _lastBodyContactTime;
+            if (isHeldItem)
+                _lastHeldContactTime = time;
+            else
+                _lastBodyContactTime = time;
+
+            if (isHeldItem && IsBlocking(collision.rigidbody))
+                _heldBlockedTime = time;
+
+            if (!isEnter || !_isActive || collision.contactCount == 0)
+                return;
+
+            // Sliding along a wall: contacts with the next collider start while the old ones still touch.
+            if (time - lastContactTime < _contactRearmTime || time - _lastContactHapticTime < _contactCooldown)
+                return;
+
+            var speed = Mathf.Abs(Vector3.Dot(collision.relativeVelocity, collision.GetContact(0).normal));
+            if (speed < _contactMinSpeed)
+                return;
+
+            _lastContactHapticTime = time;
+            GlobalEventDispatcher.PhysicalHandContact.Invoke((int)_side, speed);
+        }
+
+        private bool IsBlocking(Rigidbody other)
+        {
+            return other == null || other.isKinematic || other.mass >= _heldBlockingMinMass;
         }
 
         private void Update()
@@ -234,6 +387,7 @@ namespace Gothic.VR.Interaction.Components
                     Logger.LogEditor($"[VrPhysicsHand] {_side} hand stuck {_separation:0.00} m away from the " +
                                      "controller. Snapped back.", LogCat.VR);
                     Snap(targetPosition, targetRotation);
+                    ReleaseStuckItem();
                     return;
                 }
             }
@@ -244,7 +398,19 @@ namespace Gothic.VR.Interaction.Components
 
             SyncColliders();
             RestorePendingCollisions();
-            Drive(targetPosition, targetRotation, deltaTime);
+
+            // A held item that touches a wall holds the hand back. The visual offset and the separation are still
+            // measured against the controller (target), so the ghost hand shows and a stuck hand snaps.
+            var drivePosition = targetPosition;
+            var driveRotation = targetRotation;
+            if (TryGetHeldItemHandPose(out var itemHandPosition, out var itemHandRotation))
+            {
+                drivePosition = itemHandPosition + Vector3.ClampMagnitude(targetPosition - itemHandPosition,
+                    _heldLeadDistance);
+                driveRotation = Quaternion.RotateTowards(itemHandRotation, targetRotation, _heldLeadAngle);
+            }
+
+            Drive(drivePosition, driveRotation, deltaTime);
 
             _lastTargetPosition = targetPosition;
             _lastTargetRotation = targetRotation;
@@ -263,6 +429,45 @@ namespace Gothic.VR.Interaction.Components
             transform.SetPositionAndRotation(targetPosition + positionOffset, rotationOffset * targetRotation);
 
             UpdateGhost();
+        }
+
+        /// <summary>
+        /// Where the hand would be on the held item (its grip), while the item is blocked by something solid.
+        /// </summary>
+        private bool TryGetHeldItemHandPose(out Vector3 position, out Quaternion rotation)
+        {
+            position = default;
+            rotation = default;
+
+            if (_heldBody == null || _attachPoint == null)
+                return false;
+
+            var itemTransform = _heldBody.transform;
+            var gripRotation = _heldBody.rotation * _heldGripLocalRotation;
+            var gripPosition = _heldBody.position +
+                               _heldBody.rotation * Vector3.Scale(itemTransform.lossyScale, _heldGripLocalPosition);
+
+            // Hand = grip * inverse(attach point relative to the hand). The body has the visual's scale.
+            rotation = gripRotation * Quaternion.Inverse(_attachPoint.localRotation);
+            position = gripPosition - rotation * Vector3.Scale(transform.lossyScale, _attachPoint.localPosition);
+
+            // Still flying to the hand (distance grab, after a snap): not held in the hand yet. Once settled, a big
+            // gap means the item got wedged: the hand stays with it until it snaps as stuck (and lets go).
+            if (!_isHeldItemSettled)
+                _isHeldItemSettled = (position - _rigidbody.position).sqrMagnitude <=
+                                     _heldMaxGripDistance * _heldMaxGripDistance;
+
+            return _isHeldItemSettled && Time.fixedTime - _heldBlockedTime <= _heldBlockedMemory;
+        }
+
+        private void ReleaseStuckItem()
+        {
+            if (_heldBody == null)
+                return;
+
+            Logger.LogEditor($"[VrPhysicsHand] {_side} hand released {_heldBody.name}, it was stuck with the hand.",
+                LogCat.VR);
+            HeldItemStuck?.Invoke();
         }
 
         private bool ShouldBeActive()
@@ -320,6 +525,7 @@ namespace Gothic.VR.Interaction.Components
                 SceneManager.MoveGameObjectToScene(_body, gameObject.scene);
 
             _rigidbody = _body.AddComponent<Rigidbody>();
+            _body.AddComponent<VrPhysicsHandContact>().Init(this, false);
             _rigidbody.mass = _mass;
             _rigidbody.useGravity = false;
             _rigidbody.linearDamping = 0f;
@@ -433,6 +639,7 @@ namespace Gothic.VR.Interaction.Components
         private void Snap(Vector3 targetPosition, Quaternion targetRotation)
         {
             _isSnapRequested = false;
+            _isHeldItemSettled = false;
             _stuckTime = 0f;
             _separation = 0f;
 

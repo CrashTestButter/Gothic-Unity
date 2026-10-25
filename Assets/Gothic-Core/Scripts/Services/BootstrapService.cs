@@ -74,7 +74,7 @@ namespace Gothic.Core.Services
             _configService.LoadRootJson();
             _configService.SetDeveloperConfig(config);
 
-            _fileLoggingHandler = new FileLoggingHandler();
+            _fileLoggingHandler = new FileLoggingHandler(_configService.Dev);
 
             _multiTypeCacheService.Init();
 

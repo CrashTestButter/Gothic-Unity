@@ -1329,6 +1329,12 @@ namespace Gothic.Core.Models.Config
                  "ground, only a few sparks showed.")]
         public bool EnableBodyFxAtGround = true;
 
+        [Tooltip("V1: One log file per session (a build's run, an Editor play mode too): Logs/Gothic-Unity_<date>_<time>" +
+                 ".log.txt in the persistent data folder, every line starting with the local time - stream VODs can be " +
+                 "matched to it (chapters). The newest 30 are kept. Off: builds write Gothic-Unity.log.txt, the Editor " +
+                 "no file.")]
+        public bool EnableSessionLogFiles = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

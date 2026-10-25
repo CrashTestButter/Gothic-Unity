@@ -324,6 +324,7 @@ MonoBehaviour:
   EnableVisualFxLights: 1
   EnableVisualFxEarthquake: 1
   EnableBodyFxAtGround: 1
+  EnableSessionLogFiles: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

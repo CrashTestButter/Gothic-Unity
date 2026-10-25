@@ -58,7 +58,6 @@ Link), not on Quest/Pico standalone.
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
 - Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR).
-- Transformed you move at the animal's own speed (a wolf runs 4.6 m/s).
 
 ## The ring around you, spells like in Gothic · 2026-10-26
 
@@ -88,6 +87,7 @@ Link), not on Quest/Pico standalone.
 - The laser is drawn over the virtual keyboard.
 - Footsteps: NPCs and monsters are heard walking - on wood, stone, earth, sand or in water by the ground below.
 - Sounds echo in mines, caves and temples.
+- Transformed you move at the animal's own speed (a wolf runs 4.6 m/s, a meatbug crawls), also after a swim.
 - You hear your own steps and swimming - drifting, slow strokes, the crawl; drifting no longer plays the fall.
 - Crouching is sneaking only with the sneak talent - without it NPCs notice you.
 - A teacher's "+5"/"+1" choices both stay after a pick; a torch in a holder lights again when grabbed; long mod

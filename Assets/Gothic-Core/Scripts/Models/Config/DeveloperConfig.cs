@@ -1358,6 +1358,10 @@ namespace Gothic.Core.Models.Config
                  "NPC culling (it threw building it).")]
         public bool EnableTransformCancelKeepsScroll = true;
 
+        [Tooltip("V1: Transformed, the player moves as fast as the monster runs (its run loop's root motion against the " +
+                 "human one, x0.3-x3) - a wolf runs faster than a human, a meatbug slower.")]
+        public bool EnableTransformMonsterSpeed = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

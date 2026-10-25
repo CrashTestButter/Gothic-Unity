@@ -3,9 +3,11 @@ using Gothic.Core;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.Core.Models.Animations;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Adapters.HVROverrides;
@@ -36,6 +38,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly ContextInteractionService _contextInteractionService;
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly NpcWaterService _npcWaterService;
+        [Inject] private readonly ConfigService _configService;
 
         private const int _puppetLayer = 13; // PlayerPuppet
         private const float _walkSpeed = 0.2f;
@@ -90,6 +93,14 @@ namespace Gothic.VR.Adapters.Player
 
         private VRPlayerController _playerController;
         private float _originalCameraYOffset;
+        // DeveloperConfig.EnableTransformMonsterSpeed: the player's speeds before, the human run loop to compare with.
+        private float _originalMoveSpeed;
+        private float _originalRunSpeed;
+        private bool _hasSpeedScale;
+        private const string _humanRunAnimation = "S_RUNL";
+        private const string _humanMds = "Humans.mds";
+        private const float _minSpeedFactor = 0.3f;
+        private const float _maxSpeedFactor = 3f;
         private bool _hasCameraOffset;
         // Camera offset at the monster's eyes (LowerCamera) and its eye height above its feet.
         private float _transformedCameraYOffset;
@@ -142,6 +153,11 @@ namespace Gothic.VR.Adapters.Player
             _isReleased = true;
             if (_hasCameraOffset && _playerController != null)
                 _playerController.CameraRig.CameraYOffset = _originalCameraYOffset;
+            if (_hasSpeedScale && _playerController != null)
+            {
+                _playerController.MoveSpeed = _originalMoveSpeed;
+                _playerController.RunSpeed = _originalRunSpeed;
+            }
             if (_isReady)
                 _playerController?.SetGrabbingEnabled(true);
 
@@ -300,6 +316,7 @@ namespace Gothic.VR.Adapters.Player
             _playerController?.SetGrabbingEnabled(false);
             HideFromVrCameras();
             LowerCamera();
+            ScaleSpeedToMonster();
             CreatePip();
 
             animationSystem.StopAllAnimations();
@@ -676,6 +693,48 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             _transformService.TransformBack();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableTransformMonsterSpeed: the player moves as fast as the monster runs - its run loop's
+        /// root motion against the human one (HUMANS S_RUNL). A wolf is faster than a human, a meatbug slower; with the
+        /// camera at its eyes the human speed felt like crawling.
+        /// </summary>
+        private void ScaleSpeedToMonster()
+        {
+            if (!_configService.Dev.EnableTransformMonsterSpeed || _playerController == null)
+                return;
+
+            var walkMode = _monster.Vob.AiHuman.WalkMode;
+            _monster.Vob.AiHuman.WalkMode = (int)VmGothicEnums.WalkMode.Run;
+            var run = _animationService.GetAnimationName(VmGothicEnums.AnimationType.Move, _monster);
+            _monster.Vob.AiHuman.WalkMode = walkMode;
+
+            var monsterSpeed = GetHorizontalSpeed(_animationService.GetTrack(run, _monster.Props.MdsNameBase,
+                _monster.Props.MdsNameOverlay));
+            var hero = _npcService.GetHeroContainer();
+            var humanSpeed = GetHorizontalSpeed(_animationService.GetTrack(_humanRunAnimation,
+                hero?.Props.MdsNameBase ?? _humanMds, null));
+            if (monsterSpeed <= 0f || humanSpeed <= 0f)
+            {
+                Logger.LogWarning($"[VRTransform] No run speed ({run}: {monsterSpeed:F2} m/s, human: {humanSpeed:F2} " +
+                                  "m/s) - the player keeps his speed.", LogCat.VR);
+                return;
+            }
+
+            var factor = Mathf.Clamp(monsterSpeed / humanSpeed, _minSpeedFactor, _maxSpeedFactor);
+            _originalMoveSpeed = _playerController.MoveSpeed;
+            _originalRunSpeed = _playerController.RunSpeed;
+            _playerController.MoveSpeed *= factor;
+            _playerController.RunSpeed *= factor;
+            _hasSpeedScale = true;
+            Logger.Log($"[VRTransform] Speed x{factor:F2} ({run}: {monsterSpeed:F2} m/s, human {humanSpeed:F2} m/s).",
+                LogCat.VR);
+        }
+
+        private static float GetHorizontalSpeed(AnimationTrack track)
+        {
+            return track == null ? 0f : new Vector2(track.MovementSpeed.x, track.MovementSpeed.z).magnitude;
         }
 
         private bool IsTriggerJustPressed(HVRHandSide side)

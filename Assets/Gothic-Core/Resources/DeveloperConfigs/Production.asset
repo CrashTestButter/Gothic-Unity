@@ -330,6 +330,7 @@ MonoBehaviour:
   EnableKeyboardPointerOnTop: 1
   EnableRingSpellReplacesHandSpell: 1
   EnableTransformCancelKeepsScroll: 1
+  EnableTransformMonsterSpeed: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

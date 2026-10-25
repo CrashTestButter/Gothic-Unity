@@ -14,7 +14,7 @@ on `VrHinge` (replaces the interim `VrChestLidToggle`), **4c** ladders + `KeepPl
       change with a 0.5 s timeout.)
 - [x] Locked doors don't move; lock picking unlocks them (`VRContainerDoorPickingInteraction`). (4a: `Lock()` holds the
       leaf at 0° and a hand can't pull it open; the picking script is unchanged. Unlock + push: see status below.)
-- [ ] Chest lids open 0-110°. The first open spawns the content (Phase 3); closing hides the slots; lock picking works.
+- [x] Chest lids open 0-110°. The first open spawns the content (Phase 3); closing hides the slots; lock picking works.
 - [ ] Ladders can be climbed hand over hand. `IVrRig.IsClimbing` is true while climbing (used by `KeepPlayerWithin`).
 
 ## Behaviour spec (what we use from `HVRPhysicsDoor` today)
@@ -81,15 +81,17 @@ movement onto the hinge plane, clamp to the limits). (4a: this is what `VrHinge`
 ## Work items
 
 - [x] `VrHinge` (+ `IVrHinge` implementation). (4a: `Interaction/Components/VrHinge.cs`, kinematic angle solver, no
-      joint. `Opened`/`Closed` C# events are on `VrHinge`, not on `IVrHinge` yet (4b adds them with the chest).)
+      joint. 4b moved `Opened`/`Closed` onto `IVrHinge`; `HvrHingeBridge` raises them from `HVRPhysicsDoor.Opened/Closed`.)
 - [ ] `VrLadderExit` (4c).
-- [ ] `VRVobContainerPhysicsChest` → `VrChestSlots` (logic) + `VrHinge` (lid); delete the subclassing on the Xri path.
+- [x] `VRVobContainerPhysicsChest` → `VrChestSlots` (logic) + `VrHinge` (lid); delete the subclassing on the Xri path.
       (3c: `VrChestSlots` exists and has `Open()`/`Close()`; `HvrPhysicsChest` is only the HVR lid. On Xri the lid is
-      the interim `VrChestLidToggle` (use = swing open/closed, kinematic, `IVrHinge`) - replace it with `VrHinge`.)
+      the interim `VrChestLidToggle` (use = swing open/closed, kinematic, `IVrHinge`) - replace it with `VrHinge`.
+      4b done: `VrChestLidToggle` deleted, the lid has `VrHinge`; `VrChestSlots` subscribes to the active `IVrHinge`
+      (`VrHinges.FindActive`), `HvrPhysicsChest` is only the "switch off on other backends" shell.)
 - [ ] **Prefabs (UnityMCP):** `oCMobDoor.prefab` (VrHinge + grab interactable + bridge) (4a done: the VR prefab's door
       leaf got `VrHinge`, `GothicGrabInteractable` (disabled, Kinematic movement, tracking off, no unparenting) and
       `XriInteractableBridge`; `HvrHingeBridge` now switches `HVRPhysicsDoor` off on other
-      backends), `oCMobContainer.prefab` (lid, 4b), `oCMobLadder.prefab` (ClimbInteractable + bridge, 4c).
+      backends), `oCMobContainer.prefab` (lid, 4b: done, see below), `oCMobLadder.prefab` (ClimbInteractable + bridge, 4c).
 - [ ] `VRContextInteractionService.KeepPlayerWithin` uses `IVrRig.IsClimbing`; verify with a dialog at a ladder.
 
 ## Test plan
@@ -131,6 +133,27 @@ feel):
   (hand tracking noise: the hand angle is used raw), Hvr door play test, two hands on one door (first hand wins).
 - Known differences to HVR: the leaf has no physical collision with hands (Xri hands aren't colliders), so touching
   a door without grabbing doesn't move it, and the player's body doesn't push it.
+
+## Status after 4b
+
+Xri + simulator, scripted hand (`TrackedPoseDriver` of the controller disabled, hand moved along the lid's arc,
+`SelectEnter`/`SelectExit`), G1 small crate near the start (51, 60, 287), editor at a few fps:
+- **Prefab:** the lid (`BIP01 CHEST_*_1`) lost `XRSimpleInteractable` and `VrChestLidToggle`; it got `GothicGrabInteractable`
+  (disabled, copy of the door's settings) and `VrHinge` (axis X, 0-110°). `XriInteractableBridge` was already there.
+- **Events on the port:** `IVrHinge.Opened/Closed`. `HvrHingeBridge.Update` raises them from `HVRPhysicsDoor.Opened/Closed`
+  (same flags as `HvrPhysicsChest` had), so `VrChestSlots` is backend-neutral (`Start` subscribes to the active hinge).
+  `HvrPhysicsChest` no longer calls the slots itself (the Hvr chest was not played again: only the event path moved).
+- Hand pulls the lid 0 → 115°: the lid follows 1:1 (0.2° behind), clamps at 110°; content (5 items) appears on the first
+  `Opened`; released at 110° it stays (no bounce).
+- Took one item by hand (4 left), closed by hand 110 → 0°: `Closed` once, slots hidden; opened again: the same 4 items,
+  nothing spawned twice.
+- `Lock()`: the lid snaps to 0° and the slots hide, a hand pulling to 60° does not move it; `Unlock()` pushes it open to
+  ~14° after a moment and opens the slots.
+- Not tested: a real pick-lock sequence by hand, the open/close sounds audibly (set by `VRVobContainer` via
+  `VrHinges.FindActive`, played by `VrHinge` from the state change), a headset, the Hvr chest (HVR physics) after the
+  event move, a lid hanging open when the chest is re-created by save/load.
+- Known differences to the interim toggle: the lid has to be pulled by hand (use = grab no longer opens it by a click);
+  the lid has no gravity (stays where it's let go, closes softly only below 5°).
 
 ## Risks
 

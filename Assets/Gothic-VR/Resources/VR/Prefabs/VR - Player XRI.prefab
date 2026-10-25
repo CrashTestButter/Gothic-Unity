@@ -1232,12 +1232,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Gothic.VR::Gothic.VR.Interaction.Backends.Xri.XriTeleportAimer
   _settings:
-    StartThreshold: 0.75
-    ReleaseThreshold: 0.4
     ArcSpeed: 9
     ArcGravity: 9.81
     ArcStep: 0.4
     ArcSamples: 40
+    ArcRadius: 0.1
+    MaxJumpDistance: 1.5
+    MaxDropDistance: 3
+    LineOfSightHeight: 1
+    LineOfSightSamples: 8
+    GroundRayHeight: 0.3
     ReticleRadius: 0.25
     ValidColor: {r: 0.3, g: 0.9, b: 0.4, a: 0.9}
     InvalidColor: {r: 0.9, g: 0.3, b: 0.3, a: 0.6}
@@ -1963,7 +1967,7 @@ MonoBehaviour:
   m_RaycastUIDocumentTriggerInteraction: 1
   m_TargetNumCurveSegments: 1
   m_HitDetectionType: 2
-  m_CastDistance: 30
+  m_CastDistance: 10
   m_SphereCastRadius: 0.1
   m_ConeCastAngle: 6
   m_LiveConeCastDebugVisuals: 0
@@ -2726,7 +2730,7 @@ MonoBehaviour:
   m_RaycastUIDocumentTriggerInteraction: 1
   m_TargetNumCurveSegments: 1
   m_HitDetectionType: 2
-  m_CastDistance: 30
+  m_CastDistance: 10
   m_SphereCastRadius: 0.1
   m_ConeCastAngle: 6
   m_LiveConeCastDebugVisuals: 0

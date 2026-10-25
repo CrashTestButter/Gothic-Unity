@@ -75,6 +75,17 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [Tooltip("Terminal fall speed in m/s.")]
         [SerializeField] private float _maxFallSpeed = 20f;
 
+        [Tooltip("Keeps the player on the ground when walking downhill or down stairs (like HVR's constant downward push). "
+                 + "XRI's grounded check alone flickers between ground and air there.")]
+        [SerializeField] private bool _snapToGround = true;
+
+        [Tooltip("Max. drop in m per frame the player is pulled down to the ground (slopes, stairs). Larger drops "
+                 + "(ledges) are real falls. Capped by the CharacterController's step offset.")]
+        [SerializeField] private float _groundSnapDistance = 0.3f;
+
+        [Tooltip("Time in s the player still counts as grounded after losing ground contact. Hides one-frame flickers.")]
+        [SerializeField] private float _groundedGraceTime = 0.12f;
+
         [Header("Height")]
         [Tooltip("Eye height of the virtual player in m. Used by the Sitting and Standing comfort settings.")]
         [SerializeField] private float _eyeHeight = 1.66f;
@@ -99,8 +110,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private bool _isSprintLatched;
         private bool _isCrouching;
         private float _crouchOffset;
+        private float _lastGroundedTime = float.NegativeInfinity;
         private bool _isTeleportQueued;
+        private int _lastTeleportFrame = -1;
         private Vector3 _teleportPosition;
+        private XRBodyTransformer _bodyTransformer;
+        private int _collidingLayers;
+        private bool _isJumpAirborne;
 
         public event Action<Vector3> Teleported;
 
@@ -112,7 +128,17 @@ namespace Gothic.VR.Interaction.Backends.Xri
         public Camera Camera => _camera;
         public CharacterController CharacterController => _characterController;
         public float CameraHeight => _origin.CameraInOriginSpaceHeight;
-        public bool IsGrounded => _gravityProvider.isGrounded || _characterController.isGrounded;
+
+        public bool IsGrounded
+        {
+            get
+            {
+                if (_gravityProvider.isGrounded || _characterController.isGrounded)
+                    _lastGroundedTime = Time.time;
+
+                return Time.time - _lastGroundedTime <= _groundedGraceTime;
+            }
+        }
 
         // Climbing comes with HVR phase 4 (ClimbProvider).
         public bool IsClimbing => false;
@@ -233,7 +259,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private void Awake()
         {
             // Grounded check against everything the player collides with (world, VOBs, NPCs), not only Default.
-            _gravityProvider.sphereCastLayerMask = GetCollidingLayers(gameObject.layer);
+            _collidingLayers = GetCollidingLayers(gameObject.layer);
+            _gravityProvider.sphereCastLayerMask = _collidingLayers;
 
             _teleportationProvider.locomotionEnded += OnTeleportLocomotionEnded;
 
@@ -249,18 +276,95 @@ namespace Gothic.VR.Interaction.Backends.Xri
                     LogCat.VR);
             else
                 CreateTeleportAimer();
+
+            // Snapping has to run right after XRI moved the body this frame (see SnapToGround()).
+            _bodyTransformer = _moveProvider.mediator != null ? _moveProvider.mediator.bodyTransformer : null;
+            if (_bodyTransformer == null)
+                _bodyTransformer = GetComponentInChildren<XRBodyTransformer>();
+
+            if (_bodyTransformer != null)
+                _bodyTransformer.afterApplyTransformations += OnAfterApplyTransformations;
+            else
+                Logger.LogError("[XRI] No XRBodyTransformer found. Walking downhill will bounce.", LogCat.VR);
         }
 
         private void OnDestroy()
         {
             if (_teleportationProvider != null)
                 _teleportationProvider.locomotionEnded -= OnTeleportLocomotionEnded;
+
+            if (_bodyTransformer != null)
+                _bodyTransformer.afterApplyTransformations -= OnAfterApplyTransformations;
         }
 
         private void Update()
         {
             UpdateSprint();
             UpdateCrouch();
+        }
+
+        private void OnAfterApplyTransformations(ApplyBodyTransformationsEventArgs args)
+        {
+            SnapToGround();
+        }
+
+        /// <summary>
+        /// XRI moves horizontally only and GravityProvider pauses gravity while its head-down sphere cast still finds
+        /// ground (up to ~4 cm below the feet). Walking downhill, the player therefore floats until that gap is
+        /// exceeded, then gravity restarts from 0 and drops them a bit: the bouncing. Like HVR (constant downward push),
+        /// we press the CharacterController onto the ground below it every frame after XRI's move (same frame,
+        /// before rendering and before the next grounded check). Limited to the snap distance, so ledges and jumps
+        /// stay real falls.
+        /// </summary>
+        private void SnapToGround()
+        {
+            if (!_snapToGround || _gravity <= 0f || _moveProvider.enableFly || !_characterController.enabled)
+                return;
+
+            // Teleports move the transform directly. A CharacterController.Move before the sync would undo them.
+            if (_isTeleportQueued || _lastTeleportFrame == Time.frameCount)
+                return;
+
+            // From the jump until landing, the player is in the air on purpose.
+            if (_jumpProvider.isJumping)
+            {
+                _isJumpAirborne = true;
+                return;
+            }
+
+            if (_isJumpAirborne)
+            {
+                if (!_gravityProvider.isGrounded)
+                    return;
+
+                _isJumpAirborne = false;
+            }
+
+            // Only snap if we were on the ground a moment ago. Otherwise we're falling for real.
+            if (!IsGrounded)
+                return;
+
+            var up = Vector3.up;
+            var skinWidth = _characterController.skinWidth;
+            var radius = _characterController.radius * 0.5f;
+            var bottom = _characterController.transform.TransformPoint(_characterController.center)
+                         - up * (_characterController.height * 0.5f);
+            var origin = bottom + up * (radius + skinWidth);
+            var maxDistance = Mathf.Min(_groundSnapDistance, _characterController.stepOffset) + 2f * skinWidth;
+
+            if (!Physics.SphereCast(origin, radius, -up, out var hit, maxDistance, _collidingLayers,
+                    QueryTriggerInteraction.Ignore))
+                return;
+
+            // Too steep to stand on: let gravity slide the player down.
+            if (Vector3.Angle(hit.normal, up) > _characterController.slopeLimit)
+                return;
+
+            // CharacterController.Move stops at the collision, overshooting by the skin width is safe and makes
+            // CharacterController.isGrounded true.
+            var drop = hit.distance - skinWidth;
+            if (drop > 0f)
+                _characterController.Move(-up * drop);
         }
 
         /// <summary>
@@ -441,6 +545,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 return;
 
             _isTeleportQueued = false;
+            _lastTeleportFrame = Time.frameCount;
 
             // XRBodyGroundPosition moves the transform directly. Without the sync, the CharacterController would
             // continue from its old position (Physics.autoSyncTransforms is off).

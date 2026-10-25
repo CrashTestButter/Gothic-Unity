@@ -11,7 +11,7 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Interaction.Components
 {
     /// <summary>
-    /// Backend-neutral hinge for doors (and later chest lids). The leaf is kinematic and rotated by our own angle
+    /// Backend-neutral hinge for doors and chest lids. The leaf is kinematic and rotated by our own angle
     /// solver (no joint: velocity tracking against a HingeJoint/ConfigurableJoint whipped and jammed the leaf):
     /// - While a hand holds the leaf, the hand's angular movement around the hinge axis (projected onto the hinge
     ///   plane) turns the leaf by the same angle, clamped to Min/MaxAngle.
@@ -97,14 +97,7 @@ namespace Gothic.VR.Interaction.Components
         private bool _isOpen;
         private bool _isClosed = true;
 
-        /// <summary>
-        /// Raised once when the leaf leaves the closed position.
-        /// </summary>
         public event Action Opened;
-
-        /// <summary>
-        /// Raised once when the leaf is back in the closed position.
-        /// </summary>
         public event Action Closed;
 
         public bool IsActive => _vrBackend != null && _vrBackend.Kind == VrInteractionBackend.Xri;

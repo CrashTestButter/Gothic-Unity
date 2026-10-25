@@ -13,8 +13,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// per hand, GothicGrabInteractable + XriInteractableBridge on oCItem), using mobs/NPCs and the socket core
     /// (VrSocketSlot + XriSocketBridge, "VR Socket Slot.prefab"), the backpack ("BackPack XRI.prefab") on the
     /// shoulder and the hip/shoulder holsters (VrBodyAnchor "Shoulders"/"Waist" on the rig), chest slots
-    /// (VrChestSlots, lid opened by using it: VrChestLidToggle) and NPC loot slots.
-    /// Missing: physical doors/chest lids/ladders (4) and hands (5).
+    /// (VrChestSlots, lid opened by hand: VrHinge), NPC loot slots and doors (VrHinge).
+    /// Missing: ladders (4c) and hands (5).
     /// </summary>
     public class XriBackend : IVrBackend
     {

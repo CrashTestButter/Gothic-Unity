@@ -265,7 +265,8 @@ MonoBehaviour:
   EnableSummonSpellWithoutTarget: 1
   EnableOnlyBadSpellsDamage: 1
   EnableSpellThrowPhysics: 1
-  SpellThrowSpeedMultiplier: 0.5
+  SpellThrowSpeedMultiplier: 1.25
+  SpellThrowFullSwingSpeed: 6
   EnableEscortSensesHero: 1
   EnableHitStopsWalking: 1
   EnableFastWaypointPath: 1
@@ -373,6 +374,7 @@ MonoBehaviour:
   EnableMenuScrolling: 1
   EnableUiGrabBars: 1
   EnableThrowRuneOneHand: 1
+  EnableVacuumIgnoresStaleHeld: 1
   EnableVrFists: 1
   EnableModelScale: 1
   EnableMapPlayerMarker: 1

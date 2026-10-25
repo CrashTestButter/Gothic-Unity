@@ -1403,7 +1403,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 // speed and how straight it flies. A full swing flies straight like in Gothic, half a swing arcs, no
                 // swing drops it from the hand. Only a real throw homes on NPCs and hit targets (and then ignores the
                 // gravity). Before it flew where the camera looked, slowly but straight, even without moving the hand.
-                var swingFactor = Mathf.Clamp(handVelocity.magnitude / _fullSwingSpeed, 0f, _maxSwingFactor);
+                // DeveloperConfig.SpellThrowFullSwingSpeed: the hand speed of a full throw - a light flick was a strong one.
+                var swingFactor = Mathf.Clamp(handVelocity.magnitude / _configService.Dev.SpellThrowFullSwingSpeed, 0f,
+                    _maxSwingFactor);
                 direction = handVelocity.magnitude >= _minThrowDirectionSpeed ? handVelocity.normalized : Vector3.down;
                 _throwSpeedFactor = swingFactor;
                 _throwGravityScale = Mathf.Clamp01(1f - swingFactor);

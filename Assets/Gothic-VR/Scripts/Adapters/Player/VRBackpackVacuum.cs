@@ -193,7 +193,18 @@ namespace Gothic.VR.Adapters.Player
                 return false;
 
             var container = grabbable.GetComponentInParent<VobLoader>()?.Container;
-            return container != null && container.Vob.Type == VirtualObjectType.oCItem && !container.IsHeldByPlayer;
+            if (container == null || container.Vob.Type != VirtualObjectType.oCItem)
+                return false;
+
+            // DeveloperConfig.EnableVacuumIgnoresStaleHeld: neither held nor socketed, so not with the player any more -
+            // a rune taken out of a holster and dropped stayed "held by the player" and the vacuum never took it.
+            if (container.IsHeldByPlayer && _configService.Dev.EnableVacuumIgnoresStaleHeld)
+            {
+                Logger.Log($"[VRBackpackVacuum] {grabbable.name} was still marked as held by the player - cleared",
+                    LogCat.VR);
+                container.IsHeldByPlayer = false;
+            }
+            return !container.IsHeldByPlayer;
         }
 
         private void Track(HVRGrabbable grabbable)

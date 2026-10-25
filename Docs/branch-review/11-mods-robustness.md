@@ -84,7 +84,8 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
 ### Added 2026-10-26
 
 - **Mroczne Tajemnice** (`6ed57fb8`, `81420dfa`): the lurker scroll works (the script passes `BLACKDRAGON`
-  without a visual); the profile offers easy / normal / hard (`DM_E`/`DM_N`/`DM_T.INI`).
+  without a visual); the profile offers easy / normal / hard (`DM_E`/`DM_N`/`DM_T.INI`); its weapon percents
+  (`B_GiveprocentSkill`) are the critical hit chance (`599cffb8`).
 
 ## Key commits
 

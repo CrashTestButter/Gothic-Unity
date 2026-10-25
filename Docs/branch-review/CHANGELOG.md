@@ -74,7 +74,8 @@ Link), not on Quest/Pico standalone.
 - G1 chain lightning: hold it - it zaps the one in front of you, jumps on to the next every few seconds, and with nobody
   left it turns back on you.
 - Windfist and Stormfist throw their victims away; they land lying and get up.
-- G1: bows and crossbows hit critically (double damage) by their talent's percent.
+- G1: bows and crossbows hit critically (double damage) by their talent's percent. Mroczne Tajemnice: the weapon
+  percents its teachers give (the "critical hit" column of its status menu) are the critical hit chance, melee too.
 - Spell effects light up the world (summoning glows red around you, fire rain lights the area) and the summoning's
   earthquake rumbles the controllers. Effects in your hand and in the ring move like in Gothic: summoning glows,
   transformation scrolls crackle, chain lightning and the fire storm show theirs.

@@ -244,6 +244,8 @@
 - **G1 ranged critical hits** (`5c678f0a`): the bow/crossbow talent value is the chance, damage x
   `DAM_CRITICAL_MULTIPLIER` (OpenGothic `rangeDamage`). Mroczne Tajemnice's teachers raise other talents (its menu
   shows FIREMASTER/ACROBAT as the bow/crossbow percent), so like in the original its values stay 0.
+- **Mroczne Tajemnice's percents** (`599cffb8`): G1 critical hits (melee and ranged) take the higher of the weapon
+  talent's value and the mod's percent (`B_GiveprocentSkill`: SNEAK/REGENERATE/FIREMASTER/ACROBAT values).
 - **Death by script** (`a81da24e`): `Npc_ChangeAttribute` taking the last hit points kills (G1 summons weakening in
   `ZS_MM_SummonedByPC_Loop` stood on at 0); a summon dying by itself gives no XP.
 
@@ -279,7 +281,7 @@ archers get around cover
 2026-10-25: `c321ebb6` blocking · `42b42b6d` engine melee damage · `0cc510ad` weapon requirements · `6a8015ba` fitted melee hitboxes · `7542c3d0` ranged knockout
 
 2026-10-25: `167edcf7` blood only on hit · `8118ce45` block by weapon contact
-2026-10-26: `56681067` windfist throw · `95beafa9` killer-only XP · `a81da24e` death by script · `5c678f0a` ranged critical hits
+2026-10-26: `56681067` windfist throw · `95beafa9` killer-only XP · `a81da24e` death by script · `5c678f0a` ranged critical hits · `599cffb8` MT percents
 
 ## Main files
 
@@ -319,7 +321,7 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 2026-10-25: `EnableVrHeroBlock`, `EnableEngineMeleeDamage`, `EnableWeaponRequirementCap`, `EnableMeleeFittedColliders`, `EnableRangedKnockoutOption`, `RangedKnockoutByDefault`
 
 2026-10-25: `EnableBloodOnlyOnHit`, `EnableBlockWeaponContact`
-2026-10-26: `EnableWindfistThrow`, `EnableKillerXpOnly`, `EnableScriptHitPointsDeath`, `EnableRangedCriticalHits`
+2026-10-26: `EnableWindfistThrow`, `EnableKillerXpOnly`, `EnableScriptHitPointsDeath`, `EnableRangedCriticalHits`, `EnableModPercentTalents`
 
 ## Review notes
 

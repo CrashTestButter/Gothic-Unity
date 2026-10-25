@@ -136,6 +136,16 @@ namespace Gothic.VR.Services.Context
                     VRConstants.IniNames.ScrollsSingleUse, menuStartY + menuDY * nextRow, 1));
                 nextRow++;
             }
+            // DeveloperConfig.EnableKillerXpOnly: off (Gothic) only the hero's, his summons' and his party's kills give
+            // experience, on every death anywhere does.
+            if (_configService.Dev.EnableKillerXpOnly)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "XP_FOR_ANY_KILL", "XP for every death",
+                    "Cheat: any death gives you XP (Gothic: only your kills)", menuStartY + menuDY * nextRow));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "XP_FOR_ANY_KILL",
+                    VRConstants.IniNames.XpForAnyKill, menuStartY + menuDY * nextRow, 0));
+                nextRow++;
+            }
             var restartRow = nextRow;
             vrImmersionMenu.Items.Add(CreateRestartButton(mainMenu, menuStartY + menuDY * restartRow));
             var backButton = CreateImmersionBackButton(mainMenu);

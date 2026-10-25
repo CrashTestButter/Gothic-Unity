@@ -1498,6 +1498,11 @@ namespace Gothic.Core.Services.Npc
             Logger.Log($"[FightService.OnNpcDied] {dead.Instance.GetName(NpcNameSlot.Slot0)} died — ZS_Dead deferred (killer: {killer.Instance.GetName(NpcNameSlot.Slot0)})", LogCat.Npc);
         }
 
+        private bool IsXpForAnyKillOn()
+        {
+            return _configService.Gothic != null && _configService.Gothic.GetInt(FightConst.XpForAnyKillIniName, 0) == 1;
+        }
+
         private IEnumerator CallZsDeadDeferred(NpcInstance dead, NpcInstance hero, NpcContainer killer)
         {
             yield return null;
@@ -1506,9 +1511,13 @@ namespace Gothic.Core.Services.Npc
             var oldSelf = vm.GlobalSelf;
             var oldOther = vm.GlobalOther;
             vm.GlobalSelf = dead;
-            // Gothic engine always passes hero as 'other' in ZS_Dead regardless of real killer.
-            // Scripts like B_CheckDeadMissionNPCs and ZS_Dead XP checks rely on Npc_IsPlayer(other)=true.
-            vm.GlobalOther = hero;
+            // DeveloperConfig.EnableKillerXpOnly: like the engine (OpenGothic checkHealth: currentOther) 'other' is the
+            // killer - ZS_Dead gives XP only if he's the hero or in his party (AIV_PARTYMEMBER, AIV_MM_PARTYMEMBER: the
+            // hero's summons, Mordrag leading him), and G2 marks only the hero's victims as killed by him. The hero for
+            // everybody gave XP for every death anywhere - now the "XP for every death" immersion option (a cheat).
+            vm.GlobalOther = _configService.Dev.EnableKillerXpOnly && !IsXpForAnyKillOn()
+                ? killer?.Instance ?? dead
+                : hero;
 
             var zsDeadSym = vm.GetSymbolByName("ZS_Dead");
             if (zsDeadSym != null)

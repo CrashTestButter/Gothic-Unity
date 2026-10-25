@@ -1417,6 +1417,11 @@ namespace Gothic.Core.Models.Config
                  "the attacker it counts as his (death or Ranged knockout); a summon weakening by itself gives no XP.")]
         public bool EnableScriptHitPointsDeath = true;
 
+        [Tooltip("V1: ZS_Dead gets the real killer as other like the engine - XP only for the hero's, his summons' and " +
+                 "his party's kills (Mordrag leading him); every death anywhere gave XP. Immersion option \"XP for every " +
+                 "death\" (ini xpForAnyKill, off by default) brings that back as a cheat.")]
+        public bool EnableKillerXpOnly = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

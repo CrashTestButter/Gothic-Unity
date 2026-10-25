@@ -26,6 +26,8 @@ namespace Gothic.VR
             public const string RangedKnockout = Gothic.Core.Const.FightConst.RangedKnockoutIniName;
             // 1 = a scroll is used up by its cast like in Gothic (default), 0 = scrolls are cast forever.
             public const string ScrollsSingleUse = "scrollsSingleUse";
+            // 1 = every death gives the hero experience (cheat), 0 = only his, his summons' and his party's kills.
+            public const string XpForAnyKill = Gothic.Core.Const.FightConst.XpForAnyKillIniName;
         }
         
         public const string IniSectionAccessibility = "GOTHIC_VR_ACCESSIBILITY";

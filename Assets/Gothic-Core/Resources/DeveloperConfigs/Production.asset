@@ -343,6 +343,7 @@ MonoBehaviour:
   EnableVrChainLightning: 1
   EnablePfxTrailAbsoluteWidth: 1
   EnableScriptHitPointsDeath: 1
+  EnableKillerXpOnly: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

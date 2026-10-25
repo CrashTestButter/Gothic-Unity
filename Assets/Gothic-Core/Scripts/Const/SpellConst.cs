@@ -31,6 +31,14 @@ namespace Gothic.Core.Const
         };
 
         /// <summary>
+        /// DeveloperConfig.EnableWindfistThrow: DAM_FLY spells that throw their victims away.
+        /// </summary>
+        public static readonly HashSet<string> ThrowEffectNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "WindFist", "Stormfist"
+        };
+
+        /// <summary>
         /// Fallback AOE radius (cm) for spells whose targetCollectRange isn't exposed as a standalone
         /// SPL_RANGE_* const (Icewave/Firerain/Massdeath hardcode 1000 directly on their C_Spell_Proto
         /// instance in vanilla Gothic) — used only when no SPL_RANGE_<NAME> symbol is found at runtime.

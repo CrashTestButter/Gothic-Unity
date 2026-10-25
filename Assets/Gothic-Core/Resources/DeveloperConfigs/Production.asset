@@ -326,6 +326,7 @@ MonoBehaviour:
   EnableBodyFxAtGround: 1
   EnableSessionLogFiles: 1
   EnableRuneCircleRequirement: 1
+  EnableWindfistThrow: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

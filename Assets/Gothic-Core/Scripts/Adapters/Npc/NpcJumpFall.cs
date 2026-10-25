@@ -75,6 +75,8 @@ namespace Gothic.Core.Adapters.Npc
         private float _fallVelocityY;
         private float _fallStartFeetY;
         private string _fallAnimName;
+        // DeveloperConfig.EnableWindfistThrow: thrown by a spell - lands lying and gets up.
+        private bool _isThrown;
 
         // Landing / climbing: a sequence of animations played one after another.
         private string[] _sequence;
@@ -213,6 +215,25 @@ namespace Gothic.Core.Adapters.Npc
             Logger.Log($"[NpcJumpFall] {_npc.Go.name} falls (speed {_fallVelocityH.magnitude:F1} m/s).", LogCat.Ai);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableWindfistThrow: Windfist/Stormfist (DAM_FLY, OpenGothic MoveAlgo::accessDamFly) throw the
+        /// NPC away - it flies with the given speed, lands lying (T_FALL_2_FALLEN) and gets up (T_FALLEN_2_STAND).
+        /// Landing lower than it started hurts like any fall (off a ledge into the depth).
+        /// </summary>
+        public bool TryThrow(Vector3 velocityH, float velocityY)
+        {
+            if (!_configService.Dev.EnableNpcJumpAndFall || _state != State.None || !CanMove() || RestHeight <= 0f)
+                return false;
+
+            StartFall(Vector3.zero);
+            _fallVelocityH = velocityH;
+            _fallVelocityY = velocityY;
+            _isThrown = true;
+            Logger.Log($"[NpcJumpFall] {_npc.Go.name} thrown ({velocityH.magnitude:F1} m/s, up {velocityY:F1} m/s).",
+                LogCat.Ai);
+            return true;
+        }
+
         private void TickFall()
         {
             var dt = Time.deltaTime;
@@ -263,7 +284,8 @@ namespace Gothic.Core.Adapters.Npc
         private void Land(float height)
         {
             _npc.PrefabProps.AnimationSystem.StopAnimation(_fallAnimName);
-            var isDeep = height > _deepFallHeight;
+            var isDeep = height > _deepFallHeight || _isThrown;
+            _isThrown = false;
             StartSequence(State.Landing, isDeep
                 ? new[] { "T_FALL_2_FALLEN", "T_FALLEN_2_STAND" }
                 : new[] { "T_FALLDN_2_STAND" });

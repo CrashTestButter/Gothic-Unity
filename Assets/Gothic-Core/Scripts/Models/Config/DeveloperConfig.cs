@@ -1340,6 +1340,10 @@ namespace Gothic.Core.Models.Config
                  "circles are missing. Scrolls have no circle.")]
         public bool EnableRuneCircleRequirement = true;
 
+        [Tooltip("V1: Windfist and Stormfist throw their victims away (DAM_FLY, OpenGothic accessDamFly) - they fly back, " +
+                 "land lying and get up; thrown off a ledge, the fall hurts. Not the hero.")]
+        public bool EnableWindfistThrow = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

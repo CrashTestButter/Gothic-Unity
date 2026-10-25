@@ -361,6 +361,7 @@ namespace Gothic.Core.Services.Npc
                         continue;
 
                     ApplySpellHit(caster, candidate, candidate.Go.transform.position, damage);
+                    TryThrowBack(caster, candidate, mfxName, damage);
                     // DeveloperConfig.EnableSpellBodyFx: the spell's hit effect on everyone it reaches (ice wave: ice).
                     if (_fightConfigService.Dev.EnableSpellBodyFx)
                         _particleService.PlaySpellHitFx(mfxName, candidate);
@@ -369,6 +370,7 @@ namespace Gothic.Core.Services.Npc
             }
 
             ApplySpellHit(caster, target, pos, damage);
+            TryThrowBack(caster, target, mfxName, damage);
 
             if (mfxName != null && SpellConst.SpreadEffectNames.Contains(mfxName))
                 ApplySpreadHit(caster, pos, damage, target);
@@ -450,6 +452,29 @@ namespace Gothic.Core.Services.Npc
             // Not the hero - in VR there's no own body to burn.
             if (damage > 0 && _fightConfigService.Dev.EnableBurning && !target.Vob.Player && IsFireSpell(caster.ActiveSpell))
                 Gothic.Core.Adapters.Npc.NpcBurnEffect.Ignite(target, _vmCacheService, _meshService, _audioService);
+        }
+
+        private const float _throwBaseSpeed = 3f;
+        private const float _throwMaxSpeed = 8f;
+        private const float _throwDamagePerSpeed = 25f;
+        private const float _throwUpSpeed = 3.5f;
+
+        /// <summary>
+        /// DeveloperConfig.EnableWindfistThrow: Windfist and Stormfist (DAM_FLY) throw the living away from the caster -
+        /// the harder the spell, the farther (NpcJumpFall.TryThrow). Not the hero (his body is the player's).
+        /// </summary>
+        private void TryThrowBack(NpcContainer caster, NpcContainer target, string mfxName, int damage)
+        {
+            if (!_configService.Dev.EnableWindfistThrow || mfxName == null || caster?.Go == null || target?.Go == null ||
+                target == caster || (target.PrefabProps != null && target.PrefabProps.IsHero()) ||
+                NpcHelperService.IsDown(target) || !SpellConst.ThrowEffectNames.Contains(mfxName))
+                return;
+
+            var away = Vector3.ProjectOnPlane(target.Go.transform.position - caster.Go.transform.position, Vector3.up);
+            if (away.sqrMagnitude < 0.0001f)
+                away = caster.Go.transform.forward;
+            var speed = Mathf.Clamp(_throwBaseSpeed + damage / _throwDamagePerSpeed, _throwBaseSpeed, _throwMaxSpeed);
+            Gothic.Core.Adapters.Npc.NpcJumpFall.Get(target)?.TryThrow(away.normalized * speed, _throwUpSpeed);
         }
 
         private bool IsFireSpell(int spellId)

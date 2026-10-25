@@ -32,8 +32,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [Inject] private readonly IVrInput _vrInput;
         [Inject] private readonly GameStateService _gameStateService;
 
-        [Header("Rig")]
-        [SerializeField] private XROrigin _origin;
+        [Header("Rig")] [SerializeField] private XROrigin _origin;
         [SerializeField] private CharacterController _characterController;
         [SerializeField] private Camera _camera;
         [SerializeField] private Transform _leftController;
@@ -41,16 +40,18 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         [Header("Grabbing")]
         [Tooltip("Near-Far interactor of the left hand (direct and distance grab, UI).")]
-        [SerializeField] private XriGrabberBridge _leftGrabber;
+        [SerializeField]
+        private XriGrabberBridge _leftGrabber;
 
-        [Tooltip("Near-Far interactor of the right hand (direct and distance grab, UI).")]
-        [SerializeField] private XriGrabberBridge _rightGrabber;
+        [Tooltip("Near-Far interactor of the right hand (direct and distance grab, UI).")] [SerializeField]
+        private XriGrabberBridge _rightGrabber;
 
-        [Tooltip("Fade on the camera, driven by Fade(). WallFade on the camera uses it too.")]
-        [SerializeField] private ScreenFade _screenFade;
+        [Tooltip("Fade on the camera, driven by Fade(). WallFade on the camera uses it too.")] [SerializeField]
+        private ScreenFade _screenFade;
 
-        [Header("Locomotion")]
-        [SerializeField] private ContinuousMoveProvider _moveProvider;
+        [Header("Locomotion")] [SerializeField]
+        private ContinuousMoveProvider _moveProvider;
+
         [SerializeField] private SnapTurnProvider _snapTurnProvider;
         [SerializeField] private ContinuousTurnProvider _continuousTurnProvider;
         [SerializeField] private TeleportationProvider _teleportationProvider;
@@ -58,50 +59,57 @@ namespace Gothic.VR.Interaction.Backends.Xri
         [SerializeField] private JumpProvider _jumpProvider;
 
         [Tooltip("Moves the rig while a hand holds a ClimbInteractable (ladders) and pauses gravity meanwhile.")]
-        [SerializeField] private ClimbProvider _climbProvider;
-        [Header("Teleport")]
-        [Tooltip("Thumbstick teleport (arc + ring). Child of this GameObject.")]
-        [SerializeField] private XriTeleportAimer _teleportAimer;
+        [SerializeField]
+        private ClimbProvider _climbProvider;
 
-        [Header("Movement")]
-        [Tooltip("Walking speed in m/s.")]
-        [SerializeField] private float _moveSpeed = 1.5f;
+        [Header("Teleport")] [Tooltip("Thumbstick teleport (arc + ring). Child of this GameObject.")] [SerializeField]
+        private XriTeleportAimer _teleportAimer;
 
-        [Tooltip("Speed in m/s while sprinting (sprint button, simulator: Left Shift).")]
-        [SerializeField] private float _runSpeed = 3.5f;
+        [Header("Movement")] [Tooltip("Walking speed in m/s.")] [SerializeField]
+        private float _moveSpeed = 1.5f;
 
-        [Tooltip("Thumbstick deflection below which a clicked sprint ends.")]
-        [SerializeField] private float _sprintStopThreshold = 0.1f;
+        [Tooltip("Speed in m/s while sprinting (sprint button, simulator: Left Shift).")] [SerializeField]
+        private float _runSpeed = 3.5f;
 
-        [Tooltip("Gravity acceleration in m/s^2. 0 disables gravity (swimming, diving).")]
-        [SerializeField] private float _gravity = 9.81f;
+        [Tooltip("Thumbstick deflection below which a clicked sprint ends.")] [SerializeField]
+        private float _sprintStopThreshold = 0.1f;
 
-        [Tooltip("Terminal fall speed in m/s.")]
-        [SerializeField] private float _maxFallSpeed = 20f;
+        [Tooltip("Gravity acceleration in m/s^2. 0 disables gravity (swimming, diving).")] [SerializeField]
+        private float _gravity = 9.81f;
 
-        [Tooltip("Keeps the player on the ground when walking downhill or down stairs (like HVR's constant downward push). "
-                 + "XRI's grounded check alone flickers between ground and air there.")]
-        [SerializeField] private bool _snapToGround = true;
+        [Tooltip("Terminal fall speed in m/s.")] [SerializeField]
+        private float _maxFallSpeed = 20f;
+
+        [Tooltip(
+            "Keeps the player on the ground when walking downhill or down stairs (like HVR's constant downward push). "
+            + "XRI's grounded check alone flickers between ground and air there.")]
+        [SerializeField]
+        private bool _snapToGround = true;
 
         [Tooltip("Max. drop in m per frame the player is pulled down to the ground (slopes, stairs). Larger drops "
                  + "(ledges) are real falls. Capped by the CharacterController's step offset.")]
-        [SerializeField] private float _groundSnapDistance = 0.3f;
+        [SerializeField]
+        private float _groundSnapDistance = 0.3f;
 
-        [Tooltip("Time in s the player still counts as grounded after losing ground contact. Hides one-frame flickers.")]
-        [SerializeField] private float _groundedGraceTime = 0.12f;
+        [Tooltip(
+            "Time in s the player still counts as grounded after losing ground contact. Hides one-frame flickers.")]
+        [SerializeField]
+        private float _groundedGraceTime = 0.12f;
 
         [Header("Height")]
         [Tooltip("Eye height of the virtual player in m. Used by the Sitting and Standing comfort settings.")]
-        [SerializeField] private float _eyeHeight = 1.66f;
+        [SerializeField]
+        private float _eyeHeight = 1.66f;
 
-        [Tooltip("Camera height in m while crouching.")]
-        [SerializeField] private float _crouchHeight = 0.7f;
+        [Tooltip("Camera height in m while crouching.")] [SerializeField]
+        private float _crouchHeight = 0.7f;
 
-        [Tooltip("Speed in m/s of the camera moving down/up when crouching starts/ends.")]
-        [SerializeField] private float _crouchSpeed = 1.5f;
+        [Tooltip("Speed in m/s of the camera moving down/up when crouching starts/ends.")] [SerializeField]
+        private float _crouchSpeed = 1.5f;
 
         [Tooltip("Below this HMD height (m), the Standing setting doesn't scale (no headset, not tracked yet).")]
-        [SerializeField] private float _minCalibrationHeight = 0.5f;
+        [SerializeField]
+        private float _minCalibrationHeight = 0.5f;
 
         private XriInput _xriInput;
         private List<IVrGrabber> _handGrabbers;
@@ -122,7 +130,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private Vector3 _teleportPosition;
         private XRBodyTransformer _bodyTransformer;
         private int _collidingLayers;
-        private bool _isJumpAirborne;
+        private bool _isAirborneOnPurpose;
 
         public event Action<Vector3> Teleported;
 
@@ -358,19 +366,21 @@ namespace Gothic.VR.Interaction.Backends.Xri
             if (_isTeleportQueued || _lastTeleportFrame == Time.frameCount)
                 return;
 
-            // From the jump until landing, the player is in the air on purpose.
-            if (_jumpProvider.isJumping)
+            // From the jump or climb until landing, the player is in the air on purpose. Climbing moves the body
+            // through XRI as well, snapping would pull the player back to the floor until the hand moved further
+            // than the snap distance.
+            if (_jumpProvider.isJumping || IsClimbing)
             {
-                _isJumpAirborne = true;
+                _isAirborneOnPurpose = true;
                 return;
             }
 
-            if (_isJumpAirborne)
+            if (_isAirborneOnPurpose)
             {
                 if (!_gravityProvider.isGrounded)
                     return;
 
-                _isJumpAirborne = false;
+                _isAirborneOnPurpose = false;
             }
 
             // Only snap if we were on the ground a moment ago. Otherwise we're falling for real.

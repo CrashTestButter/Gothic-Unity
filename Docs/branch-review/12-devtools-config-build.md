@@ -13,6 +13,7 @@
   - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
   - [Added 2026-10-16](#added-2026-10-16)
   - [Added 2026-10-18](#added-2026-10-18)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
   - [Added 2026-10-23](#added-2026-10-23)
 - [Main files](#main-files)
@@ -89,6 +90,14 @@
 - **Marvin start commands** (`27aa8bf6`, `MarvinStartCommands`): commands from the developer config (';' separated)
   are in Marvin's recent list from the start - one click, not run. Recents dedupe ignoring case.
 
+### Added 2026-10-26
+
+- **Session logs** (`e0bf4c86`): one file per session, `Logs/Gothic-Unity_<date>_<time>.log.txt`, local time
+  on every line, seconds since the start in UTC (daylight saving time ended mid-session once); the Editor writes them
+  too.
+- **Mod game inis in a profile** (`81420dfa`): `ModIni "*"` offers the mod's GothicStarter inis as a second menu.
+- **Laser over the virtual keyboard** (`5b208641`).
+
 ## Key commits
 
 `bb6e7c4d`/`5959c1ad`/`8ea94468`/`aebea3c9`/`5e898826` Marvin · `e26326bb` build · `7c3afb78` project settings ·
@@ -121,6 +130,7 @@
 2026-10-18: `27aa8bf6` Marvin start commands
 
 2026-10-23: `8ed54eb7` Marvin kill · `3d80cb5f` menu scrolling, Death option · `c68c6a94` grab bars
+2026-10-26: `e0bf4c86` session logs · `81420dfa` mod inis in a profile · `5b208641` keyboard laser
 
 ## Main files
 
@@ -140,6 +150,7 @@ section, VR immersion options under `[GOTHIC_VR_ACCESSIBILITY]`) and wasn't foun
 every change added a line (`marvinPanel` 20 times; the loader takes the last one). Written at the end of its own section
 now, stray copies in other VR sections removed. Also `54a6445c`: no warning per touch of a weapon on a non-hitbox
 collider (it flooded the log and lagged).
+2026-10-26: `EnableSessionLogFiles`, `EnableGameProfileIniChoice`, `EnableKeyboardPointerOnTop`
 
 ## Review notes
 
@@ -161,3 +172,4 @@ collider (it flooded the log and lagged).
 - In game: menu, type `marvin`, close - "testmode on" and the Marvin panel; `cheat god`, `goto forward`,
   `insert ITFO_APPLE 3`, `team helpers`. Save: name typed on the keyboard.
 - Set `MarvinStartCommands` to `cheat god; goto forward` - both show in Marvin's recents; clicking one doesn't add a duplicate.
+- Play a session: a new `Logs/Gothic-Unity_<date>_<time>.log.txt` with the time on every line.

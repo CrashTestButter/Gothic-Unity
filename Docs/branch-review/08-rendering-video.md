@@ -14,6 +14,7 @@
   - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
   - [Added 2026-10-15](#added-2026-10-15)
   - [Added 2026-10-13](#added-2026-10-13)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -95,6 +96,13 @@
 - **Rain around the player:** the `Rain` object sat at the world's origin below the player rig's root, which doesn't
   move - it now follows the player's head.
 
+### Added 2026-10-26
+
+- **PFX** (`137b6c72`, `e55b1636`): `visOrientation VELO` faces the camera with its length along the flight
+  (OpenGothic); a missing particle texture draws nothing instead of white squares; trails are `trlWidth` wide (Unity
+  multiplied it by the particle size).
+- **Spell lights** (`0b9d2562`): `LightPresetLoader` + `VisualFxLight` on the pooled stationary lights.
+
 ## Key commits
 
 `4982a263` lights + pool · `d07e1c4d` day/night · `8c4b4f51`/`d4e451c5` particles · `1fb8180a` PFX loops · `bc831b78` square smoke in builds ·
@@ -108,6 +116,7 @@
 `23d763df` texture array mips · `d9963450` mesh cache per texture mode · `45ee344c` light refresh
 
 2026-10-13: `3f9923d1` rain follows the player
+2026-10-26: `137b6c72`/`e55b1636` PFX orientation, missing textures, trail width · `0b9d2562` spell lights
 
 ## Main files
 
@@ -133,6 +142,7 @@ Removed with the 2026-10-22 merge (always on in main / constants): `EnableStatic
 `EnableDynamicVobLights`, `EnableTextureArrayMipFix`, `EnableMeshCachePerTextureMode`
 
 2026-10-13: `EnableRainFollowsPlayer`
+2026-10-26: `EnablePfxVeloFacesCamera`, `EnablePfxMissingTextureHidden`, `EnablePfxTrailAbsoluteWidth`
 
 ## Review notes
 
@@ -161,3 +171,4 @@ Removed with the 2026-10-22 merge (always on in main / constants): `EnableStatic
   stairs as dark as the walls. G1 world: huts and caves lit, not black under roofs.
 - Mroczne Tajemnice abandoned mine: blue/teal light. Siekacz's tavern, catapult, roofs: textured.
 - Immersion "Light refresh" on High: the torch's light follows the hand smoothly.
+- A transformation scroll in the hand: lightning trails, no white squares.

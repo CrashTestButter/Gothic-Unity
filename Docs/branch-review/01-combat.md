@@ -16,6 +16,7 @@
   - [Added 2026-10-18](#added-2026-10-18)
   - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
   - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -234,6 +235,10 @@
   one or one on the blocking hero (sparks and blood together). `FightService` sends `MeleeHitLanded` after the block and
   parry checks - OpenGothic plays the hit effect only for a hit that isn't blocked.
 
+### Added 2026-10-26
+
+- **Windfist/Stormfist throw their victims** (`56681067`) - see [Magic](02-magic.md).
+
 ## Key commits
 
 `ed02071c` NPC melee · `6ebb9d56` draw/sheath · `59e39ebe` combat context + `Npc_GetNextTarget` · `9fa477b4` knockout ·
@@ -266,6 +271,7 @@ archers get around cover
 2026-10-25: `c321ebb6` blocking · `42b42b6d` engine melee damage · `0cc510ad` weapon requirements · `6a8015ba` fitted melee hitboxes · `7542c3d0` ranged knockout
 
 2026-10-25: `167edcf7` blood only on hit · `8118ce45` block by weapon contact
+2026-10-26: `56681067` windfist throw
 
 ## Main files
 
@@ -305,6 +311,7 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
 2026-10-25: `EnableVrHeroBlock`, `EnableEngineMeleeDamage`, `EnableWeaponRequirementCap`, `EnableMeleeFittedColliders`, `EnableRangedKnockoutOption`, `RangedKnockoutByDefault`
 
 2026-10-25: `EnableBloodOnlyOnHit`, `EnableBlockWeaponContact`
+2026-10-26: `EnableWindfistThrow`
 
 ## Review notes
 
@@ -346,3 +353,4 @@ VR: `VRBow.cs`, `VRCrossbow.cs`, `VRRangedService.cs`, `VRWeaponService.cs`
   clashes with sound and sparks and does no damage (log `parries`). The swing trail is pale.
 - G2: a shadowbeast - one swing takes your HP once; hit its head; it doesn't push its head into the camera. A sword
   fighter's full combo: every swing hurts (log `[Combo] ... continues s_1hAttack with part 2/2`).
+- Windfist at a monster: it flies back.

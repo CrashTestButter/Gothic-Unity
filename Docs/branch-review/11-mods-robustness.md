@@ -9,6 +9,7 @@
   - [Added 2026-10-11 – 2026-10-13](#added-2026-10-11--2026-10-13)
   - [Added 2026-10-15](#added-2026-10-15)
   - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -80,6 +81,11 @@ Skazańców) are blocked by native ZenKit gaps or LeGo hooks — out of scope fo
   (the engine before) took PC_Rockefeller's armor off at the start. `NpcInventoryService.ItemFunctionOwner` +
   `AI_UnequipArmor`: an NPC's item function can't undress the hero.
 
+### Added 2026-10-26
+
+- **Mroczne Tajemnice** (`6ed57fb8`, `81420dfa`): the lurker scroll works (the script passes `BLACKDRAGON`
+  without a visual); the profile offers easy / normal / hard (`DM_E`/`DM_N`/`DM_T.INI`).
+
 ## Key commits
 
 `5eb534aa`/`fca4712c` mod loading · `75287b0e` OU.BIN · `803816ee` extended classes · `1107c651` language ·
@@ -96,6 +102,7 @@ items as NPC parameters
 2026-10-18: `6cc8e641` ZEN mesh chunk lengths · `77bb432a` item instances by symbol
 
 2026-10-25: `186898ea` MT: Rockefeller keeps his armor
+2026-10-26: `6ed57fb8` MT lurker scroll · `81420dfa` MT difficulty inis
 
 ## Main files
 
@@ -117,6 +124,7 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 2026-10-18: `EnableZenChunkLengthFix`, `EnableItemDataBySymbol`
 
 2026-10-25: `EnableNpcItemsSpareHeroArmor`
+2026-10-26: `EnableTransformFallbackInstance`, `EnableGameProfileIniChoice`
 
 ## Review notes
 
@@ -138,3 +146,4 @@ menu adapters · `Assets/StreamingAssets/GameSettings.json`
 - A mod without an extracted `OU.BIN` under `VDFS/`: subtitles show (log: "Subtitles OU.BIN read from the archives").
 - Gothic II Renovation (2026, fresh install, own profile): pre-caching passes Dragon Island (log: "has wrong chunk
   lengths - fixed: chunk 0xB020 length 75890 -> 76067"), a new game loads, Alrik wears his rags.
+- MT: the profile asks for the difficulty; the lurker scroll turns you into a lurker.

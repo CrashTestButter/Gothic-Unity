@@ -17,6 +17,7 @@
   - [Added 2026-10-24](#added-2026-10-24)
   - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
   - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -122,6 +123,26 @@
   `VRFavoritesRingSpell`; spells work as before. Weapons, items and money in it: see
   [Inventory](06-inventory-trade-loot.md).
 
+### Added 2026-10-26
+
+- **One press casts** (`b04baf3f`): the press aims and starts charging, the release asks
+  `Spell_ProcessMana_Release` (was: aim press, charge press, fire press).
+- **Magic circles** (`e3ed2cad`): `C_ITEM.mag_circle` vs `NPC_TALENT_MAGE`; too high = not cast nor equipped,
+  `G_CanNotCast` says how many circles are missing.
+- **Single-use scrolls** (`5bc6c82b`): `ITEM_MULTI` spell items are used up by their cast (Immersion option).
+- **G1 chain lightning** (`956f1711`, `VRChainLightning`): charges one `time_per_mana`, zaps the NPC in front, jumps
+  every 3 invest levels, back to the hero with nobody left; `ZS_Zapped` does the damage, the release sends
+  `PERC_ASSESSSTOPMAGIC`.
+- **Windfist/Stormfist throw** (`56681067`): `DAM_FLY` victims fly back and land lying (`NpcJumpFall.TryThrow`).
+- **Spell lights and earthquake** (`0b9d2562`): VISUALFX `lightPresetName` from `LIGHTPRESETS.ZEN` as pooled stationary
+  lights, the invest keys' `LightRange`, `FX_EarthQuake` rumbles the controllers; body effects with a downward offset
+  sit on the ground.
+- **Effects in hand and ring** (`137b6c72`, `e55b1636`): Gothic's own particle motion and emission (they were forced
+  to 0-0.05 m/s at 50/s), the ring fits them into the slot; chain lightning shows its `emFXCreate` effect.
+- **Transformations** (`b3eaf7cb`, `a5bc8d57`, `6ed57fb8`, `5e7bbfc0`): the player's speed times the monster's run
+  root motion; a monster without a visual keeps the scroll / falls back to `SPL_TRF_<X>` -> instance `<X>` (MT's lurker
+  scroll passes `BLACKDRAGON`); a ring spell replaces the one in the hand (two casters cast at once).
+
 ## Key commits
 
 `eaba6cf6` casting overhaul · `d8e51ea3` NPC casters · `65a4ed33` casts complete · `942032bc` summons ·
@@ -143,6 +164,7 @@ sleep/freeze on the hero
 2026-10-25: `42b42b6d` spell damage types
 
 2026-10-25: `ceeee724` favorites ring
+2026-10-26: `b04baf3f` one press casts · `e3ed2cad` magic circles · `5bc6c82b` single-use scrolls · `956f1711` chain lightning · `56681067` windfist throw · `0b9d2562` spell lights · `137b6c72`/`e55b1636` effects in hand and ring · `b3eaf7cb`/`a5bc8d57`/`6ed57fb8`/`5e7bbfc0` transformations
 
 ## Main files
 
@@ -166,6 +188,7 @@ sleep/freeze on the hero
 2026-10-24: `EnableVrSpellRing`
 
 2026-10-25: `EnableVrSpellRing` (Immersion option renamed "Favorites ring", ini `spellRing`)
+2026-10-26: `EnableSpellHoldToCast`, `EnableRuneCircleRequirement`, `EnableScrollUseOption`, `EnableVrChainLightning`, `EnableWindfistThrow`, `EnableVisualFxLights`, `EnableVisualFxEarthquake`, `EnableBodyFxAtGround`, `EnableSpellEffectGothicMotion`, `EnableTransformMonsterSpeed`, `EnableTransformCancelKeepsScroll`, `EnableTransformFallbackInstance`, `EnableRingSpellReplacesHandSpell`
 
 ## Review notes
 
@@ -193,3 +216,9 @@ sleep/freeze on the hero
 - Throw a fireball hard at an NPC: it flies fast and homes. Throw softly: it arcs into the ground. Open the hand without
   a swing: the fireball drops in front of you.
 - Mroczne Tajemnice crawler / G2 fire mage: step aside when the spell flies at you - it misses and fades behind you.
+- Hold the trigger with a fireball: it charges at once; let go early - a weaker fireball.
+- G1 with circle 0: a circle-2 rune doesn't cast, the message says 2 circles are missing.
+- Chain lightning at two NPCs: the first is zapped after ~1 s, the lightning jumps after ~2 s; alone it turns on you.
+- Windfist at a scavenger: it flies back, lands lying, gets up.
+- Summon a demon: red glow around you, the controllers rumble.
+- MT: lurker scroll -> lurker; wolf scroll -> you run faster.

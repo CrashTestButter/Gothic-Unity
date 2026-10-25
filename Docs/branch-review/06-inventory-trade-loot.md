@@ -12,6 +12,7 @@
   - [Added 2026-10-25](#added-2026-10-25)
   - [Added 2026-10-25 (afternoon)](#added-2026-10-25-afternoon)
   - [Added 2026-10-25 (evening)](#added-2026-10-25-evening)
+  - [Added 2026-10-26](#added-2026-10-26)
 - [Key commits](#key-commits)
 - [Main files](#main-files)
 - [Config flags](#config-flags)
@@ -106,6 +107,12 @@
   Mroczne Tajemnice's PC_Rockefeller had his warhammer equipped but not in the inventory. Loading a save clears the
   hero's inventory first, nothing doubles.
 
+### Added 2026-10-26
+
+- **The favorites ring around the player** (`17faa5dd`): at eye level, 2.2x, the head selects the slot; a
+  carousel turned by the hand around the player (spins on, a trigger press stops it), the right stick zooms it; runes
+  stand upright, the front spell's effect after 1 s over its half transparent rune.
+
 ## Key commits
 
 `ac3defb3` trade · `27877a13`/`f69422b5` stack split · `dbf74e14`/`0f5feebe`/`56596cc5`/`934b0305` loot backpack ·
@@ -122,6 +129,7 @@
 2026-10-25: `cdb58a50` equip from the backpack · `4a199637` pickpocketing menu fix
 
 2026-10-25: `ceeee724` favorites ring · `d644e599` ring weapon back into the backpack · `71c4d8dc` EquipItem gives the item
+2026-10-26: `17faa5dd` ring around the player
 
 ## Main files
 
@@ -148,6 +156,7 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 2026-10-25: `EnableBackpackEquipToggle`
 
 2026-10-25: `EnableRingWeaponSlots`, `EnableRingItemSlots`, `EnableRingWeaponLeavesOnDrop`, `EnableEquipItemCreatesItem`
+2026-10-26: `EnableRingAroundPlayer`, `EnableRingSpellPreviewAlpha`, `EnableRingFreeSpin`, `EnableRingZoom`
 
 ## Review notes
 
@@ -165,3 +174,4 @@ Core: `Services/Trade/TradeService.cs`, `Domain/Trade/TradePricing.cs`, `Models/
 
 - Kill an NPC, open his loot: the green X takes everything; a knocked out NPC and a trader have no X.
 - G1/MT: get knocked out by a guard - he says he took your ore, half of it is gone.
+- Open the ring: it's around you; turn it with a hand and let go - it spins, a trigger press stops it.

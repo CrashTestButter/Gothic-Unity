@@ -12,6 +12,8 @@ Link), not on Quest/Pico standalone.
 ## Contents
 
 - [In testing (not in the build yet)](#in-testing-not-in-the-build-yet)
+- [The ring around you, spells like in Gothic · 2026-10-26](#the-ring-around-you-spells-like-in-gothic--2026-10-26)
+  - [The ring around you, magic circles, chain lightning, spell effects · 2026-10-26 (night)](#the-ring-around-you-magic-circles-chain-lightning-spell-effects--2026-10-26-night)
 - [Favorites ring, blocking, dying · 2026-10-23 – 2026-10-25](#favorites-ring-blocking-dying--2026-10-23--2026-10-25)
   - [The favorites ring, blocking with the weapon, grabbing at the grip · 2026-10-25 (evening)](#the-favorites-ring-blocking-with-the-weapon-grabbing-at-the-grip--2026-10-25-evening)
   - [Blocking, Gothic's damage, weapon requirements · 2026-10-25 (afternoon)](#blocking-gothics-damage-weapon-requirements--2026-10-25-afternoon)
@@ -55,8 +57,34 @@ Link), not on Quest/Pico standalone.
 
 - The backpack vacuum takes a dropped rune again.
 - A light flick throws a spell weakly, only a real swing throws it hard.
-- Windfist and Stormfist throw their victims away; G1 chain lightning jumps from victim to victim; bows and crossbows
-  hit critically by their talent (G1); fire rain finishes those already down.
+- Bows and crossbows hit critically by their talent (G1).
+- Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR).
+- Summons that weaken over time (G1) die at 0 hit points instead of standing on.
+
+## The ring around you, spells like in Gothic · 2026-10-26
+
+### The ring around you, magic circles, chain lightning, spell effects · 2026-10-26 (night)
+
+- The favorites ring opens around you at eye level: look at a slot to select it (its name always shows), turn it with
+  your hand like a carousel - let go and it spins on, a trigger press stops it. The right stick makes it bigger or
+  smaller. Runes and scrolls stand upright, a spell's effect shows after a second without hiding its rune.
+- One press casts: hold to charge, let go early and Gothic's rule decides (a fireball goes off, the rest stops) - no
+  more "aim" press first.
+- Magic circles like in Gothic: a rune of a higher circle than yours can't be cast nor put into the ring, the game says
+  how many circles you're missing.
+- Scrolls are single-use like in Gothic (Immersion option "Single-use scrolls", on by default).
+- G1 chain lightning: hold it - it zaps the one in front of you, jumps on to the next every few seconds, and with nobody
+  left it turns back on you.
+- Windfist and Stormfist throw their victims away; they land lying and get up.
+- Spell effects light up the world (summoning glows red around you, fire rain lights the area) and the summoning's
+  earthquake rumbles the controllers. Effects in your hand and in the ring move like in Gothic: summoning glows,
+  transformation scrolls crackle, chain lightning and the fire storm show theirs.
+- Transformed you run as fast as the monster (a wolf faster than you, a meatbug slower). Mroczne Tajemnice's lurker
+  scroll turns you into a lurker (the mod's script is broken); a transformation that can't happen keeps its scroll.
+- A spell taken from the ring replaces the one in that hand - transforming back no longer ate the scrolls.
+- A game profile can offer the mod's modes: Mroczne Tajemnice asks easy / normal / hard, saves stay per mode.
+- Every game session writes its own log with the local time on every line (stream chapters, bug reports).
+- The laser is drawn over the virtual keyboard.
 
 ## Favorites ring, blocking, dying · 2026-10-23 – 2026-10-25
 

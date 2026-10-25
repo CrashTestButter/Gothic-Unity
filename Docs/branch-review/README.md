@@ -6,12 +6,12 @@ before pushing. Goal: make Gothic 1 and Gothic 2 completable in VR — a "game c
 | | |
 |---|---|
 | Compared against | `main` at `084e5e95` (PR #401, merged into the branch - [merge notes](merge-2026-10-22.md)) |
-| Commits | 515 on the branch that `main` doesn't have |
-| Files | 381 changed (214 added, 167 modified), +41,300 / −960 lines |
-| C# | 244 files (92 new) |
+| Commits | 533 on the branch that `main` doesn't have |
+| Files | 394 changed (224 added, 170 modified), +43,760 / −1,000 lines |
+| C# | 250 files (97 new) |
 | Period | 2026-06-14 → 2026-10-13 |
 | Tested on | PCVR, G1 (vanilla + Mroczne Tajemnice mod), G2 NotR (played to the end: Irdorath, undead dragon, ending). **Not** built or tested: Quest/Pico, Flat mode |
-| Docs up to | `6c941ebb` (2026-10-25) - see the [changelog](CHANGELOG.md) for what changed since |
+| Docs up to | `e55b1636` (2026-10-26) - see the [changelog](CHANGELOG.md) for what changed since |
 
 <!-- toc -->
 ## Contents

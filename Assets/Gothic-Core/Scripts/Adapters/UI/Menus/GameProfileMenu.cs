@@ -23,6 +23,9 @@ namespace Gothic.Core.Adapters.UI.Menus
         private const string _fontPath = "Fonts & Materials/LiberationSans SDF";
 
         private const string _backLabel = "< Back";
+        // DeveloperConfig.EnableProfileMenuTextFit: the smallest font a long title shrinks to, its side margin.
+        private const float _minFontSize = 16f;
+        private const float _textMargin = 10f;
 
         private Action<JsonGameProfile> _onSelected;
         private Action _onBack;
@@ -149,6 +152,18 @@ namespace Gothic.Core.Adapters.UI.Menus
             text.alignment = TextAlignmentOptions.Center;
             text.color = Color.white;
             text.raycastTarget = false;
+
+            // DeveloperConfig.EnableProfileMenuTextFit: a long title (a mod's ini: "Gothic: Mroczne Tajemnice (Poziom
+            // łatwy, Rockefeller) (DM_E_Rockefeller.INI)") wrapped into three lines and ran over the next button -
+            // it shrinks to fit the button instead.
+            if (ReflexProjectInstaller.DIContainer?.Resolve<Services.Config.ConfigService>()?.Dev?
+                    .EnableProfileMenuTextFit == true)
+            {
+                text.enableAutoSizing = true;
+                text.fontSizeMax = fontSize;
+                text.fontSizeMin = _minFontSize;
+                text.margin = new Vector4(_textMargin, 0f, _textMargin, 0f);
+            }
         }
     }
 }

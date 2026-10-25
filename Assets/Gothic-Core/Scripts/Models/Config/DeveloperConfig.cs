@@ -1437,6 +1437,10 @@ namespace Gothic.Core.Models.Config
                  "afterwards took the new \"+5\" away.")]
         public bool EnableChoiceRemovedBeforeCall = true;
 
+        [Tooltip("V1: The game profile menu's titles shrink to fit their button (16-34 pt) - a mod ini's long title " +
+                 "wrapped into three lines over the next button.")]
+        public bool EnableProfileMenuTextFit = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

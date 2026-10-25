@@ -574,6 +574,8 @@ namespace Gothic.Core.Services.Npc
             var damage = weapon.DamageTotal;
             if (_contextGameVersionService.IsGothic2())
                 damage += shooter.Vob.GetAttribute((int)NpcAttribute.Dexterity);
+            else if (_configService.Dev.EnableRangedCriticalHits)
+                damage = ApplyRangedCriticalHit(shooter, weapon, damage);
             damage = Mathf.RoundToInt(damage * Mathf.Clamp01(damageScale));
 
             var protectionIndex = GetProtectionIndex(weapon.DamageType);
@@ -1660,6 +1662,29 @@ namespace Gothic.Core.Services.Npc
                        $"strength {strength}, {rollResult} (roll {roll}) = {damage}{(isImmune ? " (immune)" : "")}",
                 LogCat.Fight);
             return damage;
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableRangedCriticalHits: G1 (OpenGothic Npc::shootBow + DamageCalculator::rangeDamage) - the
+        /// bow/crossbow talent value is the chance of a critical hit (damage x DAM_CRITICAL_MULTIPLIER); dexterity is
+        /// the hit chance, which a VR projectile doesn't need (it physically hit). G2 has no ranged critical hits: its
+        /// hitchance[bow/crossbow] is the hit chance, dexterity adds to the damage.
+        /// </summary>
+        private int ApplyRangedCriticalHit(NpcContainer shooter, ItemInstance weapon, int damage)
+        {
+            var vm = _gameStateService.GothicVm;
+            var isCrossbow = ((VmGothicEnums.ItemFlags)weapon.Flags & VmGothicEnums.ItemFlags.ItemCrossbow) != 0;
+            var talentId = vm.GetSymbolByName(isCrossbow ? "NPC_TALENT_CROSSBOW" : "NPC_TALENT_BOW")?.GetInt(0) ??
+                           (isCrossbow ? 4 : 3);
+            var chance = _npcHelperService.ExtNpcGetTalentValue(shooter.Instance, talentId);
+            var roll = Random.Range(0, 100);
+            if (chance <= roll)
+                return damage;
+
+            var multiplier = vm.GetSymbolByName("DAM_CRITICAL_MULTIPLIER")?.GetInt(0) ?? 2;
+            Logger.Log($"[FightService.RangedHit] {shooter.Instance.GetName(NpcNameSlot.Slot0)}: CRITICAL " +
+                       $"({chance} % > roll {roll}) - {damage} x {multiplier}", LogCat.Fight);
+            return damage * multiplier;
         }
 
         /// <summary>

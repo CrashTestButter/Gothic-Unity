@@ -1422,6 +1422,10 @@ namespace Gothic.Core.Models.Config
                  "death\" (ini xpForAnyKill, off by default) brings that back as a cheat.")]
         public bool EnableKillerXpOnly = true;
 
+        [Tooltip("V1: G1 critical hits for bows and crossbows (OpenGothic): the bow/crossbow talent value is the chance, " +
+                 "the damage is multiplied by DAM_CRITICAL_MULTIPLIER. G2 has none (its hit chance is the talent).")]
+        public bool EnableRangedCriticalHits = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

@@ -12,38 +12,43 @@ Link), not on Quest/Pico standalone.
 ## Contents
 
 - [In testing (not in the build yet)](#in-testing-not-in-the-build-yet)
-- [2026-10-25 (evening): the favorites ring, blocking with the weapon, grabbing at the grip](#2026-10-25-evening-the-favorites-ring-blocking-with-the-weapon-grabbing-at-the-grip)
-- [2026-10-25 (afternoon): blocking, Gothic's damage, weapon requirements](#2026-10-25-afternoon-blocking-gothics-damage-weapon-requirements)
-- [2026-10-25: pickpocketing (G1)](#2026-10-25-pickpocketing-g1)
-- [2026-10-24 (night): whirl around, sneaking](#2026-10-24-night-whirl-around-sneaking)
-- [2026-10-24 (evening): the spell ring](#2026-10-24-evening-the-spell-ring)
-- [2026-10-24: the dead stay down](#2026-10-24-the-dead-stay-down)
-- [2026-10-23: you can die](#2026-10-23-you-can-die)
-- [2026-10-22 (late evening): NPC faces](#2026-10-22-late-evening-npc-faces)
-- [2026-10-22 (evening): NPC archers shoot real arrows](#2026-10-22-evening-npc-archers-shoot-real-arrows)
-- [2026-10-22: main merged - lighting and videos](#2026-10-22-main-merged---lighting-and-videos)
-- [2026-10-18 (late night): plundering, dialogs, menu pointer](#2026-10-18-late-night-plundering-dialogs-menu-pointer)
-- [2026-10-18 (night): one swing, one hit; big monsters](#2026-10-18-night-one-swing-one-hit-big-monsters)
-- [2026-10-18 (evening): main merged - world objects](#2026-10-18-evening-main-merged---world-objects)
-- [2026-10-18 (afternoon): NPCs parry, beaten NPCs](#2026-10-18-afternoon-npcs-parry-beaten-npcs)
-- [2026-10-18: Gothic II Renovation (2026) starts](#2026-10-18-gothic-ii-renovation-2026-starts)
-- [2026-10-17 (midnight): main merged, knocked out NPCs, anvils](#2026-10-17-midnight-main-merged-knocked-out-npcs-anvils)
-- [2026-10-17 (night): dialogs that end in a fight, items moved by hand](#2026-10-17-night-dialogs-that-end-in-a-fight-items-moved-by-hand)
-- [2026-10-17 (late): new game at the start, NPCs on scaffolds](#2026-10-17-late-new-game-at-the-start-npcs-on-scaffolds)
-- [2026-10-17 (evening): miners dig](#2026-10-17-evening-miners-dig)
-- [2026-10-17: items, chests and loot are saved](#2026-10-17-items-chests-and-loot-are-saved)
-- [2026-10-16 (late): Sheer'Ghar's duel, mod subtitles without VDFS](#2026-10-16-late-sheerghars-duel-mod-subtitles-without-vdfs)
-- [2026-10-16 (night): main merged - Marvin console, Marvin mode for everyone](#2026-10-16-night-main-merged---marvin-console-marvin-mode-for-everyone)
-- [2026-10-16: Mroczne Tajemnice's ancient temple and the Ancients](#2026-10-16-mroczne-tajemnices-ancient-temple-and-the-ancients)
-- [2026-10-15 (evening): dodge spells, skin colored hands, no crash by Fellan's armor](#2026-10-15-evening-dodge-spells-skin-colored-hands-no-crash-by-fellans-armor)
-- [2026-10-15: caves and mines like in Gothic, Mroczne Tajemnice textures and crawlers](#2026-10-15-caves-and-mines-like-in-gothic-mroczne-tajemnice-textures-and-crawlers)
-- [2026-10-13 (night): visible NPC spells, sleep on you, save names, menu zoom](#2026-10-13-night-visible-npc-spells-sleep-on-you-save-names-menu-zoom)
-- [2026-10-13 (evening): thrown spells like a ball, fists you hear, Marvin teams](#2026-10-13-evening-thrown-spells-like-a-ball-fists-you-hear-marvin-teams)
-- [2026-10-13: harmless spells stay harmless, guides wait](#2026-10-13-harmless-spells-stay-harmless-guides-wait)
-- [2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more](#2026-10-12-smithing-bookstands-vr-fists-music-zones-saves-keep-more)
-- [2026-10-11: G2 can be finished, movers survive saves](#2026-10-11-g2-can-be-finished-movers-survive-saves)
-- [2026-10-10: NPCs sense and chase like in Gothic, fire, hit numbers](#2026-10-10-npcs-sense-and-chase-like-in-gothic-fire-hit-numbers)
-- [Up to 2026-10-09: the base](#up-to-2026-10-09-the-base)
+- [Favorites ring, blocking, dying · 2026-10-23 – 2026-10-25](#favorites-ring-blocking-dying--2026-10-23--2026-10-25)
+  - [The favorites ring, blocking with the weapon, grabbing at the grip · 2026-10-25 (evening)](#the-favorites-ring-blocking-with-the-weapon-grabbing-at-the-grip--2026-10-25-evening)
+  - [Blocking, Gothic's damage, weapon requirements · 2026-10-25 (afternoon)](#blocking-gothics-damage-weapon-requirements--2026-10-25-afternoon)
+  - [Pickpocketing (G1) · 2026-10-25](#pickpocketing-g1--2026-10-25)
+  - [Whirl around, sneaking · 2026-10-24 (night)](#whirl-around-sneaking--2026-10-24-night)
+  - [The spell ring · 2026-10-24 (evening)](#the-spell-ring--2026-10-24-evening)
+  - [The dead stay down · 2026-10-24](#the-dead-stay-down--2026-10-24)
+  - [You can die · 2026-10-23](#you-can-die--2026-10-23)
+- [Archers, faces, lighting · 2026-10-22](#archers-faces-lighting--2026-10-22)
+  - [NPC faces · 2026-10-22 (late evening)](#npc-faces--2026-10-22-late-evening)
+  - [NPC archers shoot real arrows · 2026-10-22 (evening)](#npc-archers-shoot-real-arrows--2026-10-22-evening)
+  - [Main merged - lighting and videos · 2026-10-22](#main-merged---lighting-and-videos--2026-10-22)
+- [Saves, NPC fights, Renovation · 2026-10-16 – 2026-10-18](#saves-npc-fights-renovation--2026-10-16--2026-10-18)
+  - [Plundering, dialogs, menu pointer · 2026-10-18 (late night)](#plundering-dialogs-menu-pointer--2026-10-18-late-night)
+  - [One swing, one hit; big monsters · 2026-10-18 (night)](#one-swing-one-hit-big-monsters--2026-10-18-night)
+  - [Main merged - world objects · 2026-10-18 (evening)](#main-merged---world-objects--2026-10-18-evening)
+  - [NPCs parry, beaten NPCs · 2026-10-18 (afternoon)](#npcs-parry-beaten-npcs--2026-10-18-afternoon)
+  - [Gothic II Renovation (2026) starts · 2026-10-18](#gothic-ii-renovation-2026-starts--2026-10-18)
+  - [Main merged, knocked out NPCs, anvils · 2026-10-17 (midnight)](#main-merged-knocked-out-npcs-anvils--2026-10-17-midnight)
+  - [Dialogs that end in a fight, items moved by hand · 2026-10-17 (night)](#dialogs-that-end-in-a-fight-items-moved-by-hand--2026-10-17-night)
+  - [New game at the start, NPCs on scaffolds · 2026-10-17 (late)](#new-game-at-the-start-npcs-on-scaffolds--2026-10-17-late)
+  - [Miners dig · 2026-10-17 (evening)](#miners-dig--2026-10-17-evening)
+  - [Items, chests and loot are saved · 2026-10-17](#items-chests-and-loot-are-saved--2026-10-17)
+  - [Sheer'Ghar's duel, mod subtitles without VDFS · 2026-10-16 (late)](#sheerghars-duel-mod-subtitles-without-vdfs--2026-10-16-late)
+  - [Main merged - Marvin console, Marvin mode for everyone · 2026-10-16 (night)](#main-merged---marvin-console-marvin-mode-for-everyone--2026-10-16-night)
+  - [Mroczne Tajemnice's ancient temple and the Ancients · 2026-10-16](#mroczne-tajemnices-ancient-temple-and-the-ancients--2026-10-16)
+- [Caves, spells you see, smithing · 2026-10-12 – 2026-10-15](#caves-spells-you-see-smithing--2026-10-12--2026-10-15)
+  - [Dodge spells, skin colored hands, no crash by Fellan's armor · 2026-10-15 (evening)](#dodge-spells-skin-colored-hands-no-crash-by-fellans-armor--2026-10-15-evening)
+  - [Caves and mines like in Gothic, Mroczne Tajemnice textures and crawlers · 2026-10-15](#caves-and-mines-like-in-gothic-mroczne-tajemnice-textures-and-crawlers--2026-10-15)
+  - [Visible NPC spells, sleep on you, save names, menu zoom · 2026-10-13 (night)](#visible-npc-spells-sleep-on-you-save-names-menu-zoom--2026-10-13-night)
+  - [Thrown spells like a ball, fists you hear, Marvin teams · 2026-10-13 (evening)](#thrown-spells-like-a-ball-fists-you-hear-marvin-teams--2026-10-13-evening)
+  - [Harmless spells stay harmless, guides wait · 2026-10-13](#harmless-spells-stay-harmless-guides-wait--2026-10-13)
+  - [Smithing, bookstands, VR fists, music zones, saves keep more · 2026-10-12](#smithing-bookstands-vr-fists-music-zones-saves-keep-more--2026-10-12)
+- [Gothic 2 to the end, NPCs that sense · 2026-10-10 – 2026-10-11](#gothic-2-to-the-end-npcs-that-sense--2026-10-10--2026-10-11)
+  - [G2 can be finished, movers survive saves · 2026-10-11](#g2-can-be-finished-movers-survive-saves--2026-10-11)
+  - [NPCs sense and chase like in Gothic, fire, hit numbers · 2026-10-10](#npcs-sense-and-chase-like-in-gothic-fire-hit-numbers--2026-10-10)
+- [The base · up to 2026-10-09](#the-base--up-to-2026-10-09)
 <!-- /toc -->
 
 ## In testing (not in the build yet)
@@ -53,7 +58,9 @@ Link), not on Quest/Pico standalone.
 - Windfist and Stormfist throw their victims away; G1 chain lightning jumps from victim to victim; bows and crossbows
   hit critically by their talent (G1); fire rain finishes those already down.
 
-## 2026-10-25 (evening): the favorites ring, blocking with the weapon, grabbing at the grip
+## Favorites ring, blocking, dying · 2026-10-23 – 2026-10-25
+
+### The favorites ring, blocking with the weapon, grabbing at the grip · 2026-10-25 (evening)
 
 - The spell ring is now the favorites ring: besides up to 8 spells it holds your equipped melee weapon and bow or
   crossbow, up to 3 favorite items (a torch, a key, potions, food) and your ore (G1) or gold (G2). Grab a weapon or item
@@ -69,7 +76,7 @@ Link), not on Quest/Pico standalone.
 - Items you hold pass through your backpack (and NPCs' loot backpacks and the items in them) instead of pushing it.
 - Mroczne Tajemnice: Rockefeller's warhammer is really in his inventory (it was equipped but nowhere to be found).
 
-## 2026-10-25 (afternoon): blocking, Gothic's damage, weapon requirements
+### Blocking, Gothic's damage, weapon requirements · 2026-10-25 (afternoon)
 
 - Block like Gothic's parry: both hands on your weapon (one- or two-handed) and both triggers held. Hits from the front
   clash off with sparks; from the side or back, animals, spells and arrows still hit. While blocking you don't hit.
@@ -86,7 +93,7 @@ Link), not on Quest/Pico standalone.
 - Put on armor, amulets and rings with a trigger click in the backpack; the save keyboard has a Clear key.
 - Mroczne Tajemnice: Rockefeller starts in his armor (NPCs with helmets took it off him).
 
-## 2026-10-25: pickpocketing (G1)
+### Pickpocketing (G1) · 2026-10-25
 
 - Learn pickpocketing (Fingers), sneak up behind someone: a glowing purse hangs on his right hip. Grab it and his
   pockets open as a backpack in your hand - take what you want with the other hand.
@@ -94,7 +101,7 @@ Link), not on Quest/Pico standalone.
   backpack is gone and he comes after you. Anyone else who sees it shouts "Behind you!".
 - In G2 pickpocketing stays in the dialogs, like the original.
 
-## 2026-10-24 (night): whirl around, sneaking
+### Whirl around, sneaking · 2026-10-24 (night)
 
 - Draw a weapon behind an NPC's back and he jumps around startled before he draws his own (Ghorri drew his sword with
   his back to you and only turned afterwards).
@@ -102,7 +109,7 @@ Link), not on Quest/Pico standalone.
   game), sneaking up was pointless. Seeing you or hearing your steps still works.
 - Sprinting while sneaking is half as fast.
 
-## 2026-10-24 (evening): the spell ring
+### The spell ring · 2026-10-24 (evening)
 
 - Gothic's spell selection in VR: raise both empty hands above your head and hold both triggers for a second - your
   equipped spells (up to 8) circle in front of you. Turn the circle with the trigger, grab a spell: your hand holds the
@@ -110,7 +117,7 @@ Link), not on Quest/Pico standalone.
 - Equip a spell by holding its rune or scroll into the empty slot of the circle; a trigger click on a spell unequips it.
   Immersion option "Spell ring".
 
-## 2026-10-24: the dead stay down
+### The dead stay down · 2026-10-24
 
 - Dead NPCs and monsters stay where they died and keep lying there when you come back (they stood up into a T-pose with
   their legs in the ground), and show 0 HP.
@@ -123,7 +130,7 @@ Link), not on Quest/Pico standalone.
   it back until it clicks; a cocked crossbow shows its bolt. Out of a holster or the backpack it's cocked. Immersion
   option "Crossbow" off: it reloads by itself.
 
-## 2026-10-23: you can die
+### You can die · 2026-10-23
 
 - An enemy who knocks you out walks up and finishes you off like in Gothic - you die with the hero's death scream.
   Knocked out, you fall on your back and stand up again; the view goes down and up with your body, but you can always
@@ -139,12 +146,14 @@ Link), not on Quest/Pico standalone.
 - The Marvin panel (with its keyboard) and the save name keyboard have a grab bar like SteamVR's windows: grab it with
   your hand and put them where you like. Put the Marvin panel back into the sphere above your left hand to dock it.
 
-## 2026-10-22 (late evening): NPC faces
+## Archers, faces, lighting · 2026-10-22
+
+### NPC faces · 2026-10-22 (late evening)
 
 - NPCs move their mouth while talking, blink, and show moods from the scripts: friendly in a talk, angry in a fight,
   frightened when fleeing, a pained face when hit.
 
-## 2026-10-22 (evening): NPC archers shoot real arrows
+### NPC archers shoot real arrows · 2026-10-22 (evening)
 
 - NPC archers shoot real arrows and bolts: they fly in an arc and hit whatever is in the way, so you can dodge them or
   hide behind a pillar. A miss flies past you. Arrows and bolts leave a short streak (yours too).
@@ -154,13 +163,15 @@ Link), not on Quest/Pico standalone.
   two tries runs closer (he stood still behind the pillar, or shook forward in place).
 - An NPC fighting a monster that circles him (Ratford and a scavenger) attacks instead of turning forever.
 
-## 2026-10-22: main merged - lighting and videos
+### Main merged - lighting and videos · 2026-10-22
 
 - `main`'s lighting (PR #400) and Bink videos (PR #401) are in. Caves, houses and the night look as before; the
   video cinema, its skip label and the return to the menu after the ending still work.
 - Known: in mines the VR hands are black (indoor darkness + hand lighting) - left as is, HVR is about to be replaced.
 
-## 2026-10-18 (late night): plundering, dialogs, menu pointer
+## Saves, NPC fights, Renovation · 2026-10-16 – 2026-10-18
+
+### Plundering, dialogs, menu pointer · 2026-10-18 (late night)
 
 - A guard who knocked you out takes half your ore (he said you had none).
 - An NPC who draws his sword mid-dialog (Lukis, Rust) keeps the dialog until his last line: you can't walk off and can
@@ -168,7 +179,7 @@ Link), not on Quest/Pico standalone.
 - The red pointer line shows on the in-game menu.
 - Marvin: your usual commands (e.g. `cheat god`) can be preset in the developer config.
 
-## 2026-10-18 (night): one swing, one hit; big monsters
+### One swing, one hit; big monsters · 2026-10-18 (night)
 
 - An NPC's swing hits once: a shadowbeast took your HP 2-3 times in one swing.
 - Sword combos like in Gothic: every swing of a combo deals damage (before only the first did), a single attack stops
@@ -176,14 +187,14 @@ Link), not on Quest/Pico standalone.
 - Big monsters and orcs: the shadowbeast's head and front can be hit (only its hind half could), its head and an orc
   leaning into his swing no longer go into the camera.
 
-## 2026-10-18 (evening): main merged - world objects
+### Main merged - world objects · 2026-10-18 (evening)
 
 - `main`'s world objects (PR #399) are in: gates, levers and triggers work like main's (a lever used again closes a
   trigger-controlled gate again), the treasure X is Gothic's own mesh instead of red planks, you can't walk through
   doors, chests, beds or items lying around. Everything the branch had on top (saved gates and triggers, Irdorath's
   rooms, forge and anvil, bookstands, fires, mummies, Mroczne Tajemnice's anvil) still works.
 
-## 2026-10-18 (afternoon): NPCs parry, beaten NPCs
+### NPCs parry, beaten NPCs · 2026-10-18 (afternoon)
 
 - NPCs react to your swings: they parry, jump back or step aside, also in the middle of their own combo. A parry
   facing you blocks the hit - the blades clash with a sound and sparks.
@@ -191,13 +202,13 @@ Link), not on Quest/Pico standalone.
 - An NPC you beat before fights back when you attack him again; before he drew his sword, put it away and said "I
   didn't see anything" over and over. As a witness he still turns away and says it once, then forgets it after ~20 s.
 
-## 2026-10-18: Gothic II Renovation (2026) starts
+### Gothic II Renovation (2026) starts · 2026-10-18
 
 - The 2026 release of Renovation gets through the first start: pre-caching froze on the mod's Dragon Island world
   (a broken length in the file the original game ignores), a new game stopped loading at Alrik in Khorinis (his rags'
   name has a Polish letter).
 
-## 2026-10-17 (midnight): main merged, knocked out NPCs, anvils
+### Main merged, knocked out NPCs, anvils · 2026-10-17 (midnight)
 
 - `main`'s new dialogs and UI are in (see [the merge notes](merge-2026-10-17.md)): walking away from a dialog slows
   you down at the edge and ends it; the dialog box, subtitles, menu and screen messages are drawn over walls and
@@ -208,26 +219,26 @@ Link), not on Quest/Pico standalone.
   sword anywhere in the Old Camp no longer "hit" an anvil and made you invisible to every NPC: guards ran up, said
   their line and stood still, nobody cared about drawn weapons.
 
-## 2026-10-17 (night): dialogs that end in a fight, items moved by hand
+### Dialogs that end in a fight, items moved by hand · 2026-10-17 (night)
 
 - An NPC who attacks you at the end of a dialog says all its lines first (and you yours), then attacks - the dragon
   turns into Algirion after the talk too. After such a dialog everybody talked to you and fought you again; before
   you stayed "invincible": nobody talked to you and attacked NPCs didn't fight back.
 - Items from the world moved by hand (an arrow in the ground put aside) are saved where they lie.
 
-## 2026-10-17 (late): new game at the start, NPCs on scaffolds
+### New game at the start, NPCs on scaffolds · 2026-10-17 (late)
 
 - A new game after loading a save from another world (Old Mine, Mroczne Tajemnice's temple) starts next to Diego again,
   not in the middle of the Old Camp.
 - After loading, NPCs on scaffolds (Old Mine miners) stay on them instead of falling down.
 
-## 2026-10-17 (evening): miners dig
+### Miners dig · 2026-10-17 (evening)
 
 - Miners in the mines dig: the pickaxe hits with a sound and ore splinters fly (they stood frozen in front of the vein).
 - Miners spawned next to each other spread to different ore veins instead of hacking at the same one; NPCs don't
   share a mob anymore unless it has room for more (a bench with two seats).
 
-## 2026-10-17: items, chests and loot are saved
+### Items, chests and loot are saved · 2026-10-17
 
 - Taken items stay taken after loading (a beer in the backpack was lying in the world again), also eaten right from
   the ground. Dropped items, NPC drops and arrows lie where they were, stacks keep what's left.
@@ -236,13 +247,13 @@ Link), not on Quest/Pico standalone.
 - Saving puts what your hands hold into the backpack.
 - All of it per world: a mushroom eaten in the Old Mine is still gone after going out and in again.
 
-## 2026-10-16 (late): Sheer'Ghar's duel, mod subtitles without VDFS
+### Sheer'Ghar's duel, mod subtitles without VDFS · 2026-10-16 (late)
 
 - An NPC who beats you in a duel knows it won - Mroczne Tajemnice's Sheer'Ghar talks about honor afterwards and the
   Seven Steps path goes on.
 - Mod subtitles are read straight from the mod's archives - no more extracting `OU.BIN` with VDFS.
 
-## 2026-10-16 (night): main merged - Marvin console, Marvin mode for everyone
+### Main merged - Marvin console, Marvin mode for everyone · 2026-10-16 (night)
 
 - Marvin mode can be switched on in game by everyone, like in Gothic: open the menu, type `marvin` (or click the
   Gothic-Unity logo 3 times), close the menu - "testmode on". `42` (or the 3 clicks again) switches it off.
@@ -255,7 +266,7 @@ Link), not on Quest/Pico standalone.
   first start of each game/mod rebuilds them once). A mod's ini can turn music off (`unitySkipMusicPlayback=1`) or set
   the language (`unityFallbackLanguage`).
 
-## 2026-10-16: Mroczne Tajemnice's ancient temple and the Ancients
+### Mroczne Tajemnice's ancient temple and the Ancients · 2026-10-16
 
 - Mroczne Tajemnice: the abandoned mine's portal takes you to the ancient temple (the Guardians quest) - ZenKit
   couldn't read the world because of a header bug, we fix the header before loading.
@@ -263,7 +274,9 @@ Link), not on Quest/Pico standalone.
   the world (the mod's temple portal) - you arrive next to the portal back.
 - The Black Dragon turns into Algirion after the talk instead of vanishing - the Ancients' quest goes on.
 
-## 2026-10-15 (evening): dodge spells, skin colored hands, no crash by Fellan's armor
+## Caves, spells you see, smithing · 2026-10-12 – 2026-10-15
+
+### Dodge spells, skin colored hands, no crash by Fellan's armor · 2026-10-15 (evening)
 
 - NPC spells can be dodged with a step aside: they follow you only a little and fly on when they miss (a crawler's
   web, a fireball).
@@ -271,7 +284,7 @@ Link), not on Quest/Pico standalone.
   turned navy, light blue or red).
 - Mroczne Tajemnice: no crash when the giant skeleton picks up a sword by Fellan's armor in the abandoned mine.
 
-## 2026-10-15: caves and mines like in Gothic, Mroczne Tajemnice textures and crawlers
+### Caves and mines like in Gothic, Mroczne Tajemnice textures and crawlers · 2026-10-15
 
 - Caves, mines and houses are lit like in Gothic: their lightmaps are drawn, torches and fires light the walls, the
   mines have no sun and no fog, stones, scaffolds and stairs inside are as dark as the walls next to them.
@@ -285,7 +298,7 @@ Link), not on Quest/Pico standalone.
 **Known:** the abandoned mine's portal to the ancient temple (the Guardians quest) can't be used yet - ZenKit can't
 load `ANCIENTTEMPLE.ZEN` (a native parser error).
 
-## 2026-10-13 (night): visible NPC spells, sleep on you, save names, menu zoom
+### Visible NPC spells, sleep on you, save names, menu zoom · 2026-10-13 (night)
 
 - NPC spells are visible: a fireball or an ice block flies from the caster's hand to you and hits when it arrives.
 - Sleep and freeze work on you too: you can't move for a while, a hit wakes you up, and the caster stops re-casting.
@@ -296,14 +309,14 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
 - Name your saves on an on-screen keyboard in Gothic's font (the key under the laser lights up).
 - Pull the menu closer or push it away with the right stick - the save list is readable now.
 
-## 2026-10-13 (evening): thrown spells like a ball, fists you hear, Marvin teams
+### Thrown spells like a ball, fists you hear, Marvin teams · 2026-10-13 (evening)
 
 - Thrown spells (fireball, ...) fly where you throw them, as fast as you swing: a weak throw arcs down, letting go
   without a swing drops the spell, only a real throw homes on a target.
 - Fists make the fist swing sound and vibrate; a punch vibrates harder.
 - Marvin: "Irdo team" spawns the whole Irdorath crew including Torlof, "Cheat friends" spawns the scripts' test helpers.
 
-## 2026-10-13: harmless spells stay harmless, guides wait
+### Harmless spells stay harmless, guides wait · 2026-10-13
 
 - Sleep, light, charm and the other spells that aren't attacks no longer hurt their target (only "bad" spells deal
   damage, like in the original).
@@ -315,9 +328,9 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
   lit or put out by touching them; far away fires no longer smoke.
 - Rain falls around you instead of somewhere in the middle of the world.
 
-## 2026-10-12: smithing, bookstands, VR fists, music zones, saves keep more
+### Smithing, bookstands, VR fists, music zones, saves keep more · 2026-10-12
 
-### Fighting
+#### Fighting
 
 - **VR fists:** grip + trigger on an empty hand makes a fist; swing it into an NPC to punch (fist damage like Gothic).
 - Knocked out NPCs fall down and lie instead of standing or T-posing.
@@ -327,12 +340,12 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
 - Knocked out you can still turn with the right stick.
 - Talking works again: NPCs no longer stay out of the hands' reach.
 
-### Magic
+#### Magic
 
 - Charged spells can't be spammed: releasing early makes a fireball weaker, fire rain or a summon fizzles out.
 - Aiming a summon at someone no longer hurts them or makes them hostile.
 
-### World and crafting
+#### World and crafting
 
 - **Smithing:** the forge heats raw steel, the anvil forges named weapons.
 - **Bookstands** show their book above them; touch again or walk away to close.
@@ -341,23 +354,25 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
 - Active teleports glow, cauldrons bubble; palms and fishing nets have the right textures (G2 addon, Mroczne Tajemnice).
 - Mroczne Tajemnice: the smugglers' beach smithy is complete.
 
-### Music
+#### Music
 
 - Music follows where you are, like the original (pirate camp, cities, night themes); fight music ends with the fight.
 - Fixed a crash when the music changed (leaving the pirate camp).
 
-### Saves
+#### Saves
 
 - Activated teleports, the Irdorath bridge progress, NPCs spawned during the game and the NPCs of every visited world
   survive saving, loading and travelling between worlds.
 
-### Loot
+#### Loot
 
 - **Quick loot:** a green X in a corpse's or mummy's loot takes everything at once.
 
-## 2026-10-11: G2 can be finished, movers survive saves
+## Gothic 2 to the end, NPCs that sense · 2026-10-10 – 2026-10-11
 
-### Gothic 2: Irdorath and the ending
+### G2 can be finished, movers survive saves · 2026-10-11
+
+#### Gothic 2: Irdorath and the ending
 
 - The whole Irdorath island works: shooting the bridge targets, the gate levers and wheels, the touchplate puzzle rooms,
   the four pillars, the main door's lock and the last door behind the Innos statue.
@@ -369,7 +384,7 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
   back to the main menu instead of closing.
 - Treasure X marks are visible in builds again.
 
-### Movers and the world
+#### Movers and the world
 
 - Movers (gates, doors, bridges, wheels) move through all their keyframes at the original speed.
 - Nested movers move together (the Jharkendar portal opens fully).
@@ -379,17 +394,17 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
   a world; one-time switches stay used. Before, loading closed everything again and could lock you in.
 - Loading a save while playing no longer breaks levers and wheels until a restart.
 
-### Video and stream
+#### Video and stream
 
 - Videos play in both eyes and show on the monitor/stream too.
 
-### Marvin (cheat panel)
+#### Marvin (cheat panel)
 
 - God mode, "Friends" (spawns e.g. Diego, Gorn, Milten and Lester), the panel scrolls when it has many options.
 
-## 2026-10-10: NPCs sense and chase like in Gothic, fire, hit numbers
+### NPCs sense and chase like in Gothic, fire, hit numbers · 2026-10-10
 
-### NPCs and monsters
+#### NPCs and monsters
 
 - Senses like the original: NPCs see only in front of them, hear you only when you walk or run, smell you up close.
   Sneaking behind an orc works.
@@ -402,24 +417,24 @@ load `ANCIENTTEMPLE.ZEN` (a native parser error).
 - NPC bodies keep 1 m away from your head, attacks no longer push your hands.
 - The G2 wisp amulet works (the wisp finds items).
 
-### Combat and magic
+#### Combat and magic
 
 - Fire spells set NPCs on fire (flames on the whole body, burn dance); the fire storm burns everyone around the impact.
 - Every hit does at least the game's minimum damage.
 - Arrows, bolts and spells trigger switches (Sleeper's temple).
 
-### UI and options
+#### UI and options
 
 - Hit numbers (`-X HP` over heads), HP/MAX and MANA/MAX on bars (Immersion settings).
 - Health/mana bars, messages and menus draw on top of the world, your hands on top of them.
 - Game profiles: pick G1, G2 or a mod when the game starts. "Restart game" in the settings.
 - Marvin can be switched on/off in the settings; "TP +4 m" (Gothic's Marvin K) with fall rescue.
 
-### Loot
+#### Loot
 
 - Orc mummies (containers without a lid) can be looted like corpses.
 
-## Up to 2026-10-09: the base
+## The base · up to 2026-10-09
 
 The branch started from `main` with these big blocks (details per theme in the [overview](README.md)):
 - **Combat:** VR bows with a real string, crossbows, spells charged in the free hand and thrown; NPC melee with combos,

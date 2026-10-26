@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
@@ -14,8 +13,6 @@ using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction;
-using HurricaneVR.Framework.ControllerInput;
-using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -29,7 +26,7 @@ namespace Gothic.VR.Adapters.Player
     ///   is an orb in the casting hand. No colliders, not in the NPC cache (no perception, focus, saving).
     /// - Animations from the player's movement (idle / walk / run), attack = swing (or trigger) of the free hand - the MDS sound
     ///   events of these animations are the only thing the player hears of the body.
-    /// - The VR camera goes down to the monster's eye height (HVRCameraRig.CameraYOffset).
+    /// - The VR camera goes down to the monster's eye height (IVrRig.CameraYOffset).
     /// - Trigger of the orb hand (empty or holding the transformation scroll) = transform back.
     /// </summary>
     public class VRTransformPuppet : MonoBehaviour
@@ -908,4 +905,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

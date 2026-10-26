@@ -93,7 +93,9 @@ namespace Gothic.VR.Services.Context
             if (_configService.Dev.EnableVrStabFinish)
             {
                 vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "STAB_FINISH", "Finishing",
-                    "Stab and twist to finish off (off: any hit)", menuStartY + menuDY * nextRow));
+                    _configService.Dev.EnableStabFinishHold
+                        ? "Stab and hold the blade in to finish off (off: any hit)"
+                        : "Stab and twist to finish off (off: any hit)", menuStartY + menuDY * nextRow));
                 vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "STAB_FINISH", VRConstants.IniNames.StabFinish,
                     menuStartY + menuDY * nextRow, 1));
                 nextRow++;
@@ -135,6 +137,15 @@ namespace Gothic.VR.Services.Context
                     "A cast uses the scroll up (Gothic)", menuStartY + menuDY * nextRow));
                 vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "SCROLLS_SINGLE_USE",
                     VRConstants.IniNames.ScrollsSingleUse, menuStartY + menuDY * nextRow, 1));
+                nextRow++;
+            }
+            // DeveloperConfig.EnableHeroHands: the hero's own fists instead of the VR hand models (needs the hero body).
+            if (_configService.Dev.EnableHeroHands && _configService.Dev.EnableVrHeroBody)
+            {
+                vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "HERO_HANDS", "Hero's hands",
+                    "Your hands are the hero's fists", menuStartY + menuDY * nextRow));
+                vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HERO_HANDS",
+                    VRConstants.IniNames.HeroHands, menuStartY + menuDY * nextRow, 0));
                 nextRow++;
             }
             // DeveloperConfig.EnableKillerXpOnly: off (Gothic) only the hero's, his summons' and his party's kills give

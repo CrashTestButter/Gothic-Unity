@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using System.Collections.Generic;
 using Gothic.Core.Models.Animations;
@@ -276,4 +275,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

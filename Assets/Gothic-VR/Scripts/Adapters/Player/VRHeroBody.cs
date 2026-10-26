@@ -1,5 +1,5 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
+using Gothic.Core;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
@@ -11,8 +11,7 @@ using Gothic.Core.Services.Npc;
 using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
 using Gothic.VR.Interaction.Models;
-using Gothic.VR.Interaction.Backends.Hvr;
-using HurricaneVR.Framework.Shared;
+using Gothic.VR.Interaction.Components;
 using Reflex.Attributes;
 using UnityEngine;
 using Logger = Gothic.Core.Logging.Logger;
@@ -21,8 +20,8 @@ namespace Gothic.VR.Adapters.Player
 {
     /// <summary>
     /// V1 (DeveloperConfig.EnableVrHeroBody): the hero's own body (current armor) under the VR head - torso, legs and
-    /// arms. The hands stay the HVR hands: the model's hands and head are hidden (bones scaled to ~0), its arms reach
-    /// for the HVR hands with a two-bone IK (elbows down and out), the forearms roll with the hands. Legs and torso play
+    /// arms. The hands stay the VR hands: the model's hands and head are hidden (bones scaled to ~0), its arms reach
+    /// for the VR hands with a two-bone IK (elbows down and out), the forearms roll with the hands. Legs and torso play
     /// the hero's Gothic animations (VRHeroBodyAnimator). Rebuilt when the armor changes, hidden while the hero is
     /// transformed (VRTransformService). No colliders. Not saved (rebuilt from the hero's visual).
     /// Backpack in a hand: the sleeves are "rolled up" - the armor's forearms are cut off and the bare forearms of the
@@ -92,13 +91,15 @@ namespace Gothic.VR.Adapters.Player
         private const float _bodyTurnSpeed = 540f;
         private Vector3 _bodyForward = Vector3.forward;
         private bool _hasBodyForward;
-        private HurricaneVR.Framework.Core.HVRGrabbable _backpack;
+        private VrInteractable _backpack;
         private IVrRig _rig;
         private readonly List<Renderer> _renderers = new();
 
         // Rolled-up sleeves: armor meshes without forearms + bare forearms (naked body mesh) on the armor skeleton.
         private readonly List<(SkinnedMeshRenderer renderer, Mesh full, Mesh sleeveless)> _sleeveMeshes = new();
         private readonly List<SkinnedMeshRenderer> _bareForearms = new();
+        // The bare forearms' meshes without and with the naked hands (DeveloperConfig.EnableHeroHands).
+        private readonly Dictionary<SkinnedMeshRenderer, (Mesh forearms, Mesh withHands)> _bareForearmMeshes = new();
         private readonly List<Mesh> _createdMeshes = new();
         private bool _areSleevesRolledUp;
         // Triangles weighted on average more than this to a part (hand, forearm) belong to it (see CutArms).
@@ -109,6 +110,13 @@ namespace Gothic.VR.Adapters.Player
 
         private readonly ArmIk _leftArm = new("L");
         private readonly ArmIk _rightArm = new("R");
+
+        // DeveloperConfig.EnableHeroHands + Immersion option "Hero's hands": the model's own hands (fists, with the
+        // armor's gloves) are the VR hands - the backend's hand visuals are hidden meanwhile.
+        private readonly List<(SkinnedMeshRenderer renderer, Mesh withHands, Mesh withoutHands)> _handMeshes = new();
+        private readonly List<Renderer> _hiddenVrHandRenderers = new();
+        private bool _isHeroHandsOption;
+        private bool _areHeroHandsShown;
 
         // Legs/torso animation (V2).
         private VRHeroBodyAnimator _animator;
@@ -175,23 +183,93 @@ namespace Gothic.VR.Adapters.Player
         private void Awake()
         {
             gameObject.Inject();
+            ReadHeroHandsOption();
+            GlobalEventDispatcher.PlayerPrefUpdated.AddListener(OnPlayerPrefUpdated);
         }
 
         private void OnDestroy()
         {
+            GlobalEventDispatcher.PlayerPrefUpdated.RemoveListener(OnPlayerPrefUpdated);
+            SetHeroHandsShown(false);
             EndDown();
             DestroyCreatedMeshes();
         }
 
         private void OnDisable()
         {
+            SetHeroHandsShown(false);
             EndDown();
+        }
+
+        private void OnPlayerPrefUpdated(string key, object value)
+        {
+            if (key == VRConstants.IniNames.HeroHands)
+                ReadHeroHandsOption();
+        }
+
+        private void ReadHeroHandsOption()
+        {
+            _isHeroHandsOption = _configService.Dev.EnableHeroHands && _configService.Gothic != null &&
+                                 _configService.Gothic.GetInt(VRConstants.IniNames.HeroHands, 0) == 1;
+        }
+
+        /// <summary>
+        /// The model's hands in the body mesh or cut out, the backend's hand visuals hidden or shown.
+        /// </summary>
+        private void SetHeroHandsShown(bool isShown)
+        {
+            if (isShown == _areHeroHandsShown)
+            {
+                if (isShown)
+                    HideVrHands(); // A hand visual can switch its renderers on again (hover/grab poses).
+                return;
+            }
+
+            _areHeroHandsShown = isShown;
+            ApplyArmMeshes();
+            _leftArm.IsFist = isShown;
+            _rightArm.IsFist = isShown;
+
+            if (isShown)
+            {
+                HideVrHands();
+            }
+            else
+            {
+                foreach (var vrRenderer in _hiddenVrHandRenderers)
+                {
+                    if (vrRenderer != null)
+                        vrRenderer.enabled = true;
+                }
+                _hiddenVrHandRenderers.Clear();
+            }
+            Logger.Log($"[VRHeroBody] Hero's hands {(isShown ? "shown - VR hands hidden" : "hidden - VR hands back")}",
+                LogCat.VR);
+        }
+
+        private void HideVrHands()
+        {
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
+            {
+                var handVisual = _rig?.GetHandVisual(side);
+                if (handVisual == null)
+                    continue;
+                foreach (var vrRenderer in handVisual.GetComponentsInChildren<Renderer>(true))
+                {
+                    // Not what the hand holds (items, the ring's spell rune).
+                    if (!vrRenderer.enabled || vrRenderer.GetComponentInParent<Gothic.Core.Adapters.Vob.VobLoader>() != null)
+                        continue;
+                    vrRenderer.enabled = false;
+                    if (!_hiddenVrHandRenderers.Contains(vrRenderer))
+                        _hiddenVrHandRenderers.Add(vrRenderer);
+                }
+            }
         }
 
         /// <summary>
         /// DeveloperConfig.EnableHeroFallCamera: knocked out (BsUnconscious) or dead (BsDead) the body falls on its back
         /// (T_STAND_2_WOUNDEDB, S_WOUNDEDB / T_DEADB, S_DEADB) and stands up again (T_WOUNDEDB_2_STAND). The camera
-        /// follows the animated head down and up - only its height (HVRCameraRig.CameraYOffset, like a transformation);
+        /// follows the animated head down and up - only its height (IVrRig.CameraYOffset, like a transformation);
         /// the body lies out from under it, so the view never moves sideways and where you look stays yours. Dead, the
         /// game menu opens after a moment (load a save, like Gothic). True while it drives the body.
         /// </summary>
@@ -288,8 +366,7 @@ namespace Gothic.VR.Adapters.Player
                 _rig.CameraYOffset = _downBaseCameraOffset +
                                      Mathf.Max(eyeHeight, _minDownEyeHeight) - _downStartEyeHeight;
 
-            _leftArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Left), _body.transform);
-            _rightArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Right), _body.transform);
+            SolveArms();
 
             if (_downPhase == DownPhase.Dead && !_isDeathMenuOpened && Time.time - _deathTime >= _deathMenuDelay)
             {
@@ -377,7 +454,9 @@ namespace Gothic.VR.Adapters.Player
                 if (r != null && r.enabled != isVisible)
                     r.enabled = isVisible;
             }
+            _rig ??= _contextInteractionService.GetCurrentPlayerController()?.GetComponent<IVrRig>();
             SetSleevesRolledUp(isVisible && IsBackpackInHand());
+            SetHeroHandsShown(isVisible && _isHeroHandsOption && _handMeshes.Count > 0);
             if (!isVisible)
                 return;
 
@@ -386,7 +465,6 @@ namespace Gothic.VR.Adapters.Player
             var head = Camera.main.transform;
             var forward = GetBodyForward(head);
 
-            _rig ??= _contextInteractionService.GetCurrentPlayerController()?.GetComponent<IVrRig>();
             var feetY = _rig != null ? _rig.Root.position.y : head.position.y - _modelHeadHeight;
             if (UpdateDown(hero, head, feetY))
                 return;
@@ -410,8 +488,35 @@ namespace Gothic.VR.Adapters.Player
                 _body.transform.position += neck - _headBone.position;
             }
 
-            _leftArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Left), _body.transform);
-            _rightArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Right), _body.transform);
+            SolveArms();
+        }
+
+        private void SolveArms()
+        {
+            _leftArm.FistRoll = _configService.Dev.HeroHandsRollDegrees;
+            _rightArm.FistRoll = _configService.Dev.HeroHandsRollDegrees;
+            _leftArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Left), _body.transform, _rig?.LeftHand,
+                GetSecondHandGripPose(VrHandSide.Left));
+            _rightArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Right), _body.transform, _rig?.RightHand,
+                GetSecondHandGripPose(VrHandSide.Right));
+        }
+
+        /// <summary>
+        /// The second hand on an item held with both hands is shown on its grip right before rendering (XRI physical
+        /// hands) - after this body is skinned. The fist goes there now, not where the controller is.
+        /// </summary>
+        private Pose? GetSecondHandGripPose(VrHandSide side)
+        {
+            var hands = _vrPlayerService.VRContextInteractionService?.PhysicsHands;
+            if (hands == null)
+                return null;
+
+            foreach (var hand in hands)
+            {
+                if (hand.Side == side && hand.TryGetSecondHandGripPose(out var position, out var rotation))
+                    return new Pose(position, rotation);
+            }
+            return null;
         }
 
         /// <summary>
@@ -567,12 +672,18 @@ namespace Gothic.VR.Adapters.Player
                     FindObjectsByType<VRBackpack>(FindObjectsSortMode.None), b => !b.IsNpcBackpack);
                 if (backpack == null)
                     return false;
-                _backpack = backpack.GetComponentInParent<HurricaneVR.Framework.Core.HVRGrabbable>() ??
-                            backpack.GetComponentInChildren<HurricaneVR.Framework.Core.HVRGrabbable>();
+                _backpack = backpack.GetComponentInParent<VrInteractable>() ?? VrInteractable.Find(backpack);
                 if (_backpack == null)
                     return false;
             }
-            return _backpack.IsHandGrabbed;
+            if (_rig == null)
+                return false;
+            foreach (var hand in _rig.HandGrabbers)
+            {
+                if (hand.Held == _backpack)
+                    return true;
+            }
+            return false;
         }
 
         private void SetSleevesRolledUp(bool isRolledUp)
@@ -582,15 +693,37 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             _areSleevesRolledUp = isRolledUp;
-            foreach (var (renderer, full, sleeveless) in _sleeveMeshes)
+            ApplyArmMeshes();
+        }
+
+        /// <summary>
+        /// The armor's and the bare forearms' meshes for both states: rolled-up sleeves (backpack in a hand) and the
+        /// hero's own hands (DeveloperConfig.EnableHeroHands). With both the naked hands come with the bare forearms -
+        /// the sleeveless armor has none, the fists vanished while the backpack was held.
+        /// </summary>
+        private void ApplyArmMeshes()
+        {
+            foreach (var (renderer, withHands, withoutHands) in _handMeshes)
             {
                 if (renderer != null)
-                    renderer.sharedMesh = isRolledUp ? sleeveless : full;
+                    renderer.sharedMesh = _areHeroHandsShown ? withHands : withoutHands;
+            }
+            foreach (var (renderer, full, sleeveless) in _sleeveMeshes)
+            {
+                if (renderer == null)
+                    continue;
+                if (_areSleevesRolledUp)
+                    renderer.sharedMesh = sleeveless;
+                else if (!_handMeshes.Exists(i => i.renderer == renderer))
+                    renderer.sharedMesh = full;
             }
             foreach (var forearm in _bareForearms)
             {
-                if (forearm != null)
-                    forearm.enabled = isRolledUp;
+                if (forearm == null)
+                    continue;
+                forearm.enabled = _areSleevesRolledUp;
+                if (_bareForearmMeshes.TryGetValue(forearm, out var meshes))
+                    forearm.sharedMesh = _areHeroHandsShown && meshes.withHands != null ? meshes.withHands : meshes.forearms;
             }
         }
 
@@ -608,12 +741,15 @@ namespace Gothic.VR.Adapters.Player
             if (visualKey == _builtVisual && _body != null)
                 return;
 
+            SetHeroHandsShown(false);
             if (_body != null)
                 Destroy(_body);
             DestroyCreatedMeshes();
+            _handMeshes.Clear();
             _renderers.Clear();
             _sleeveMeshes.Clear();
             _bareForearms.Clear();
+            _bareForearmMeshes.Clear();
             _areSleevesRolledUp = false;
 
             var mdhName = string.IsNullOrEmpty(props.MdhNameOverlay) ? props.MdhNameBase : props.MdhNameOverlay;
@@ -644,13 +780,18 @@ namespace Gothic.VR.Adapters.Player
             foreach (var bone in _body.GetComponentsInChildren<Transform>(true))
                 bones.TryAdd(bone.name.ToUpperInvariant(), bone);
 
-            // The HVR hands replace the model's hands: cut out of the mesh. Collapsing the hand bone pulled the wrist
+            // The VR hands replace the model's hands: cut out of the mesh. Collapsing the hand bone pulled the wrist
             // ring into one point - the forearm became a spike.
             foreach (var skinned in _body.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
-                var withoutHands = CutArms(skinned.sharedMesh, skinned.bones, ArmCut.WithoutHands);
-                if (withoutHands != null)
-                    skinned.sharedMesh = withoutHands;
+                var withHands = skinned.sharedMesh;
+                var withoutHands = CutArms(withHands, skinned.bones, ArmCut.WithoutHands);
+                if (withoutHands == null)
+                    continue;
+                skinned.sharedMesh = withoutHands;
+                // DeveloperConfig.EnableHeroHands: the full mesh shows the model's hands as the VR hands.
+                if (withoutHands.triangles.Length != withHands.triangles.Length)
+                    _handMeshes.Add((skinned, withHands, withoutHands));
             }
 
             // Height of the model in its rest pose: head bone above its lowest foot bone.
@@ -663,8 +804,8 @@ namespace Gothic.VR.Adapters.Player
                 _headBone.localScale = Vector3.one * _hiddenBoneScale;
             }
 
-            _leftArm.Bind(bones);
-            _rightArm.Bind(bones);
+            _leftArm.Bind(bones, _handMeshes);
+            _rightArm.Bind(bones, _handMeshes);
             BuildSleeves(props, mdhName, bones);
 
             _animator = new VRHeroBodyAnimator(_animationService, props.MdsNameBase, props.MdsNameOverlay, bones);
@@ -794,6 +935,8 @@ namespace Gothic.VR.Adapters.Player
                 forearm.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 forearm.enabled = false;
                 _bareForearms.Add(forearm);
+                _bareForearmMeshes[forearm] = (forearmMesh,
+                    CutArms(nakedRenderer.sharedMesh, nakedRenderer.bones, ArmCut.ForearmsAndHands));
             }
             Destroy(nakedRoot);
 
@@ -812,10 +955,12 @@ namespace Gothic.VR.Adapters.Player
 
         private enum ArmCut
         {
-            // The whole body without the model's hands (the HVR hands are shown).
+            // The whole body without the model's hands (the VR hands are shown).
             WithoutHands,
             // Only the forearms (naked body: rolled-up sleeves).
             Forearms,
+            // The forearms and the hands (rolled-up sleeves with the hero's own hands, EnableHeroHands).
+            ForearmsAndHands,
             // Everything but forearms and hands (armor with rolled-up sleeves).
             Sleeveless
         }
@@ -873,6 +1018,7 @@ namespace Gothic.VR.Adapters.Player
                         ArmCut.WithoutHands => hand <= _armCutWeight,
                         // A bit up into the armor - the cut sleeve overlaps it, no gap at the elbow.
                         ArmCut.Forearms => hand <= _armCutWeight && forearm + hand > _bareForearmWeight,
+                        ArmCut.ForearmsAndHands => forearm + hand > _bareForearmWeight,
                         // No triangle with a forearm vertex: it stuck out straight from the bent elbow (spikes).
                         _ => Mathf.Max(SleeveWeight(triangles[i]), SleeveWeight(triangles[i + 1]),
                             SleeveWeight(triangles[i + 2])) <= _sleeveKeepWeight
@@ -951,11 +1097,11 @@ namespace Gothic.VR.Adapters.Player
         }
 
         /// <summary>
-        /// Analytic two-bone IK: upper arm + forearm reach for the HVR hand, the elbow bends towards a hint below and to
-        /// the outside. The wrist always ends at the HVR wrist (the model's hands are cut out of the mesh): out of reach
+        /// Analytic two-bone IK: upper arm + forearm reach for the VR hand, the elbow bends towards a hint below and to
+        /// the outside. The wrist always ends at the VR wrist (the model's hands are cut out of the mesh): out of reach
         /// the arm is stretched, tapered - 40 % of the missing length in the upper arm, 60 % in the forearm, so the most
         /// stretch sits near the wrist (skinned vertices between the moved joints stretch, the shoulder stays).
-        /// The forearm rolls around its axis like the HVR hand (palms of both models aligned).
+        /// The forearm rolls around its axis like the VR hand (palms of both models aligned).
         /// </summary>
         private class ArmIk
         {
@@ -977,12 +1123,32 @@ namespace Gothic.VR.Adapters.Player
             private Transform _hvrWrist;
             private Transform _hvrPalm;
 
+            // DeveloperConfig.EnableHeroHands: the model's fist is the VR hand - it sits where the VR hand is and turns
+            // like the controller (fingers along its forward, thumb along its up).
+            private Transform _finger;
+            // Fingers (forward) and thumb (up) in the hand's local space.
+            private Quaternion _handAxesLocal = Quaternion.identity;
+            // The item slot's side (_modelPalmLocal) in the hand's local space - for the forearm's roll.
+            private Vector3 _slotSideLocal;
+            private bool _hasHandAxes;
+            private float _fistLength;
+            // The fist's cross-section must be clearly longer from the thumb to the little finger than across.
+            private const float _minFistAnisotropy = 1.5f;
+
+            public bool IsFist { get; set; }
+
+            /// <summary>
+            /// DeveloperConfig.HeroHandsRollDegrees: turn of the fist's thumb around its fingers, outwards (0 = up).
+            /// </summary>
+            public float FistRoll { get; set; }
+
             public ArmIk(string side)
             {
                 _side = side;
             }
 
-            public void Bind(Dictionary<string, Transform> bones)
+            public void Bind(Dictionary<string, Transform> bones,
+                List<(SkinnedMeshRenderer renderer, Mesh withHands, Mesh withoutHands)> handMeshes)
             {
                 bones.TryGetValue($"BIP01 {_side} UPPERARM", out _upper);
                 bones.TryGetValue($"BIP01 {_side} FOREARM", out _fore);
@@ -992,13 +1158,14 @@ namespace Gothic.VR.Adapters.Player
 
                 _foreRestLocal = _fore.localPosition;
                 _handRestLocal = _hand.localPosition;
-                BindModelPalm(bones);
+                BindModelPalm(bones, handMeshes);
             }
 
             /// <summary>
             /// Gothic hands have one finger bone (FINGER0) and the item slot in the palm (ZS_RIGHTHAND/ZS_LEFTHAND).
             /// </summary>
-            private void BindModelPalm(Dictionary<string, Transform> bones)
+            private void BindModelPalm(Dictionary<string, Transform> bones,
+                List<(SkinnedMeshRenderer renderer, Mesh withHands, Mesh withoutHands)> handMeshes)
             {
                 _hasModelPalm = false;
                 var slotName = _side == "L" ? "ZS_LEFTHAND" : "ZS_RIGHTHAND";
@@ -1015,6 +1182,85 @@ namespace Gothic.VR.Adapters.Player
                     return;
                 _modelPalmLocal = _fore.InverseTransformDirection(palm.normalized);
                 _hasModelPalm = true;
+
+                // The hand's own axes (fingers, thumb) in its local space - to turn it like the controller.
+                _finger = finger;
+                var fingerDirection = finger.position - _hand.position;
+                _fistLength = fingerDirection.magnitude;
+                var toHand = Quaternion.Inverse(_hand.rotation);
+                var fingersLocal = (toHand * fingerDirection).normalized;
+                _slotSideLocal = (toHand * palm).normalized;
+                var thumbLocal = FindThumbAxis(handMeshes, fingersLocal, _slotSideLocal) ?? _slotSideLocal;
+                _handAxesLocal = Quaternion.LookRotation(fingersLocal, thumbLocal);
+                _hasHandAxes = _fistLength > 1e-4f;
+            }
+
+            /// <summary>
+            /// The fist's thumb axis in the hand's local space: across the fingers, the fist is long from the thumb to
+            /// the little finger (principal axis of the hand's vertices). The item slot's side only picks the thumb's
+            /// end - ZS_LEFTHAND isn't the mirrored ZS_RIGHTHAND (48° off), the left fist was turned aslant.
+            /// </summary>
+            private Vector3? FindThumbAxis(List<(SkinnedMeshRenderer renderer, Mesh withHands, Mesh withoutHands)> handMeshes,
+                Vector3 fingersLocal, Vector3 slotSideLocal)
+            {
+                var across = Vector3.Cross(fingersLocal, slotSideLocal).normalized;
+                var side = Vector3.Cross(across, fingersLocal).normalized;
+                foreach (var (renderer, withHands, _) in handMeshes)
+                {
+                    var handIndex = renderer == null || withHands == null ? -1 : System.Array.IndexOf(renderer.bones, _hand);
+                    if (handIndex < 0 || handIndex >= withHands.bindposes.Length)
+                        continue;
+
+                    var vertices = withHands.vertices;
+                    var weights = withHands.boneWeights;
+                    if (weights.Length != vertices.Length)
+                        continue;
+
+                    // Hand vertices in the hand's local space, on the plane across the fingers.
+                    var bindPose = withHands.bindposes[handIndex];
+                    var points = new List<Vector2>();
+                    for (var i = 0; i < vertices.Length; i++)
+                    {
+                        if (weights[i].boneIndex0 != handIndex || weights[i].weight0 <= _armCutWeight)
+                            continue;
+                        var local = bindPose.MultiplyPoint3x4(vertices[i]);
+                        points.Add(new Vector2(Vector3.Dot(local, across), Vector3.Dot(local, side)));
+                    }
+                    if (points.Count < 3)
+                        continue;
+
+                    var mean = Vector2.zero;
+                    foreach (var point in points)
+                        mean += point;
+                    mean /= points.Count;
+                    float xx = 0f, yy = 0f, xy = 0f;
+                    foreach (var point in points)
+                    {
+                        var d = point - mean;
+                        xx += d.x * d.x;
+                        yy += d.y * d.y;
+                        xy += d.x * d.y;
+                    }
+
+                    var spread = Mathf.Sqrt(0.25f * (xx - yy) * (xx - yy) + xy * xy);
+                    var longest = 0.5f * (xx + yy) + spread;
+                    var shortest = 0.5f * (xx + yy) - spread;
+                    if (shortest <= 0f || longest / shortest < _minFistAnisotropy)
+                    {
+                        Logger.LogWarning($"[VRHeroBody] {_side} fist: no clear thumb axis ({renderer.name}, " +
+                                          $"{longest / Mathf.Max(shortest, 1e-9f):F2}) - using the item slot's side.", LogCat.VR);
+                        continue;
+                    }
+
+                    var angle = 0.5f * Mathf.Atan2(2f * xy, xx - yy);
+                    var thumb = Mathf.Cos(angle) * across + Mathf.Sin(angle) * side;
+                    if (Vector3.Dot(thumb, slotSideLocal) < 0f)
+                        thumb = -thumb;
+                    Logger.Log($"[VRHeroBody] {_side} fist: thumb axis {Vector3.Angle(thumb, slotSideLocal):F0}° from " +
+                               $"the item slot's side ({renderer.name}).", LogCat.VR);
+                    return thumb;
+                }
+                return null;
             }
 
             private void FindHvrBones(GameObject target)
@@ -1037,10 +1283,19 @@ namespace Gothic.VR.Adapters.Player
                            $"palm={_hvrPalm?.name ?? "none"}", LogCat.VR);
             }
 
-            public void Solve(GameObject target, Transform body)
+            public void Solve(GameObject target, Transform body, Transform controller, Pose? gripPose = null)
             {
                 if (target == null || _upper == null || _fore == null || _hand == null)
                     return;
+
+                if (IsFist && _hasHandAxes && controller != null)
+                {
+                    if (gripPose.HasValue)
+                        SolveFist(gripPose.Value.position, body, gripPose.Value.rotation);
+                    else
+                        SolveFist(target.transform.position, body, controller.rotation);
+                    return;
+                }
 
                 // Last frame's stretch must not add up.
                 _fore.localPosition = _foreRestLocal;
@@ -1090,9 +1345,77 @@ namespace Gothic.VR.Adapters.Player
             /// Twist around the forearm axis so the model's palm faces like the HVR palm - the wrist follows the
             /// hand's rotation.
             /// </summary>
+            /// <summary>
+            /// The fist where the VR hand is (its middle at the hand's position), turned like the controller: fingers
+            /// along the controller's forward, the thumb along its up (DeveloperConfig.HeroHandsRollDegrees turns it).
+            /// </summary>
+            private void SolveFist(Vector3 handPosition, Transform body, Quaternion handRotation)
+            {
+                _fore.localPosition = _foreRestLocal;
+                _hand.localPosition = _handRestLocal;
+
+                var fingers = handRotation * Vector3.forward;
+                var thumb = Quaternion.AngleAxis(_side == "L" ? FistRoll : -FistRoll, fingers) *
+                            (handRotation * Vector3.up);
+                var rotation = Quaternion.LookRotation(fingers, thumb) * Quaternion.Inverse(_handAxesLocal);
+                var scale = _hand.lossyScale.x;
+                var wrist = handPosition - fingers * (_fistLength * scale * 0.5f);
+
+                SolveElbow(wrist, body);
+                RollForearmTo(_fore.position, wrist, rotation * _slotSideLocal);
+                _hand.position = wrist;
+                _hand.rotation = rotation;
+            }
+
+            /// <summary>
+            /// Upper arm and forearm reach for the wrist (two-bone IK, see Solve).
+            /// </summary>
+            private void SolveElbow(Vector3 wrist, Transform body)
+            {
+                var upperLength = Vector3.Distance(_upper.position, _fore.position);
+                var foreLength = Vector3.Distance(_fore.position, _hand.position);
+                if (upperLength <= 0f || foreLength <= 0f)
+                    return;
+
+                var shoulder = _upper.position;
+                var toTarget = wrist - shoulder;
+                var distance = Mathf.Max(toTarget.magnitude, 0.05f);
+                var direction = toTarget / distance;
+                var missing = distance - (upperLength + foreLength) * 0.99f;
+                if (missing > 0f)
+                {
+                    upperLength += missing * _upperStretchShare;
+                    foreLength += missing * (1f - _upperStretchShare);
+                }
+
+                var outward = _side == "L" ? -body.right : body.right;
+                var hint = Vector3.down * 0.5f + outward * 0.35f - body.forward * 0.2f;
+                var bendNormal = Vector3.Cross(direction, hint);
+                if (bendNormal.sqrMagnitude < 0.0001f)
+                    bendNormal = Vector3.Cross(direction, Vector3.down);
+                bendNormal.Normalize();
+
+                var cosShoulder = (upperLength * upperLength + distance * distance - foreLength * foreLength) /
+                                  (2f * upperLength * distance);
+                var shoulderAngle = Mathf.Acos(Mathf.Clamp(cosShoulder, -1f, 1f)) * Mathf.Rad2Deg;
+                var elbow = shoulder + Quaternion.AngleAxis(shoulderAngle, bendNormal) * direction * upperLength;
+
+                _upper.rotation = Quaternion.FromToRotation(_fore.position - shoulder, elbow - shoulder) * _upper.rotation;
+                _fore.position = elbow;
+                _fore.rotation = Quaternion.FromToRotation(_hand.position - elbow, wrist - elbow) * _fore.rotation;
+            }
+
             private void RollForearm(Vector3 elbow, Vector3 wrist)
             {
                 if (!_hasModelPalm || _hvrPalm == null)
+                    return;
+
+                RollForearmTo(elbow, wrist, _hvrPalm.forward);
+            }
+
+            private void RollForearmTo(Vector3 elbow, Vector3 wrist, Vector3 wantedPalm)
+            {
+                if (!_hasModelPalm)
                     return;
 
                 var axis = wrist - elbow;
@@ -1101,7 +1424,7 @@ namespace Gothic.VR.Adapters.Player
                 axis.Normalize();
 
                 var current = Vector3.ProjectOnPlane(_fore.TransformDirection(_modelPalmLocal), axis);
-                var wanted = Vector3.ProjectOnPlane(_hvrPalm.forward, axis);
+                var wanted = Vector3.ProjectOnPlane(wantedPalm, axis);
                 if (current.sqrMagnitude < 1e-6f || wanted.sqrMagnitude < 1e-6f)
                     return;
 
@@ -1111,4 +1434,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

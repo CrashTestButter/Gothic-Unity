@@ -199,6 +199,18 @@ MonoBehaviour:
     m_Localized: "überspringen"
     m_Metadata:
       m_Items: []
+  - m_Id: 186269666525962240
+    m_Localized: "Physische H\xE4nde"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265408
+    m_Localized: "H\xE4nde stoppen an W\xE4nden und Objekten und schieben lose Gegenst\xE4nde"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265409
+    m_Localized: aus|an
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

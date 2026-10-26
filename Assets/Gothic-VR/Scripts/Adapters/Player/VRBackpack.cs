@@ -1,8 +1,6 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Assets.HurricaneVR.Framework.Shared.Utilities;
 using Gothic.Core;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Domain.Inventory;
@@ -20,14 +18,12 @@ using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vm;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.Core.Models.Context;
 using Gothic.VR.Adapters.Trade;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
-using HurricaneVR.Framework.Core.Sockets;
-using HurricaneVR.Framework.Core.UI;
-using HurricaneVR.Framework.Core.Utils;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
@@ -38,15 +34,27 @@ using Logger = Gothic.Core.Logging.Logger;
 namespace Gothic.VR.Adapters.Player
 {
     /// <summary>
-    /// Inventory view with 9 sockets, categories and pages. The hero's backpack by default; the same prefab is spawned
-    /// as an NPC's loot backpack (SetNpcOwner) - tinted, showing and changing the NPC's items.
+    /// The player's backpack (inventory pages) and holsters. The backpack itself is a VrInteractable with an
+    /// IVrSocketContainer for its slots. Items put into holsters or slots are added to the hero's inventory.
+    /// While the backpack is on the shoulder, its slots detect nothing (VrSocketSlot; HVR does it itself).
+    /// The same prefab is spawned as an NPC's loot backpack (SetNpcOwner) - tinted, showing and changing the NPC's
+    /// items - and as a trader's goods (SetTradeOwner).
     /// </summary>
-    [RequireComponent(typeof(HVRSocketable))]
     public class VRBackpack : MonoBehaviour
     {
         [SerializeField] private TMP_Text _categoryText;
         [SerializeField] private TMP_Text _pagerText;
-        [SerializeField] private HVRSocketContainer _socketContainer;
+
+        [Tooltip("Hip and shoulder holsters (IVrSocket). Items inside count as inventory.")]
+        [SerializeField] private GameObject[] _holsterSockets;
+
+        [Tooltip("Backpack slots (IVrSocket) which add/remove items to/from the inventory when used.")]
+        [SerializeField] private GameObject[] _inventorySockets;
+
+        private VrInteractable _interactable;
+        private IVrSocketContainer _socketContainer;
+        private readonly List<IVrSocket> _holsters = new();
+        private readonly List<IVrSocket> _slots = new();
 
         private bool _isZenKitBootstrapped;
         private int _currentPage = 1;
@@ -58,6 +66,12 @@ namespace Gothic.VR.Adapters.Player
         private Coroutine _refresh;
         private bool _isRefreshDirty;
         private static readonly Color _npcBackpackTint = new(0.55f, 0.75f, 1f);
+
+        // While the page is re-stacked, the slot events of the items we take out and put in ourselves are ignored.
+        // Otherwise, we create a loop. Items the player moves meanwhile still count.
+        private readonly HashSet<VrInteractable> _refreshRemovals = new();
+        private readonly HashSet<VrInteractable> _refreshPlacements = new();
+        private int _runningRefreshes;
         
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly PlayerService _playerService;
@@ -90,7 +104,16 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         public bool IsTradeBackpack => _trader != null;
 
-        private const string _prefabPath = "VR/Prefabs/Player-Elements/BackPack";
+        private const string _prefabPathHvr = "VR/Prefabs/Player-Elements/BackPack";
+        private const string _prefabPathXri = "VR/Prefabs/Player-Elements/BackPack XRI";
+
+        /// <summary>
+        /// Resources path of the active backend's backpack prefab (copies for NPC loot, trader goods, purses).
+        /// </summary>
+        public static string PrefabPath =>
+            ReflexProjectInstaller.DIContainer?.Resolve<IVrBackend>()?.Kind == VrInteractionBackend.Xri
+                ? _prefabPathXri
+                : _prefabPathHvr;
 
         /// <summary>
         /// A copy of the hero's backpack prefab (NPC loot, trader goods). spawnedRoot is the prefab root to destroy.
@@ -99,10 +122,10 @@ namespace Gothic.VR.Adapters.Player
             out GameObject spawnedRoot)
         {
             spawnedRoot = null;
-            var prefab = Resources.Load<GameObject>(_prefabPath);
+            var prefab = Resources.Load<GameObject>(PrefabPath);
             if (prefab == null)
             {
-                Gothic.Core.Logging.Logger.LogWarning($"[VRBackpack] Prefab {_prefabPath} not found.",
+                Gothic.Core.Logging.Logger.LogWarning($"[VRBackpack] Prefab {PrefabPath} not found.",
                     Gothic.Core.Logging.LogCat.VR);
                 return null;
             }
@@ -147,15 +170,17 @@ namespace Gothic.VR.Adapters.Player
             SelectFirstFilledCategory();
             GlobalEventDispatcher.NpcInventoryChanged.AddListener(OnNpcInventoryChanged);
 
+#if GOTHIC_HVR_INSTALLED
             // The prefab's GrabColliders hold one empty entry: that turns on HVR's grab collider filter, which then lets
             // no collider through - the hero's backpack is only taken from the shoulder socket, a loot backpack lies
             // on the ground and couldn't be grabbed (nor force grabbed).
-            var grabbable = GetComponent<HVRGrabbable>();
+            var grabbable = GetComponent<HurricaneVR.Framework.Core.HVRGrabbable>();
             if (grabbable != null)
             {
                 grabbable.GrabColliders = System.Array.Empty<Collider>();
                 grabbable.SetupGrabColliders();
             }
+#endif
             Tint(_npcBackpackTint);
             RegisterUiCanvases();
             Init();
@@ -261,38 +286,36 @@ namespace Gothic.VR.Adapters.Player
         {
             if (_refresh != null)
                 StopCoroutine(_refresh);
+            _runningRefreshes = 0;
             _tempIgnoreSocketing = true;
             ClearSockets();
-            this.ExecuteNextUpdate(() =>
+            StartCoroutine(DestroyNextFrame(spawnedRoot != null ? spawnedRoot : gameObject, () =>
             {
                 // A stopped refresh left the draw sounds off.
                 _vrWeaponService.DrawSoundsActive = true;
-                Destroy(spawnedRoot != null ? spawnedRoot : gameObject);
-            });
-        }
-
-        private void OnDestroy()
-        {
-            GlobalEventDispatcher.NpcInventoryChanged.RemoveListener(OnNpcInventoryChanged);
-            GlobalEventDispatcher.ZenKitBootstrapped.RemoveListener(Init);
-
-            if (IsNpcBackpack && HVRInputModule.Instance != null)
-            {
-                foreach (var canvas in GetComponentsInChildren<Canvas>(true))
-                    HVRInputModule.Instance.RemoveCanvas(canvas);
-            }
+            }));
         }
 
         /// <summary>
-        /// The UI laser only hits canvases HVRInputModule knows - they are collected once when the world loads
+        /// The UI laser only hits registered canvases - they are collected once when the world loads
         /// (InitUIInteraction), a spawned loot backpack's page/category buttons weren't clickable.
         /// </summary>
         private void RegisterUiCanvases()
         {
-            if (HVRInputModule.Instance == null)
+            var uiPointers = ReflexProjectInstaller.DIContainer?.Resolve<IVrUiPointers>();
+            if (uiPointers == null)
                 return;
             foreach (var canvas in GetComponentsInChildren<Canvas>(true))
-                HVRInputModule.Instance.AddCanvas(canvas);
+                uiPointers.RegisterCanvas(canvas);
+        }
+
+        private void UnregisterUiCanvases()
+        {
+            var uiPointers = ReflexProjectInstaller.DIContainer?.Resolve<IVrUiPointers>();
+            if (uiPointers == null)
+                return;
+            foreach (var canvas in GetComponentsInChildren<Canvas>(true))
+                uiPointers.UnregisterCanvas(canvas);
         }
 
         /// <summary>
@@ -311,18 +334,18 @@ namespace Gothic.VR.Adapters.Player
         /// <summary>
         /// The socketed stack nearest to a hand - taking pieces off it with the split button (VRStackSplitter).
         /// </summary>
-        public HVRGrabbable FindStackNear(Vector3 position, float maxDistance)
+        public VrInteractable FindStackNear(Vector3 position, float maxDistance)
         {
-            HVRGrabbable nearest = null;
+            VrInteractable nearest = null;
             var nearestDistance = maxDistance;
             foreach (var socket in _socketContainer.Sockets)
             {
-                if (socket == null || !socket.IsGrabbing || socket.GrabbedTarget == null)
+                if (socket == null || !socket.IsOccupied || socket.Held == null)
                     continue;
-                var distance = Vector3.Distance(socket.GrabbedTarget.transform.position, position);
+                var distance = Vector3.Distance(socket.Held.transform.position, position);
                 if (distance > nearestDistance)
                     continue;
-                nearest = socket.GrabbedTarget;
+                nearest = socket.Held;
                 nearestDistance = distance;
             }
             return nearest;
@@ -339,9 +362,9 @@ namespace Gothic.VR.Adapters.Player
         /// <summary>
         /// Unpaid trader goods put into the hero's backpack/holster go back to the trader.
         /// </summary>
-        private bool TryReturnTradeGoods(HVRGrabbable grabbable)
+        private bool TryReturnTradeGoods(VrInteractable interactable)
         {
-            var tradeGoods = grabbable.GetComponentInParent<VRTradeGoods>();
+            var tradeGoods = interactable.GetComponentInParent<VRTradeGoods>();
             if (tradeGoods == null || tradeGoods.IsSettled)
                 return false;
 
@@ -354,10 +377,10 @@ namespace Gothic.VR.Adapters.Player
             return true;
         }
 
-        private void ReturnToHero(HVRGrabbable grabbable, VobContainer vobContainer)
+        private void ReturnToHero(VrInteractable interactable, VobContainer vobContainer)
         {
             _tempIgnoreSocketing = true;
-            grabbable.ForceRelease();
+            interactable.ForceRelease();
             _tempIgnoreSocketing = false;
 
             var item = vobContainer.VobAs<IItem>();
@@ -404,6 +427,29 @@ namespace Gothic.VR.Adapters.Player
         }
 
         
+        private void Awake()
+        {
+            _interactable = GetComponent<VrInteractable>();
+            _socketContainer = GetComponent<IVrSocketContainer>();
+            CollectSockets(_holsterSockets, _holsters);
+            CollectSockets(_inventorySockets, _slots);
+
+            _interactable.Grabbed += OnBackpackGrabbedToShoulder;
+            _interactable.Released += OnBackpackReleasedFromShoulder;
+
+            foreach (var holster in _holsters)
+            {
+                holster.Grabbed += OnItemPutIntoHolster;
+                holster.Released += OnItemPutOutOfHolster;
+            }
+
+            foreach (var slot in _slots)
+            {
+                slot.Grabbed += OnItemPutIntoBackpack;
+                slot.Released += OnItemPutOutOfBackpack;
+            }
+        }
+
         private void Start()
         {
             GlobalEventDispatcher.ZenKitBootstrapped.AddListener(Init);
@@ -421,41 +467,100 @@ namespace Gothic.VR.Adapters.Player
                 gameObject.AddComponent<VRBackpackItemPassThrough>();
         }
 
+        private void OnDestroy()
+        {
+            GlobalEventDispatcher.NpcInventoryChanged.RemoveListener(OnNpcInventoryChanged);
+            GlobalEventDispatcher.ZenKitBootstrapped.RemoveListener(Init);
+            if (IsNpcBackpack)
+                UnregisterUiCanvases();
+
+            if (_interactable != null)
+            {
+                _interactable.Grabbed -= OnBackpackGrabbedToShoulder;
+                _interactable.Released -= OnBackpackReleasedFromShoulder;
+            }
+
+            foreach (var holster in _holsters)
+            {
+                holster.Grabbed -= OnItemPutIntoHolster;
+                holster.Released -= OnItemPutOutOfHolster;
+            }
+
+            foreach (var slot in _slots)
+            {
+                slot.Grabbed -= OnItemPutIntoBackpack;
+                slot.Released -= OnItemPutOutOfBackpack;
+            }
+        }
+
+        private static void CollectSockets(GameObject[] socketGos, List<IVrSocket> result)
+        {
+            if (socketGos == null)
+                return;
+
+            foreach (var socketGo in socketGos)
+            {
+                if (socketGo != null && socketGo.TryGetComponent(out IVrSocket socket))
+                    result.Add(socket);
+            }
+        }
+
         private void Init()
         {
-            var socketable = GetComponent<HVRSocketable>();
-
-            socketable.UnsocketedClip = _audioService.CreateAudioClip(_audioService.InvOpen.File);
-            socketable.SocketedClip = _audioService.CreateAudioClip(_audioService.InvClose.File);
+            _interactable.SetSocketSounds(
+                socketed: _audioService.CreateAudioClip(_audioService.InvClose.File),
+                unsocketed: _audioService.CreateAudioClip(_audioService.InvOpen.File));
 
             _isZenKitBootstrapped = true;
         }
 
-        public void OnBackpackGrabbedToShoulder(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnBackpackGrabbedToShoulder(VrGrabArgs args)
         {
-            // Nothing to do for now.
             // We could potentially remove the meshes inside Backpack or simply hide it from rendering later.
+            if (IsShoulderSocket(args))
+                SetSlotDetectionEnabled(false);
         }
-        
-        public void OnBackpackReleasedFromShoulder(HVRGrabberBase grabber, HVRGrabbable grabbable)
+
+        private void OnBackpackReleasedFromShoulder(VrGrabArgs args)
         {
-            if (grabber is not VRShoulderSocket && grabber is not HVRShoulderSocket)
+            if (!IsShoulderSocket(args))
                 return;
 
+            SetSlotDetectionEnabled(true);
             UpdateInventoryView();
+        }
+
+        private static bool IsShoulderSocket(VrGrabArgs args)
+        {
+            if (args.Kind != VrGrabberKind.Socket || args.GrabberGo == null)
+                return false;
+
+            return args.GrabberGo.TryGetComponent(out IVrSocket socket) && socket.IsShoulder;
+        }
+
+        /// <summary>
+        /// Backend-neutral slots only. HVR's backpack slots stop detecting on their own (ParentDisablesGrab).
+        /// </summary>
+        private void SetSlotDetectionEnabled(bool isEnabled)
+        {
+            foreach (var socket in _slots)
+            {
+                if (socket is VrSocketSlot slot)
+                    slot.SetDetectionEnabled(isEnabled);
+            }
         }
 
         /// <summary>
         /// When putting into holster, culling is already deactivated.
         /// We simply need to tell the game: add inventory amount.
         /// </summary>
-        public void OnItemPutIntoHolster(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnItemPutIntoHolster(VrGrabArgs args)
         {
             // Unpaid trader goods don't become the hero's.
-            if (TryReturnTradeGoods(grabbable))
+            if (TryReturnTradeGoods(args.Interactable))
                 return;
 
-            var vobLoader = grabbable.GetComponentInParent<VobLoader>();
+            var vobLoader = args.Interactable.GetComponentInParent<VobLoader>();
             var vobContainer = vobLoader.Container;
 
             _playerService.AddItem(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
@@ -478,23 +583,23 @@ namespace Gothic.VR.Adapters.Player
         }
 
 
-        public void OnItemPutIntoBackpack(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnItemPutIntoBackpack(VrGrabArgs args)
         {
-            if (_tempIgnoreSocketing)
+            if (_tempIgnoreSocketing || _refreshPlacements.Contains(args.Interactable))
                 return;
 
-            var vobLoader = grabbable.GetComponentInParent<VobLoader>(true);
+            var vobLoader = args.Interactable.GetComponentInParent<VobLoader>(true);
             var vobContainer = vobLoader.Container;
 
-            var tradeGoods = grabbable.GetComponentInParent<VRTradeGoods>();
-            if (!IsNpcBackpack && TryReturnTradeGoods(grabbable))
+            var tradeGoods = args.Interactable.GetComponentInParent<VRTradeGoods>();
+            if (!IsNpcBackpack && TryReturnTradeGoods(args.Interactable))
                 return;
             if (IsTradeBackpack)
             {
                 // The hero's own item doesn't go into the trader's goods - back into the hero's inventory.
                 if (tradeGoods == null)
                 {
-                    ReturnToHero(grabbable, vobContainer);
+                    ReturnToHero(args.Interactable, vobContainer);
                     return;
                 }
                 // Laid back into the goods: counted below, nothing left to return.
@@ -516,9 +621,9 @@ namespace Gothic.VR.Adapters.Player
         /// When putting out of holster, culling is already deactivated.
         /// We simply need to tell the game: substract inventory amount.
         /// </summary>
-        public void OnItemPutOutOfHolster(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnItemPutOutOfHolster(VrGrabArgs args)
         {
-            var vobLoader = grabbable.GetComponentInParent<VobLoader>();
+            var vobLoader = args.Interactable.GetComponentInParent<VobLoader>();
             if (vobLoader == null)
                 return;
             var vobContainer = vobLoader.Container;
@@ -530,12 +635,12 @@ namespace Gothic.VR.Adapters.Player
             _playerService.RemoveItem(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
         }
 
-        public void OnItemPutOutOfBackpack(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnItemPutOutOfBackpack(VrGrabArgs args)
         {
-            if (_tempIgnoreSocketing)
+            if (_tempIgnoreSocketing || _refreshRemovals.Contains(args.Interactable))
                 return;
 
-            var vobLoader = grabbable.GetComponentInParent<VobLoader>();
+            var vobLoader = args.Interactable.GetComponentInParent<VobLoader>();
             var vobContainer = vobLoader.Container;
 
             _vobMeshCullingService.AddCullingEntry(vobContainer);
@@ -643,9 +748,9 @@ namespace Gothic.VR.Adapters.Player
             yield return null;
 
             // While we re-stack items into slots, we need to ignore their events. Otherwise, we create a loop.
-            _tempIgnoreSocketing = true;
+            _runningRefreshes++;
             _vrWeaponService.DrawSoundsActive = false;
-            
+
             ClearSockets();
             yield return null; // Releasing and destroying objects takes until the next frame.
 
@@ -661,7 +766,13 @@ namespace Gothic.VR.Adapters.Player
             }
             yield return null;
 
-            _tempIgnoreSocketing = false;
+            // Backends may raise the slot events a frame later (or more than once). Forget the items afterwards.
+            _runningRefreshes--;
+            if (_runningRefreshes > 0)
+                yield break;
+
+            _refreshRemovals.Clear();
+            _refreshPlacements.Clear();
             _vrWeaponService.DrawSoundsActive = true;
 
             _refresh = null;
@@ -676,20 +787,21 @@ namespace Gothic.VR.Adapters.Player
         {
             foreach (var socket in _socketContainer.Sockets)
             {
-                var label = socket.transform.Find(_equippedLabelName);
+                var label = socket.Transform.Find(_equippedLabelName);
                 if (label != null)
                     Destroy(label.gameObject);
 
                 // Nothing inside socket
-                if (!socket.IsGrabbing)
+                if (!socket.IsOccupied)
                     continue;
 
                 // Destroy VobLoader GO after releasing it from slot (proper event handling)
-                var heldRoot = socket.HeldObject.transform.parent.gameObject;
+                var heldRoot = socket.Held.transform.parent.gameObject;
+                _refreshRemovals.Add(socket.Held);
                 socket.ForceRelease();
                 heldRoot.SetActive(false); // Disable it, as it would be with scale 1 in front of our camera for 1 second.
-                // We need to wait until next frame to ensure HVR has removed the item from socket.
-                this.ExecuteNextUpdate(() => Destroy(heldRoot));
+                // We need to wait until next frame to ensure the socket has removed the item.
+                StartCoroutine(DestroyNextFrame(heldRoot));
             }
         }
 
@@ -717,16 +829,24 @@ namespace Gothic.VR.Adapters.Player
                 vobContainer.Go.GetComponentInChildren<Rigidbody>().isKinematic = false; // Get rid of isKinematic warnings as the Grab is done "physically".
                 if (IsTradeBackpack)
                     vobContainer.Go.AddComponent<VRTradeGoods>().Init(_trader);
-                var grabbable = vobContainer.Go.GetComponentInChildren<HVRGrabbable>();
-                _socketContainer.TryAddGrabbable(grabbable);
+                var interactable = vobContainer.Go.GetComponentInChildren<VrInteractable>();
+                _refreshPlacements.Add(interactable);
+                _socketContainer.TryPlace(interactable, silent: true);
 
                 if (Owner.IsEquipped(item.Name))
                 {
-                    var socket = _socketContainer.Sockets.FirstOrDefault(s => s.GrabbedTarget == grabbable);
+                    var socket = _socketContainer.Sockets.FirstOrDefault(s => s.Held == interactable);
                     if (socket != null)
-                        AddEquippedLabel(socket.transform);
+                        AddEquippedLabel(socket.Transform);
                 }
             }
+        }
+
+        private static IEnumerator DestroyNextFrame(GameObject go, System.Action afterwards = null)
+        {
+            yield return null;
+            afterwards?.Invoke();
+            Destroy(go);
         }
 
         /// <summary>
@@ -785,4 +905,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

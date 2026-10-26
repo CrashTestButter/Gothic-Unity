@@ -10,8 +10,10 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
@@ -88,11 +90,11 @@ namespace Gothic.VR.Adapters.Player
 
         private VRTransformService _transformService;
         private NpcContainer _monster;
-        private HVRHandSide _orbHand;
+        private VrHandSide _orbHand;
         private bool _isReady;
         private bool _isReleased;
 
-        private VRPlayerController _playerController;
+        private IVrRig _rig;
         private float _originalCameraYOffset;
         // DeveloperConfig.EnableTransformMonsterSpeed: the player's speeds before, the human run loop to compare with.
         private float _originalMoveSpeed;
@@ -151,7 +153,7 @@ namespace Gothic.VR.Adapters.Player
 
 
         public void Init(VRTransformService transformService, NpcContainer monster, GameObject loaderGo,
-            HVRHandSide castingHand)
+            VrHandSide castingHand)
         {
             gameObject.Inject();
             _transformService = transformService;
@@ -159,7 +161,7 @@ namespace Gothic.VR.Adapters.Player
             _loaderGo = loaderGo;
             _setupDeadline = Time.time + _setupTimeoutSeconds;
             _orbHand = castingHand;
-            _playerController = _contextInteractionService.GetCurrentPlayerController()?.GetComponent<VRPlayerController>();
+            _rig = _contextInteractionService.GetCurrentPlayerController()?.GetComponent<IVrRig>();
         }
 
         /// <summary>
@@ -169,15 +171,15 @@ namespace Gothic.VR.Adapters.Player
         public void Release()
         {
             _isReleased = true;
-            if (_hasCameraOffset && _playerController != null)
-                _playerController.CameraRig.CameraYOffset = _originalCameraYOffset;
-            if (_hasSpeedScale && _playerController != null)
+            if (_hasCameraOffset && _rig != null)
+                _rig.CameraYOffset = _originalCameraYOffset;
+            if (_hasSpeedScale && _rig != null)
             {
-                _playerController.MoveSpeed = _originalMoveSpeed;
-                _playerController.RunSpeed = _originalRunSpeed;
+                _rig.MoveSpeed = _originalMoveSpeed;
+                _rig.RunSpeed = _originalRunSpeed;
             }
             if (_isReady)
-                _playerController?.SetGrabbingEnabled(true);
+                _rig?.SetGrabbingEnabled(true);
 
             if (_monster?.Go != null)
             {
@@ -233,14 +235,14 @@ namespace Gothic.VR.Adapters.Player
 
         private void LateUpdate()
         {
-            if (!_isReady || _isReleased || _playerController == null)
+            if (!_isReady || _isReleased || _rig == null)
                 return;
 
             // Body under the head, facing where the head looks.
             var head = Camera.main != null ? Camera.main.transform : null;
-            var feetY = _playerController.transform.position.y;
-            var x = head != null ? head.position.x : _playerController.transform.position.x;
-            var z = head != null ? head.position.z : _playerController.transform.position.z;
+            var feetY = _rig.Root.position.y;
+            var x = head != null ? head.position.x : _rig.Root.position.x;
+            var z = head != null ? head.position.z : _rig.Root.position.z;
             var restHeight = _monster.PrefabProps.AnimationSystem.RestRootHeight;
             var rootY = feetY + restHeight;
             _isSwimming = IsPuppetSwimming(x, z, feetY, out var waterY);
@@ -308,7 +310,7 @@ namespace Gothic.VR.Adapters.Player
             if (Mathf.Approximately(wantedLift, _swimCameraLift))
                 return;
             _swimCameraLift = Mathf.MoveTowards(_swimCameraLift, wantedLift, _swimCameraLiftSpeed * Time.deltaTime);
-            _playerController.CameraRig.CameraYOffset = _transformedCameraYOffset + _swimCameraLift;
+            _rig.CameraYOffset = _transformedCameraYOffset + _swimCameraLift;
         }
 
         /// <summary>
@@ -335,7 +337,7 @@ namespace Gothic.VR.Adapters.Player
                 body.isKinematic = true;
 
             _puppetBounds = GetBounds();
-            _playerController?.SetGrabbingEnabled(false);
+            _rig?.SetGrabbingEnabled(false);
             HideFromVrCameras();
             LowerCamera();
             ScaleSpeedToMonster();
@@ -370,7 +372,7 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void LowerCamera()
         {
-            if (_playerController == null || Camera.main == null)
+            if (_rig == null || Camera.main == null)
                 return;
 
             var feetY = _monster.Go.transform.position.y - _monster.PrefabProps.AnimationSystem.RestRootHeight;
@@ -384,8 +386,8 @@ namespace Gothic.VR.Adapters.Player
                 }
             }
 
-            var currentEyeHeight = Camera.main.transform.position.y - _playerController.transform.position.y;
-            var rig = _playerController.CameraRig;
+            var currentEyeHeight = Camera.main.transform.position.y - _rig.Root.position.y;
+            var rig = _rig;
             _originalCameraYOffset = rig.CameraYOffset;
             _eyeHeight = Mathf.Clamp(eyeHeight, 0.2f, 3f);
             rig.CameraYOffset += _eyeHeight - currentEyeHeight;
@@ -426,7 +428,7 @@ namespace Gothic.VR.Adapters.Player
             string animation;
             // Jumping/falling (the player isn't on the ground): the monster's fall animation.
             var isOnLand = !IsInWater() && _waterDepth <= 0f;
-            var fall = _playerController != null && !_playerController.IsGrounded && isOnLand
+            var fall = _rig != null && !_rig.IsGrounded && isOnLand
                 ? _animationService.GetAnimationName(VmGothicEnums.AnimationType.Fall, _monster)
                 : null;
             if (fall != null && _animationService.GetTrack(fall, _monster.Props.MdsNameBase, _monster.Props.MdsNameOverlay) != null)
@@ -550,7 +552,7 @@ namespace Gothic.VR.Adapters.Player
                 ? VmGothicEnums.WalkMode.Dive
                 : _isSwimming || bodyState == VmGothicEnums.BodyState.BsSwim
                     ? VmGothicEnums.WalkMode.Swim
-                    : _playerController != null && _playerController.IsCrouching
+                    : _rig != null && _rig.IsCrouching
                         ? VmGothicEnums.WalkMode.Sneak
                         : null;
             if (wanted == null)
@@ -625,7 +627,7 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void UpdateAttack()
         {
-            var attackHand = _orbHand == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left;
+            var attackHand = _orbHand == VrHandSide.Left ? VrHandSide.Right : VrHandSide.Left;
             var isSwing = IsSwinging(attackHand);
 
             if (_attackCooldown > 0f)
@@ -644,7 +646,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             var animationSystem = _monster.PrefabProps.AnimationSystem;
-            var velocity = _playerController != null ? _playerController.CharacterController.velocity : Vector3.zero;
+            var velocity = _rig != null ? _rig.CharacterController.velocity : Vector3.zero;
             var isRunning = new Vector2(velocity.x, velocity.z).magnitude >= _runSpeed;
             var attack = isRunning &&
                          _animationService.GetTrack(_runAttackAnimation, _monster.Props.MdsNameBase, _monster.Props.MdsNameOverlay) != null
@@ -660,7 +662,7 @@ namespace Gothic.VR.Adapters.Player
             _attackHitTime = _attackHitDelay;
         }
 
-        private bool IsSwinging(HVRHandSide side)
+        private bool IsSwinging(VrHandSide side)
         {
             var hand = _vrPlayerService.GetHandModelGo(side);
             if (hand == null || Time.deltaTime <= 0f)
@@ -668,9 +670,9 @@ namespace Gothic.VR.Adapters.Player
 
             // In the player's own space - running and turning (snap/smooth turn) move the hands too. The simulator's hands
             // hang on the camera - there the camera's space (mouse look moved them).
-            var space = _vrPlayerService.VRPlayerInputs.UseWASD && Camera.main != null
+            var space = _vrPlayerService.IsSimulator && Camera.main != null
                 ? Camera.main.transform
-                : _playerController != null ? _playerController.transform : null;
+                : _rig != null ? _rig.Root : null;
             var position = space != null ? space.InverseTransformPoint(hand.transform.position) : hand.transform.position;
             var isSwing = _hasLastAttackHandPosition &&
                           Vector3.Distance(position, _lastAttackHandPosition) / Time.deltaTime >= _attackSwingSpeed;
@@ -711,7 +713,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             // Only an empty hand or the transformation scroll/rune casts the way back.
-            var held = _orbHand == HVRHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
+            var held = _orbHand == VrHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
             if (held != null && held.GetComponent<Vob.VobItem.VRRuneCaster>() == null)
                 return;
 
@@ -725,7 +727,7 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void ScaleSpeedToMonster()
         {
-            if (!_configService.Dev.EnableTransformMonsterSpeed || _playerController == null)
+            if (!_configService.Dev.EnableTransformMonsterSpeed || _rig == null)
                 return;
 
             var walkMode = _monster.Vob.AiHuman.WalkMode;
@@ -746,8 +748,8 @@ namespace Gothic.VR.Adapters.Player
             }
 
             var factor = Mathf.Clamp(monsterSpeed / humanSpeed, _minSpeedFactor, _maxSpeedFactor);
-            _originalMoveSpeed = _playerController.MoveSpeed;
-            _originalRunSpeed = _playerController.RunSpeed;
+            _originalMoveSpeed = _rig.MoveSpeed;
+            _originalRunSpeed = _rig.RunSpeed;
             _hasSpeedScale = true;
 
             // DeveloperConfig.EnableTransformAbsoluteSpeed: the monster's own speeds - moving is its run loop (Gothic's
@@ -755,20 +757,20 @@ namespace Gothic.VR.Adapters.Player
             // (1.5 m/s moving) left a wolf at 2.1 m/s.
             if (_configService.Dev.EnableTransformAbsoluteSpeed)
             {
-                _playerController.MoveSpeed = monsterSpeed;
-                _playerController.RunSpeed = monsterSpeed * _monsterSprintFactor;
-                Logger.Log($"[VRTransform] Speed {monsterSpeed:F2} m/s, sprint {_playerController.RunSpeed:F2} m/s " +
+                _rig.MoveSpeed = monsterSpeed;
+                _rig.RunSpeed = monsterSpeed * _monsterSprintFactor;
+                Logger.Log($"[VRTransform] Speed {monsterSpeed:F2} m/s, sprint {_rig.RunSpeed:F2} m/s " +
                            $"({run}).", LogCat.VR);
             }
             else
             {
-                _playerController.MoveSpeed *= factor;
-                _playerController.RunSpeed *= factor;
+                _rig.MoveSpeed *= factor;
+                _rig.RunSpeed *= factor;
                 Logger.Log($"[VRTransform] Speed x{factor:F2} ({run}: {monsterSpeed:F2} m/s, human {humanSpeed:F2} " +
                            "m/s).", LogCat.VR);
             }
-            _monsterMoveSpeed = _playerController.MoveSpeed;
-            _monsterRunSpeed = _playerController.RunSpeed;
+            _monsterMoveSpeed = _rig.MoveSpeed;
+            _monsterRunSpeed = _rig.RunSpeed;
         }
 
         /// <summary>
@@ -778,15 +780,15 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void KeepMonsterSpeed()
         {
-            if (!_hasSpeedScale || !_configService.Dev.EnableTransformLandSpeedKept || _playerController == null ||
+            if (!_hasSpeedScale || !_configService.Dev.EnableTransformLandSpeedKept || _rig == null ||
                 IsInWater() || _waterDepth > 0f)
                 return;
-            if (Mathf.Approximately(_playerController.MoveSpeed, _monsterMoveSpeed) &&
-                Mathf.Approximately(_playerController.RunSpeed, _monsterRunSpeed))
+            if (Mathf.Approximately(_rig.MoveSpeed, _monsterMoveSpeed) &&
+                Mathf.Approximately(_rig.RunSpeed, _monsterRunSpeed))
                 return;
 
-            _playerController.MoveSpeed = _monsterMoveSpeed;
-            _playerController.RunSpeed = _monsterRunSpeed;
+            _rig.MoveSpeed = _monsterMoveSpeed;
+            _rig.RunSpeed = _monsterRunSpeed;
             Logger.Log($"[VRTransform] Back on land - speed {_monsterMoveSpeed:F2} m/s again.", LogCat.VR);
         }
 
@@ -796,11 +798,11 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private Vector3 GetPlayerVelocity()
         {
-            var velocity = _playerController != null ? _playerController.CharacterController.velocity : Vector3.zero;
-            if (!_configService.Dev.EnableHeroWaterBody || _playerController == null || Time.deltaTime <= 0f)
+            var velocity = _rig != null ? _rig.CharacterController.velocity : Vector3.zero;
+            if (!_configService.Dev.EnableHeroWaterBody || _rig == null || Time.deltaTime <= 0f)
                 return velocity;
 
-            var position = _playerController.transform.position;
+            var position = _rig.Root.position;
             var moved = (position - _lastPlayerPosition) / Time.deltaTime;
             _lastPlayerPosition = position;
             if (moved.magnitude < _maxMovedSpeed)
@@ -839,14 +841,14 @@ namespace Gothic.VR.Adapters.Player
             return track == null ? 0f : new Vector2(track.MovementSpeed.x, track.MovementSpeed.z).magnitude;
         }
 
-        private bool IsTriggerJustPressed(HVRHandSide side)
+        private bool IsTriggerJustPressed(VrHandSide side)
         {
             // Simulator: R = attack, F = transform back.
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
                 return side == _orbHand
                     ? Keyboard.current[Key.F].wasPressedThisFrame
                     : Keyboard.current[Key.R].wasPressedThisFrame;
-            return HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated;
+            return VrControls.GetButton(side, VrButton.Trigger).IsJustActivated;
         }
 
         private void CreatePip()

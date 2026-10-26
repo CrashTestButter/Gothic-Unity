@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using System;
+﻿using System;
 using System.Collections;
 using Gothic.Core.Adapters.Properties.Vobs;
 using Gothic.Core.Adapters.Vob;
@@ -14,8 +13,8 @@ using Gothic.Core;
 using Gothic.Core.Logging;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -50,6 +49,8 @@ namespace Gothic.VR.Adapters.Vob
         private readonly Collider[] _overlapColliders = new Collider[1];
         private static int _ignoreLayerCollisionCheck;
 
+        private VrInteractable _interactable;
+
 
         private struct OverlapCheckData
         {
@@ -72,11 +73,25 @@ namespace Gothic.VR.Adapters.Vob
             {
                 _ignoreLayerCollisionCheck = Constants.VobItemNoWorldCollision | Constants.HandLayer;
             }
+
+            _interactable = GetComponent<VrInteractable>();
+            _interactable.Grabbed += OnGrabbed;
+            _interactable.Released += OnReleased;
         }
 
         private void Start()
         {
-            GetComponent<HVRGrabbable>().SetupColliders();
+            _interactable.SetupColliders();
+        }
+
+        private void OnDestroy()
+        {
+            if (_interactable == null)
+                return;
+
+            _vrPlayerService?.ForgetPlayerCollision(_interactable);
+            _interactable.Grabbed -= OnGrabbed;
+            _interactable.Released -= OnReleased;
         }
 
         /// <summary>
@@ -84,21 +99,21 @@ namespace Gothic.VR.Adapters.Vob
         /// 2. Grabbed via HandGrabber (direct grabbing into hand)
         /// 3. Grabbed via Socket (e.g., backpack)
         /// </summary>
-        public void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnGrabbed(VrGrabArgs args)
         {
             // Ignore grabbing once, if MarvinSelectionMode is active.
             if (_marvinService.IsMarvinSelectionMode)
             {
-                _marvinService.MarvinSelectionGO = grabbable.gameObject;
+                _marvinService.MarvinSelectionGO = args.Interactable.gameObject;
                 return;
             }
 
-            // Held and socketed items must not push our own CharacterController.
-            _vrPlayerService.IgnorePlayerCollision(grabbable, true);
+            // Held and socketed items must not push our own CharacterController or the hand holding them.
+            _vrPlayerService.UpdatePlayerCollision(args, true);
 
             // OnGrabbed is normally called multiple times. Even after an object is already socketed. If so, then let's stop Grab behaviour.
             // If we sock an object on our hips or backpack etc.
-            if (grabber is HVRSocket)
+            if (args.Kind == VrGrabberKind.Socket)
             {
                 // DeveloperConfig.EnableVrCrossbowManualReload: out of a holster/backpack a crossbow is cocked.
                 if (TryGetComponent<Adapters.Vob.VobItem.VRCrossbowString>(out var crossbowString))
@@ -117,7 +132,7 @@ namespace Gothic.VR.Adapters.Vob
             StartCoroutine(ReEnableCollisionRoutine());
 
             _vobMeshCullingService?.StartTrackVobPositionUpdates(gameObject);
-            _vrPlayerService.SetGrab(grabber, grabbable);
+            _vrPlayerService.SetGrab(args);
 
             // DeveloperConfig.EnableWeaponRequirementCap: the engine's "missing ... points" for a weapon he can't use.
             TryShowWeaponRequirement();
@@ -139,25 +154,24 @@ namespace Gothic.VR.Adapters.Vob
         /// 2. Grabbed via HandGrabber (direct grabbing into hand)
         /// 3. Grabbed via Socket (e.g., backpack)
         /// </summary>
-        public void OnReleased(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnReleased(VrGrabArgs args)
         {
+            // Collisions come back for whatever doesn't hold the item any longer (e.g. the releasing hand).
+            _vrPlayerService.UpdatePlayerCollision(args, false);
+
             // If we release an object from our hips or backpack etc.
             // We then assume, that the item is already with correct values as it was grabbed before (shader, layer, ...)
-            if (grabber is HVRSocket)
+            if (args.Kind == VrGrabberKind.Socket)
                 return;
 
             gameObject.layer = Constants.VobItemLayer; // Back to default
-
-            // Dropped into the world (and not still in the other hand): we get stuck at it again.
-            if (!grabbable.IsBeingHeld)
-                _vrPlayerService.IgnorePlayerCollision(grabbable, false);
 
             // Disable "ghostification" of object.
             _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency,
                 Constants.ShaderPropertyTransparencyDefault);
 
             _vobMeshCullingService?.StopTrackVobPositionUpdates(gameObject);
-            _vrPlayerService.UnsetGrab(grabber, grabbable);
+            _vrPlayerService.UnsetGrab(args);
 
             // Bows/crossbows shoot as long as any hand holds them. Removed immediately: a release + grab in the same
             // frame (holster -> hand, hand -> hand) found the component still pending destruction and added no new
@@ -268,16 +282,15 @@ namespace Gothic.VR.Adapters.Vob
             if (vobItem.Amount > 1)
             {
                 vobItem.Amount--;
-                if (GetComponent<HVRGrabbable>()?.IsBeingHeld == true)
+                if (_interactable != null && _interactable.IsHeld)
                     _playerService.RemoveItem(instanceName, 1);
                 Logger.Log($"[VRVobItem] {instanceName} read - one used up, remaining={vobItem.Amount}", LogCat.VR);
                 return;
             }
 
             Logger.Log($"[VRVobItem] {instanceName} read - used up", LogCat.VR);
-            var grabbable = GetComponent<HVRGrabbable>();
-            if (grabbable != null && grabbable.IsBeingHeld)
-                grabbable.ForceRelease();
+            if (_interactable != null && _interactable.IsHeld)
+                _interactable.ForceRelease();
             _vobService.RemoveWorldItem(container);
         }
 
@@ -526,4 +539,3 @@ namespace Gothic.VR.Adapters.Vob
         }
     }
 }
-#endif

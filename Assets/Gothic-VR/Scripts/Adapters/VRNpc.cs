@@ -1,5 +1,5 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using Gothic.Core.Adapters.Npc;
+﻿using Gothic.Core.Adapters.Npc;
+using Gothic.Core.Adapters.UI.StatusBars;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
@@ -10,9 +10,9 @@ using Gothic.Core.Services.World;
 using Gothic.Core;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
@@ -32,20 +32,53 @@ namespace Gothic.VR.Adapters
 
         private NpcContainer _npcData;
         private VRNpcLoot _npcLoot;
+        private VrInteractable _interactable;
+        private StatusBarAdapter _healthBar;
 
         private void Awake()
         {
             _npcData = GetComponentInParent<NpcLoader>().Npc.GetUserData();
             _npcLoot = GetComponent<VRNpcLoot>();
+            _healthBar = GetComponentInChildren<StatusBarAdapter>(true);
+
+            _interactable = VrInteractable.Find(this);
+            _interactable.Grabbed += OnGrabbed;
+            _interactable.HoverEntered += OnHoverEnter;
+            _interactable.HoverExited += OnHoverExit;
         }
 
-        public void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnDestroy()
+        {
+            if (_interactable == null)
+                return;
+
+            _interactable.Grabbed -= OnGrabbed;
+            _interactable.HoverEntered -= OnHoverEnter;
+            _interactable.HoverExited -= OnHoverExit;
+        }
+
+        /// <summary>
+        /// The NPC's health bar is only visible while a hand hovers over the NPC.
+        /// </summary>
+        private void OnHoverEnter(VrGrabArgs _)
+        {
+            if (_healthBar != null)
+                _healthBar.EnableBar();
+        }
+
+        private void OnHoverExit(VrGrabArgs _)
+        {
+            if (_healthBar != null)
+                _healthBar.DisableBar();
+        }
+
+        private void OnGrabbed(VrGrabArgs args)
         {
             if (_vrPlayerService.IsSpellActive)
             {
                 Logger.Log($"[VRNpc] Grab on '{_npcData.Instance.GetName(NpcNameSlot.Slot0)}' ignored - a spell is active " +
                            "(targeting or telekinesis)", LogCat.VR);
-                grabber.ForceRelease();
+                args.Interactable.ForceRelease();
                 return;
             }
 
@@ -55,7 +88,7 @@ namespace Gothic.VR.Adapters
             {
                 Logger.Log($"[VRNpc] Grab on '{_npcData.Instance.GetName(NpcNameSlot.Slot0)}' ignored - pickpocketing",
                     LogCat.VR);
-                grabber.ForceRelease();
+                args.Interactable.ForceRelease();
                 return;
             }
 
@@ -66,8 +99,14 @@ namespace Gothic.VR.Adapters
             if ((isDead || isUnconscious) && _configService.Dev.EnableNpcLooting && _npcLoot != null)
             {
                 _npcLoot.Toggle(_npcData);
-                grabber.ForceRelease();
-                _physicsService.DisablePhysicsForNpc(_npcData.PrefabProps);
+                // Grabbing turns physics on (VRPlayerItemAdapter); release immediately and freeze the corpse.
+                // Select-only interactables (XRI) neither move the NPC nor turn its physics on.
+                if (!args.Interactable.IsSelectOnly)
+                {
+                    args.Interactable.ForceRelease();
+                    _physicsService.DisablePhysicsForNpc(_npcData.PrefabProps);
+                }
+
                 return;
             }
 
@@ -81,11 +120,14 @@ namespace Gothic.VR.Adapters
                 _npcAiService.ExecutePerception(VmGothicEnums.PerceptionType.AssessTalk, _npcData.Props, _npcData.Instance, null, (NpcInstance)_gameStateService.GothicVm.GlobalHero);
             }
 
-            // Talking is a click, not a grab: release (HVR's grab turns physics on) and keep a seated NPC kinematic.
-            grabber.ForceRelease();
+            // Talking is a click, not a grab: release (grabbing turns physics on) and keep a seated NPC kinematic.
+            // Select-only interactables (XRI) don't move the NPC, so there's nothing to undo.
+            if (args.Interactable.IsSelectOnly)
+                return;
+
+            args.Interactable.ForceRelease();
             if (_npcData.IsUsingMob())
                 _physicsService.DisablePhysicsForNpc(_npcData.PrefabProps);
         }
     }
 }
-#endif

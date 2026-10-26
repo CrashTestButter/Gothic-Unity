@@ -3,6 +3,7 @@ using Gothic.Core;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -48,8 +49,8 @@ namespace Gothic.VR.Adapters.Player
             if (Time.time >= _until || Time.time < _nextPulse)
                 return;
             _nextPulse = Time.time + _pulseSeconds;
-            _hapticsService.Vibrate(HVRHandSide.Left, VrHapticsService.VibrationType.Warning);
-            _hapticsService.Vibrate(HVRHandSide.Right, VrHapticsService.VibrationType.Warning);
+            _hapticsService.Vibrate(VrHandSide.Left, VrHapticPreset.Warning);
+            _hapticsService.Vibrate(VrHandSide.Right, VrHapticPreset.Warning);
         }
     }
 }

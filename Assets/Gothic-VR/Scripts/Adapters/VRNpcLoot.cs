@@ -1,9 +1,7 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Assets.HurricaneVR.Framework.Shared.Utilities;
 using Gothic.Core;
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Adapters.Vob;
@@ -12,6 +10,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Config;
 using Gothic.Core.Models.Container;
+using Gothic.Core.Models.Context;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Models.Vob;
 using Gothic.Core.Services;
@@ -20,10 +19,10 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vobs;
 using Gothic.VR.Adapters.Player;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
-using HurricaneVR.Framework.Core.Sockets;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
@@ -41,12 +40,20 @@ namespace Gothic.VR.Adapters
         private const float SocketHeight = 0.8f;
         private const float SocketSpacing = 0.22f;
 
+        [Tooltip("Loot slot on the HVR backend (HVR socket).")]
         [SerializeField] private GameObject _socketPrefab;
 
+        [Tooltip("Loot slot on the other backends (VrSocketSlot, e.g. \"VR Socket Slot.prefab\" for XRI).")]
+        [SerializeField] private GameObject _slotPrefab;
+
+        [Inject] private readonly IVrBackend _vrBackend;
+
         /// <summary>
-        /// The loot socket - also used for the trade counter's offer zones.
+        /// The loot socket of the active backend - also used for the trade counter's offer zones.
         /// </summary>
-        public GameObject SocketPrefab => _socketPrefab;
+        public GameObject SocketPrefab => _vrBackend == null || _vrBackend.Kind == VrInteractionBackend.Hvr
+            ? _socketPrefab
+            : _slotPrefab;
 
         [Inject] private readonly NpcInventoryService _npcInventoryService;
         [Inject] private readonly VobService _vobService;
@@ -56,7 +63,8 @@ namespace Gothic.VR.Adapters
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ConfigService _configService;
 
-        private const string _backpackPrefabPath = "VR/Prefabs/Player-Elements/BackPack";
+        // The active backend's backpack prefab (VRBackpack.PrefabPath).
+        private static string _backpackPrefabPath => VRBackpack.PrefabPath;
         private NpcInventoryOwner _lootOwner;
         private VRBackpack _lootBackpack;
         private GameObject _lootBackpackRoot;
@@ -64,7 +72,7 @@ namespace Gothic.VR.Adapters
 
         private NpcContainer _npcContainer;
         private NpcLoader _npcLoader;
-        private readonly List<HVRSocket> _sockets = new();
+        private readonly List<IVrSocket> _sockets = new();
         private readonly List<GameObject> _socketRoots = new();
         private bool _isOpen;
         private bool _tempIgnoreSocketing;
@@ -144,11 +152,11 @@ namespace Gothic.VR.Adapters
 
             // Lying untouched for a while: gone like closing the loot - no backpacks lying around the battlefield.
             // Held, it stays; let go, the time starts again.
-            var grabbable = _lootBackpack.GetComponent<HVRGrabbable>();
-            if (grabbable != null)
+            var interactable = VrInteractable.Find(_lootBackpack);
+            if (interactable != null)
             {
-                grabbable.Grabbed.AddListener((_, _) => StopLootBackpackTimeout());
-                grabbable.Released.AddListener((_, _) => StartLootBackpackTimeout());
+                interactable.Grabbed += _ => StopLootBackpackTimeout();
+                interactable.Released += _ => StartLootBackpackTimeout();
             }
             StartLootBackpackTimeout();
             Logger.Log($"[VRNpcLoot] Loot backpack of {npc.Go.name} spawned", LogCat.VR);
@@ -209,9 +217,9 @@ namespace Gothic.VR.Adapters
             _tempIgnoreSocketing = true;
             foreach (var socket in _sockets)
             {
-                if (socket == null || !socket.IsGrabbing)
+                if (socket == null || !socket.IsOccupied)
                     continue;
-                var heldRoot = socket.HeldObject.transform.parent.gameObject;
+                var heldRoot = socket.Held.transform.parent.gameObject;
                 socket.ForceRelease();
                 Destroy(heldRoot);
             }
@@ -266,17 +274,18 @@ namespace Gothic.VR.Adapters
         private void CreateSockets()
         {
             var totalWidth = (MaxVisibleSlots - 1) * SocketSpacing;
+            var prefab = SocketPrefab;
 
             for (var i = 0; i < MaxVisibleSlots; i++)
             {
-                var socketGo = Instantiate(_socketPrefab, transform);
+                var socketGo = Instantiate(prefab, transform);
                 var xOffset = -totalWidth / 2f + i * SocketSpacing;
                 socketGo.transform.localPosition = new Vector3(xOffset, SocketHeight, 0f);
                 socketGo.transform.localRotation = Quaternion.identity;
                 socketGo.transform.localScale = Vector3.one * 1.6f;
 
-                var socket = socketGo.GetComponentInChildren<HVRSocket>();
-                socket.Released.AddListener(OnItemTakenFromLoot);
+                var socket = socketGo.GetComponentInChildren<IVrSocket>();
+                socket.Released += OnItemTakenFromLoot;
 
                 _socketRoots.Add(socketGo);
                 _sockets.Add(socket);
@@ -285,6 +294,9 @@ namespace Gothic.VR.Adapters
 
         private void DestroySockets()
         {
+            foreach (var socket in _sockets)
+                socket.Released -= OnItemTakenFromLoot;
+
             foreach (var root in _socketRoots)
             {
                 if (root != null)
@@ -369,11 +381,11 @@ namespace Gothic.VR.Adapters
 
                 yield return null;
 
-                var grabbable = vobContainer.Go.GetComponentInChildren<HVRGrabbable>(true);
-                var freeSocket = _sockets.FirstOrDefault(s => !s.IsGrabbing);
+                var interactable = vobContainer.Go.GetComponentInChildren<VrInteractable>(true);
+                var freeSocket = _sockets.FirstOrDefault(s => !s.IsOccupied);
                 if (freeSocket != null)
                 {
-                    freeSocket.TryGrab(grabbable, true, true);
+                    freeSocket.TryPlace(interactable, true);
                     if (entry.IsEquipped)
                         AddEquippedLabel(GetSocketRoot(freeSocket));
                 }
@@ -396,13 +408,13 @@ namespace Gothic.VR.Adapters
 
             foreach (var socket in _sockets)
             {
-                if (!socket.IsGrabbing)
+                if (!socket.IsOccupied)
                     continue;
 
-                var heldRoot = socket.HeldObject.transform.parent.gameObject;
+                var heldRoot = socket.Held.transform.parent.gameObject;
                 socket.ForceRelease();
                 heldRoot.SetActive(false);
-                this.ExecuteNextUpdate(() => Destroy(heldRoot));
+                StartCoroutine(DestroyNextFrame(heldRoot));
             }
         }
 
@@ -419,12 +431,18 @@ namespace Gothic.VR.Adapters
             _vrWeaponService.DrawSoundsActive = true;
         }
 
-        public void OnItemTakenFromLoot(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private static IEnumerator DestroyNextFrame(GameObject go)
         {
-            if (_tempIgnoreSocketing)
+            yield return null;
+            Destroy(go);
+        }
+
+        private void OnItemTakenFromLoot(VrGrabArgs args)
+        {
+            if (_tempIgnoreSocketing || args.Interactable == null)
                 return;
 
-            var vobLoader = grabbable.GetComponentInParent<VobLoader>();
+            var vobLoader = args.Interactable.GetComponentInParent<VobLoader>();
             if (vobLoader?.Container == null)
                 return;
 
@@ -443,7 +461,7 @@ namespace Gothic.VR.Adapters
             StartCoroutine(ClearAndRefill());
         }
 
-        private GameObject GetSocketRoot(HVRSocket socket)
+        private GameObject GetSocketRoot(IVrSocket socket)
         {
             var idx = _sockets.IndexOf(socket);
             return idx >= 0 && idx < _socketRoots.Count ? _socketRoots[idx] : null;
@@ -473,4 +491,3 @@ namespace Gothic.VR.Adapters
         }
     }
 }
-#endif

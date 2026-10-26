@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
@@ -7,8 +6,7 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Vm;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
+using Gothic.VR.Services;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -40,15 +38,16 @@ namespace Gothic.VR.Adapters.Vob
 
         [Inject] private readonly VmService _vmService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly VRPlayerService _vrPlayerService;
 
         private IInteractiveObject _mob;
         private Renderer[] _renderers;
-        private HVRHandGrabber[] _hands;
         private int _hits;
         private float _lastHitTime = float.NegativeInfinity;
-        private HVRGrabbable _lastWeapon;
+        private GameObject _lastWeapon;
         private bool? _isLastWeaponAllowed;
         private Collider[] _lastWeaponColliders;
+        private Rigidbody _lastWeaponRigidbody;
 
         private void Start()
         {
@@ -60,7 +59,6 @@ namespace Gothic.VR.Adapters.Vob
             // the whole Old Camp and every sword swing there counted as a hit.
             if (loader != null && _configService.Dev.EnableDigSpotTreasureOnly)
                 _renderers = Array.FindAll(_renderers, r => r.GetComponentInParent<VobLoader>(true) == loader);
-            _hands = FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None);
 
             // Also tells whether the mob is visible at all (G2 X marks were invisible in an older playtest).
             Logger.Log($"[VRDigSpot] '{loader?.name}' ready: func={_mob?.OnStateChangeFunction}{_stateOneSuffix}, " +
@@ -76,31 +74,38 @@ namespace Gothic.VR.Adapters.Vob
             if (!TryGetBounds(out var spotBounds))
                 return;
 
-            foreach (var hand in _hands)
-            {
-                var weapon = hand != null ? hand.GrabbedTarget : null;
-                if (weapon == null)
-                    continue;
-
-                CacheWeapon(weapon);
-
-                var rb = weapon.Rigidbody;
-                if (rb == null || rb.linearVelocity.magnitude < _minSwingSpeed)
-                    continue;
-
-                if (!IntersectsWeapon(spotBounds))
-                    continue;
-
-                // Cheapest checks first: the tool lookup only runs for a fast weapon touching the spot.
-                if (!IsAllowedTool(weapon))
-                    continue;
-
-                RegisterHit(weapon);
+            if (TryRegisterHit(_vrPlayerService.GrabbedItemLeft, spotBounds))
                 return;
-            }
+
+            TryRegisterHit(_vrPlayerService.GrabbedItemRight, spotBounds);
         }
 
-        private void CacheWeapon(HVRGrabbable weapon)
+        /// <summary>
+        /// Checks the item in one hand (null if the hand is empty).
+        /// </summary>
+        private bool TryRegisterHit(GameObject weapon, Bounds spotBounds)
+        {
+            if (weapon == null)
+                return false;
+
+            CacheWeapon(weapon);
+
+            var rb = _lastWeaponRigidbody;
+            if (rb == null || rb.linearVelocity.magnitude < _minSwingSpeed)
+                return false;
+
+            if (!IntersectsWeapon(spotBounds))
+                return false;
+
+            // Cheapest checks first: the tool lookup only runs for a fast weapon touching the spot.
+            if (!IsAllowedTool(weapon))
+                return false;
+
+            RegisterHit(weapon);
+            return true;
+        }
+
+        private void CacheWeapon(GameObject weapon)
         {
             if (weapon == _lastWeapon)
                 return;
@@ -108,15 +113,16 @@ namespace Gothic.VR.Adapters.Vob
             _lastWeapon = weapon;
             _isLastWeaponAllowed = null;
             _lastWeaponColliders = weapon.GetComponentsInChildren<Collider>();
+            _lastWeaponRigidbody = weapon.GetComponent<Rigidbody>();
         }
 
-        private bool IsAllowedTool(HVRGrabbable weapon)
+        private bool IsAllowedTool(GameObject weapon)
         {
             _isLastWeaponAllowed ??= CheckAllowedTool(weapon);
             return _isLastWeaponAllowed.Value;
         }
 
-        private bool CheckAllowedTool(HVRGrabbable weapon)
+        private bool CheckAllowedTool(GameObject weapon)
         {
             var container = weapon.GetComponentInParent<VobLoader>()?.Container;
             var item = container?.GetItemInstance();
@@ -164,7 +170,7 @@ namespace Gothic.VR.Adapters.Vob
             return false;
         }
 
-        private void RegisterHit(HVRGrabbable weapon)
+        private void RegisterHit(GameObject weapon)
         {
             _lastHitTime = Time.time;
             _hits++;
@@ -191,4 +197,3 @@ namespace Gothic.VR.Adapters.Vob
         }
     }
 }
-#endif

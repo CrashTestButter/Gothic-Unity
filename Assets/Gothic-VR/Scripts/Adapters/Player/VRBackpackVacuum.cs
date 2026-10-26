@@ -6,7 +6,7 @@ using Gothic.Core.Const;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Config;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Interaction.Backends.Hvr;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Sockets;
 using Reflex.Attributes;
@@ -41,7 +41,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly ConfigService _configService;
 
         private HVRGrabbable _backpackGrabbable;
-        private VRSocket _putIntoSocket;
+        private HvrSocket _putIntoSocket;
         private HVRSocketHoverAction[] _hoverActions;
         private readonly Collider[] _overlapResults = new Collider[32];
         private readonly Dictionary<HVRGrabbable, float> _dwellTimes = new();
@@ -59,7 +59,7 @@ namespace Gothic.VR.Adapters.Player
         private void Start()
         {
             _backpackGrabbable = GetComponent<HVRGrabbable>();
-            _putIntoSocket = GetComponentsInChildren<VRSocket>(true).FirstOrDefault(i => i.name == _putIntoSlotName);
+            _putIntoSocket = GetComponentsInChildren<HvrSocket>(true).FirstOrDefault(i => i.name == _putIntoSlotName);
             _itemLayerMask = 1 << Constants.VobItemLayer;
 
             if (_backpackGrabbable == null || _putIntoSocket == null)

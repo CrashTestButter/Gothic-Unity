@@ -8,6 +8,7 @@ using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Adapters.Player;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -53,7 +54,7 @@ namespace Gothic.VR.Services
 
         /// <returns>False if the hero wasn't transformed (DeveloperConfig.EnableTransformCancelKeepsScroll: the scroll
         /// isn't used up then).</returns>
-        public bool Transform(int monsterInstanceIndex, HVRHandSide castingHand)
+        public bool Transform(int monsterInstanceIndex, VrHandSide castingHand)
         {
             if (!_configService.Dev.EnableVrTransformations || IsTransformed)
                 return false;

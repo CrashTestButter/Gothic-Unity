@@ -7,6 +7,8 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Backends.Hvr;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Core.Utils;
@@ -81,7 +83,7 @@ namespace Gothic.VR.Domain.Player
             _stabTime = Time.time;
 
             PlayStabSound(_weapon.position);
-            _hapticsService.Vibrate(hand.HandSide, VrHapticsService.VibrationType.Info);
+            _hapticsService.Vibrate(hand.HandSide.ToVr(), VrHapticPreset.Info);
             Logger.Log($"[VrStabFinish] Stab into {target.Instance.GetName(NpcNameSlot.Slot0)} " +
                        $"({alongBlade:0.0} m/s) - twist to finish", LogCat.Fight);
             return true;
@@ -127,7 +129,7 @@ namespace Gothic.VR.Domain.Player
 
             Logger.Log($"[VrStabFinish] {_attacker.Instance.GetName(NpcNameSlot.Slot0)} finishes off " +
                        $"{_target.Instance.GetName(NpcNameSlot.Slot0)} (twist {twist:0})", LogCat.Fight);
-            _hapticsService.Vibrate(_hand.HandSide, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(_hand.HandSide.ToVr(), VrHapticPreset.Success);
             var attacker = _attacker;
             var target = _target;
             Clear();

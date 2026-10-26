@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Adapters.Vob;
@@ -117,7 +116,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
         private Vector3 GetPlayerVelocity()
         {
-            return _vrPlayerService.VRContextInteractionService.GetVRPlayerController().CharacterController.velocity;
+            return _vrPlayerService.VRContextInteractionService.Rig.CharacterController.velocity;
         }
 
         private bool IsStabFinishOn()
@@ -186,4 +185,3 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
     }
 }
-#endif

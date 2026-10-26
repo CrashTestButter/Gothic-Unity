@@ -35,7 +35,7 @@ namespace Gothic.Core.Services.Vobs
         [Inject] private readonly ResourceCacheService _resourceCacheService;
 
         /// <summary>
-        /// Doors use HVRPhysicsDoor and chests their lid physics - not the mob/trigger path.
+        /// Doors use VR hinge physics and chests their lid physics - not the mob/trigger path.
         /// Beds are oCMobDoors too (BED*/BEDHIGH* visuals), but get used like other mobs (SLEEPABIT_S1).
         /// </summary>
         public bool ShouldHandleGrab(IVirtualObject vob)

@@ -1,10 +1,9 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Player;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Adapters.Player;
 using Reflex.Attributes;
 using Logger = Gothic.Core.Logging.Logger;
 
@@ -73,7 +72,7 @@ namespace Gothic.VR.Services
         private Adapters.UI.VRCinema GetCinema()
         {
             var playerController = _contextInteractionService.GetCurrentPlayerController();
-            return playerController == null ? null : playerController.GetComponent<VRPlayerController>().Cinema;
+            return playerController == null ? null : playerController.GetComponent<VRPlayer>().Cinema;
         }
 
         public void Play(string fileName)
@@ -99,4 +98,3 @@ namespace Gothic.VR.Services
         }
     }
 }
-#endif

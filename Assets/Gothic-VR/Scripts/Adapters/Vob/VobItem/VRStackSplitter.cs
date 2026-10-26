@@ -14,6 +14,8 @@ using Gothic.Core.Services.World;
 using Gothic.VR.Adapters.Player;
 using Gothic.VR.Adapters.Trade;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
@@ -60,7 +62,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private HVRHandGrabber _rightHand;
 
         // The running split/feed (button held).
-        private HVRHandSide _buttonSide;
+        private VrHandSide _buttonSide;
         private VobContainer _source;
         private VobContainer _piece;
         private HVRSocket _feedSocket;
@@ -101,8 +103,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_leftHand == null || _rightHand == null)
                 return;
 
-            UpdatePalmPiece(_leftHand, HVRHandSide.Left);
-            UpdatePalmPiece(_rightHand, HVRHandSide.Right);
+            UpdatePalmPiece(_leftHand, VrHandSide.Left);
+            UpdatePalmPiece(_rightHand, VrHandSide.Right);
 
             if (IsRunning)
             {
@@ -111,12 +113,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             }
 
             // The simulator's T: the left hand takes first. Hands near each other before a socket near a stack.
-            if (TryStart(_leftHand, HVRHandSide.Left, _rightHand) || TryStart(_rightHand, HVRHandSide.Right, _leftHand))
+            if (TryStart(_leftHand, VrHandSide.Left, _rightHand) || TryStart(_rightHand, VrHandSide.Right, _leftHand))
                 return;
-            if (TryStartFromBackpack(_leftHand, HVRHandSide.Left) || TryStartFromBackpack(_rightHand, HVRHandSide.Right))
+            if (TryStartFromBackpack(_leftHand, VrHandSide.Left) || TryStartFromBackpack(_rightHand, VrHandSide.Right))
                 return;
-            if (!TryStartFeed(_leftHand, HVRHandSide.Left))
-                TryStartFeed(_rightHand, HVRHandSide.Right);
+            if (!TryStartFeed(_leftHand, VrHandSide.Left))
+                TryStartFeed(_rightHand, VrHandSide.Right);
         }
 
         private void FindHands()
@@ -130,18 +132,18 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             }
         }
 
-        private bool IsSplitPressed(HVRHandSide side)
+        private bool IsSplitPressed(VrHandSide side)
         {
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
                 return Keyboard.current[Key.T].wasPressedThisFrame;
-            return HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated;
+            return VrControls.GetButton(side, VrButton.Trigger).IsJustActivated;
         }
 
-        private bool IsSplitHeld(HVRHandSide side)
+        private bool IsSplitHeld(VrHandSide side)
         {
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
                 return Keyboard.current[Key.T].isPressed;
-            return HVRController.GetButtonState(side, HVRButtons.Trigger).Active;
+            return VrControls.GetButton(side, VrButton.Trigger).IsActive;
         }
 
         /// <summary>
@@ -178,7 +180,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             return false;
         }
 
-        private bool TryStart(HVRHandGrabber hand, HVRHandSide side, HVRHandGrabber otherHand)
+        private bool TryStart(HVRHandGrabber hand, VrHandSide side, HVRHandGrabber otherHand)
         {
             if (!IsSplitPressed(side))
                 return false;
@@ -208,7 +210,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 : null;
         }
 
-        private bool TryStartSplit(HVRHandGrabber emptyHand, HVRHandSide side, VobContainer source, IItem item,
+        private bool TryStartSplit(HVRHandGrabber emptyHand, VrHandSide side, VobContainer source, IItem item,
             bool isSourceGrabbed)
         {
             if (!_stackSplitService.CanSplit(item.Amount))
@@ -232,7 +234,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// <summary>
         /// An empty hand near a stack in a backpack slot presses its button: the first piece lies in the hand.
         /// </summary>
-        private bool TryStartFromBackpack(HVRHandGrabber hand, HVRHandSide side)
+        private bool TryStartFromBackpack(HVRHandGrabber hand, VrHandSide side)
         {
             if (hand.GrabbedTarget != null || GetHeld(hand, out _) != null || !IsSplitPressed(side))
                 return false;
@@ -266,7 +268,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// <summary>
         /// The hand holds a stack near an empty socket and presses its button: the first piece waits at the socket.
         /// </summary>
-        private bool TryStartFeed(HVRHandGrabber hand, HVRHandSide side)
+        private bool TryStartFeed(HVRHandGrabber hand, VrHandSide side)
         {
             var stackGrabbable = hand.GrabbedTarget;
             if (stackGrabbable == null || !IsSplitPressed(side) ||
@@ -323,7 +325,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _playerService.RemoveItem(GetInstanceName(sourceItem), 1);
         }
 
-        private void Begin(HVRHandSide side, VobContainer source, bool isSourceGrabbed, VobContainer piece,
+        private void Begin(VrHandSide side, VobContainer source, bool isSourceGrabbed, VobContainer piece,
             HVRSocket feedSocket)
         {
             _buttonSide = side;
@@ -636,7 +638,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// A piece lying in the palm: grip grabs it (OnPalmPieceGrabbed); a grip press + release that didn't grab it
         /// drops it.
         /// </summary>
-        private void UpdatePalmPiece(HVRHandGrabber hand, HVRHandSide side)
+        private void UpdatePalmPiece(HVRHandGrabber hand, VrHandSide side)
         {
             if (!_palmPieces.TryGetValue(hand, out var entry))
                 return;
@@ -647,14 +649,14 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
             }
 
-            var grip = HVRController.GetButtonState(side, HVRButtons.Grip);
-            if (grip.JustActivated)
+            var grip = VrControls.GetButton(side, VrButton.Grip);
+            if (grip.IsJustActivated)
             {
                 _palmPieces[hand] = (entry.Piece, true);
                 return;
             }
 
-            if (entry.IsGripPressed && !grip.Active)
+            if (entry.IsGripPressed && !grip.IsActive)
             {
                 _palmPieces.Remove(hand);
                 LetGoOfPalm(entry.Piece, isCollisionRestored: true);

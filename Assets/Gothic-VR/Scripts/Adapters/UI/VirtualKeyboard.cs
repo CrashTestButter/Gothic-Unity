@@ -6,10 +6,8 @@ using Gothic.Core.Logging;
 using Gothic.Core.Models.Caches;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Models.UI;
-#if GOTHIC_HVR_INSTALLED
-using HurricaneVR.Framework.Core.UI;
-#endif
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -161,13 +159,10 @@ namespace Gothic.VR.Adapters.UI
                 VRGrabBar.Create((RectTransform)transform, transform);
 
             RefreshDisplay();
-#if GOTHIC_HVR_INSTALLED
-            // A canvas created at runtime: the UI laser only hits canvases HVRInputModule knows.
-            if (HVRInputModule.Instance != null)
-                HVRInputModule.Instance.AddCanvas(GetComponent<Canvas>());
+            // A canvas created at runtime: the UI laser only hits registered canvases.
+            ReflexProjectInstaller.DIContainer.Resolve<IVrUiPointers>().RegisterCanvas(GetComponent<Canvas>());
             if (ReflexProjectInstaller.DIContainer.Resolve<ConfigService>().Dev.EnableKeyboardPointerOnTop)
                 RaisePointerLines();
-#endif
             Logger.Log("[VirtualKeyboard] Shown", LogCat.Ui);
         }
 
@@ -407,10 +402,7 @@ namespace Gothic.VR.Adapters.UI
                 return;
             _isClosed = true;
 
-#if GOTHIC_HVR_INSTALLED
-            if (HVRInputModule.Instance != null)
-                HVRInputModule.Instance.RemoveCanvas(GetComponent<Canvas>());
-#endif
+            ReflexProjectInstaller.DIContainer.Resolve<IVrUiPointers>().UnregisterCanvas(GetComponent<Canvas>());
             if (_current == this)
                 _current = null;
             _onSubmit = null;
@@ -436,17 +428,19 @@ namespace Gothic.VR.Adapters.UI
         /// </summary>
         private void RaisePointerLines()
         {
-#if GOTHIC_HVR_INSTALLED
+            var cam = Camera.main;
+            if (cam == null)
+                return;
+
             var order = GetComponent<Canvas>().sortingOrder + 1;
-            foreach (var pointer in FindObjectsByType<HVRUIPointer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            var lines = ReflexProjectInstaller.DIContainer.Resolve<IVrUiPointers>().GetPointerLines(cam.transform.root);
+            foreach (var line in lines)
             {
-                var line = pointer.GetComponent<LineRenderer>();
-                if (line == null || line.sortingOrder >= order)
+                if (line.sortingOrder >= order)
                     continue;
                 _raisedPointerLines.Add((line, line.sortingOrder));
                 line.sortingOrder = order;
             }
-#endif
         }
 
         private void RestorePointerLines()

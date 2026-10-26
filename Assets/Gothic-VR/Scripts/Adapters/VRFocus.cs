@@ -1,14 +1,15 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Const;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Extensions;
+using Gothic.Core.Manager;
+using Gothic.Core.Services;
 using Gothic.VR.Adapters.Vob;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
@@ -20,7 +21,8 @@ namespace Gothic.VR.Adapters
 {
     /// <summary>
     /// Handles focus brightness and name visibility for VOBs and NPCs.
-    /// We leverage HVRGrabbable's events to show canvas of object name and alter brightness on all objects' mesh renderers.
+    /// We leverage VrInteractable's events to show canvas of object name and alter brightness on all objects'
+    /// mesh renderers.
     ///
     /// Order of use is always:
     /// 1. HoverEnter -> We hover from far or near (e.g. grab distance without pulling towards us)
@@ -57,10 +59,15 @@ namespace Gothic.VR.Adapters
         private Renderer _cachedObjectRenderer;
         private bool _mobActivated;
         private bool _isNpc;
+        private VrInteractable _interactable;
 
         private void Awake()
         {
             _isNpc = GetComponent<VRNpc>() != null;
+
+            _interactable = VrInteractable.Find(this);
+            _interactable.HoverEntered += OnHoverEnter;
+            _interactable.HoverExited += OnHoverExit;
 
             // DEBUG - Use this to enable brightening up all rendered objects if you want to check the attack window.
             {
@@ -75,14 +82,18 @@ namespace Gothic.VR.Adapters
         private void Start()
         {
             _nameCanvas.SetActive(false);
-            var grabbable = GetComponent<HVRGrabbable>();
-            grabbable?.Grabbed.AddListener(OnGrabbed);
-            grabbable?.Released.AddListener(OnReleased);
-            RefreshGrabColliders(grabbable);
+            if (_interactable == null)
+                return;
+            _interactable.Grabbed += OnGrabbed;
+            _interactable.Released += OnReleased;
+            RefreshGrabColliders();
         }
 
-        private void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnGrabbed(VrGrabArgs args)
         {
+            if (!args.IsHandOrDistance)
+                return;
+
             var vobLoader = GetComponentInParent<VobLoader>();
             if (vobLoader == null || vobLoader.Container.Vob is not IInteractiveObject mob) return;
 
@@ -97,12 +108,23 @@ namespace Gothic.VR.Adapters
             _vrPlayerService.TryToggleStaticContainerLoot(vobLoader, container);
         }
 
-        private void OnReleased(HVRGrabberBase _, HVRGrabbable __)
+        private void OnReleased(VrGrabArgs _)
         {
             _mobActivated = false;
         }
 
-        public void OnHoverEnter(HVRGrabberBase _, HVRGrabbable __)
+        private void OnDestroy()
+        {
+            if (_interactable == null)
+                return;
+
+            _interactable.HoverEntered -= OnHoverEnter;
+            _interactable.HoverExited -= OnHoverExit;
+            _interactable.Grabbed -= OnGrabbed;
+            _interactable.Released -= OnReleased;
+        }
+
+        private void OnHoverEnter(VrGrabArgs _)
         {
             // The hero's focus (PlayerService.FocusNpc) - e.g. Marvin's "kill" hits the NPC the hand pointed at.
             if (_isNpc && _configService.Dev.EnableMarvinKill)
@@ -144,7 +166,7 @@ namespace Gothic.VR.Adapters
             _isHovered = true;
         }
 
-        public void OnHoverExit(HVRGrabberBase _, HVRGrabbable __)
+        private void OnHoverExit(VrGrabArgs _)
         {
             if (_featureBrightenUp)
             {
@@ -156,40 +178,22 @@ namespace Gothic.VR.Adapters
         }
 
         /// <summary>
-        /// DeveloperConfig.EnableMobColliderRefresh: HVRGrabbable collects its colliders in Awake - when the prefab is
+        /// DeveloperConfig.EnableMobColliderRefresh: the grabbable collects its colliders in Awake - when the prefab is
         /// instantiated, before the mesh is built. Mobs whose mesh sits on a child bone (G2 Irdorath's touchplates:
         /// BIP01 TOUCHPLATE -> BIP01 PLATE) only had the prefab's empty MeshCollider, nothing to hover or grab.
-        /// The hand's trigger bag only maps a collider to its grabbable on the same GameObject or via HVRGrabbableChild
-        /// (HVRSettings.ComponentInParentFallback is off) - child colliders get one, and the grabbable's layer.
         /// </summary>
-        private void RefreshGrabColliders(HVRGrabbable grabbable)
+        private void RefreshGrabColliders()
         {
-            if (grabbable == null || _isNpc || GetComponent<VRVobItem>() != null ||
-                !_configService.Dev.EnableMobColliderRefresh)
+            if (_isNpc || GetComponent<VRVobItem>() != null || !_configService.Dev.EnableMobColliderRefresh)
                 return;
 
-            var before = grabbable.Colliders.Count;
-            grabbable.SetupColliders();
-            if (grabbable.Colliders.Count == before)
+            var before = _interactable.Colliders.Count;
+            _interactable.SetupColliders(isChildLinked: true);
+            if (_interactable.Colliders.Count == before)
                 return;
 
-            var linked = 0;
-            foreach (var childCollider in grabbable.Colliders)
-            {
-                var childGo = childCollider.gameObject;
-                if (childGo == grabbable.gameObject || childGo.GetComponent<HVRGrabbable>() != null)
-                    continue;
-                if (!childGo.TryGetComponent<HVRGrabbableChild>(out var child))
-                {
-                    child = childGo.AddComponent<HVRGrabbableChild>();
-                    linked++;
-                }
-                child.ParentGrabbable = grabbable;
-                childGo.layer = grabbable.gameObject.layer;
-            }
-
-            Logger.Log($"[VRFocus] '{name}' grab colliders {before} -> {grabbable.Colliders.Count}, {linked} child " +
-                       "collider(s) linked (mesh built after HVR's Awake)", LogCat.VR);
+            Logger.Log($"[VRFocus] '{name}' grab colliders {before} -> {_interactable.Colliders.Count} (mesh built " +
+                       "after the grabbable's Awake)", LogCat.VR);
         }
 
         private void OnEnable()
@@ -277,4 +281,3 @@ namespace Gothic.VR.Adapters
         }
     }
 }
-#endif

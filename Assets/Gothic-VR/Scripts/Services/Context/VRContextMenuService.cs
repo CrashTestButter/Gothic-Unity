@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Model.UI.Menu;
@@ -10,7 +9,7 @@ using Gothic.Services.UI;
 using Gothic.Core;
 using Gothic.Core.Const;
 using Gothic.Core.Extensions;
-using HurricaneVR.Framework.Core.Player;
+using Gothic.VR.Interaction.Models;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
@@ -61,33 +60,35 @@ namespace Gothic.VR.Services.Context
             vrImmersionMenu.Items.Add(CreateImmersionHeadline(gameMenu));
             vrImmersionMenu.Items.Add(CreateMicrophoneLabel(gameMenu, menuStartY + menuDY * 0));
             vrImmersionMenu.Items.Add(CreateMicrophoneChoice(gameMenu, menuStartY + menuDY * 0));
+            vrImmersionMenu.Items.Add(CreatePhysicalHandsLabel(gameMenu, menuStartY + menuDY * 1));
+            vrImmersionMenu.Items.Add(CreatePhysicalHandsChoice(gameMenu, menuStartY + menuDY * 1));
             vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "HIT_NUMBERS", "Hit numbers",
-                "-X HP / +X MANA over NPC heads", menuStartY + menuDY * 1));
+                "-X HP / +X MANA over NPC heads", menuStartY + menuDY * 2));
             vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HIT_NUMBERS", Constants.IniNames.HitNumbers,
-                menuStartY + menuDY * 1));
+                menuStartY + menuDY * 2));
             vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "HIT_NUMBERS_SIZE", "Hit numbers size",
-                "Size of the -X HP / +X MANA numbers", menuStartY + menuDY * 2));
-            vrImmersionMenu.Items.Add(CreateHitNumbersSizeSlider(gameMenu, menuStartY + menuDY * 2));
+                "Size of the -X HP / +X MANA numbers", menuStartY + menuDY * 3));
+            vrImmersionMenu.Items.Add(CreateHitNumbersSizeSlider(gameMenu, menuStartY + menuDY * 3));
             vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "HEALTH_NUMBERS", "HP numbers",
-                "HP/MAX on health bars", menuStartY + menuDY * 3));
+                "HP/MAX on health bars", menuStartY + menuDY * 4));
             vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HEALTH_NUMBERS", Constants.IniNames.HealthNumbers,
-                menuStartY + menuDY * 3));
+                menuStartY + menuDY * 4));
             vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "MARVIN", "Marvin",
-                "Show the Marvin panel (needs Marvin mode)", menuStartY + menuDY * 4));
+                "Show the Marvin panel (needs Marvin mode)", menuStartY + menuDY * 5));
             vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "MARVIN", VRConstants.IniNames.MarvinPanel,
-                menuStartY + menuDY * 4, 1));
+                menuStartY + menuDY * 5, 1));
             vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "LIGHT_REFRESH", "Light refresh",
-                "How smoothly a torch's light follows your hand", menuStartY + menuDY * 5));
-            vrImmersionMenu.Items.Add(CreateLightRefreshChoice(gameMenu, menuStartY + menuDY * 5));
+                "How smoothly a torch's light follows your hand", menuStartY + menuDY * 6));
+            vrImmersionMenu.Items.Add(CreateLightRefreshChoice(gameMenu, menuStartY + menuDY * 6));
             // DeveloperConfig.EnableHeroDeath: off = an NPC finishing you off only keeps you knocked out.
             if (_configService.Dev.EnableHeroDeath)
             {
                 vrImmersionMenu.Items.Add(CreateToggleLabel(gameMenu, "HERO_DEATH", "Death",
-                    "NPCs can finish you off (off: only knocked out)", menuStartY + menuDY * 6));
+                    "NPCs can finish you off (off: only knocked out)", menuStartY + menuDY * 7));
                 vrImmersionMenu.Items.Add(CreateToggleChoice(gameMenu, "HERO_DEATH", Constants.IniNames.HeroDeath,
-                    menuStartY + menuDY * 6, 1));
+                    menuStartY + menuDY * 7, 1));
             }
-            var nextRow = _configService.Dev.EnableHeroDeath ? 7 : 6;
+            var nextRow = _configService.Dev.EnableHeroDeath ? 8 : 7;
             // DeveloperConfig.EnableVrStabFinish: off = any hit finishes an unconscious NPC off.
             if (_configService.Dev.EnableVrStabFinish)
             {
@@ -319,7 +320,7 @@ namespace Gothic.VR.Services.Context
             var sitStandSetting = new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_ACCESSIBILITY_SIT_STAND_CHOICE", subtitlesChoice);
 
             sitStandSetting.PosY = posY;
-            sitStandSetting.SetUserFloat(3, (int)HVRSitStand.PlayerHeight); // Default value if no INI value exists.
+            sitStandSetting.SetUserFloat(3, (int)VrSitStand.PlayerHeight); // Default value if no INI value exists.
 
             sitStandSetting.SetText(0, _localizationService.GetText("menuitem.sitStand.value"));
             sitStandSetting.OnChgSetOption = VRConstants.IniNames.SitStand;
@@ -374,7 +375,7 @@ namespace Gothic.VR.Services.Context
             var rotationTypeSetting = new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_ACCESSIBILITY_ROTATION_TYPE_CHOICE", subtitlesChoice);
 
             rotationTypeSetting.PosY = posY;
-            rotationTypeSetting.SetUserFloat(3, (int)RotationType.Snap); // Default value if no INI value exists.
+            rotationTypeSetting.SetUserFloat(3, (int)VrTurnType.Snap); // Default value if no INI value exists.
 
             rotationTypeSetting.SetText(0, _localizationService.GetText("menuitem.rotationType.value"));
             rotationTypeSetting.OnChgSetOption = VRConstants.IniNames.RotationType;
@@ -566,6 +567,37 @@ namespace Gothic.VR.Services.Context
             return microphoneSetting;
         }
 
+        private AbstractMenuItemInstance CreatePhysicalHandsLabel(AbstractMenuInstance gameMenu, int posY)
+        {
+            var subtitlesLabel = gameMenu.FindMenuItem("MENUITEM_GAME_SUB_TITLES", out _);
+            var physicalHandsLabel =
+                new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_IMMERSION_PHYSICAL_HANDS", subtitlesLabel);
+
+            physicalHandsLabel.PosY = posY;
+
+            physicalHandsLabel.SetText(0, _localizationService.GetText("menuitem.physicalHands.label"));
+            physicalHandsLabel.SetText(1, _localizationService.GetText("menuitem.physicalHands.description"));
+
+            return physicalHandsLabel;
+        }
+
+        private AbstractMenuItemInstance CreatePhysicalHandsChoice(AbstractMenuInstance gameMenu, int posY)
+        {
+            var subtitlesChoice = gameMenu.FindMenuItem("MENUITEM_GAME_SUB_TITLES_CHOICE", out _);
+            var physicalHandsSetting =
+                new MutableMenuItemInstance("MENUITEM_GOTHIC_OPT_VR_IMMERSION_PHYSICAL_HANDS_CHOICE", subtitlesChoice);
+
+            physicalHandsSetting.PosY = posY;
+            // Default value if no INI value exists.
+            physicalHandsSetting.SetUserFloat(3, VRConstants.PhysicalHandsDefaultValue);
+
+            physicalHandsSetting.SetText(0, _localizationService.GetText("menuitem.physicalHands.value"));
+            physicalHandsSetting.OnChgSetOption = VRConstants.IniNames.PhysicalHands;
+            physicalHandsSetting.OnChgSetOptionSection = VRConstants.IniSectionImmersion;
+
+            return physicalHandsSetting;
+        }
+
         private string GetMicrophoneList()
         {
             var result = new List<string>();
@@ -589,4 +621,3 @@ namespace Gothic.VR.Services.Context
         }
     }
 }
-#endif

@@ -10,6 +10,8 @@ using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -62,8 +64,8 @@ namespace Gothic.VR.Adapters.Player
 
             var material = -1;
             var isBlocking = _configService.Dev.EnableVrHeroBlock && TryGetBlockingWeapon(out material) &&
-                             HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Trigger).Active &&
-                             HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).Active;
+                             VrControls.GetButton(VrHandSide.Left, VrButton.Trigger).IsActive &&
+                             VrControls.GetButton(VrHandSide.Right, VrButton.Trigger).IsActive;
 
             hero.Props.IsBlocking = isBlocking;
             hero.Props.BlockWeaponMaterial = material;
@@ -81,8 +83,8 @@ namespace Gothic.VR.Adapters.Player
             Logger.Log($"[HeroBlock] {(isBlocking ? "blocks" : "stops blocking")}", LogCat.Fight);
             if (isBlocking)
             {
-                _hapticsService.Vibrate(HVRHandSide.Left, VrHapticsService.VibrationType.Info);
-                _hapticsService.Vibrate(HVRHandSide.Right, VrHapticsService.VibrationType.Info);
+                _hapticsService.Vibrate(VrHandSide.Left, VrHapticPreset.Info);
+                _hapticsService.Vibrate(VrHandSide.Right, VrHapticPreset.Info);
             }
         }
 
@@ -181,8 +183,8 @@ namespace Gothic.VR.Adapters.Player
 
         private void OnHeroBlockedHit(NpcContainer attacker)
         {
-            _hapticsService.Vibrate(HVRHandSide.Left, VrHapticsService.VibrationType.Warning);
-            _hapticsService.Vibrate(HVRHandSide.Right, VrHapticsService.VibrationType.Warning);
+            _hapticsService.Vibrate(VrHandSide.Left, VrHapticPreset.Warning);
+            _hapticsService.Vibrate(VrHandSide.Right, VrHapticPreset.Warning);
         }
     }
 }

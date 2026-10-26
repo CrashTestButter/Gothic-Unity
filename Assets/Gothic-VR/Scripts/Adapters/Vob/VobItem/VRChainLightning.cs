@@ -8,6 +8,7 @@ using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -52,7 +53,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private static readonly Color _beamColor = new(0.75f, 0.9f, 1f);
 
         private readonly List<NpcContainer> _victims = new();
-        private HVRHandSide _handSide;
+        private VrHandSide _handSide;
         private bool _isHeroZapped;
         private float _heroZapTimer;
         private float _nextJitter;
@@ -60,7 +61,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private Material _lineMaterial;
         private bool _isStopped;
 
-        public void Begin(HVRHandSide handSide)
+        public void Begin(VrHandSide handSide)
         {
             this.Inject();
             _handSide = handSide;

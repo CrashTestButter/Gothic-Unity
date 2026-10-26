@@ -6,6 +6,8 @@ using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Services.Vobs;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
@@ -48,11 +50,11 @@ namespace Gothic.VR.Adapters.Vob
             if (!_playerHandNear) return;
 
             bool activated;
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
                 activated = Keyboard.current[Key.F].wasPressedThisFrame;
             else
-                activated = HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Grip).JustActivated
-                         || HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Grip).JustActivated;
+                activated = VrControls.GetButton(VrHandSide.Right, VrButton.Grip).IsJustActivated
+                         || VrControls.GetButton(VrHandSide.Left, VrButton.Grip).IsJustActivated;
 
             if (!activated) return;
 

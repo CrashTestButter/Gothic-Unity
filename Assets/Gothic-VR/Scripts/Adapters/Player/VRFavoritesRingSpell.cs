@@ -11,6 +11,8 @@ using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vobs;
 using Gothic.VR.Adapters.Vob.VobItem;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -41,7 +43,7 @@ namespace Gothic.VR.Adapters.Player
         private const float _clickSeconds = 0.6f;
 
         private ItemInstance _item;
-        private HVRHandSide _hand;
+        private VrHandSide _hand;
         private VobContainer _container;
         private VRRuneCaster _caster;
         private GameObject _effect;
@@ -49,14 +51,14 @@ namespace Gothic.VR.Adapters.Player
         private float _otherTriggerDownTime = -1f;
         private bool _isPutAway;
 
-        private HVRHandSide OtherHand => _hand == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left;
+        private VrHandSide OtherHand => _hand == VrHandSide.Left ? VrHandSide.Right : VrHandSide.Left;
 
         private void Awake()
         {
             this.Inject();
         }
 
-        public void Init(ItemInstance item, HVRHandSide hand, VobContainer container, VRRuneCaster caster)
+        public void Init(ItemInstance item, VrHandSide hand, VobContainer container, VRRuneCaster caster)
         {
             _item = item;
             _hand = hand;
@@ -70,7 +72,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             var bodyState = _playerService.HeroContainer?.Props.BodyState;
-            var spellHandItem = _hand == HVRHandSide.Left
+            var spellHandItem = _hand == VrHandSide.Left
                 ? _vrPlayerService.GrabbedItemLeft
                 : _vrPlayerService.GrabbedItemRight;
             if (spellHandItem != null ||
@@ -114,7 +116,7 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void UpdatePutAwayClick()
         {
-            var otherItem = OtherHand == HVRHandSide.Left
+            var otherItem = OtherHand == VrHandSide.Left
                 ? _vrPlayerService.GrabbedItemLeft
                 : _vrPlayerService.GrabbedItemRight;
             if (otherItem != null || (_caster != null && _caster.IsBusy))
@@ -123,10 +125,10 @@ namespace Gothic.VR.Adapters.Player
                 return;
             }
 
-            var trigger = HVRController.GetButtonState(OtherHand, HVRButtons.Trigger);
-            if (trigger.JustActivated)
+            var trigger = VrControls.GetButton(OtherHand, VrButton.Trigger);
+            if (trigger.IsJustActivated)
                 _otherTriggerDownTime = Time.time;
-            if (!trigger.JustDeactivated || _otherTriggerDownTime < 0f)
+            if (!trigger.IsJustDeactivated || _otherTriggerDownTime < 0f)
                 return;
 
             var isClick = Time.time - _otherTriggerDownTime <= _clickSeconds;
@@ -150,7 +152,7 @@ namespace Gothic.VR.Adapters.Player
             if (_effect != null)
                 Destroy(_effect);
             _effect = null;
-            _hapticsService.Vibrate(_hand, VrHapticsService.VibrationType.Info);
+            _hapticsService.Vibrate(_hand, VrHapticPreset.Info);
             Logger.Log($"[FavoritesRing] {VRFavoritesRing.GetSpellName(_item)} put away ({reason})", LogCat.VR);
 
             // Destroys this GameObject with its VRRuneCaster (magic mode off).

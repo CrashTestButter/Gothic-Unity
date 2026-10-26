@@ -195,6 +195,18 @@ MonoBehaviour:
     m_Key: cinema.skip
     m_Metadata:
       m_Items: []
+  - m_Id: 186269666525962240
+    m_Key: menuitem.physicalHands.label
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265408
+    m_Key: menuitem.physicalHands.description
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265409
+    m_Key: menuitem.physicalHands.value
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

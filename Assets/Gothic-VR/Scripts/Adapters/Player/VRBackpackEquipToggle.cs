@@ -8,6 +8,8 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -53,22 +55,22 @@ namespace Gothic.VR.Adapters.Player
             if (!_configService.Dev.EnableBackpackEquipToggle)
                 return;
 
-            UpdateHand(HVRHandSide.Left, _clicks[0]);
-            UpdateHand(HVRHandSide.Right, _clicks[1]);
+            UpdateHand(VrHandSide.Left, _clicks[0]);
+            UpdateHand(VrHandSide.Right, _clicks[1]);
         }
 
-        private void UpdateHand(HVRHandSide side, ClickState click)
+        private void UpdateHand(VrHandSide side, ClickState click)
         {
             var hand = _vrPlayerService.GetHandModelGo(side);
             if (hand == null)
                 return;
 
-            var trigger = HVRController.GetButtonState(side, HVRButtons.Trigger);
-            var isGripHeld = HVRController.GetButtonState(side, HVRButtons.Grip).Active;
-            var isEmpty = (side == HVRHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight)
+            var trigger = VrControls.GetButton(side, VrButton.Trigger);
+            var isGripHeld = VrControls.GetButton(side, VrButton.Grip).IsActive;
+            var isEmpty = (side == VrHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight)
                           == null;
 
-            if (trigger.JustActivated)
+            if (trigger.IsJustActivated)
             {
                 click.IsDown = isEmpty && !isGripHeld;
                 click.DownTime = Time.time;
@@ -76,7 +78,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
             }
 
-            if (!click.IsDown || !trigger.JustDeactivated)
+            if (!click.IsDown || !trigger.IsJustDeactivated)
                 return;
 
             click.IsDown = false;
@@ -87,7 +89,7 @@ namespace Gothic.VR.Adapters.Player
             TryToggle(side, hand.transform.position);
         }
 
-        private void TryToggle(HVRHandSide side, Vector3 handPosition)
+        private void TryToggle(VrHandSide side, Vector3 handPosition)
         {
             foreach (var backpack in FindObjectsByType<VRBackpack>(FindObjectsSortMode.None))
             {
@@ -111,7 +113,7 @@ namespace Gothic.VR.Adapters.Player
                 else
                     _npcInventoryService.EquipItemWithEffects(hero, itemData);
 
-                _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Success);
+                _hapticsService.Vibrate(side, VrHapticPreset.Success);
                 backpack.RefreshInventoryView();
                 Logger.Log($"[BackpackEquip] {(isEquipped ? "took off" : "put on")} '{itemData.Name}'", LogCat.VR);
                 return;

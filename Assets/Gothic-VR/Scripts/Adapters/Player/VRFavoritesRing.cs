@@ -19,10 +19,12 @@ using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Interaction.Backends.Hvr;
 using Gothic.VR.Adapters.UI;
 using Gothic.VR.Adapters.Vob.VobItem;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Shared;
@@ -138,7 +140,7 @@ namespace Gothic.VR.Adapters.Player
         private float _targetAngle;
         private bool _isDragging;
         private bool _isTriggerDown;
-        private HVRHandSide _dragHand;
+        private VrHandSide _dragHand;
         private Vector3 _dragStartLocal;
         private float _dragStartAngle;
         private Slot _pressedSlot;
@@ -208,7 +210,7 @@ namespace Gothic.VR.Adapters.Player
             public string Action;
             public ItemInstance Replaced;
             public float Time;
-            public HVRHandSide Side;
+            public VrHandSide Side;
         }
 
         /// <summary>
@@ -227,7 +229,7 @@ namespace Gothic.VR.Adapters.Player
         {
             public Slot Slot;
             public VobContainer Held;
-            public HVRHandSide Side;
+            public VrHandSide Side;
             public float StartTime;
             public float Carry;
         }
@@ -242,7 +244,7 @@ namespace Gothic.VR.Adapters.Player
 
         private void Start()
         {
-            var controller = GetComponentInParent<VRPlayerController>();
+            var controller = GetComponentInParent<HvrRig>();
             if (controller == null)
                 return;
             foreach (var hand in new[] { controller.LeftHand, controller.RightHand })
@@ -307,10 +309,10 @@ namespace Gothic.VR.Adapters.Player
         private void UpdateGesture()
         {
             var head = Camera.main != null ? Camera.main.transform : null;
-            var left = _vrPlayerService.GetHandModelGo(HVRHandSide.Left);
-            var right = _vrPlayerService.GetHandModelGo(HVRHandSide.Right);
-            var leftTrigger = HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Trigger).Active;
-            var rightTrigger = HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).Active;
+            var left = _vrPlayerService.GetHandModelGo(VrHandSide.Left);
+            var right = _vrPlayerService.GetHandModelGo(VrHandSide.Right);
+            var leftTrigger = VrControls.GetButton(VrHandSide.Left, VrButton.Trigger).IsActive;
+            var rightTrigger = VrControls.GetButton(VrHandSide.Right, VrButton.Trigger).IsActive;
 
             if (!leftTrigger || !rightTrigger)
                 _isGestureLatched = false;
@@ -332,8 +334,8 @@ namespace Gothic.VR.Adapters.Player
             if (step > _gestureHapticStep && step < 3)
             {
                 _gestureHapticStep = step;
-                _hapticsService.Vibrate(HVRHandSide.Left, VrHapticsService.VibrationType.Info);
-                _hapticsService.Vibrate(HVRHandSide.Right, VrHapticsService.VibrationType.Info);
+                _hapticsService.Vibrate(VrHandSide.Left, VrHapticPreset.Info);
+                _hapticsService.Vibrate(VrHandSide.Right, VrHapticPreset.Info);
             }
             if (_gestureTime < _gestureSeconds)
                 return;
@@ -341,8 +343,8 @@ namespace Gothic.VR.Adapters.Player
             _isGestureLatched = true;
             _gestureTime = 0f;
             _gestureHapticStep = 0;
-            _hapticsService.Vibrate(HVRHandSide.Left, VrHapticsService.VibrationType.Success);
-            _hapticsService.Vibrate(HVRHandSide.Right, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(VrHandSide.Left, VrHapticPreset.Success);
+            _hapticsService.Vibrate(VrHandSide.Right, VrHapticPreset.Success);
             if (_isOpen)
                 Close("gesture");
             else
@@ -678,7 +680,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
             slot.IgnoredColliderCount = itemColliders.Length;
 
-            var controller = GetComponentInParent<VRPlayerController>();
+            var controller = GetComponentInParent<HvrRig>();
             if (controller == null)
                 return;
             var bodyColliders = new List<Collider> { controller.CharacterController };
@@ -816,7 +818,7 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             var change = 0f;
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
             {
                 var mouse = UnityEngine.InputSystem.Mouse.current;
                 // A notch is 120 or 1 depending on the Input System's scroll setting - the direction counts.
@@ -919,9 +921,9 @@ namespace Gothic.VR.Adapters.Player
         private void UpdateHover()
         {
             Slot hovered = null;
-            var hoveredSide = HVRHandSide.Right;
+            var hoveredSide = VrHandSide.Right;
             var best = _hoverDistance * RingScale;
-            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
             {
                 if (!IsHandFree(side))
                     continue;
@@ -945,24 +947,24 @@ namespace Gothic.VR.Adapters.Player
             {
                 _hovered = hovered;
                 if (hovered != null)
-                    _hapticsService.Vibrate(hoveredSide, VrHapticsService.VibrationType.Info);
+                    _hapticsService.Vibrate(hoveredSide, VrHapticPreset.Info);
                 UpdateLabels();
             }
 
             // Weapons and items are grabbed by HVR itself (OnBeforeGrabbed).
             if (_hovered != null && _hovered.Kind == SlotKind.Spell && !_isDragging &&
-                HVRController.GetButtonState(hoveredSide, HVRButtons.Grip).JustActivated)
+                VrControls.GetButton(hoveredSide, VrButton.Grip).IsJustActivated)
                 TakeSpell(_hovered, hoveredSide);
         }
 
-        private bool IsHandFree(HVRHandSide side)
+        private bool IsHandFree(VrHandSide side)
         {
             return GetHeld(side) == null;
         }
 
-        private GameObject GetHeld(HVRHandSide side)
+        private GameObject GetHeld(VrHandSide side)
         {
-            return side == HVRHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
+            return side == VrHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
         }
 
         /// <summary>
@@ -1102,9 +1104,9 @@ namespace Gothic.VR.Adapters.Player
         {
             if (!_isTriggerDown)
             {
-                foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
+                foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
                 {
-                    if (!IsHandFree(side) || !HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated)
+                    if (!IsHandFree(side) || !VrControls.GetButton(side, VrButton.Trigger).IsJustActivated)
                         continue;
                     var hand = _vrPlayerService.GetHandModelGo(side);
                     if (hand == null || IsAboveHead(hand.transform.position))
@@ -1126,7 +1128,7 @@ namespace Gothic.VR.Adapters.Player
             }
 
             var dragHand = _vrPlayerService.GetHandModelGo(_dragHand);
-            var isHeld = HVRController.GetButtonState(_dragHand, HVRButtons.Trigger).Active;
+            var isHeld = VrControls.GetButton(_dragHand, VrButton.Trigger).IsActive;
             if (dragHand == null || !isHeld)
             {
                 _isTriggerDown = false;
@@ -1192,7 +1194,7 @@ namespace Gothic.VR.Adapters.Player
         /// does nothing - with a VRRuneCaster casting with that hand only. The spell stays in the inventory (equipped),
         /// like Gothic's readied spell. A trigger click of the other hand puts it away (VRFavoritesRingSpell).
         /// </summary>
-        private void TakeSpell(Slot slot, HVRHandSide side)
+        private void TakeSpell(Slot slot, VrHandSide side)
         {
             var handModel = _vrPlayerService.GetHandModelGo(side);
             if (handModel == null || string.IsNullOrEmpty(slot.InstanceName))
@@ -1231,7 +1233,7 @@ namespace Gothic.VR.Adapters.Player
             caster.RingHand = side;
             grabbable.gameObject.AddComponent<VRFavoritesRingSpell>().Init(slot.Item, side, container, caster);
 
-            _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(side, VrHapticPreset.Success);
             Logger.Log($"[FavoritesRing] {GetSpellName(slot.Item)} taken into the {side} hand", LogCat.VR);
             Close("spell taken");
         }
@@ -1293,7 +1295,7 @@ namespace Gothic.VR.Adapters.Player
                 {
                     Slot = slot,
                     Held = container,
-                    Side = hand.HandSide,
+                    Side = hand.HandSide.ToVr(),
                     StartTime = Time.time
                 };
                 _hovered = slot;
@@ -1343,7 +1345,7 @@ namespace Gothic.VR.Adapters.Player
             _transfer.Carry -= count;
             held.VobAs<IItem>().Amount += count;
             _transfer.Slot.Amount -= count;
-            _hapticsService.Vibrate(_transfer.Side, VrHapticsService.VibrationType.Info);
+            _hapticsService.Vibrate(_transfer.Side, VrHapticPreset.Info);
             UpdateLabels();
             return true;
         }
@@ -1376,7 +1378,7 @@ namespace Gothic.VR.Adapters.Player
             });
         }
 
-        private void Unequip(Slot slot, HVRHandSide side)
+        private void Unequip(Slot slot, VrHandSide side)
         {
             if (slot.Item == null || slot.Kind == SlotKind.Currency)
                 return;
@@ -1384,7 +1386,7 @@ namespace Gothic.VR.Adapters.Player
                 _playerService.HeroContainer.Props.FavoriteItems.Remove(slot.InstanceName);
             else
                 _npcInventoryService.UnequipItemWithEffects(_playerService.HeroContainer.Instance, slot.Item);
-            _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Warning);
+            _hapticsService.Vibrate(side, VrHapticPreset.Warning);
             Logger.Log($"[FavoritesRing] {GetSlotName(slot)} " +
                        (slot.Kind == SlotKind.Item ? "taken off the ring" : "unequipped"), LogCat.VR);
             Rebuild();
@@ -1397,9 +1399,9 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void UpdatePutInCandidates()
         {
-            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
             {
-                var index = side == HVRHandSide.Left ? 0 : 1;
+                var index = side == VrHandSide.Left ? 0 : 1;
                 var held = GetHeld(side);
                 var container = held != null ? held.GetComponentInParent<VobLoader>()?.Container : null;
                 var vobItem = container?.VobAs<IItem>();
@@ -1423,7 +1425,7 @@ namespace Gothic.VR.Adapters.Player
                 }
 
                 if (_putInCandidates[index]?.Target != target)
-                    _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Info);
+                    _hapticsService.Vibrate(side, VrHapticPreset.Info);
                 _putInCandidates[index] = new PutInCandidate
                 {
                     Container = container,
@@ -1497,7 +1499,7 @@ namespace Gothic.VR.Adapters.Player
 
             if (!_isOpen || grabber is not HVRHandGrabber hand)
                 return;
-            var index = hand.HandSide == HVRHandSide.Left ? 0 : 1;
+            var index = hand.IsLeftHand ? 0 : 1;
             var candidate = _putInCandidates[index];
             _putInCandidates[index] = null;
             if (candidate == null || Time.time - candidate.Time > _putInGraceSeconds ||
@@ -1542,7 +1544,7 @@ namespace Gothic.VR.Adapters.Player
                 hero.Props.FavoriteItems.Add(putIn.InstanceName);
             _vobService.RemoveWorldItem(putIn.Container);
 
-            _hapticsService.Vibrate(putIn.Side, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(putIn.Side, VrHapticPreset.Success);
             var name = putIn.Kind == SlotKind.Spell ? GetSpellName(putIn.Item) : putIn.Item.Name;
             var instead = putIn.Replaced != null ? $" instead of {putIn.Replaced.Name}" : "";
             Logger.Log($"[FavoritesRing] {name} {putIn.Action}{instead}", LogCat.VR);

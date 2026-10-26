@@ -1,8 +1,7 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using System;
+﻿using System;
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Const;
-using HurricaneVR.Framework.Shared;
+using Gothic.VR.Interaction.Models;
 using UnityEngine;
 
 namespace Gothic.VR.Adapters.Player
@@ -16,7 +15,7 @@ namespace Gothic.VR.Adapters.Player
         private const float _radius = 0.07f;
         private static readonly Vector3 _knuckleOffset = new(0f, 0f, 0.06f);
 
-        public HVRHandSide HandSide { get; private set; }
+        public VrHandSide HandSide { get; private set; }
         public Action<VRFistHitbox, NpcLoader, Vector3> OnNpcEntered;
 
         private GameObject _debugSphere;
@@ -40,7 +39,7 @@ namespace Gothic.VR.Adapters.Player
                 _debugSphere.SetActive(isVisible);
         }
 
-        public static VRFistHitbox Create(Transform hand, HVRHandSide side)
+        public static VRFistHitbox Create(Transform hand, VrHandSide side)
         {
             var go = new GameObject($"FistHitbox_{side}")
             {
@@ -75,4 +74,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

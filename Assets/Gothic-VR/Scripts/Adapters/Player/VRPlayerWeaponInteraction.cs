@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
@@ -6,10 +5,10 @@ using Gothic.Core.Models.Marvin;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Config;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Models.Vob;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -46,10 +45,38 @@ namespace Gothic.VR.Adapters.Player
         [SerializeField] private float _velocityCheckDuration = 0.5f;
         [SerializeField] private int _velocitySampleCount = 5;
 
+        private IVrRig _rig;
 
-        public void OnGrabbed(HVRGrabberBase hand, HVRGrabbable item)
+
+        private void Awake()
         {
-            var vobItem = item.GetComponentInParent<VobLoader>();
+            _rig = GetComponent<IVrRig>();
+            foreach (var grabber in _rig.HandGrabbers)
+            {
+                // Melee weapons are handled once they're in a hand, not while being pulled by distance.
+                if (grabber.Kind != VrGrabberKind.Hand)
+                    continue;
+
+                grabber.Grabbed += OnGrabbed;
+                grabber.Released += OnReleased;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_rig == null)
+                return;
+
+            foreach (var grabber in _rig.HandGrabbers)
+            {
+                grabber.Grabbed -= OnGrabbed;
+                grabber.Released -= OnReleased;
+            }
+        }
+
+        private void OnGrabbed(VrGrabArgs args)
+        {
+            var vobItem = args.Interactable != null ? args.Interactable.GetComponentInParent<VobLoader>() : null;
             var vobContainer = vobItem?.Container;
 
             // We grab something not handled as VobItem.
@@ -64,21 +91,21 @@ namespace Gothic.VR.Adapters.Player
             if (itemInstance!.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
                 return;
 
-            _weaponService.OnGrabbed(((HVRHandGrabber)hand).HandSide, vobContainer, GetWeaponPhysicsConfig());
+            _weaponService.OnGrabbed(args.HandSide, vobContainer, GetWeaponPhysicsConfig());
             SyncEquippedWeaponToHero(itemInstance, equip: true);
         }
 
-        public void OnReleased(HVRGrabberBase hand, HVRGrabbable item)
+        private void OnReleased(VrGrabArgs args)
         {
-            var vobItem = item.GetComponentInParent<VobLoader>();
+            var vobItem = args.Interactable != null ? args.Interactable.GetComponentInParent<VobLoader>() : null;
             var vobContainer = vobItem?.Container;
 
             // We grab something not handled as VobItem.
             if (vobContainer == null || vobContainer.Vob.Type != VirtualObjectType.oCItem)
                 return;
 
-            // The releasing hand might still be listed in HandGrabbers at this point - only count the other hand.
-            vobContainer.IsHeldByPlayer = item.HandGrabbers.Exists(h => h != hand);
+            // The releasing hand might still hold it at this point - only count the other hand.
+            vobContainer.IsHeldByPlayer = IsHeldByOtherHand(args);
 
             var itemInstance = vobContainer.GetItemInstance();
 
@@ -86,8 +113,18 @@ namespace Gothic.VR.Adapters.Player
             if (itemInstance!.MainFlag != (int)VmGothicEnums.ItemFlags.ItemKatNf)
                 return;
 
-            _weaponService.OnReleased(((HVRHandGrabber)hand).HandSide, GetWeaponPhysicsConfig());
+            _weaponService.OnReleased(args.HandSide, GetWeaponPhysicsConfig());
             SyncEquippedWeaponToHero(itemInstance, equip: false);
+        }
+
+        private bool IsHeldByOtherHand(VrGrabArgs args)
+        {
+            foreach (var grabber in _rig.HandGrabbers)
+            {
+                if (grabber.HandSide != args.HandSide && grabber.Held == args.Interactable)
+                    return true;
+            }
+            return false;
         }
 
         private void SyncEquippedWeaponToHero(ZenKit.Daedalus.ItemInstance itemInstance, bool equip)
@@ -244,4 +281,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

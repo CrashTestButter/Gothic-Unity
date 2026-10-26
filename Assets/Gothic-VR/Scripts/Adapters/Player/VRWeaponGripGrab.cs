@@ -6,7 +6,7 @@ using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Config;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Interaction.Backends.Hvr;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using Reflex.Attributes;
@@ -35,7 +35,7 @@ namespace Gothic.VR.Adapters.Player
         private void Start()
         {
             this.Inject();
-            var controller = GetComponentInParent<VRPlayerController>();
+            var controller = GetComponentInParent<HvrRig>();
             if (controller == null)
                 return;
 

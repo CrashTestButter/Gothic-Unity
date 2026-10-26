@@ -74,6 +74,10 @@ namespace Gothic.Core.Models.Config
 
         public Controls GameControls = Controls.VR;
 
+        [ConditionalField(fieldToCheck: nameof(GameControls), compareValues: Controls.VR)]
+        [Tooltip("VR interaction framework. Hvr falls back to Xri if HVR isn't installed (no GOTHIC_HVR_INSTALLED).")]
+        public VrInteractionBackend VrInteractionBackend = VrInteractionBackend.Hvr;
+
         [Separator("Debug")]
         [ConditionalField(fieldToCheck: nameof(GameControls), compareValues: Controls.VR)]
         public bool EnableVRDeviceSimulator;
@@ -169,6 +173,9 @@ namespace Gothic.Core.Models.Config
         [Separator("Debug")]
         [Tooltip("Ignore frame skipping during loading.")]
         public bool SpeedUpLoading;
+
+        [Tooltip("Skips all videos (logo videos and Daedalus PlayVideo/PlayVideoEx, e.g. chapter intros).")]
+        public bool SkipVideos;
 
         /**
          * ##########

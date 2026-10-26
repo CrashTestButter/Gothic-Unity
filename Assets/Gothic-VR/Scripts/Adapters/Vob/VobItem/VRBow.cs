@@ -11,6 +11,8 @@ using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Shared;
@@ -73,7 +75,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
         private LineRenderer _string;
         private bool _isDrawing;
-        private HVRHandSide _drawHand;
+        private VrHandSide _drawHand;
         private float _tension;
         private float _lastHapticTension;
         private GameObject _arrow;
@@ -149,7 +151,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (!TryGetFreeHand(out var side))
                 return;
 
-            if (!HVRController.GetButtonState(side, HVRButtons.Grip).JustActivated)
+            if (!VrControls.GetButton(side, VrButton.Grip).IsJustActivated)
                 return;
 
             var hand = _vrPlayerService.GetHandModelGo(side);
@@ -173,7 +175,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private void UpdateDrawing()
         {
             var hand = _vrPlayerService.GetHandModelGo(_drawHand);
-            var isHeld = HVRController.GetButtonState(_drawHand, HVRButtons.Grip).Active;
+            var isHeld = VrControls.GetButton(_drawHand, VrButton.Grip).IsActive;
             if (hand == null || !isHeld)
             {
                 Release();
@@ -192,7 +194,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_tension - _lastHapticTension >= 0.1f)
             {
                 _lastHapticTension = _tension;
-                _hapticsService.Vibrate(_drawHand, VrHapticsService.VibrationType.Info);
+                _hapticsService.Vibrate(_drawHand, VrHapticPreset.Info);
             }
         }
 
@@ -216,7 +218,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (!_fightService.CheckHeroWeaponRequirement(_item, isMessageShown: true))
             {
                 DropArrow();
-                _hapticsService.Vibrate(_drawHand, VrHapticsService.VibrationType.Error);
+                _hapticsService.Vibrate(_drawHand, VrHapticPreset.Error);
                 return;
             }
 
@@ -229,7 +231,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             _vrRangedService.Shoot(hero, _item, _munition, _nockWorld, direction, speed, damageScale, arrow);
 
             PlaySfx(_shootSfx);
-            _hapticsService.Vibrate(_drawHand, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(_drawHand, VrHapticPreset.Success);
             Logger.Log($"[VRBow] Shot {_munition.Name}: tension={tension:F2} speed={speed:F1} dmgScale={damageScale:F2}", LogCat.VR);
         }
 
@@ -246,15 +248,15 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             grabbable.LoadFilters();
         }
 
-        private bool TryGetFreeHand(out HVRHandSide side)
+        private bool TryGetFreeHand(out VrHandSide side)
         {
-            side = HVRHandSide.Right;
+            side = VrHandSide.Right;
             var isBowLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
             var isBowRight = _vrPlayerService.GrabbedItemRight == gameObject;
             if (isBowLeft == isBowRight)
                 return false; // both hands on the bow (or none)
 
-            side = isBowLeft ? HVRHandSide.Right : HVRHandSide.Left;
+            side = isBowLeft ? VrHandSide.Right : VrHandSide.Left;
             var otherItem = isBowLeft ? _vrPlayerService.GrabbedItemRight : _vrPlayerService.GrabbedItemLeft;
             return otherItem == null;
         }
@@ -345,7 +347,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (!_isDrawing)
                 return GetGripWorld();
 
-            var bowSide = _drawHand == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left;
+            var bowSide = _drawHand == VrHandSide.Left ? VrHandSide.Right : VrHandSide.Left;
             var bowHand = _vrPlayerService.GetHandModelGo(bowSide);
             return bowHand != null ? bowHand.transform.position : GetGripWorld();
         }

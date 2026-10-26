@@ -9,6 +9,8 @@ using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
@@ -72,7 +74,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private VRCrossbowString _string;
         private bool _isManualReload;
         private bool _isPulling;
-        private HVRHandSide _pullHand;
+        private VrHandSide _pullHand;
         private float _lastHapticProgress;
         private GameObject _bolt;
         private bool _hasAmmo;
@@ -173,25 +175,25 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             Shoot(handSide);
         }
 
-        private bool IsTriggerPressed(out HVRHandSide handSide)
+        private bool IsTriggerPressed(out VrHandSide handSide)
         {
-            handSide = HVRHandSide.Right;
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            handSide = VrHandSide.Right;
+            if (_vrPlayerService.IsSimulator)
                 return Keyboard.current[Key.R].wasPressedThisFrame;
 
-            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
             {
-                var heldItem = side == HVRHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
+                var heldItem = side == VrHandSide.Left ? _vrPlayerService.GrabbedItemLeft : _vrPlayerService.GrabbedItemRight;
                 if (heldItem != gameObject)
                     continue;
 
-                if (HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated)
+                if (VrControls.GetButton(side, VrButton.Trigger).IsJustActivated)
                 {
                     handSide = side;
                     if (IsTwoHandsRequired() && !_vrPlayerService.IsDualGrabbed)
                     {
                         // Too heavy for one hand - hold it with both (a crossbow master shoots one-handed).
-                        _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Warning);
+                        _hapticsService.Vibrate(side, VrHapticPreset.Warning);
                         return false;
                     }
                     return true;
@@ -201,7 +203,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             return false;
         }
 
-        private void Shoot(HVRHandSide handSide)
+        private void Shoot(VrHandSide handSide)
         {
             var hero = _npcService.GetHeroContainer();
             if (hero == null || _munition == null)
@@ -210,7 +212,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             // DeveloperConfig.EnableWeaponRequirementCap: without the crossbow's requirements it doesn't shoot.
             if (!_fightService.CheckHeroWeaponRequirement(_item, isMessageShown: true))
             {
-                _hapticsService.Vibrate(handSide, VrHapticsService.VibrationType.Error);
+                _hapticsService.Vibrate(handSide, VrHapticPreset.Error);
                 return;
             }
 
@@ -219,7 +221,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 if (!_hasLoggedNoAmmo)
                     Logger.Log($"[VRCrossbow] No {_munition.Name} left in the inventory.", LogCat.VR);
                 _hasLoggedNoAmmo = true;
-                _hapticsService.Vibrate(handSide, VrHapticsService.VibrationType.Error);
+                _hapticsService.Vibrate(handSide, VrHapticPreset.Error);
                 return;
             }
             _hasLoggedNoAmmo = false;
@@ -238,7 +240,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_string != null)
                 _string.SetProgress(0f);
             PlaySfx(_shootSfx);
-            _hapticsService.Vibrate(handSide, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(handSide, VrHapticPreset.Success);
         }
 
         /// <summary>
@@ -250,7 +252,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (!_isPulling)
             {
                 if (!TryGetFreeHand(out var side) ||
-                    !HVRController.GetButtonState(side, HVRButtons.Trigger).JustActivated)
+                    !VrControls.GetButton(side, VrButton.Trigger).IsJustActivated)
                     return;
                 var hand = _vrPlayerService.GetHandModelGo(side);
                 if (hand == null || Vector3.Distance(hand.transform.position, nockWorld) > _grabStringDistance)
@@ -261,13 +263,13 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 _isPulling = true;
                 _pullHand = side;
                 _lastHapticProgress = _string.Progress;
-                _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Info);
+                _hapticsService.Vibrate(side, VrHapticPreset.Info);
                 Logger.Log($"[VRCrossbow] {_item.Name}: string grabbed ({side})", LogCat.VR);
                 return;
             }
 
             var pullingHand = _vrPlayerService.GetHandModelGo(_pullHand);
-            if (pullingHand == null || !HVRController.GetButtonState(_pullHand, HVRButtons.Trigger).Active)
+            if (pullingHand == null || !VrControls.GetButton(_pullHand, VrButton.Trigger).IsActive)
             {
                 // Let go before it locked: the string snaps back to the prod.
                 _isPulling = false;
@@ -285,7 +287,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (Mathf.Abs(progress - _lastHapticProgress) >= _hapticStep)
             {
                 _lastHapticProgress = progress;
-                _hapticsService.Vibrate(_pullHand, VrHapticsService.VibrationType.Info);
+                _hapticsService.Vibrate(_pullHand, VrHapticPreset.Info);
             }
 
             if (progress < _lockProgress)
@@ -294,22 +296,22 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             _isPulling = false;
             _isLoaded = true;
             PlaySfx(_manualReloadSfx);
-            _hapticsService.Vibrate(_pullHand, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(_pullHand, VrHapticPreset.Success);
             Logger.Log($"[VRCrossbow] {_item.Name}: cocked", LogCat.VR);
         }
 
         /// <summary>
         /// The hand not holding the crossbow - empty (both hands on the crossbow: let go with one to reload).
         /// </summary>
-        private bool TryGetFreeHand(out HVRHandSide side)
+        private bool TryGetFreeHand(out VrHandSide side)
         {
-            side = HVRHandSide.Right;
+            side = VrHandSide.Right;
             var isLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
             var isRight = _vrPlayerService.GrabbedItemRight == gameObject;
             if (isLeft == isRight)
                 return false;
 
-            side = isLeft ? HVRHandSide.Right : HVRHandSide.Left;
+            side = isLeft ? VrHandSide.Right : VrHandSide.Left;
             var otherItem = isLeft ? _vrPlayerService.GrabbedItemRight : _vrPlayerService.GrabbedItemLeft;
             return otherItem == null;
         }

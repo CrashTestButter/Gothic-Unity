@@ -21,6 +21,7 @@ MonoBehaviour:
   GameProfiles: []
   FallbackLanguage: 
   GameControls: 0
+  VrInteractionBackend: 0
   EnableVRDeviceSimulator: 0
   PreselectMarvinMode: 0
   EnableZSpyLogs: 0
@@ -44,6 +45,7 @@ MonoBehaviour:
   EnableSaveLoadSystem: 0
   EnableNpcRangedCombat: 0
   SpeedUpLoading: 0
+  SkipVideos: 0
   EnableVOBs: 1
   SpawnVOBTypes:
     Value: 

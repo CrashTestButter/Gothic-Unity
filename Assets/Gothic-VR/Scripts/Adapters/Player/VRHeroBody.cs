@@ -8,8 +8,10 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Npc;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Backends.Hvr;
 using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
@@ -39,7 +41,7 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly Gothic.Core.Services.Audio.GroundSoundService _groundSoundService;
 
         // DeveloperConfig.EnableHeroBodySounds: the body's animations sound like an NPC's - steps by the ground below
-        // (*eventSFXGrnd), the swim strokes when the crawl leads (Swim, SwimWaves). VRPlayerController's stride steps
+        // (*eventSFXGrnd), the swim strokes when the crawl leads (Swim, SwimWaves). VRHeroMovement's stride steps
         // are off then.
         public static bool IsBodySounding { get; private set; }
         private const float _bodySoundVolume = 1f;
@@ -91,7 +93,7 @@ namespace Gothic.VR.Adapters.Player
         private Vector3 _bodyForward = Vector3.forward;
         private bool _hasBodyForward;
         private HurricaneVR.Framework.Core.HVRGrabbable _backpack;
-        private VRPlayerController _playerController;
+        private IVrRig _rig;
         private readonly List<Renderer> _renderers = new();
 
         // Rolled-up sleeves: armor meshes without forearms + bare forearms (naked body mesh) on the armor skeleton.
@@ -140,7 +142,7 @@ namespace Gothic.VR.Adapters.Player
         private DownPhase _downPhase;
 
         /// <summary>
-        /// The body lies or stands up (EnableHeroFallCamera) - the lowered camera isn't crouching (VRPlayerController).
+        /// The body lies or stands up (EnableHeroFallCamera) - the lowered camera isn't crouching (VRHeroMovement).
         /// </summary>
         public static bool IsHeroDown { get; private set; }
         private readonly Queue<string> _downAnimations = new();
@@ -207,7 +209,7 @@ namespace Gothic.VR.Adapters.Player
                     hero.Props.BodyState = bodyState = VmGothicEnums.BodyState.BsDead;
                 }
 
-                var menu = _playerController != null ? _playerController.MenuHandler : null;
+                var menu = GetMenuHandler();
                 var isMenuOpen = menu != null && menu.gameObject.activeSelf;
                 if (_wasMenuOpenWhileDead && !isMenuOpen)
                     _contextInteractionService.LockPlayerInPlace(_configService.Dev.EnableKnockoutTurning);
@@ -282,23 +284,29 @@ namespace Gothic.VR.Adapters.Player
             var eyeHeight = _headBone.position.y + _neckBelowEyes * scale - feetY;
             if (_downStartEyeHeight < 0f)
                 _downStartEyeHeight = eyeHeight;
-            var rig = _playerController != null ? _playerController.CameraRig : null;
-            if (rig != null)
-                rig.CameraYOffset = _downBaseCameraOffset +
-                                    Mathf.Max(eyeHeight, _minDownEyeHeight) - _downStartEyeHeight;
+            if (_rig != null)
+                _rig.CameraYOffset = _downBaseCameraOffset +
+                                     Mathf.Max(eyeHeight, _minDownEyeHeight) - _downStartEyeHeight;
 
-            _leftArm.Solve(_vrPlayerService.GetHandModelGo(HVRHandSide.Left), _body.transform);
-            _rightArm.Solve(_vrPlayerService.GetHandModelGo(HVRHandSide.Right), _body.transform);
+            _leftArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Left), _body.transform);
+            _rightArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Right), _body.transform);
 
             if (_downPhase == DownPhase.Dead && !_isDeathMenuOpened && Time.time - _deathTime >= _deathMenuDelay)
             {
                 _isDeathMenuOpened = true;
-                var menu = _playerController != null ? _playerController.MenuHandler : null;
+                var menu = GetMenuHandler();
                 if (menu != null && !menu.gameObject.activeSelf)
                     menu.ToggleVisibility();
                 Logger.Log("[VRHeroBody] Hero is dead - game menu opened", LogCat.VR);
             }
             return true;
+        }
+
+        private Gothic.Core.Adapters.UI.Menus.MenuHandler GetMenuHandler()
+        {
+            var player = _contextInteractionService.GetCurrentPlayerController();
+            var vrPlayer = player != null ? player.GetComponent<VRPlayer>() : null;
+            return vrPlayer != null ? vrPlayer.MenuHandler : null;
         }
 
         private void StartDown(Transform head)
@@ -308,8 +316,7 @@ namespace Gothic.VR.Adapters.Player
                 _downForward = Vector3.ProjectOnPlane(head.forward, Vector3.up);
             _downForward = _downForward.sqrMagnitude < 0.0001f ? Vector3.forward : _downForward.normalized;
 
-            var rig = _playerController != null ? _playerController.CameraRig : null;
-            _downBaseCameraOffset = rig != null ? rig.CameraYOffset : 0f;
+            _downBaseCameraOffset = _rig != null ? _rig.CameraYOffset : 0f;
             _downStartEyeHeight = -1f;
             _isDeathMenuOpened = false;
             _wasMenuOpenWhileDead = false;
@@ -345,9 +352,8 @@ namespace Gothic.VR.Adapters.Player
             IsHeroDown = false;
             _downAnimation = null;
             _downAnimations.Clear();
-            var rig = _playerController != null ? _playerController.CameraRig : null;
-            if (rig != null)
-                rig.CameraYOffset = _downBaseCameraOffset;
+            if (_rig != null)
+                _rig.CameraYOffset = _downBaseCameraOffset;
             Logger.Log("[VRHeroBody] Hero up again - camera height restored", LogCat.VR);
         }
 
@@ -380,12 +386,12 @@ namespace Gothic.VR.Adapters.Player
             var head = Camera.main.transform;
             var forward = GetBodyForward(head);
 
-            _playerController ??= _contextInteractionService.GetCurrentPlayerController()?.GetComponent<VRPlayerController>();
-            var feetY = _playerController != null ? _playerController.transform.position.y : head.position.y - _modelHeadHeight;
+            _rig ??= _contextInteractionService.GetCurrentPlayerController()?.GetComponent<IVrRig>();
+            var feetY = _rig != null ? _rig.Root.position.y : head.position.y - _modelHeadHeight;
             if (UpdateDown(hero, head, feetY))
                 return;
             // Crouching (sneaking) lowers the head, not the body size - keep the standing scale then.
-            var isCrouching = _playerController != null && _playerController.IsCrouching;
+            var isCrouching = _rig != null && _rig.IsCrouching;
             if (!isCrouching || _standingScale <= 0f)
                 _standingScale = Mathf.Clamp((head.position.y - feetY) / _modelHeadHeight, _minScale, _maxScale);
             var scale = _standingScale;
@@ -404,8 +410,8 @@ namespace Gothic.VR.Adapters.Player
                 _body.transform.position += neck - _headBone.position;
             }
 
-            _leftArm.Solve(_vrPlayerService.GetHandModelGo(HVRHandSide.Left), _body.transform);
-            _rightArm.Solve(_vrPlayerService.GetHandModelGo(HVRHandSide.Right), _body.transform);
+            _leftArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Left), _body.transform);
+            _rightArm.Solve(_vrPlayerService.GetHandModelGo(VrHandSide.Right), _body.transform);
         }
 
         /// <summary>
@@ -416,19 +422,19 @@ namespace Gothic.VR.Adapters.Player
         {
             if (_animator == null || !_animator.IsValid)
                 return;
-            _animator.OverlayOverride = _playerController != null ? _playerController.SpeedOverlay : null;
+            _animator.OverlayOverride = VRHeroMovement.SpeedOverlay;
 
             var yaw = _body.transform.eulerAngles.y;
             if (Time.deltaTime > 0f)
                 _bodyYawSpeed = Mathf.Lerp(_bodyYawSpeed, Mathf.DeltaAngle(_lastBodyYaw, yaw) / Time.deltaTime, 0.3f);
             _lastBodyYaw = yaw;
 
-            var velocity = _playerController != null ? _playerController.CharacterController.velocity : Vector3.zero;
+            var velocity = _rig != null ? _rig.CharacterController.velocity : Vector3.zero;
             // DeveloperConfig.EnableHeroWaterBody: swimming moves the player without a controller velocity (~0) - the
             // movement between frames counts too (no crawl, no strokes while swimming with the stick/WASD).
-            if (_configService.Dev.EnableHeroWaterBody && _playerController != null && Time.deltaTime > 0f)
+            if (_configService.Dev.EnableHeroWaterBody && _rig != null && Time.deltaTime > 0f)
             {
-                var position = _playerController.transform.position;
+                var position = _rig.Root.position;
                 var moved = (position - _lastPlayerPosition) / Time.deltaTime;
                 _lastPlayerPosition = position;
                 // A teleport isn't a speed.
@@ -449,11 +455,11 @@ namespace Gothic.VR.Adapters.Player
             // DeveloperConfig.EnableHeroWaterBody: deep water is swimming even while the state flickers, any water
             // below is no fall.
             var isInWater = false;
-            if (_configService.Dev.EnableHeroWaterBody && _playerController != null)
+            if (_configService.Dev.EnableHeroWaterBody && _rig != null)
             {
                 // Own rays from the feet: the water service's ray from the bottom up hit the player's own capsule while
                 // floating above the bottom (no water found - the body stood upright in deep water).
-                var feet = _playerController.transform.position;
+                var feet = _rig.Root.position;
                 if (Physics.Raycast(feet, Vector3.up, out var surfaceHit, _waterSurfaceRayLength,
                         1 << Gothic.Core.Const.Constants.WaterLayer, QueryTriggerInteraction.Collide))
                 {
@@ -482,7 +488,7 @@ namespace Gothic.VR.Adapters.Player
                 animation = isMoving && isBackwards ? "S_SWIMB" : "S_SWIM";
             else if (bodyState == VmGothicEnums.BodyState.BsDive)
                 animation = isMoving ? "S_DIVEF" : "S_DIVE";
-            else if (_playerController != null && !_playerController.IsGrounded && velocity.y < -1f && !isInWater &&
+            else if (_rig != null && !_rig.IsGrounded && velocity.y < -1f && !isInWater &&
                 _animator.HasAnimation(_fallAnimation))
                 animation = _fallAnimation;
             else if (isCrouching)
@@ -724,7 +730,7 @@ namespace Gothic.VR.Adapters.Player
             // Swimming sounds by UpdateSwimSounds - no steps or strokes of the animations on top.
             if (string.IsNullOrEmpty(name) || _isSwimSounding)
                 return;
-            var feet = _playerController != null ? _playerController.transform.position : transform.position;
+            var feet = _rig != null ? _rig.Root.position : transform.position;
             if (name.StartsWith(Gothic.Core.Domain.Audio.GroundSoundDomain.GroundEventPrefix))
                 name = _groundSoundService.GetSoundName(
                     name.Substring(Gothic.Core.Domain.Audio.GroundSoundDomain.GroundEventPrefix.Length), feet);

@@ -218,6 +218,18 @@ MonoBehaviour:
     m_Localized: skip
     m_Metadata:
       m_Items: []
+  - m_Id: 186269666525962240
+    m_Localized: Physical Hands
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265408
+    m_Localized: Hands stop at walls and objects and push loose items
+    m_Metadata:
+      m_Items: []
+  - m_Id: 186269666597265409
+    m_Localized: off|on
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

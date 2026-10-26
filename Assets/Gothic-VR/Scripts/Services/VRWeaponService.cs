@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core;
@@ -8,7 +7,8 @@ using ZenKit.Daedalus;
 using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Vobs;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.Core.Services.Context;
+using Gothic.VR.Services.Context;
 using Gothic.VR.Adapters.Player;
 using ZenKit.Vobs;
 using Gothic.Core.Adapters.Vob.Item;
@@ -22,12 +22,13 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Gothic.VR.Domain.Player;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Models.Vob;
 using Gothic.Core.Extensions;
-using HurricaneVR.Framework.ControllerInput;
-using HurricaneVR.Framework.Core.Grabbers;
-using HurricaneVR.Framework.Core.Utils;
-using HurricaneVR.Framework.Shared;
+#if GOTHIC_HVR_INSTALLED
+using Gothic.VR.Interaction.Backends.Hvr;
+#endif
 using Reflex.Attributes;
 using UnityEngine;
 using Logger = Gothic.Core.Logging.Logger;
@@ -54,6 +55,10 @@ namespace Gothic.VR.Services
         [Inject] private VobService _vobService;
         [Inject] private VmCacheService _vmCacheService;
         [Inject] private ResourceCacheService _resourceCacheService;
+        [Inject] private IVrSfxPlayer _vrSfxPlayer;
+        [Inject] private IVrInput _vrInput;
+        [Inject] private IVrHaptics _vrHaptics;
+        [Inject] private ContextInteractionService _contextInteractionService;
 
         private readonly VrWeaponAttackDomain _firstAttackDomain = new VrWeaponAttackDomain().Inject();
         private readonly VrWeaponAttackDomain _secondAttackDomain = new VrWeaponAttackDomain().Inject();
@@ -64,9 +69,9 @@ namespace Gothic.VR.Services
         // DeveloperConfig.EnableVrFists: a fist is an empty hand with grip + trigger held; it punches like a weapon swing.
         private const float _fistPunchVelocity = 2f;
         private const float _fistPunchCooldownSeconds = 0.5f;
-        private readonly List<(HVRHandGrabber Hand, VRFistHitbox Hitbox)> _fists = new();
-        private readonly Dictionary<HVRHandSide, float> _lastPunchTime = new();
-        private readonly Dictionary<HVRHandSide, bool> _isFistSwinging = new();
+        private readonly List<(IVrGrabber Hand, VRFistHitbox Hitbox)> _fists = new();
+        private readonly Dictionary<VrHandSide, float> _lastPunchTime = new();
+        private readonly Dictionary<VrHandSide, bool> _isFistSwinging = new();
         private bool _isFistReadied;
         private SfxModel _fistSwingSound;
         private bool _isFistSwingSoundResolved;
@@ -106,22 +111,18 @@ namespace Gothic.VR.Services
 
             var remaining = _npcInventoryService.ExtNpcHasItems(hero.Instance, itemIndex);
 
-            var socketed = new List<(VRSocket socket, VobContainer container)>();
-            foreach (var socket in Object.FindObjectsByType<VRSocket>(FindObjectsSortMode.None))
+            var socketed = new List<(IVrSocket socket, VobContainer container)>();
+            foreach (var socket in GetPlayerHolsterSockets())
             {
-                if (socket.GrabbedTarget == null || !socket.IsPlayerSocket() ||
-                    socket.GetComponentInParent<VRBackpack>(true) != null)
-                    continue;
-
-                var container = socket.GrabbedTarget.GetComponentInParent<VobLoader>(true)?.Container;
+                var container = socket.Held.GetComponentInParent<VobLoader>(true)?.Container;
                 if (IsSameItem(container, itemName))
                     socketed.Add((socket, container));
             }
 
-            var held = new List<(HVRHandGrabber hand, VobContainer container)>();
-            foreach (var hand in Object.FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None))
+            var held = new List<(IVrGrabber hand, VobContainer container)>();
+            foreach (var hand in GetHands())
             {
-                var container = hand.GrabbedTarget?.GetComponentInParent<VobLoader>()?.Container;
+                var container = hand.Held?.GetComponentInParent<VobLoader>()?.Container;
                 if (IsSameItem(container, itemName) && !held.Exists(h => h.container == container))
                     held.Add((hand, container));
             }
@@ -152,13 +153,46 @@ namespace Gothic.VR.Services
                 // Releasing from the hand subtracts the item from the inventory (VRPlayerService.UnsetGrab), but the
                 // script already did that. Add it back first so the release doesn't remove it twice.
                 _playerService.AddItem(itemName, GetAmount(container));
-                foreach (var hand in Object.FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None))
+                foreach (var hand in GetHands())
                 {
-                    if (hand.GrabbedTarget?.GetComponentInParent<VobLoader>()?.Container == container)
+                    if (hand.Held?.GetComponentInParent<VobLoader>()?.Container == container)
                         hand.ForceRelease();
                 }
                 _vobService.RemoveWorldItem(container);
             }
+        }
+
+        private IVrRig GetRig()
+        {
+            return _contextInteractionService.GetImpl<VRContextInteractionService>()?.Rig;
+        }
+
+        /// <summary>
+        /// The direct grabbers of both hands (a distance grab ends in the hand too).
+        /// </summary>
+        private IEnumerable<IVrGrabber> GetHands()
+        {
+            var rig = GetRig();
+            return rig == null
+                ? Enumerable.Empty<IVrGrabber>()
+                : rig.HandGrabbers.Where(i => i.Kind == VrGrabberKind.Hand);
+        }
+
+        /// <summary>
+        /// Occupied sockets on the player (hips, shoulders) - not the backpack's, which refills from the inventory.
+        /// </summary>
+        private IEnumerable<IVrSocket> GetPlayerHolsterSockets()
+        {
+            var rig = GetRig();
+            if (rig == null)
+                return Enumerable.Empty<IVrSocket>();
+
+            var playerRoot = rig.Root.root;
+            return Object.FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None)
+                .OfType<IVrSocket>()
+                .Where(i => i.Held != null && i.Transform.root == playerRoot &&
+                            i.Transform.GetComponentInParent<VRBackpack>(true) == null)
+                .ToList();
         }
 
         private static bool IsSameItem(VobContainer container, string itemName)
@@ -183,9 +217,9 @@ namespace Gothic.VR.Services
             if (!_configService.Dev.EnableHeroDropsWeaponsOnKnockout)
                 return;
 
-            foreach (var hand in Object.FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None))
+            foreach (var hand in GetHands())
             {
-                var grabbed = hand.GrabbedTarget;
+                var grabbed = hand.Held;
                 if (grabbed == null)
                     continue;
 
@@ -221,16 +255,18 @@ namespace Gothic.VR.Services
             foreach (var (hand, hitbox) in _fists)
             {
                 var side = hand.HandSide;
-                var isFist = hand.GrabbedTarget == null &&
-                             HVRController.GetButtonState(side, HVRButtons.Grip).Active &&
-                             HVRController.GetButtonState(side, HVRButtons.Trigger).Active;
+                var isFist = hand.Held == null &&
+                             _vrInput.GetButton(side, VrButton.Grip).IsActive &&
+                             _vrInput.GetButton(side, VrButton.Trigger).IsActive;
                 if (hitbox.gameObject.activeSelf != isFist)
                     hitbox.gameObject.SetActive(isFist);
                 isAnyFist |= isFist;
 
                 if (isFist)
                 {
-                    KeepFistPose(hand);
+#if GOTHIC_HVR_INSTALLED
+                    KeepFistPose(side);
+#endif
                     TickFistSwing(hand, hitbox);
                     hitbox.SetDebugVisible(_configService.Dev.ShowNpcColliders);
                 }
@@ -252,8 +288,15 @@ namespace Gothic.VR.Services
         /// always the case when punching. The highlight itself stays. NPCs and items further away are hovered by the
         /// force grabber, with a hover pose of its own - only the hand grabber's was reset and the fist still opened.
         /// </summary>
-        private static void KeepFistPose(HVRHandGrabber hand)
+#if GOTHIC_HVR_INSTALLED
+        private void KeepFistPose(VrHandSide side)
         {
+            // HVR's hand poser only - the block hands of the other backends close with the grip by themselves.
+            var rig = _contextInteractionService.GetCurrentPlayerController()?.GetComponent<HvrRig>();
+            var hand = rig == null ? null : side == VrHandSide.Left ? rig.LeftHand : rig.RightHand;
+            if (hand == null)
+                return;
+
             var animator = hand.HandAnimator;
             if (animator == null || animator.CurrentPoser == null)
                 return;
@@ -268,25 +311,26 @@ namespace Gothic.VR.Services
             animator.ResetToDefault();
             hand.ResetCloneAnimator();
         }
+#endif
 
         /// <summary>
         /// A swing (hand faster than a punch needs) is heard and felt like a weapon swing: the fist attack's sound from
         /// Humans.mds (S_FISTATTACK) and a short vibration - once per swing.
         /// </summary>
-        private void TickFistSwing(HVRHandGrabber hand, VRFistHitbox hitbox)
+        private void TickFistSwing(IVrGrabber hand, VRFistHitbox hitbox)
         {
             var side = hand.HandSide;
-            var speed = hand.Controller != null ? hand.Controller.Velocity.magnitude : 0f;
+            var speed = _vrInput.GetControllerVelocity(side).magnitude;
             var isSwinging = speed >= _fistPunchVelocity;
             _isFistSwinging.TryGetValue(side, out var wasSwinging);
             _isFistSwinging[side] = isSwinging;
             if (!isSwinging || wasSwinging)
                 return;
 
-            hand.Controller?.Vibrate(_fistSwingHapticAmplitude, _fistSwingHapticSeconds);
+            _vrHaptics.Vibrate(side, _fistSwingHapticAmplitude, _fistSwingHapticSeconds);
             var sound = GetFistSwingSound();
             if (sound != null)
-                SFXPlayer.Instance.PlaySFX(_audioService.CreateAudioClip(sound.GetRandomSound()), hitbox.transform.position);
+                _vrSfxPlayer.Play(_audioService.CreateAudioClip(sound.GetRandomSound()), hitbox.transform.position);
         }
 
         private SfxModel GetFistSwingSound()
@@ -313,9 +357,13 @@ namespace Gothic.VR.Services
             }
             _fists.Clear();
 
-            foreach (var hand in Object.FindObjectsByType<HVRHandGrabber>(FindObjectsSortMode.None))
+            var rig = GetRig();
+            foreach (var hand in GetHands())
             {
-                var hitbox = VRFistHitbox.Create(hand.transform, hand.HandSide);
+                var handVisual = rig.GetHandVisual(hand.HandSide);
+                if (handVisual == null)
+                    continue;
+                var hitbox = VRFistHitbox.Create(handVisual, hand.HandSide);
                 hitbox.OnNpcEntered = OnFistEnteredNpc;
                 _fists.Add((hand, hitbox));
             }
@@ -332,10 +380,7 @@ namespace Gothic.VR.Services
             if (hero == null || target == null || target == hero)
                 return;
 
-            var controller = hitbox.HandSide == HVRHandSide.Left
-                ? HVRInputManager.Instance?.LeftController
-                : HVRInputManager.Instance?.RightController;
-            var speed = controller != null ? controller.Velocity.magnitude : 0f;
+            var speed = _vrInput.GetControllerVelocity(hitbox.HandSide).magnitude;
             if (speed < _fistPunchVelocity)
             {
                 Logger.Log($"[VRFist] {hitbox.HandSide} fist touched {target.Instance.GetName(NpcNameSlot.Slot0)} - too slow ({speed:F1} m/s)", LogCat.Fight);
@@ -345,12 +390,12 @@ namespace Gothic.VR.Services
                 return;
 
             _lastPunchTime[hitbox.HandSide] = Time.time;
-            controller.Vibrate(_fistHitHapticAmplitude, _fistHitHapticSeconds);
+            _vrHaptics.Vibrate(hitbox.HandSide, _fistHitHapticAmplitude, _fistHitHapticSeconds);
             Logger.Log($"[VRFist] {hitbox.HandSide} punch at {speed:F1} m/s → {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Fight);
             GlobalEventDispatcher.FightHit.Invoke(hero, target, position);
         }
 
-        public void OnGrabbed(HVRHandSide handSide, VobContainer vobContainer, WeaponPhysicsConfig weaponConfig)
+        public void OnGrabbed(VrHandSide handSide, VobContainer vobContainer, WeaponPhysicsConfig weaponConfig)
         {
             var heroContainer = _playerService.HeroContainer;
 
@@ -363,7 +408,7 @@ namespace Gothic.VR.Services
             UpdateHeroWeaponState();
         }
 
-        public void OnReleased(HVRHandSide handSide, WeaponPhysicsConfig weaponConfig)
+        public void OnReleased(VrHandSide handSide, WeaponPhysicsConfig weaponConfig)
         {
             if (!_firstAttackDomain.TryUnHandle(weaponConfig, handSide))
             {
@@ -426,11 +471,11 @@ namespace Gothic.VR.Services
             {
                  case VmGothicEnums.ItemMaterial.Metal:
                      var clipMetal = _audioService.CreateAudioClip(DaedalusConst.SoundDrawMetal);
-                     SFXPlayer.Instance.PlaySFX(clipMetal, weapon.Go.transform.position);
+                     _vrSfxPlayer.Play(clipMetal, weapon.Go.transform.position);
                      break;
                  case VmGothicEnums.ItemMaterial.Wood:
                      var clipWood = _audioService.CreateAudioClip(DaedalusConst.SoundDrawWood);
-                     SFXPlayer.Instance.PlaySFX(clipWood, weapon.Go.transform.position);
+                     _vrSfxPlayer.Play(clipWood, weapon.Go.transform.position);
                      break;
                  // All others will be ignored as they're e.g., a bow.
                  default:
@@ -447,11 +492,11 @@ namespace Gothic.VR.Services
             {
                 case VmGothicEnums.ItemMaterial.Metal:
                     var clipMetal = _audioService.CreateAudioClip(DaedalusConst.SoundUndrawMetal);
-                    SFXPlayer.Instance.PlaySFX(clipMetal, weapon.Go.transform.position);
+                    _vrSfxPlayer.Play(clipMetal, weapon.Go.transform.position);
                     break;
                 case VmGothicEnums.ItemMaterial.Wood:
                     var clipWood = _audioService.CreateAudioClip(DaedalusConst.SoundUndrawWood);
-                    SFXPlayer.Instance.PlaySFX(clipWood, weapon.Go.transform.position);
+                    _vrSfxPlayer.Play(clipWood, weapon.Go.transform.position);
                     break;
                 // All others will be ignored as they're e.g., a bow.
                 default:
@@ -539,4 +584,3 @@ namespace Gothic.VR.Services
         }
     }
 }
-#endif

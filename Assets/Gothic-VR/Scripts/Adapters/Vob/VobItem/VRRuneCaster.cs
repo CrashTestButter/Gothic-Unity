@@ -19,6 +19,8 @@ using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.World;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.ControllerInput;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Bags;
@@ -104,7 +106,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         private AudioSource _investAudioSource;
         private bool _telekinesisPrepped;
         private bool _isTargeting; // combat spells: trigger 1 pressed, waiting for target + trigger 2
-        private HVRHandSide _runeHandSide;
+        private VrHandSide _runeHandSide;
         private GameObject _spellVfxGo;
         public bool IsTargetingActive => _isTargeting;
 
@@ -113,19 +115,19 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// not grabbed) - this hand alone casts it: its trigger aims/casts, throwable spells are charged and thrown
         /// with it.
         /// </summary>
-        public HVRHandSide? RingHand { get; set; }
+        public VrHandSide? RingHand { get; set; }
 
         /// <summary>
         /// The hand whose trigger casts: the ring's hand, else (DeveloperConfig.EnableCastWithHoldingHand) the hand
         /// holding the rune/scroll - always the right one before: a scroll in the left hand was cast with the right
         /// trigger, it took both hands.
         /// </summary>
-        private HVRHandSide CastHand => RingHand ??
+        private VrHandSide CastHand => RingHand ??
                                         (_configService.Dev.EnableCastWithHoldingHand &&
                                          _vrPlayerService.GrabbedItemLeft == gameObject &&
                                          _vrPlayerService.GrabbedItemRight != gameObject
-                                            ? HVRHandSide.Left
-                                            : HVRHandSide.Right);
+                                            ? VrHandSide.Left
+                                            : VrHandSide.Right);
 
         /// <summary>
         /// Aiming, charging or casting - the ring's idle effect in the hand hides meanwhile (VRFavoritesRingSpell).
@@ -136,7 +138,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         public bool IsThrowable => _throwCastKey != null;
         private ParticleEffectEmitKeyInstance _throwCastKey;
         private bool _isThrowCharged;
-        private HVRHandSide _throwHandSide;
+        private VrHandSide _throwHandSide;
         // Invest level (Spell_ProcessMana returned SPL_NEXTLEVEL, Fireball at 1/2/4 of 5 mana): like the engine the
         // VISUALFX key spellFX_<name>_KEY_INVEST_<level> replaces the effect in the hand (MFX_Fireball_INVEST_L2, ...),
         // plays its sound (MFX_Fireball_invest1..4) and its emCreateFXID burst; the charge also grows a bit.
@@ -259,11 +261,11 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
 
             bool triggered;
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
                 triggered = Keyboard.current[Key.R].wasPressedThisFrame;
             else
-                triggered = HVRController.GetButtonState(CastHand, HVRButtons.Trigger)
-                    .JustActivated;
+                triggered = VrControls.GetButton(CastHand, VrButton.Trigger)
+                    .IsJustActivated;
 
             // Transformed: the orb hand's trigger transforms back (VRTransformPuppet) - no second transformation.
             if (_vrTransformService.IsTransformed && IsTransformSpell())
@@ -273,11 +275,11 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             // trigger press says how many circles are missing (G_CanNotCast).
             if (!_fightService.CheckHeroRuneCircle(_item, false))
             {
-                if (triggered || HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Trigger).JustActivated ||
-                    HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).JustActivated)
+                if (triggered || VrControls.GetButton(VrHandSide.Left, VrButton.Trigger).IsJustActivated ||
+                    VrControls.GetButton(VrHandSide.Right, VrButton.Trigger).IsJustActivated)
                 {
                     _fightService.CheckHeroRuneCircle(_item, true);
-                    _hapticsService.Vibrate(CastHand, VrHapticsService.VibrationType.Error);
+                    _hapticsService.Vibrate(CastHand, VrHapticPreset.Error);
                 }
                 return;
             }
@@ -311,7 +313,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 // Trigger 1: enter targeting mode — extend rune-hand bags, SFX starts
                 _isTargeting = true;
                 var isRuneLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
-                _runeHandSide = RingHand ?? (isRuneLeft ? HVRHandSide.Left : HVRHandSide.Right);
+                _runeHandSide = RingHand ?? (isRuneLeft ? VrHandSide.Left : VrHandSide.Right);
                 _vrPlayerService.ActivateSpellTargeting(_runeHandSide, _targetRange);
                 StartInvestSound(_item.Spell);
                 SpawnSpellVfx();
@@ -438,7 +440,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             {
                 _isTargeting = true;
                 var isRuneLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
-                _runeHandSide = RingHand ?? (isRuneLeft ? HVRHandSide.Left : HVRHandSide.Right);
+                _runeHandSide = RingHand ?? (isRuneLeft ? VrHandSide.Left : VrHandSide.Right);
                 _vrPlayerService.ActivateSpellTargeting(_runeHandSide, _targetRange);
                 StartInvestSound(_item.Spell);
                 SpawnSpellVfx();
@@ -463,9 +465,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
         private bool IsCastButtonReleased()
         {
-            if (_vrPlayerService.VRPlayerInputs.UseWASD)
+            if (_vrPlayerService.IsSimulator)
                 return Keyboard.current[Key.R].wasReleasedThisFrame;
-            return HVRController.GetButtonState(CastHand, HVRButtons.Trigger).JustDeactivated;
+            return VrControls.GetButton(CastHand, VrButton.Trigger).IsJustDeactivated;
         }
 
         /// <summary>
@@ -475,12 +477,12 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private bool IsChargeAllowed()
         {
-            if (!_configService.Dev.EnableTwoHandSpellCharge || _vrPlayerService.VRPlayerInputs.UseWASD ||
+            if (!_configService.Dev.EnableTwoHandSpellCharge || _vrPlayerService.IsSimulator ||
                 !SpellConst.ChargeEffectNames.Contains(GetSpellMfxName(_item.Spell) ?? string.Empty))
                 return true;
 
-            var left = _vrPlayerService.GetHandModelGo(HVRHandSide.Left);
-            var right = _vrPlayerService.GetHandModelGo(HVRHandSide.Right);
+            var left = _vrPlayerService.GetHandModelGo(VrHandSide.Left);
+            var right = _vrPlayerService.GetHandModelGo(VrHandSide.Right);
             if (left == null || right == null ||
                 Vector3.Distance(left.transform.position, right.transform.position) <= _twoHandChargeDistance)
             {
@@ -491,8 +493,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (!_isChargeWaitLogged)
             {
                 _isChargeWaitLogged = true;
-                _hapticsService.Vibrate(_runeHandSide == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left,
-                    VrHapticsService.VibrationType.Info);
+                _hapticsService.Vibrate(_runeHandSide == VrHandSide.Left ? VrHandSide.Right : VrHandSide.Left,
+                    VrHapticPreset.Info);
                 Logger.Log("[VRRuneCaster] Charging waits - bring both hands together", LogCat.VR);
             }
             return false;
@@ -512,8 +514,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (!_configService.Dev.EnableTeleportKeepsHeldItems)
                 return;
 
-            var left = _vrPlayerService.GetHandModelGo(HVRHandSide.Left);
-            var right = _vrPlayerService.GetHandModelGo(HVRHandSide.Right);
+            var left = _vrPlayerService.GetHandModelGo(VrHandSide.Left);
+            var right = _vrPlayerService.GetHandModelGo(VrHandSide.Right);
             var nearest = Mathf.Min(
                 left != null ? Vector3.Distance(left.transform.position, transform.position) : float.MaxValue,
                 right != null ? Vector3.Distance(right.transform.position, transform.position) : float.MaxValue);
@@ -968,7 +970,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
         private void SpawnSpellVfx() => SpawnSpellVfx(_runeHandSide);
 
-        private void SpawnSpellVfx(HVRHandSide handSide, string pfxNameOverride = null)
+        private void SpawnSpellVfx(VrHandSide handSide, string pfxNameOverride = null)
         {
             DestroySpellVfx();
             var mfxName = GetSpellMfxName(_item.Spell);
@@ -1251,10 +1253,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             TrackHandPosition(handSide);
 
-            var isWasd = _vrPlayerService.VRPlayerInputs.UseWASD;
-            var button = isWasd ? default : HVRController.GetButtonState(handSide, HVRButtons.Trigger);
-            var isJustPressed = isWasd ? Keyboard.current[Key.R].wasPressedThisFrame : button.JustActivated;
-            var isHeld = isWasd ? Keyboard.current[Key.R].isPressed : button.Active;
+            var isWasd = _vrPlayerService.IsSimulator;
+            var button = isWasd ? default : VrControls.GetButton(handSide, VrButton.Trigger);
+            var isJustPressed = isWasd ? Keyboard.current[Key.R].wasPressedThisFrame : button.IsJustActivated;
+            var isHeld = isWasd ? Keyboard.current[Key.R].isPressed : button.IsActive;
 
             if (isJustPressed && !_isCasting)
                 StartThrowCharge(handSide);
@@ -1301,9 +1303,9 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// </summary>
         private void LogBlockedThrow()
         {
-            if (_vrPlayerService.VRPlayerInputs.UseWASD ||
-                (!HVRController.GetButtonState(HVRHandSide.Left, HVRButtons.Trigger).JustActivated &&
-                 !HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).JustActivated))
+            if (_vrPlayerService.IsSimulator ||
+                (!VrControls.GetButton(VrHandSide.Left, VrButton.Trigger).IsJustActivated &&
+                 !VrControls.GetButton(VrHandSide.Right, VrButton.Trigger).IsJustActivated))
                 return;
 
             var left = _vrPlayerService.GrabbedItemLeft;
@@ -1316,7 +1318,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// <summary>
         /// The hand that doesn't hold the rune - and holds nothing else.
         /// </summary>
-        private bool TryGetThrowHand(out HVRHandSide handSide)
+        private bool TryGetThrowHand(out VrHandSide handSide)
         {
             // A ring spell: the hand holding it charges and throws.
             if (RingHand.HasValue)
@@ -1327,7 +1329,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             var isRuneLeft = _vrPlayerService.GrabbedItemLeft == gameObject;
             var isRuneRight = _vrPlayerService.GrabbedItemRight == gameObject;
-            handSide = isRuneLeft ? HVRHandSide.Right : HVRHandSide.Left;
+            handSide = isRuneLeft ? VrHandSide.Right : VrHandSide.Left;
             if (isRuneLeft == isRuneRight)
                 return false; // both hands on the rune (or none)
 
@@ -1335,10 +1337,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             return otherItem == null;
         }
 
-        private void StartThrowCharge(HVRHandSide handSide)
+        private void StartThrowCharge(VrHandSide handSide)
         {
             _throwHandSide = handSide;
-            _runeHandSide = RingHand ?? (handSide == HVRHandSide.Left ? HVRHandSide.Right : HVRHandSide.Left);
+            _runeHandSide = RingHand ?? (handSide == VrHandSide.Left ? VrHandSide.Right : VrHandSide.Left);
             _isCasting = true;
             _isThrowCharged = false;
             _manaInvested = 0;
@@ -1389,7 +1391,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             }
             SpawnInvestBurst(levelKey?.EmCreateFxId);
 
-            _hapticsService.Vibrate(_throwHandSide, VrHapticsService.VibrationType.Info);
+            _hapticsService.Vibrate(_throwHandSide, VrHapticPreset.Info);
             Logger.Log($"[VRRuneCaster] {mfxName} invest level {_investLevel} (mana {_manaInvested})", LogCat.VR);
         }
 
@@ -1431,7 +1433,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         /// Released the trigger: thrown along the hand's velocity with the spell's own speed (emtrjeasevel, cm/s).
         /// Too slow = fizzles (mana is spent, like an interrupted cast).
         /// </summary>
-        private void ReleaseThrow(HVRHandSide handSide, bool isWasd)
+        private void ReleaseThrow(VrHandSide handSide, bool isWasd)
         {
             if (_manaInvested == 0)
             {
@@ -1502,7 +1504,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             _isThrowCharged = false;
         }
 
-        private void TrackHandPosition(HVRHandSide handSide)
+        private void TrackHandPosition(VrHandSide handSide)
         {
             var handGo = _vrPlayerService.GetHandModelGo(handSide);
             if (handGo == null)

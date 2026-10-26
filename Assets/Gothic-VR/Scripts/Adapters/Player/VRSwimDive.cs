@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -18,9 +17,9 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Meshes;
 using Gothic.Core.Services.Player;
-using Gothic.VR.Adapters.HVROverrides;
 using Gothic.Core.Services.Vm;
-using HurricaneVR.Framework.Core.Utils;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
@@ -29,11 +28,10 @@ using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Adapters.Player
 {
-    [RequireComponent(typeof(VRPlayerController), typeof(VRPlayerInputs))]
+    [RequireComponent(typeof(VRPlayer))]
     public class VRSwimDive : MonoBehaviour, IMarvinPropertyCollector
     {
-        [SerializeField] private VRPlayerController _playerController;
-        [SerializeField] private VRPlayerInputs _playerInputs;
+        private IVrRig _rig;
         
         private INpc _playerVob;
         private NpcContainer _heroContainer;
@@ -66,6 +64,9 @@ namespace Gothic.VR.Adapters.Player
         [SerializeField] private float _waterBobAmplitude = 0.001f;
         [SerializeField] private float _waterBobFrequency = 2.5f;
 
+        [Tooltip("No water surface this far (m) above the player while swimming or diving: out of the water.")]
+        [SerializeField] private float _outOfWaterCheckHeight = 100f;
+
         // Swim movement
         [SerializeField] private float _swimStartDiveVerticalVelocity = -5f;
         [SerializeField] private float _swimHandMovementMultiplier = 5f;
@@ -80,9 +81,6 @@ namespace Gothic.VR.Adapters.Player
         // private GameObject _diveBubbles;
         
         
-        // Diving: the surface can be deep above us - only reset the water level if there's no water at all.
-        private const float _diveSurfaceRayLength = 100f;
-
         [Header("Debugging")]
         [SerializeField] private bool _debugStartDive;
 
@@ -95,7 +93,14 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly MeshService _meshService;
         [Inject] private readonly PlayerService _playerService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly IVrInput _vrInput;
+        [Inject] private readonly IVrSfxPlayer _vrSfxPlayer;
         [Inject] private readonly ConfigService _configService;
+
+        private void Awake()
+        {
+            _rig = GetComponent<IVrRig>();
+        }
 
         private void Start()
         {
@@ -168,14 +173,15 @@ namespace Gothic.VR.Adapters.Player
 
                 // A loaded save (or new world) starts on land - leftovers of swimming/diving would keep the slow
                 // water movement. The next FixedUpdate detects water again if we spawned in it.
-                if (_configService.Dev.EnableNpcWater)
-                    ResetWater();
+                if (_configService.Dev.EnableNpcWater && (_playerAi.WaterLevel != (int)ZenGineConst.WaterLevel.Normal ||
+                                                          _mode != VmGothicEnums.WalkMode.Walk))
+                    LeaveWater();
             });
             
-            _initialGravity = _playerController.Gravity;
-            _initialMoveSpeed = _playerController.MoveSpeed;
-            _initialRunSpeed = _playerController.RunSpeed;
-            _initialFallSpeed = _playerController.MaxFallSpeed;
+            _initialGravity = _rig.Gravity;
+            _initialMoveSpeed = _rig.MoveSpeed;
+            _initialRunSpeed = _rig.RunSpeed;
+            _initialFallSpeed = _rig.MaxFallSpeed;
         }
 
         private void Update()
@@ -221,18 +227,32 @@ namespace Gothic.VR.Adapters.Player
                 if (previousWaterLevel != _playerAi.WaterLevel)
                     ChangeWaterBehavior();
             }
-            // DeveloperConfig.EnableNpcWater: no water above us - teleported away from water, loaded a save, fell
-            // through a waterfall. While diving the surface can be farther away than the ray above.
-            else if (_configService.Dev.EnableNpcWater && _playerAi.WaterLevel != (int)ZenGineConst.WaterLevel.Normal &&
-                     (_mode != VmGothicEnums.WalkMode.Dive ||
-                      !Physics.Raycast(transform.position, Vector3.up, _diveSurfaceRayLength, 1 << Constants.WaterLayer)))
+            // No water above us, but still swimming/diving: teleported out of the water (Marvin goto, savegame load,
+            // world change) or fell through a waterfall. Walking out of the water passes knee depth instead. Diving
+            // deeper than the ray above still has the surface far above us.
+            else if (_playerAi.WaterLevel != (int)ZenGineConst.WaterLevel.Normal &&
+                     !Physics.Raycast(transform.position, Vector3.up, _outOfWaterCheckHeight, 1 << Constants.WaterLayer))
             {
-                ResetWater();
+                LeaveWater();
             }
         }
 
-        private void ResetWater()
+        /// <summary>
+        /// Back to walking from any water level, also from swimming or diving.
+        /// </summary>
+        private void LeaveWater()
         {
+            Logger.Log($"[VRSwimDive] Out of the water while in {_mode} mode (teleported?). Walking again.",
+                LogCat.VR);
+
+            if (_mode == VmGothicEnums.WalkMode.Dive)
+            {
+                _playerService.StopDiving();
+                _rig.Fade(0, float.MaxValue); // Immediately fade the screen back to normal (no fade)
+            }
+
+            _mode = VmGothicEnums.WalkMode.Walk;
+            Shader.SetGlobalInt(Constants.ShaderPropertyWaterEffectToggle, 0);
             _playerAi.WaterLevel = (int)ZenGineConst.WaterLevel.Normal;
             ChangeWaterBehavior();
         }
@@ -246,9 +266,9 @@ namespace Gothic.VR.Adapters.Player
             {
                 _debugStartDive = false;
 
-                if (_mode == VmGothicEnums.WalkMode.Swim)
+                if (_mode == VmGothicEnums.WalkMode.Swim && _rig != null)
                 {
-                    _playerController.CharacterController.Move(Vector3.down * 5);
+                    _rig.CharacterController.Move(Vector3.down * 5);
                     StartDive();
                 }
             }
@@ -272,26 +292,26 @@ namespace Gothic.VR.Adapters.Player
                         if (_mode == VmGothicEnums.WalkMode.Dive)
                         {
                             _playerService.StopDiving();
-                            _playerController.ScreenFader.Fade(0, float.MaxValue);
+                            _rig.Fade(0, float.MaxValue);
                         }
                         _mode = VmGothicEnums.WalkMode.Walk;
                         Shader.SetGlobalInt(Constants.ShaderPropertyWaterEffectToggle, 0);
                     }
 
-                    _playerController.Gravity = _initialGravity;
-                    _playerController.MoveSpeed = _initialMoveSpeed;
-                    _playerController.RunSpeed = _initialRunSpeed;
-                    _playerController.CanSprint = true;
-                    _playerController.MaxFallSpeed = _initialFallSpeed;
+                    _rig.Gravity = _initialGravity;
+                    _rig.MoveSpeed = _initialMoveSpeed;
+                    _rig.RunSpeed = _initialRunSpeed;
+                    _rig.CanSprint = true;
+                    _rig.MaxFallSpeed = _initialFallSpeed;
                     
-                    _playerController.SetWalkingControls();
+                    _contextInteractionService.SetWalkingControls();
                     break;
                 case ZenGineConst.WaterLevel.Knee:
                     // Dive -> Swim (sometimes when pulling hard up, we are briefly knee deep and need to call the sound in here once)
                     if (_mode == VmGothicEnums.WalkMode.Dive)
                     {
                         _playerService.StopDiving();
-                        _playerController.ScreenFader.Fade(0, float.MaxValue); // Immediately fade the screen back to normal (no fade)
+                        _rig.Fade(0, float.MaxValue); // Immediately fade the screen back to normal (no fade)
 
                         PlaySfx(_sfxSwim2HangSound);
 
@@ -303,20 +323,20 @@ namespace Gothic.VR.Adapters.Player
                     _mode = VmGothicEnums.WalkMode.Walk;
                     Shader.SetGlobalInt(Constants.ShaderPropertyWaterEffectToggle, 0);
 
-                    _playerController.Gravity = _initialGravity;
-                    _playerController.MoveSpeed = _initialMoveSpeed / 2;
-                    _playerController.RunSpeed = _initialMoveSpeed / 2; // No running, but it might be, that we run into deep water, then we need to slow it down like walking.
-                    _playerController.CanSprint = false;
-                    _playerController.MaxFallSpeed = _initialFallSpeed;
+                    _rig.Gravity = _initialGravity;
+                    _rig.MoveSpeed = _initialMoveSpeed / 2;
+                    _rig.RunSpeed = _initialMoveSpeed / 2; // No running, but it might be, that we run into deep water, then we need to slow it down like walking.
+                    _rig.CanSprint = false;
+                    _rig.MaxFallSpeed = _initialFallSpeed;
                     
-                    _playerController.SetWaterWalkingControls();
+                    _contextInteractionService.SetWaterWalkingControls();
                     break;
                 case ZenGineConst.WaterLevel.Chest:
                     // Dive -> Swim
                     if (_mode == VmGothicEnums.WalkMode.Dive)
                     {
                         _playerService.StopDiving();
-                        _playerController.ScreenFader.Fade(0, float.MaxValue); // Immediately fade the screen back to normal (no fade)
+                        _rig.Fade(0, float.MaxValue); // Immediately fade the screen back to normal (no fade)
 
                         PlaySfx(_sfxSwim2HangSound);
                         
@@ -326,10 +346,10 @@ namespace Gothic.VR.Adapters.Player
 
                     Shader.SetGlobalInt(Constants.ShaderPropertyWaterEffectToggle, 0);
                     _mode = VmGothicEnums.WalkMode.Swim;
-                    _playerController.Gravity = 0f;
-                    _playerController.MaxFallSpeed = 0f;
+                    _rig.Gravity = 0f;
+                    _rig.MaxFallSpeed = 0f;
 
-                    _playerController.SetSwimmingControls();
+                    _contextInteractionService.SetSwimmingControls();
                     
                     if (_waterBobbingCoroutine == null)
                         _waterBobbingCoroutine = StartCoroutine(WaterBobbing());
@@ -372,7 +392,7 @@ namespace Gothic.VR.Adapters.Player
             {
                 time += Time.deltaTime;
                 var offset = Mathf.Sin(time * _waterBobFrequency) * _waterBobAmplitude;
-                _playerController.CharacterController.Move(Vector3.down * offset);
+                _rig.CharacterController.Move(Vector3.down * offset);
                 yield return null;
             }
         }
@@ -386,14 +406,14 @@ namespace Gothic.VR.Adapters.Player
             // (After "forcing" diving by moving hands down.)
             _currentVelocity = Vector3.zero;
             
-            _playerController.Gravity = 0;
-            _playerController.MaxFallSpeed = 0;
+            _rig.Gravity = 0;
+            _rig.MaxFallSpeed = 0;
 
-            _playerController.SetDivingControls();
+            _contextInteractionService.SetDivingControls();
 
             _playerService.StartDiving();
             UpdateHeroBodyState();
-            _playerController.ScreenFader.Fade(0.8f, 1/_playerService.CurrentAir); // We fade to black based on our start level of air (in seconds)
+            _rig.Fade(0.8f, 1/_playerService.CurrentAir); // We fade to black based on our start level of air (in seconds)
             
             PlaySfx(_sfxSwim2DiveSound);
             
@@ -412,7 +432,7 @@ namespace Gothic.VR.Adapters.Player
         ///
         /// Test 2. Translation with PlayerController (where Thumbstick rotation is applied)
         /// var combinedVelocity = (leftHandVelocity + rightHandVelocity) * _swimHandMovementMultiplier;
-        /// var rotatedVelocity = _playerController.transform.TransformDirection(combinedVelocity);
+        /// var rotatedVelocity = _rig.Root.TransformDirection(combinedVelocity);
         /// _currentVelocity = Vector3.Lerp(_currentVelocity, -rotatedVelocity, Time.deltaTime);
         ///
         /// [🛑] Moving physical head
@@ -433,7 +453,7 @@ namespace Gothic.VR.Adapters.Player
         /// [🛑] Rigidbody velocity is only tracked at FixedUpdate(). Which makes the movement wonky and I couldn't figure out how to apply multiplier right.
         ///
         /// Test 5. Using CameraRig as TransformDirection
-        /// var rotatedVelocity = _playerController.CameraRig.transform.TransformDirection(combinedVelocity);
+        /// var rotatedVelocity = _rig.TrackingSpace.TransformDirection(combinedVelocity);
         /// Why? Something like: The two rotations are applied like this in HVR Player:
         /// PlayerController - real and synthetic rotation
         ///   - CameraRig    - inverse real rotation
@@ -444,30 +464,33 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private void HandleSwim()
         {
-            if (_playerInputs.IsLeftGrabActivated)
+            var leftGrip = _vrInput.GetButton(VrHandSide.Left, VrButton.Grip);
+            var rightGrip = _vrInput.GetButton(VrHandSide.Right, VrButton.Grip);
+
+            if (leftGrip.IsJustActivated)
                 _isSwimDiveForceLeftJustStarted = true;
-            if (_playerInputs.IsRightGrabActivated)
+            if (rightGrip.IsJustActivated)
                 _isSwimDiveForceRightJustStarted = true;
 
             // Use force to pull yourself (per hand). Only include hands whose Grip is currently held.
-            if (_playerInputs.IsLeftGripHoldActive || _playerInputs.IsRightGripHoldActive)
+            if (leftGrip.IsActive || rightGrip.IsActive)
             {
                 var desiredLocalVelocity = Vector3.zero;
 
-                if (_playerInputs.IsLeftGripHoldActive)
+                if (leftGrip.IsActive)
                 {
-                    if (IsHandBelowWater(_playerController.LeftControllerTransform))
+                    if (IsHandBelowWater(_rig.LeftHand))
                     {
-                        var leftHandVelocity = _playerInputs.LeftController.Velocity;
+                        var leftHandVelocity = _vrInput.GetControllerVelocity(VrHandSide.Left);
                         desiredLocalVelocity += leftHandVelocity;
                     }
                 }
 
-                if (_playerInputs.IsRightGripHoldActive)
+                if (rightGrip.IsActive)
                 {
-                    if (IsHandBelowWater(_playerController.RightControllerTransform))
+                    if (IsHandBelowWater(_rig.RightHand))
                     {
-                        var rightHandVelocity = _playerInputs.RightController.Velocity;
+                        var rightHandVelocity = _vrInput.GetControllerVelocity(VrHandSide.Right);
                         desiredLocalVelocity += rightHandVelocity;
                     }
                 }
@@ -475,7 +498,7 @@ namespace Gothic.VR.Adapters.Player
                 desiredLocalVelocity *= _swimHandMovementMultiplier;
 
                 // Transform velocity to world space based on player rotation
-                var rotatedVelocity = _playerController.CameraRig.transform.TransformDirection(desiredLocalVelocity);
+                var rotatedVelocity = _rig.TrackingSpace.TransformDirection(desiredLocalVelocity);
 
                 // Apply opposite force for swimming - Only horizontal!
                 _currentVelocity = Vector3.Lerp(_currentVelocity, -rotatedVelocity, Time.deltaTime);
@@ -502,7 +525,7 @@ namespace Gothic.VR.Adapters.Player
 
             // Move the character - Horizontal only
             var rotatedHorizontalVelocity = new Vector3(_currentVelocity.x, 0, _currentVelocity.z);
-            _playerController.CharacterController.Move(rotatedHorizontalVelocity * Time.deltaTime);
+            _rig.CharacterController.Move(rotatedHorizontalVelocity * Time.deltaTime);
 
             // We seek -y aka "down"
             if (_currentVelocity.y < _swimStartDiveVerticalVelocity)
@@ -516,38 +539,41 @@ namespace Gothic.VR.Adapters.Player
             RaycastHit hit;
 
             // Is there water above your hand?
-            return Physics.Raycast(handTransform.position, Vector3.up, out hit, _playerController.CameraHeight,
+            return Physics.Raycast(handTransform.position, Vector3.up, out hit, _rig.CameraHeight,
                 1 << Constants.WaterLayer);
         }
 
         private void HandleDive()
         {
-            if (_playerInputs.IsLeftGrabActivated)
+            var leftGrip = _vrInput.GetButton(VrHandSide.Left, VrButton.Grip);
+            var rightGrip = _vrInput.GetButton(VrHandSide.Right, VrButton.Grip);
+
+            if (leftGrip.IsJustActivated)
                 _isSwimDiveForceLeftJustStarted = true;
-            if (_playerInputs.IsRightGrabActivated)
+            if (rightGrip.IsJustActivated)
                 _isSwimDiveForceRightJustStarted = true;
 
             // Use force to pull yourself (per hand). Only include hands whose Grip is currently held.
-            if (_playerInputs.IsLeftGripHoldActive || _playerInputs.IsRightGripHoldActive)
+            if (leftGrip.IsActive || rightGrip.IsActive)
             {
                 var desiredLocalVelocity = Vector3.zero;
 
-                if (_playerInputs.IsLeftGripHoldActive)
+                if (leftGrip.IsActive)
                 {
-                    var leftHandVelocity = _playerInputs.LeftController.Velocity;
+                    var leftHandVelocity = _vrInput.GetControllerVelocity(VrHandSide.Left);
                     desiredLocalVelocity += leftHandVelocity;
                 }
 
-                if (_playerInputs.IsRightGripHoldActive)
+                if (rightGrip.IsActive)
                 {
-                    var rightHandVelocity = _playerInputs.RightController.Velocity;
+                    var rightHandVelocity = _vrInput.GetControllerVelocity(VrHandSide.Right);
                     desiredLocalVelocity += rightHandVelocity;
                 }
 
                 desiredLocalVelocity *= _diveHandMovementMultiplier;
 
                 // Transform velocity to world space based on player rotation
-                var rotatedVelocity = _playerController.CameraRig.transform.TransformDirection(desiredLocalVelocity);
+                var rotatedVelocity = _rig.TrackingSpace.TransformDirection(desiredLocalVelocity);
 
                 // Apply opposite force for diving (full 3D movement)
                 _currentVelocity = Vector3.Lerp(_currentVelocity, -rotatedVelocity, Time.deltaTime);
@@ -573,7 +599,7 @@ namespace Gothic.VR.Adapters.Player
             }
 
             // Move the character
-            _playerController.CharacterController.Move(_currentVelocity * Time.deltaTime);
+            _rig.CharacterController.Move(_currentVelocity * Time.deltaTime);
         }
 
         /// <summary>
@@ -589,9 +615,9 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             if (isCooldown)
-                SFXPlayer.Instance.PlaySFXCooldown(clip, Camera.main.transform.position, _swimDiveSfxUuid, cooldownTime: clip.length);
+                _vrSfxPlayer.PlayWithCooldown(clip, Camera.main.transform.position, _swimDiveSfxUuid, clip.length);
             else
-                SFXPlayer.Instance.PlaySFX(clip, Camera.main.transform.position);
+                _vrSfxPlayer.Play(clip, Camera.main.transform.position);
         }
 
         public IEnumerable<object> CollectMarvinInspectorProperties()
@@ -642,4 +668,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

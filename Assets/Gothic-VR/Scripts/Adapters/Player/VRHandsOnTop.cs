@@ -1,7 +1,6 @@
-#if GOTHIC_HVR_INSTALLED
 using Gothic.Core.Services.Config;
+using Gothic.VR.Interaction.Ports;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core.UI;
 using Reflex.Attributes;
 using UnityEngine;
 
@@ -14,6 +13,7 @@ namespace Gothic.VR.Adapters.Player
     {
         [Inject] private readonly VRUiOnTopService _uiOnTopService;
         [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly IVrUiPointers _vrUiPointers;
 
         [SerializeField] private Renderer[] _handRenderers;
         [Tooltip("Hand material which is rendered after the on-top UI.")]
@@ -44,14 +44,12 @@ namespace Gothic.VR.Adapters.Player
 
         private void CollectPointerLines()
         {
-            var pointers = transform.root.GetComponentsInChildren<HVRUIPointer>(true);
-            _pointerLines = new LineRenderer[pointers.Length];
-            _pointerLineMaterials = new Material[pointers.Length];
-            _pointerLineOnTopCopies = new Material[pointers.Length];
-            for (var i = 0; i < pointers.Length; i++)
+            _pointerLines = _vrUiPointers.GetPointerLines(transform.root);
+            _pointerLineMaterials = new Material[_pointerLines.Length];
+            _pointerLineOnTopCopies = new Material[_pointerLines.Length];
+            for (var i = 0; i < _pointerLines.Length; i++)
             {
-                _pointerLines[i] = pointers[i].GetComponent<LineRenderer>();
-                if (_pointerLines[i] == null || _pointerLines[i].sharedMaterial == null)
+                if (_pointerLines[i].sharedMaterial == null)
                     continue;
                 _pointerLineMaterials[i] = _pointerLines[i].sharedMaterial;
                 _pointerLineOnTopCopies[i] = new Material(_pointerLineMaterials[i]) { renderQueue = _onTopRenderQueue };
@@ -86,4 +84,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

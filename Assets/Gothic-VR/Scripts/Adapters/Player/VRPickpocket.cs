@@ -10,8 +10,10 @@ using Gothic.Core.Manager;
 using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Npc;
-using Gothic.VR.Adapters.HVROverrides;
+using Gothic.VR.Interaction.Backends.Hvr;
 using Gothic.VR.Services;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction;
 using HurricaneVR.Framework.Core;
 using HurricaneVR.Framework.Core.Grabbers;
 using HurricaneVR.Framework.Shared;
@@ -41,7 +43,8 @@ namespace Gothic.VR.Adapters.Player
         [Inject] private readonly VrHapticsService _hapticsService;
         [Inject] private readonly AudioService _audioService;
 
-        private const string _backpackPrefabPath = "VR/Prefabs/Player-Elements/BackPack";
+        // The active backend's backpack prefab (VRBackpack.PrefabPath).
+        private static string _backpackPrefabPath => VRBackpack.PrefabPath;
         private const string _backpackBodyName = "BackPack-Body";
         private const string _pelvisBoneName = "BIP01 PELVIS";
         private const float _scanInterval = 0.25f;
@@ -66,7 +69,7 @@ namespace Gothic.VR.Adapters.Player
         private Mesh _purseMesh;
         private Material _purseMaterial;
         private Purse _hovered;
-        private HVRHandSide _hoveredSide;
+        private VrHandSide _hoveredSide;
 
         private NpcContainer _victim;
         private PickpocketInventoryOwner _pockets;
@@ -250,9 +253,9 @@ namespace Gothic.VR.Adapters.Player
         private void UpdateHover()
         {
             Purse hovered = null;
-            var hoveredSide = HVRHandSide.Right;
+            var hoveredSide = VrHandSide.Right;
             var best = _hoverDistance;
-            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
             {
                 if (!IsHandFree(side))
                     continue;
@@ -277,7 +280,7 @@ namespace Gothic.VR.Adapters.Player
                 _hovered = hovered;
                 _hoveredSide = hoveredSide;
                 if (hovered != null)
-                    _hapticsService.Vibrate(hoveredSide, VrHapticsService.VibrationType.Info);
+                    _hapticsService.Vibrate(hoveredSide, VrHapticPreset.Info);
             }
 
             if (_hovered == null)
@@ -285,28 +288,28 @@ namespace Gothic.VR.Adapters.Player
 
             // The same grip grabs the NPC (VRNpc: talk) - not while a hand is at his purse.
             _pickpocketService.BlockTalk(_hovered.Npc);
-            if (HVRController.GetButtonState(_hoveredSide, HVRButtons.Grip).JustActivated)
+            if (VrControls.GetButton(_hoveredSide, VrButton.Grip).IsJustActivated)
                 StartRobbery(_hovered.Npc, _hoveredSide);
         }
 
         /// <summary>
         /// Nothing in the hand - or the NPC itself (HVR grabs him with the grip at his hip, VRNpc lets go again).
         /// </summary>
-        private bool IsHandFree(HVRHandSide side)
+        private bool IsHandFree(VrHandSide side)
         {
             var target = GetHandGrabber(side)?.GrabbedTarget;
             return target == null || target.GetComponentInParent<VRNpc>() != null;
         }
 
-        private HVRHandGrabber GetHandGrabber(HVRHandSide side)
+        private HVRHandGrabber GetHandGrabber(VrHandSide side)
         {
-            var controller = GetComponentInParent<VRPlayerController>();
+            var controller = GetComponentInParent<HvrRig>();
             if (controller == null)
                 return null;
-            return side == HVRHandSide.Left ? controller.LeftHand : controller.RightHand;
+            return side == VrHandSide.Left ? controller.LeftHand : controller.RightHand;
         }
 
-        private void StartRobbery(NpcContainer victim, HVRHandSide side)
+        private void StartRobbery(NpcContainer victim, VrHandSide side)
         {
             var hand = GetHandGrabber(side);
             var handModel = _vrPlayerService.GetHandModelGo(side);
@@ -344,7 +347,7 @@ namespace Gothic.VR.Adapters.Player
             var clip = _audioService.CreateAudioClip(_audioService.InvOpen.File);
             if (clip != null)
                 AudioSource.PlayClipAtPoint(clip, handTransform.position);
-            _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Success);
+            _hapticsService.Vibrate(side, VrHapticPreset.Success);
             Logger.Log($"[Pickpocket] Robbing {victimName}", LogCat.VR);
         }
 
@@ -403,8 +406,8 @@ namespace Gothic.VR.Adapters.Player
         {
             var victim = _victim;
             _caughtUntil[victim] = Time.time + _caughtCooldown;
-            foreach (var side in new[] { HVRHandSide.Left, HVRHandSide.Right })
-                _hapticsService.Vibrate(side, VrHapticsService.VibrationType.Error);
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
+                _hapticsService.Vibrate(side, VrHapticPreset.Error);
             EndRobbery();
             _pickpocketService.CatchThief(victim);
         }

@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System;
 using Gothic.Core.Adapters.UI.Menus;
 using Gothic.Core.Domain;
@@ -50,4 +49,3 @@ namespace Gothic.VR.Adapters.UI.Menus.Settings
         }
     }
 }
-#endif

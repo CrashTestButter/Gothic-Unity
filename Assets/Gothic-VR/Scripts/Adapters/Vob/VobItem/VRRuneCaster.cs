@@ -184,7 +184,11 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             var hero = _npcService.GetHeroContainer();
             if (hero != null)
+            {
                 hero.ActiveSpell = _item.Spell;
+                // DeveloperConfig.EnableActiveSpellIsScroll: scrolls are ITEM_MULTI spell items, runes aren't.
+                hero.IsActiveSpellScroll = ((VmGothicEnums.ItemFlags)_item.Flags & VmGothicEnums.ItemFlags.ItemMulti) != 0;
+            }
 
             // Readied rune == FMODE_MAGIC for Daedalus (B_AssessFighter checks Npc_IsInFightMode + Npc_GetActiveSpellCat).
             _vrWeaponService.SetRuneReadied(true);
@@ -214,7 +218,10 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             var hero = _npcService.GetHeroContainer();
             if (hero != null)
+            {
                 hero.ActiveSpell = 0;
+                hero.IsActiveSpellScroll = false;
+            }
 
             // Only if Start() readied it (no item -> never readied).
             if (_item != null)

@@ -1495,6 +1495,11 @@ namespace Gothic.Core.Models.Config
                  "charged ones) grow only while both hands are together (30 cm) - a kamehameha. Apart, the charge waits.")]
         public bool EnableTwoHandSpellCharge = true;
 
+        [Tooltip("V1: Npc_GetActiveSpellIsScroll is true for a held scroll - G2 lets a scroll cast for SPL_Cost_Scroll " +
+                 "mana, a rune needs the spell's full cost; scrolls counted as runes and a new hero's fireball scroll " +
+                 "stopped at once.")]
+        public bool EnableActiveSpellIsScroll = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

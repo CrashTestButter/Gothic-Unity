@@ -1954,8 +1954,13 @@ namespace Gothic.Core.Domain.Vm
 
         public int Npc_GetActiveSpellIsScroll(NpcInstance npc)
         {
-            // Scrolls vs runes: we treat all VR spell items as runes (not scrolls).
-            return LogInstantExternal(nameof(Npc_GetActiveSpellIsScroll), 0, npc);
+            // DeveloperConfig.EnableActiveSpellIsScroll: a held scroll is one - G2's Spell_Logic_* lets a scroll cast for
+            // SPL_Cost_Scroll mana, a rune needs the spell's full cost; every scroll counted as a rune and a new hero's
+            // fireball scroll stopped at once (SPL_SENDSTOP). Before: always 0.
+            var ret = _configService.Dev.EnableActiveSpellIsScroll && npc?.GetUserData()?.IsActiveSpellScroll == true
+                ? 1
+                : 0;
+            return LogInstantExternal(nameof(Npc_GetActiveSpellIsScroll), ret, npc);
         }
 
         public int Npc_OwnedByNpc(ItemInstance item, NpcInstance npc)

@@ -58,6 +58,9 @@ Link), not on Quest/Pico standalone.
 
 ## The ring around you, spells like in Gothic · 2026-10-26
 
+- Main's new VR system (XR Interaction Toolkit, the HurricaneVR replacement) is merged in - with HurricaneVR nothing
+  changes; our features are being moved onto it ([merge notes](merge-2026-10-26.md)).
+
 ### The ring around you, magic circles, chain lightning, spell effects · 2026-10-26 (night)
 
 - The favorites ring opens around you at eye level: look at a slot to select it (its name always shows), turn it with

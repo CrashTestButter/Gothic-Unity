@@ -5,7 +5,7 @@ before pushing. Goal: make Gothic 1 and Gothic 2 completable in VR — a "game c
 
 | | |
 |---|---|
-| Compared against | `main` at `084e5e95` (PR #401, merged into the branch - [merge notes](merge-2026-10-22.md)) |
+| Compared against | `main` at `a705c2fc` (PR #402 XRI, merged into the branch - [merge notes](merge-2026-10-26.md)) |
 | Commits | 533 on the branch that `main` doesn't have |
 | Files | 394 changed (224 added, 170 modified), +43,760 / −1,000 lines |
 | C# | 250 files (97 new) |

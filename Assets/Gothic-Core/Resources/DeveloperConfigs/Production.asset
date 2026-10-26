@@ -23,6 +23,7 @@ MonoBehaviour:
   GameControls: 0
   VrInteractionBackend: 0
   EnableVRDeviceSimulator: 0
+  VrSimulatorControls: 0
   PreselectMarvinMode: 0
   EnableZSpyLogs: 0
   AllDebugChannels: 0
@@ -363,6 +364,10 @@ MonoBehaviour:
   EnableCastWithHoldingHand: 1
   EnableTwoHandSpellCharge: 1
   EnableActiveSpellIsScroll: 1
+  EnableGameVersionScenePlacement: 1
+  EnableHeroHands: 1
+  HeroHandsRollDegrees: 0
+  EnableBackpackHandPassThrough: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1
@@ -371,6 +376,8 @@ MonoBehaviour:
   EnableEngineFinishingMove: 1
   EnableFinishWithStabSound: 1
   EnableVrStabFinish: 1
+  EnableStabFinishHold: 1
+  EnableFinishedNpcLyingDeath: 1
   EnableDeathZeroHitPoints: 1
   EnableDeadSkipsRoutine: 1
   EnableDroppedItemColliderLayer: 1

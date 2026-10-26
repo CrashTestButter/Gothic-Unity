@@ -82,6 +82,11 @@ namespace Gothic.Core.Models.Config
         [ConditionalField(fieldToCheck: nameof(GameControls), compareValues: Controls.VR)]
         public bool EnableVRDeviceSimulator;
 
+        [Tooltip("Keys of the VR device simulator on the XRI backend: XRI's own or like the HVR simulator (W/A/S/D, " +
+                 "right mouse turns, hold Q/E + mouse moves a hand, G grabs/lets go, left click = trigger).")]
+        public DeveloperConfigEnums.VrSimulatorControls VrSimulatorControls =
+            DeveloperConfigEnums.VrSimulatorControls.XriSimulator;
+
         [Tooltip("Start with Marvin mode on (shortcut). Without it, Marvin mode can still be activated in game.")]
         public bool PreselectMarvinMode;
 
@@ -1507,6 +1512,24 @@ namespace Gothic.Core.Models.Config
                  "stopped at once.")]
         public bool EnableActiveSpellIsScroll = true;
 
+        [Tooltip("V1: The game version / profile scene puts the player onto its floor like the logo and menu scenes - the " +
+                 "XRI player fell from the floorless Player scene before the floor existed and kept falling.")]
+        public bool EnableGameVersionScenePlacement = true;
+
+        [Tooltip("V1: Immersion option \"Hero's hands\" (ini heroHands, off by default): with the VR hero body, the hero's " +
+                 "own fists (gloves of his armor) are the VR hands - turned like the controllers, the VR hand models " +
+                 "hidden. Before a world is loaded (menus) the VR hands stay.")]
+        public bool EnableHeroHands = true;
+
+        [Tooltip("Turn of the hero fists' thumbs around their fingers, outwards (degrees, EnableHeroHands). 0 = thumb up " +
+                 "like the VR hand's. Read every frame - tune it while playing.")]
+        [Range(-180f, 180f)]
+        public float HeroHandsRollDegrees;
+
+        [Tooltip("V1 (XRI physical hands): the hand holding the backpack ignores its whole hull - hand and backpack " +
+                 "pushed each other and the backpack shook in the hand.")]
+        public bool EnableBackpackHandPassThrough = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]
@@ -1540,6 +1563,14 @@ namespace Gothic.Core.Models.Config
         [Tooltip("V1 (VR): The hero finishes off an unconscious NPC with a stab and a twist of the wrist (like the lock " +
                  "picks) instead of any slash - the 'Finishing' option in the Immersion menu (off: any hit).")]
         public bool EnableVrStabFinish = true;
+
+        [Tooltip("V1 (VR): The stab finish kills when the blade stays in the body for 3 seconds (a pulse every second) " +
+                 "instead of the twist of the wrist - the twist was too finicky.")]
+        public bool EnableStabFinishHold = true;
+
+        [Tooltip("V1: An unconscious NPC finished off dies where he lies (T_WOUNDED_2_DEAD / S_DEAD) with his death " +
+                 "scream (SVM_x_DEAD, like the engine) - he got up into a stand and fell on his back (T_DEADB).")]
+        public bool EnableFinishedNpcLyingDeath = true;
 
         [Tooltip("V1: A dead NPC has 0 hit points like in the engine - a finished off NPC kept the knockout's 1 HP " +
                  "(shown on his bar) and stood in a T-pose when he was culled in again.")]

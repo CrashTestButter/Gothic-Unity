@@ -362,8 +362,10 @@ namespace Gothic.VR.Adapters.Player
             forward = forward.sqrMagnitude < 0.01f ? Vector3.forward : forward.normalized;
             if (IsAroundPlayer)
             {
-                // The player stands in its middle; turned around, the first slot is in front of him.
-                transform.SetPositionAndRotation(head.position, Quaternion.LookRotation(-forward, Vector3.up));
+                // The player stands in its middle, a little below the eyes (at eye level it hid the view); turned
+                // around, the first slot is in front of him.
+                transform.SetPositionAndRotation(head.position + Vector3.down * _aroundPlayerBelowEyes,
+                    Quaternion.LookRotation(-forward, Vector3.up));
                 _aroundPlayerRotation = transform.rotation;
             }
             else
@@ -775,10 +777,14 @@ namespace Gothic.VR.Adapters.Player
 
         private bool IsAroundPlayer => _configService.Dev.EnableRingAroundPlayer;
         private Quaternion _aroundPlayerRotation = Quaternion.identity;
-        private float RingScale => (IsAroundPlayer ? _aroundPlayerScale : 1f) *
-                                   (_configService.Dev.EnableRingZoom ? _ringZoom : 1f);
+        private const float _aroundPlayerBelowEyes = 0.25f;
+        private float RingScale => IsAroundPlayer ? _aroundPlayerScale : 1f;
 
-        // DeveloperConfig.EnableRingZoom: the ring's size, changed with the right stick (simulator: mouse wheel) like
+        // DeveloperConfig.EnableRingZoom: the ring's radius - the slots come closer or move away, keeping their size
+        // (scaling the whole ring grew the slots too).
+        private float RingRadius => _ringRadius * (_configService.Dev.EnableRingZoom ? _ringZoom : 1f);
+
+        // DeveloperConfig.EnableRingZoom: the ring's radius, changed with the right stick (simulator: mouse wheel) like
         // the menu's distance - kept for the session.
         private static float _ringZoom = 1f;
         private const float _minRingZoom = 0.5f;
@@ -828,7 +834,6 @@ namespace Gothic.VR.Adapters.Player
                 return;
 
             _ringZoom = Mathf.Clamp(_ringZoom + change, _minRingZoom, _maxRingZoom);
-            transform.localScale = Vector3.one * RingScale;
         }
 
         /// <summary>
@@ -869,8 +874,8 @@ namespace Gothic.VR.Adapters.Player
             foreach (var slot in _slots)
             {
                 var angle = (slot.Angle + _ringAngle) * Mathf.Deg2Rad;
-                slot.Root.transform.localPosition = new Vector3(Mathf.Sin(angle) * _ringRadius, 0f,
-                    -Mathf.Cos(angle) * _ringRadius);
+                slot.Root.transform.localPosition = new Vector3(Mathf.Sin(angle) * RingRadius, 0f,
+                    -Mathf.Cos(angle) * RingRadius);
                 var isHighlighted = slot == _hovered || slot == putInTarget;
                 slot.Root.transform.localScale = Vector3.one * (isHighlighted ? _hoverScale : 1f);
                 if (slot.Item != null)
@@ -1164,7 +1169,7 @@ namespace Gothic.VR.Adapters.Player
             if (!_isDragging && Mathf.Abs(deltaX) >= _dragStartDistance)
                 _isDragging = true;
             if (_isDragging)
-                _ringAngle = _dragStartAngle + deltaX / _ringRadius * Mathf.Rad2Deg;
+                _ringAngle = _dragStartAngle + deltaX / RingRadius * Mathf.Rad2Deg;
         }
 
         private bool IsAboveHead(Vector3 position)

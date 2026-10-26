@@ -243,6 +243,31 @@ namespace Gothic.Core.Domain.Culling
             }
         }
 
+        /// <summary>
+        /// Sync the position of every NPC of the world into its VOB (save games, leaving a world).
+        /// The root of a visible NPC follows walking animations only after their loop is done. BIP01 is up to date,
+        /// but at hip height. We therefore combine both.
+        /// </summary>
+        public void UpdateVobPositionOfAllNpcs()
+        {
+            for (var i = 0; i < _count; i++)
+            {
+                var loader = _loaders[i];
+                var container = loader == null ? null : loader.Container;
+                if (container?.Vob == null)
+                    continue;
+
+                var root = loader.transform;
+                var position = root.position;
+                var bip01 = container.PrefabProps == null ? null : container.PrefabProps.Bip01;
+                if (_visibleNpcs.Contains(i) && bip01 != null)
+                    position = new Vector3(bip01.position.x, position.y, bip01.position.z);
+
+                container.Vob.Position = position.ToZkVector();
+                container.Vob.Rotation = root.rotation.ToZkMatrix();
+            }
+        }
+
         public List<NpcContainer> GetVisibleNpcs()
         {
             var visibleNpcs = new List<NpcContainer>(_visibleNpcs.Count);

@@ -20,6 +20,12 @@ namespace Gothic.Core.Models.Container
         public readonly VobProperties2 Props;
         public GameObject Go;
 
+        /// <summary>
+        /// Set for child VOBs which have an own VobLoader (e.g. an item lying on a mover). They're part of the world
+        /// through their parent until they're taken (SaveGameService.DetachChildVob).
+        /// </summary>
+        [CanBeNull] public IVirtualObject ParentVob;
+
 
         [Inject] private readonly VmCacheService _vmCacheService;
         

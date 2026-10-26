@@ -1,14 +1,17 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Gothic.Core.Const;
+using Gothic.Core.Domain.SaveGames;
 using Gothic.Core.Logging;
+using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Proxy;
+using Gothic.Core.Models.SaveGames;
 using Gothic.Core.Services.Caches;
+using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
-using Gothic.Core.Services.Culling;
 using Gothic.Core.Extensions;
 using JetBrains.Annotations;
 using Reflex.Attributes;
@@ -18,8 +21,6 @@ using ZenKit.Daedalus;
 using ZenKit.Vobs;
 using Logger = Gothic.Core.Logging.Logger;
 using Mesh = ZenKit.Mesh;
-using Texture = ZenKit.Texture;
-using TextureFormat = ZenKit.TextureFormat;
 
 namespace Gothic.Core.Services.World
 {
@@ -32,10 +33,13 @@ namespace Gothic.Core.Services.World
     ///
     /// Saving:
     /// 1. + 2. Load*() and ChangeWorld()   -> Needs to be called before to fill the data.
-    /// 3. SaveGame(saveGameId:int)         -> Will use the currently loaded world from runtime and stores changes.
+    /// 3. SaveCurrentGame(saveGameId, title) -> Will use the currently loaded world from runtime and stores changes.
     ///
     /// Helper methods:
     /// * GetSaveGame(saveGameId:int)       -> Return a save game object (or null) if requested. (e.g. used for LoadMenu to prepare data.
+    ///
+    /// A save game consists of Gothic's files (written by ZenKit) and UNITYSAVE.json for state Gothic doesn't know
+    /// (see ISaveStateSection). Details: Docs/save-game.md
     /// </summary>
     public class SaveGameService
     {
@@ -45,30 +49,48 @@ namespace Gothic.Core.Services.World
         public bool IsWorldEnteredFirstTime;
 
         public bool IsFirstWorldLoadingFromSaveGame; // Check if we load save game right now!
-        
+
         /// <summary>
-        /// Values can be:
-        /// - true - When we start a new game and load first world | when we visit another world for the first time
-        /// - false - We load a save game and spawn where we left off last time | when we visit another world for a n-th time
-        ///
-        /// Visiting a world for the first time can be triggered with or without leveraging a save game.
-        /// It only matters if it's the first time! (Save games only include world saves if we visited it before.)
+        /// The current world's data comes from a save game file (not from its .zen, not from a world left in this
+        /// session). E.g. world start triggers don't fire then (OpenGothic: no triggerOnStart() when loading).
         /// </summary>
-        public bool IsWorldLoadedForTheFirstTime;
+        public bool IsWorldLoadedFromSaveGame;
 
         public SaveGame Save;
 
-        private readonly Dictionary<string, WorldContainer> _worlds = new();
+        /// <summary>
+        /// INIT_* scripts of a world restored from a save/visit run. Wld_Insert* calls are skipped meanwhile.
+        /// </summary>
+        public bool IsRunningInitScriptsOfRestoredWorld;
+
+        private const string _savesFolderName = "Saves_GothicUnity";
+
+        private readonly Dictionary<string, ISaveStateSection> _sections = new();
+
+        // UNITYSAVE.json of the loaded save game. Its sections without a registered owner are saved again.
+        private UnitySaveData _loadedUnitySave;
+
+        // World names differ in casing (e.g. World.zen from the ini, WORLD from a save/level change).
+        private readonly Dictionary<string, WorldContainer> _worlds = new(StringComparer.OrdinalIgnoreCase);
         public string CurrentWorldName;
         public WorldContainer CurrentWorldData => _worlds[CurrentWorldName];
 
 
         [Inject] private readonly GameStateService _gameStateService;
-        [Inject] private readonly NpcMeshCullingService _npcMeshCullingService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
+        [Inject] private readonly ConfigService _configService;
+        [Inject] private readonly GameTimeService _gameTimeService;
+        [Inject] private readonly UnityMonoService _unityMonoService;
+        [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
 
-        
+        private readonly SaveGameWorldDomain _worldDomain = new SaveGameWorldDomain().Inject();
+        private readonly SaveGameNpcDomain _npcDomain = new SaveGameNpcDomain().Inject();
+        private readonly SaveGameDaedalusDomain _daedalusDomain = new SaveGameDaedalusDomain().Inject();
+        private readonly SaveGameThumbnailDomain _thumbnailDomain = new SaveGameThumbnailDomain().Inject();
+        private readonly UnitySaveDomain _unitySaveDomain = new UnitySaveDomain().Inject();
+
+
         public enum SlotId
         {
             WorldChangeOnly = -1,
@@ -90,44 +112,64 @@ namespace Gothic.Core.Services.World
             Slot15 = 15
         }
 
-            
+
         public void Init()
         {
-            // Nothing to do for now.
+            RegisterSection(new ScriptArraysSaveSection().Inject());
+        }
+
+        /// <summary>
+        /// Register state which needs to be stored inside UNITYSAVE.json. See ISaveStateSection.
+        /// </summary>
+        public void RegisterSection(ISaveStateSection section)
+        {
+            if (!_sections.TryAdd(section.Key, section))
+                Logger.LogError($"[SaveGame] Section {section.Key} is registered already.", LogCat.Loading);
         }
 
         public void LoadNewGame()
         {
+            GlobalEventDispatcher.UnloadGameStart.Invoke();
             GlobalEventDispatcher.LoadGameStart.Invoke();
 
             SaveGameId = 0;
             Save = new SaveGame(_contextGameVersionService.Version);
+            _loadedUnitySave = null;
+
+            // A previously loaded save changed the time.
+            _gameTimeService.ResetToStartTime();
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
         }
 
         /// <summary>
         /// Hint: G1 save game folders start with 1. We leverage the same numbering.
+        /// Returns false (and keeps the running game) if the save game can't be read.
         /// </summary>
-        public void LoadSavedGame(SlotId saveGameId)
+        public bool LoadSavedGame(SlotId saveGameId)
         {
-            GlobalEventDispatcher.LoadGameStart.Invoke();
-
-            LoadSavedGame(saveGameId, GetSaveGame(saveGameId));
-        }
-
-        public void LoadSavedGame(SlotId saveGameId, SaveGame save)
-        {
+            // Check before the running game is replaced (LoadGameStart creates a new VM).
+            var save = GetSaveGame(saveGameId);
             if (save == null)
             {
-                Logger.LogError($"SaveGame with id {saveGameId} doesn't exist.", LogCat.Loading);
-                return;
+                Logger.LogError($"SaveGame with id {saveGameId} can't be loaded.", LogCat.Loading);
+                return false;
             }
+
+            GlobalEventDispatcher.UnloadGameStart.Invoke();
+            GlobalEventDispatcher.LoadGameStart.Invoke();
 
             SaveGameId = saveGameId;
             Save = save;
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
+
+            // LoadGameStart created a fresh VM. Script globals, time and guild attitudes come from SAVEDAT.SAV.
+            _daedalusDomain.Restore(save);
+
+            _loadedUnitySave = _unitySaveDomain.Read(GetSaveGamePath(saveGameId));
+            _unitySaveDomain.Restore(_loadedUnitySave, _sections);
+            return true;
         }
 
         /// <summary>
@@ -145,11 +187,11 @@ namespace Gothic.Core.Services.World
             // 1. World was already loaded.
             if (_worlds.ContainsKey(CurrentWorldName))
             {
-                IsWorldLoadedForTheFirstTime = false;
+                IsWorldLoadedFromSaveGame = false;
+                IsWorldEnteredFirstTime = false;
                 return;
             }
 
-            IsWorldLoadedForTheFirstTime = true;
             ZenKit.World originalWorld = _resourceCacheService.TryGetWorld(CurrentWorldName)!; // Always needed for some data not present in SaveGame.
             ZenKit.World saveGameWorld = null;
             bool worldFoundInSaveGame = false;
@@ -157,15 +199,16 @@ namespace Gothic.Core.Services.World
             // 2. Try to load world from save game.
             if (IsLoadedGame)
             {
-                saveGameWorld = Save.LoadWorld(CurrentWorldName);
+                // Worlds are saved upper case without extension (e.g. NEWWORLD.SAV). ZenKit's lookup is case-sensitive.
+                saveGameWorld = Save.LoadWorld(Path.GetFileNameWithoutExtension(CurrentWorldName).ToUpperInvariant());
                 worldFoundInSaveGame = saveGameWorld != null;
             }
 
             ZenKit.World worldToUse;
+            IsWorldLoadedFromSaveGame = worldFoundInSaveGame;
             if (worldFoundInSaveGame)
             {
                 worldToUse = saveGameWorld;
-                IsWorldLoadedForTheFirstTime = false;
                 IsWorldEnteredFirstTime = false;
             }
             else
@@ -190,14 +233,14 @@ namespace Gothic.Core.Services.World
                 Npcs = WrapVobs(worldToUse.Npcs), // (if it's a new world, it's simply null)
 
                 // Contained inside both: normal .zen file and also saveGame.
-                Vobs = WrapVobs(worldToUse!.RootObjects),
+                Vobs = WrapVobs(FlattenLevelCompos(worldToUse!.RootObjects)),
                 WayNet = (CachedWayNet)worldToUse.WayNet.Cache()
             };
         }
 
         /// <summary>
         /// Load a Save Game.
-        /// 
+        ///
         /// Hint: If you want to compare an original Gothic save and a Gothic Unity save, use zen2zen and convert a save file
         ///       to ascii for comparison: https://github.com/GothicKit/ZenKit/blob/main/examples/zen2zen.cc
         /// </summary>
@@ -214,7 +257,12 @@ namespace Gothic.Core.Services.World
                 return null;
             }
 
-            save.Load(GetSaveGamePath(folderSaveId));
+            // E.g. an empty THUMB.SAV makes ZenKit stop before SAVEDAT.SAV is read.
+            if (!save.Load(saveGamePath))
+            {
+                Logger.LogError($"SaveGame inside folder >{saveGamePath}< couldn't be loaded.", LogCat.Loading);
+                return null;
+            }
 
             return save;
         }
@@ -226,124 +274,257 @@ namespace Gothic.Core.Services.World
         /// 3. Save world-by-world into the save game itself
         ///
         /// Hint: Needs to be called after EndOfFrame to ensure we can do a screenshot as thumbnail.
+        ///       Use SaveCurrentGameAtEndOfFrame() if you're not inside such a coroutine already.
         /// Hint: If you want to compare an original Gothic save and a Gothic Unity save, use zen2zen and convert a save file
         ///       to ascii for comparison: https://github.com/GothicKit/ZenKit/blob/main/examples/zen2zen.cc
-        /// 
         /// </summary>
-        public void SaveCurrentGame(SlotId saveGameId, string title)
+        public bool SaveCurrentGame(SlotId saveGameId, string title)
         {
-            var saveGame = new SaveGame(_contextGameVersionService.Version);
-            saveGame.Metadata.Title = title;
-            saveGame.Metadata.SaveDate = DateTime.Now.ToString();
-            saveGame.Thumbnail = CreateThumbnail();
-            saveGame.Metadata.World = CurrentWorldName.ToUpper();
-
-            foreach (var worldData in _worlds)
+            var hero = (_gameStateService.GothicVm?.GlobalHero as NpcInstance)?.GetUserData();
+            if (hero == null || CurrentWorldName == null || Save == null || !_worlds.ContainsKey(CurrentWorldName))
             {
-                var worldContainer = worldData.Value;
-                // FIXME - We need to create a new combined world first.
-                
-                // World not yet saved
-                if (worldContainer.SaveGameWorld == null)
-                {
-                    // We simply load the world an additional time to have a Pointer to save later.
-                    worldContainer.SaveGameWorld = _resourceCacheService.TryGetWorld(worldData.Key)!;
-                }
-                
-                PrepareWorldDataForSaving(worldData.Key == CurrentWorldName, worldContainer);
-                saveGame.Save(GetSaveGamePath(saveGameId), worldContainer.SaveGameWorld, worldData.Key.TrimEndIgnoreCase(".ZEN").ToUpper());
-            }
-        }
-
-        private Texture CreateThumbnail()
-        {
-            int pixelsPerAxis = 256; // Default size of a G1 Thumbnail
-            Texture2D screenshot = ScreenCapture.CaptureScreenshotAsTexture(ScreenCapture.StereoScreenCaptureMode.BothEyes);
-            Texture2D formattedScreenshot;
-
-            // Alter dimensions of screenshots to align with Gothic thumbnail format.
-            {
-                RenderTexture rt = RenderTexture.GetTemporary(pixelsPerAxis, pixelsPerAxis);
-                rt.filterMode = FilterMode.Bilinear;
-
-                RenderTexture.active = rt;
-                Graphics.Blit(screenshot, rt);
-
-                formattedScreenshot = new Texture2D(pixelsPerAxis, pixelsPerAxis, UnityEngine.TextureFormat.RGB565, false);
-                formattedScreenshot.ReadPixels(new Rect(0, 0, pixelsPerAxis, pixelsPerAxis), 0, 0);
-                formattedScreenshot.Apply();
-
-                RenderTexture.active = null;
-                RenderTexture.ReleaseTemporary(rt);
-
-                // Gothic textures need to be flipped to be shown correctly.
-                var originalPixels = formattedScreenshot.GetPixels();
-                var yFlippedPixels = new Color[originalPixels.Length];
-                for (var row = 0; row < pixelsPerAxis; ++row)
-                {
-                    // We iterate through every row and reverse the whole row (aka flipping y-axis)
-                    Array.Copy(originalPixels, row * pixelsPerAxis, yFlippedPixels, (pixelsPerAxis - row - 1) * pixelsPerAxis, pixelsPerAxis);
-                }
-                formattedScreenshot.SetPixels(yFlippedPixels);
+                Logger.LogError("[SaveGame] No world loaded. Can't save.", LogCat.Loading);
+                return false;
             }
 
-            TextureBuilder builder = new TextureBuilder(pixelsPerAxis, pixelsPerAxis);
+            var slotPath = GetSaveGamePath(saveGameId);
+            var tmpPath = slotPath + ".tmp";
+            var isSaved = false;
+            try
+            {
+                StoreCurrentWorldState(true);
 
-            builder.AddMipmap(formattedScreenshot.GetRawTextureData(), TextureFormat.R5G6B5);
+                // We save through the runtime SaveGame (State contains told infos and log topics already).
+                // ZenKit copies the folder of a loaded save into the target first. This keeps worlds we didn't visit
+                // in this session.
+                var saveGame = Save;
+                saveGame.Metadata.Title = title;
+                saveGame.Metadata.SaveDate = DateTime.Now.ToString("dd.MM.yyyy - HH:mm");
+                saveGame.Metadata.World = Path.GetFileNameWithoutExtension(CurrentWorldName).ToUpperInvariant();
+                saveGame.Thumbnail = _thumbnailDomain.Create();
+                _daedalusDomain.Flush(saveGame);
 
-            return builder.Build(TextureFormat.R5G6B5);
+                if (Directory.Exists(tmpPath))
+                    Directory.Delete(tmpPath, true);
+
+                // The current world is saved last: SAVEHDR.SAV names the world of the last Save() call.
+                var areWorldsSaved = true;
+                foreach (var (worldName, worldContainer) in _worlds.OrderBy(i => IsCurrentWorld(i.Key)))
+                {
+                    var worldHero = IsCurrentWorld(worldName) ? hero : null;
+                    if (_worldDomain.SaveWorld(saveGame, tmpPath, worldName, worldContainer, worldHero))
+                        continue;
+
+                    areWorldsSaved = false;
+                    break;
+                }
+
+                if (areWorldsSaved)
+                {
+                    _unitySaveDomain.Write(tmpPath, _loadedUnitySave, _sections);
+                    ReplaceSlotFolder(tmpPath, slotPath);
+                    isSaved = true;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"[SaveGame] Saving into {slotPath} failed: {e}", LogCat.Loading);
+            }
+
+            if (!isSaved)
+            {
+                ReopenRuntimeSaveGame();
+                return false;
+            }
+
+            // ZenKit's SaveGame now points to the .tmp folder. Re-open it from the slot, so that worlds which aren't
+            // loaded yet are fetched from the new save.
+            var savedGame = GetSaveGame(saveGameId);
+            if (savedGame != null)
+            {
+                Save = savedGame;
+                SaveGameId = saveGameId;
+                _loadedUnitySave = _unitySaveDomain.Read(slotPath);
+            }
+
+            Logger.Log($"[SaveGame] Saved >{title}< into {slotPath} ({_worlds.Count} world(s) of this session).",
+                LogCat.Loading);
+            return true;
         }
 
         /// <summary>
-        /// For VOBs (no NPC magic)
-        /// 1. Fetch all VOBs from current world. (either new one or from save game.)
-        /// 2. Drop LevelCompo and move all VOBs one level up
-        /// 3. The SaveTree is nearly flat (except some sub-elements from special VOBs.)
-        /// 4. Save it
-        ///
-        /// HINT: Whenever G1 saves a game, the VOB tree gets reversed. I.e. you need to save1 + load1 + save2 in G1 to get the same result twice.
-        ///       It also means, that the order of VOBs is irrelevant for the game itself.
+        /// Waits for the end of the frame (needed for the thumbnail) and saves then.
         /// </summary>
-        private void PrepareWorldDataForSaving(bool isCurrentWorld, WorldContainer container)
+        public void SaveCurrentGameAtEndOfFrame(SlotId saveGameId, string title, Action<bool> onDone = null)
         {
-            List<IVirtualObject> allVobs = new();
+            _unityMonoService.StartCoroutine(SaveAtEndOfFrame(saveGameId, title, onDone));
+        }
 
-            // If the root elements are LevelCompos, then we save a new game.
-            // Let's use its children as the levelCompo isn't saved in G1.
-            foreach (var vob in container.Vobs)
+        private IEnumerator SaveAtEndOfFrame(SlotId saveGameId, string title, Action<bool> onDone)
+        {
+            // One additional frame, so that menus/keyboards closed by the caller aren't part of the thumbnail.
+            yield return null;
+            yield return new WaitForEndOfFrame();
+
+            onDone?.Invoke(SaveCurrentGame(saveGameId, title));
+        }
+
+        /// <summary>
+        /// The world is about to be left or saved. Store its runtime state into the world data (the caches are cleared
+        /// when we leave), so that a revisit or save game restores it.
+        /// </summary>
+        public void StoreCurrentWorldState(bool isSaving = false)
+        {
+            if (CurrentWorldName == null || !_worlds.TryGetValue(CurrentWorldName, out var container))
+                return;
+
+            // E.g. VR: Items inside hands and holsters are inventory, items lying around are world items.
+            GlobalEventDispatcher.StoreWorldStateStart.Invoke(isSaving);
+
+            _worldDomain.StoreWorldState(container);
+        }
+
+        /// <summary>
+        /// Items taken from a chest/backpack aren't part of the world list. Nothing to do for them.
+        /// </summary>
+        public void RemoveVobFromWorld(IVirtualObject vob)
+        {
+            CurrentWorldData.Vobs.Remove(vob);
+        }
+
+        public void AddVobToWorld(IVirtualObject vob)
+        {
+            if (!CurrentWorldData.Vobs.Contains(vob))
+                CurrentWorldData.Vobs.Add(vob);
+        }
+
+        /// <summary>
+        /// A child VOB (e.g. an item lying on a mover) is taken: it's no longer part of its parent's VOB tree and is
+        /// handled like any other item of the world from now on (world list, position sync).
+        /// </summary>
+        public void DetachChildVob(VobContainer container)
+        {
+            var parentVob = container.ParentVob;
+            if (parentVob == null)
+                return;
+
+            // IVirtualObject.Children creates new wrappers on every call. We find the child by its values instead.
+            var vob = container.Vob;
+            for (var i = parentVob.ChildCount - 1; i >= 0; i--)
+            {
+                var child = parentVob.GetChild(i);
+                if (child.Type != vob.Type || child.Name != vob.Name || child.Position != vob.Position)
+                    continue;
+
+                parentVob.RemoveChild(i);
+                break;
+            }
+
+            container.ParentVob = null;
+            _multiTypeCacheService.VobCache.Add(container);
+        }
+
+        public void InitNpcInstanceFromSave(NpcContainer npc, Action initInstance)
+        {
+            _npcDomain.InitInstanceFromSave(npc, initInstance);
+        }
+
+        /// <summary>
+        /// The hero of a loaded save is inside the VOB tree of its world.
+        /// </summary>
+        [CanBeNull]
+        public NpcProxy GetSavedHero()
+        {
+            if (!IsLoadedGame || IsWorldEnteredFirstTime || CurrentWorldName == null)
+                return null;
+
+            return CurrentWorldData.Vobs.OfType<NpcProxy>().FirstOrDefault(i => i.Player);
+        }
+
+        /// <summary>
+        /// Our saves never share the folder with original Gothic (Saves/) or a mod's GothicStarter saves.
+        /// Each mod gets its own folder: e.g. Saves_GothicUnity_mod_DM_E/
+        /// </summary>
+        public string SavesFolderPath => Path.GetFullPath(Path.Join(_contextGameVersionService.RootPath,
+            $"{_savesFolderName}{_configService.ModCacheSuffix}"));
+
+        private string GetSaveGamePath(SlotId folderSaveId)
+        {
+            return Path.GetFullPath(Path.Join(SavesFolderPath, $"savegame{(int)folderSaveId}"));
+        }
+
+        private bool IsCurrentWorld(string worldName)
+        {
+            return string.Equals(worldName, CurrentWorldName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// The old slot is removed only once the new one is in place. If moving fails, the old slot comes back.
+        /// </summary>
+        private static void ReplaceSlotFolder(string newSlotPath, string slotPath)
+        {
+            var backupPath = slotPath + ".bak";
+            if (Directory.Exists(backupPath))
+                Directory.Delete(backupPath, true);
+
+            if (Directory.Exists(slotPath))
+                Directory.Move(slotPath, backupPath);
+
+            try
+            {
+                Directory.Move(newSlotPath, slotPath);
+            }
+            catch
+            {
+                if (Directory.Exists(backupPath) && !Directory.Exists(slotPath))
+                    Directory.Move(backupPath, slotPath);
+                throw;
+            }
+
+            if (Directory.Exists(backupPath))
+                Directory.Delete(backupPath, true);
+        }
+
+        /// <summary>
+        /// After a failed save, ZenKit's SaveGame points to the half-written .tmp folder (worlds not visited in this
+        /// session would be read from there). We open the last successful save again. Our runtime SaveGame holds told
+        /// infos and log topics since then, which we keep.
+        /// </summary>
+        private void ReopenRuntimeSaveGame()
+        {
+            var runtimeState = Save.State;
+            var reopened = IsLoadedGame ? GetSaveGame(SaveGameId) : null;
+            reopened ??= new SaveGame(_contextGameVersionService.Version);
+
+            reopened.State.InfoStates = runtimeState.InfoStates;
+            reopened.State.LogTopics = runtimeState.LogTopics;
+            Save = reopened;
+        }
+
+        /// <summary>
+        /// A .zen file has LevelCompos as roots, a save game not (G1 doesn't save them). We use their children
+        /// directly: ZenKit creates new wrappers on every Children call, but items picked up later are removed from
+        /// this list by reference (the same wrapper objects are used to create the world).
+        /// </summary>
+        private static List<IVirtualObject> FlattenLevelCompos(List<IVirtualObject> rootVobs)
+        {
+            var vobs = new List<IVirtualObject>();
+            foreach (var vob in rootVobs)
             {
                 if (vob.Type == VirtualObjectType.zCVobLevelCompo)
-                    allVobs.AddRange(vob.Children);
+                    vobs.AddRange(FlattenLevelCompos(vob.Children));
                 else
-                    allVobs.Add(vob);
+                    vobs.Add(vob);
             }
 
-            // We need to set Hero at the beginning of the list like in a G1 save game.
-            if (isCurrentWorld)
-            {
-                var heroContainer = ((NpcInstance)_gameStateService.GothicVm.GlobalHero).GetUserData()!;
-                heroContainer.Vob.Position = heroContainer.Go.transform.position.ToZkVector();
-                heroContainer.Vob.Rotation = heroContainer.Go.transform.rotation.ToZkMatrix();
-                
-                allVobs.Add(heroContainer.Vob);
-            }
-
-            _npcMeshCullingService.UpdateVobPositionOfVisibleNpcs();
-            var visibleNpcs = _npcMeshCullingService.GetVisibleNpcs();
-
-            foreach (var visibleNpc in visibleNpcs)
-            {
-                allVobs.Add(visibleNpc.Vob);
-            }
-            
-            container.SaveGameWorld.RootObjects = UnwrapVobs(allVobs);
+            return vobs;
         }
 
         private List<NpcProxy> WrapVobs(List<ZenKit.Vobs.Npc> npcs)
         {
             return npcs.Select(i => new NpcProxy(i)).ToList();
         }
-        
+
         /// <summary>
         /// Wrap VOB types with our Adapter grants us more flexibility in using it at runtime (e.g., fetching setter and altering logic).
         /// </summary>
@@ -353,7 +534,7 @@ namespace Gothic.Core.Services.World
 
             foreach (var vob in vobs)
             {
-                
+
                 wrappedVobs.Add(vob.Type switch
                 {
                     VirtualObjectType.oCNpc => new NpcProxy(vob),
@@ -362,31 +543,6 @@ namespace Gothic.Core.Services.World
             }
 
             return wrappedVobs;
-        }
-        
-        /// <summary>
-        /// Before saving the VOBs in a SaveGame, we need to unwrap our Adapters. Otherwise we get a Cast Exception from ZK C++ side.
-        /// </summary>
-        private List<IVirtualObject> UnwrapVobs(List<IVirtualObject> vobs)
-        {
-            var unwrappedVobs = new List<IVirtualObject>();
-
-            foreach (var vob in vobs)
-            {
-                unwrappedVobs.Add(vob.Type switch
-                {
-                    VirtualObjectType.oCNpc => ((NpcProxy)vob).GetVob(),
-                    _ => vob
-                });
-            }
-
-            return unwrappedVobs;
-        }
-
-        private string GetSaveGamePath(SlotId folderSaveId)
-        {
-            var gothicDir = _contextGameVersionService.RootPath;
-            return Path.GetFullPath(Path.Join(gothicDir, $"Saves/savegame{(int)folderSaveId}"));
         }
     }
 }

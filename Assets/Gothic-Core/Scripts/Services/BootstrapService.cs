@@ -55,6 +55,7 @@ namespace Gothic.Core.Services
         [Inject] private readonly NpcRoutineService _npcRoutineService;
         [Inject] private readonly FightService _fightService;
         [Inject] private readonly ParticleService _particleService;
+        [Inject] private readonly DialogService _dialogService;
         
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
         [Inject] private readonly StaticCacheService _staticCacheService;
@@ -105,6 +106,8 @@ namespace Gothic.Core.Services
             _npcRoutineService.Init();
             _fightService.Init();
             _particleService.Init();
+            _dialogService.Init();
+            _saveGameService.Init();
         }
 
         /// <summary>
@@ -179,10 +182,15 @@ namespace Gothic.Core.Services
             }
             else if (saveGameId > 0)
             {
-                _saveGameService.LoadSavedGame(saveGameId);
+                // An unreadable save game keeps the running game (or the menu).
+                if (!_saveGameService.LoadSavedGame(saveGameId))
+                    return;
             }
             else
             {
+                // Keep the NPC state of the world we leave (the NPC cache is cleared when the next world loads).
+                _saveGameService.StoreCurrentWorldState();
+
                 // World change triggers (level transitions) bypass SaveGameService, so LoadGameStart
                 // is never fired and culling domains don't get PreWorldCreate. Reset them manually.
                 _vobMeshCullingService.PreWorldCreate();

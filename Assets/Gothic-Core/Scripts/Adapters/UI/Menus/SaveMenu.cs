@@ -46,7 +46,6 @@ namespace Gothic.Core.Adapters.UI.Menus
         [Inject] private readonly SaveGameService _saveGameService;
         [Inject] private readonly BootstrapService _bootstrapService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
-        [Inject] private readonly ContextGameVersionService _contextGameVersionService;
         [Inject] private readonly ContextTextInputService _contextTextInputService;
 
         
@@ -153,8 +152,9 @@ namespace Gothic.Core.Adapters.UI.Menus
 
         private void FillSaveGameEntries()
         {
-            var gothicDir = _contextGameVersionService.RootPath;
-            var saveGameListPath = Path.GetFullPath(Path.Join(gothicDir, "Saves"));
+            var saveGameListPath = _saveGameService.SavesFolderPath;
+            if (!Directory.Exists(saveGameListPath))
+                return;
 
             foreach (var fullPath in Directory.EnumerateDirectories(saveGameListPath))
             {
@@ -285,8 +285,14 @@ namespace Gothic.Core.Adapters.UI.Menus
 
         private void SaveToSlot(int id, string title)
         {
-            _saveGameService.SaveCurrentGame((SaveGameService.SlotId)id, title);
-            FillSaveGameEntries();
+            // The thumbnail needs the end of the frame (and the keyboard closed).
+            _saveGameService.SaveCurrentGameAtEndOfFrame((SaveGameService.SlotId)id, title, isSaved =>
+            {
+                if (!isSaved)
+                    Logger.LogError($"[SaveMenu] Saving into slot {id} failed.", LogCat.Ui);
+
+                FillSaveGameEntries();
+            });
         }
     }
 }

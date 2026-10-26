@@ -1,0 +1,115 @@
+# Save games
+
+How Gothic-Unity saves and loads a game, which ZenKit pitfalls it works around and how to store additional state.
+Entry point: `SaveGameService` (`Assets/Gothic-Core/Scripts/Services/World/SaveGameService.cs`).
+
+## Folder layout
+
+`<Gothic>/Saves_GothicUnity/savegameN/` (a mod: `Saves_GothicUnity_mod_<ini>/`). We never write into Gothic's own
+`Saves/` folder or a mod's GothicStarter saves.
+
+| File | Content | Written by |
+|------|---------|------------|
+| `SAVEINFO.SAV` | Title, world, date, game time (load menu) | ZenKit |
+| `THUMB.SAV` | Thumbnail. Never empty: an empty file makes `SaveGame.Load()` fail | ZenKit |
+| `SAVEHDR.SAV` | Name of the current world | ZenKit |
+| `SAVEDAT.SAV` | Daedalus globals (int), told infos, log topics, game time, guild attitudes | ZenKit |
+| `<WORLD>.SAV` | One per visited world: VOB tree (incl. NPCs near the hero, hero itself), far NPC list, waynet | ZenKit |
+| `UNITYSAVE.json` | Header + sections for state Gothic doesn't store | `UnitySaveDomain` |
+
+A save is written into `savegameN.tmp` first and replaces the slot afterward (`ReplaceSlotFolder()`): a failed save
+keeps the old slot.
+
+## What is stored where
+
+Everything Gothic's format can hold is stored in it (loading original saves stays possible later):
+
+| State | Storage |
+|-------|---------|
+| Hero / NPC stats (level, xp, lp, attributes, protection, missions, hit chances, guild) | oCNpc VOB (`NpcProxy.CopyStatsFromInstance()`) |
+| AiVars | oCNpc VOB (`ZenKitNpcExtension.TrySetAiVars()`) |
+| Inventory | oCNpc `packed` strings (runtime layout) |
+| Equipped items | oCNpc item list with flag `ITEM_ACTIVE` (like original Gothic) |
+| Routine, waypoint | oCNpc `CurrentRoutine` (`NpcRoutineService`), `ScriptWaypoint` (`AiHandler`) |
+| Dead NPCs | HP <= 0 (`BsDead` is set when loading) |
+| Items in the world (taken, dropped, moved) | world VOB tree (`WorldContainer.Vobs`), position from the item's body |
+| Chest content | `oCMobContainer.Contents` (VR: `VrChestSlots` follows its slots) |
+| Movers | `zCMover.ActKeyframe` (`MoverAdapter`) |
+| Script globals, infos, log topics, time, guild attitudes | `SAVEDAT.SAV` (`SaveGameDaedalusDomain`) |
+| G1 script int arrays (index > 0) | `UNITYSAVE.json` section `core.scriptArrays` |
+| VR holster items | `UNITYSAVE.json` section `vr.carriedItems` |
+
+Items in the VR hands are inventory (`VRPlayerService.SetGrab()`). They're inside the backpack after loading.
+
+## Loading
+
+1. `LoadSavedGame()` reads the save first. An unreadable save keeps the running game.
+2. `UnloadGameStart` (old game still exists: dialogs end, VR rig is emptied), `LoadGameStart` (new VM).
+3. `SAVEDAT.SAV` is restored into the new VM, `UNITYSAVE.json` sections get `Restore()`.
+4. `ChangeWorld()` takes the world from the save (`IsWorldLoadedFromSaveGame`), otherwise from its .zen
+   (`IsWorldEnteredFirstTime` -> `STARTUP_*` runs).
+5. NPCs are created from the save's VOBs: their instance constructor runs (name, visuals, ...), afterward the saved
+   VOB values win (`SaveGameNpcDomain.InitInstanceFromSave()`). `INIT_*` runs again without `Wld_Insert*`.
+6. World start triggers don't fire for a world loaded from a save (like OpenGothic).
+
+Leaving a world (level change) stores its state into its `WorldContainer` (`StoreCurrentWorldState()`). A revisit in
+the same session restores it like a save game.
+
+## World items: who owns an item?
+
+`GlobalEventDispatcher.StoreWorldStateStart` (before saving and before leaving a world) lets the platform decide by
+the scene. VR (`VRCarriedItemsSaveService.SyncWorldItems()`):
+
+- inside a socket (holster, backpack, chest, loot slot): not part of the world
+- inside a hand: inventory; not part of a save game's world. When leaving a world, it stays inside it.
+- lying around: part of the world
+- child VOBs which were never taken (e.g. an item lying on a mover) are part of the world through their parent.
+  The first grab detaches them (`SaveGameService.DetachChildVob()`).
+
+## Adding state: ISaveStateSection
+
+State which Gothic doesn't store goes into a section of `UNITYSAVE.json`:
+
+```csharp
+public class MyFeatureSaveSection : ISaveStateSection
+{
+    public string Key => "vr.myFeature";   // owner prefix: core., vr., flat., <modId>.
+    public int Version => 1;              // increase when the data format changes
+
+    public JToken Capture() => new JObject { ["Value"] = _value };
+
+    // Called while loading, before the first world exists. Apply world related data later
+    // (e.g. GlobalEventDispatcher.WorldSceneLoaded).
+    public void Restore(JToken data, int savedVersion) => _value = data.Value<int>("Value");
+}
+
+saveGameService.RegisterSection(new MyFeatureSaveSection());
+```
+
+- Register once, before a save game can be loaded (Core: `SaveGameService.Init()`, VR: `ReflexVRSceneInstaller`).
+- Reset your state on `GlobalEventDispatcher.UnloadGameStart`: a new game doesn't call `Restore()`.
+- Sections without a registered owner (newer build, other platform, removed mod) are kept when saving again.
+- The header (`UnitySaveHeader`) stores build, game, mod ini and a script signature. Other scripts only log a warning.
+
+## ZenKit pitfalls (shipped binaries)
+
+| Problem | Workaround |
+|---------|------------|
+| `new Npc()` has `PhysicsEnabled=true`. In G1, ZenKit then reads a rigid body which wasn't written: the world save is unreadable and loading allocates memory endlessly | `SaveGameNpcDomain.ClearPhysicsFlag()` before saving |
+| `Npc.AiVars` setter copies bytes instead of ints (13 of 50 values) | `ZenKitNpcExtension.TrySetAiVars()` writes the native array |
+| G2 packed inventory: only the first item of category 0 survives | `FlattenPackedInventoryForSave()` / `SplitPackedInventoryAfterLoad()` |
+| Empty `THUMB.SAV` makes `Load()` fail | `SaveGameThumbnailDomain` always writes a thumbnail |
+| `SaveGame.Save()` deletes the target folder if the SaveGame was loaded from elsewhere; it copies the old folder first | We save through the loaded SaveGame into `.tmp`, then swap |
+| World lookup inside a save is case-sensitive | Worlds are saved and looked up upper case without extension |
+| G1 `SAVEDAT.SAV` stores one value per variable | Section `core.scriptArrays` |
+| `IVirtualObject.Children` creates new wrappers on every call | The world list keeps the wrappers it creates the world with; children are found by values |
+
+Tests: `Assets/Gothic-Tests/PlayMode/SaveGameZenKitTest.cs` (world round trips need a configured Gothic installation).
+
+## Known limitations
+
+- Gothic-Unity reads only its own saves (original saves: inventories in the oCNpc item list aren't converted).
+- Hand items are inside the backpack after loading (a VR hand needs the grip pressed).
+- An item held while changing the world stays inside the old world.
+- AI states aren't restored: NPCs start their routine again.
+- Dead NPCs play their death animation once when they're loaded the first time.

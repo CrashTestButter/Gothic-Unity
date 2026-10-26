@@ -13,6 +13,7 @@ using Gothic.Core.Services;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Vm;
+using Gothic.Core.Services.World;
 using MyBox;
 using Reflex.Attributes;
 using UnityEngine;
@@ -35,6 +36,8 @@ namespace Gothic.Core.Adapters.Npc
         [Inject] private readonly NpcService _npcService;
         [Inject] private readonly WayNetService _wayNetService;
         [Inject] private readonly VmService _vmService;
+        [Inject] private readonly AnimationService _animationService;
+        [Inject] private readonly PhysicsService _physicsService;
 
 
         private DaedalusVm Vm => _gameStateService.GothicVm;
@@ -44,6 +47,20 @@ namespace Gothic.Core.Adapters.Npc
         private void Start()
         {
             Properties.CurrentAction = new None(new AnimationAction(), NpcData);
+
+            // NPCs which died before a save game was written (or before we left the world) are dead from the start.
+            if (Properties.BodyState == VmGothicEnums.BodyState.BsDead)
+                StartDead();
+        }
+
+        /// <summary>
+        /// Update() only plays out queued animations of dead NPCs.
+        /// </summary>
+        private void StartDead()
+        {
+            var deadAnimation = _animationService.GetAnimationName(VmGothicEnums.AnimationType.DeadB, NpcData);
+            Properties.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(deadAnimation), NpcData));
+            _physicsService.DisablePhysicsForNpc(NpcData.PrefabProps);
         }
 
         /// <summary>

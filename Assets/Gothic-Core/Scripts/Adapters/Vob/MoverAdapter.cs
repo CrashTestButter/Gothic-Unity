@@ -42,7 +42,35 @@ namespace Gothic.Core.Adapters.Vob
         private bool _isMoving;
         private int _currentKeyIndex;
 
+        // Key restored from a save game, applied in Start() (after the child VOBs are created).
+        private int _savedKeyIndex;
+
+        /// <summary>
+        /// The VOB keeps the current key for save games (zCMover actKeyframe).
+        /// </summary>
+        private int CurrentKeyIndex
+        {
+            get => _currentKeyIndex;
+            set
+            {
+                _currentKeyIndex = value;
+                _mover.ActKeyframe = value;
+            }
+        }
+
         private void Awake() => this.Inject();
+
+        private void Start()
+        {
+            if (_savedKeyIndex <= 0 || _keyframes == null || _savedKeyIndex >= _keyframes.Length)
+                return;
+
+            // Chained movers restore their own key. No trigger is sent.
+            (transform.position, transform.rotation) = _keyframes[_savedKeyIndex];
+            _currentKeyIndex = _savedKeyIndex;
+            _isOpen = true;
+            Logger.Log($"[MoverAdapter] {_mover.Name} restored at key {_savedKeyIndex}.", LogCat.Vob);
+        }
 
         public void Init(IMover mover, string chainTarget = "")
         {
@@ -65,6 +93,9 @@ namespace Gothic.Core.Adapters.Vob
 
             if (_keyframes.Length > 0)
                 (transform.position, transform.rotation) = _keyframes[0];
+
+            // A save game (or a world we left) stores the reached key.
+            _savedKeyIndex = mover.ActKeyframe;
 
             Logger.Log($"[MoverAdapter] {mover.Name} init - {_keyframes.Length} keyframes, speed={mover.Speed}",
                 LogCat.Vob);
@@ -148,14 +179,14 @@ namespace Gothic.Core.Adapters.Vob
                 var lastIndex = _keyframes.Length - 1;
                 StartCoroutine(MoveTo(_currentKeyIndex, lastIndex, 1, _mover.SfxOpenStart, _mover.SfxOpenEnd, () =>
                 {
-                    _currentKeyIndex = lastIndex;
+                    CurrentKeyIndex = lastIndex;
                     _isOpen = true;
                     TriggerChainedMover(opening: true);
                 }));
             }
             else
             {
-                _currentKeyIndex = _keyframes != null ? _keyframes.Length - 1 : 0;
+                CurrentKeyIndex = _keyframes != null ? _keyframes.Length - 1 : 0;
                 _isOpen = true;
                 TriggerChainedMover(opening: true);
             }
@@ -171,14 +202,14 @@ namespace Gothic.Core.Adapters.Vob
             {
                 StartCoroutine(MoveTo(_currentKeyIndex, 0, -1, _mover.SfxCloseStart, _mover.SfxCloseEnd, () =>
                 {
-                    _currentKeyIndex = 0;
+                    CurrentKeyIndex = 0;
                     _isOpen = false;
                     TriggerChainedMover(opening: false);
                 }));
             }
             else
             {
-                _currentKeyIndex = 0;
+                CurrentKeyIndex = 0;
                 _isOpen = false;
                 TriggerChainedMover(opening: false);
             }
@@ -194,7 +225,7 @@ namespace Gothic.Core.Adapters.Vob
             Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyNext() [{from}]->[{to}]", LogCat.Vob);
             StartCoroutine(MoveTo(from, to, 1, _mover.SfxOpenStart, _mover.SfxOpenEnd, () =>
             {
-                _currentKeyIndex = to;
+                CurrentKeyIndex = to;
                 _isOpen = to != 0;
                 TriggerChainedMover(opening: _isOpen);
             }));
@@ -210,7 +241,7 @@ namespace Gothic.Core.Adapters.Vob
             Logger.Log($"[MoverAdapter] {_mover.Name} GoToKeyPrev() [{from}]->[{to}]", LogCat.Vob);
             StartCoroutine(MoveTo(from, to, -1, _mover.SfxCloseStart, _mover.SfxCloseEnd, () =>
             {
-                _currentKeyIndex = to;
+                CurrentKeyIndex = to;
                 _isOpen = to != 0;
                 TriggerChainedMover(opening: _isOpen);
             }));
@@ -232,7 +263,7 @@ namespace Gothic.Core.Adapters.Vob
             {
                 transform.position = _keyframes[key].pos;
                 transform.rotation = _keyframes[key].rot;
-                _currentKeyIndex = key;
+                CurrentKeyIndex = key;
                 _isOpen = key != 0;
                 TriggerChainedMover(opening: _isOpen);
             }
@@ -244,7 +275,7 @@ namespace Gothic.Core.Adapters.Vob
                 var targetKey = key;
                 StartCoroutine(MoveTo(_currentKeyIndex, targetKey, isForward ? 1 : -1, sfxStart, sfxEnd, () =>
                 {
-                    _currentKeyIndex = targetKey;
+                    CurrentKeyIndex = targetKey;
                     _isOpen = targetKey != 0;
                     TriggerChainedMover(opening: _isOpen);
                 }));

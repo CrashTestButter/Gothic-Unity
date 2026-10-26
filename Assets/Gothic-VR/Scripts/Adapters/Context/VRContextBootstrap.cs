@@ -27,6 +27,7 @@ namespace Gothic.VR.Adapters.Context
         [Inject] private readonly ContextMenuService _contextMenuService;
         [Inject] private readonly ContextDialogService _contextDialogService;
         [Inject] private readonly ContextTextInputService _contextTextInputService;
+        [Inject] private readonly ContextScreenshotService _contextScreenshotService;
         [Inject] private readonly ConfigService _configService;
 
 #if GOTHIC_HVR_INSTALLED
@@ -91,6 +92,7 @@ namespace Gothic.VR.Adapters.Context
             _contextMenuService.SetImpl(new VRContextMenuService().Inject());
             _contextDialogService.SetImpl(new VRContextDialogService().Inject());
             _contextTextInputService.SetImpl(new VRContextTextInputService());
+            _contextScreenshotService.SetImpl(new VRContextScreenshotService());
         }
 
         protected override void RegisterGameVersionModule(GameVersion version)

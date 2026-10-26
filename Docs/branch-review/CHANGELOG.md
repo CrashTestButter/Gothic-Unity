@@ -55,7 +55,6 @@ Link), not on Quest/Pico standalone.
 
 ## In testing (not in the build yet)
 
-- Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR).
 
 ## The ring around you, spells like in Gothic · 2026-10-26
 
@@ -72,6 +71,8 @@ Link), not on Quest/Pico standalone.
 - G1 chain lightning: hold it - it zaps the one in front of you, jumps on to the next every few seconds, and with nobody
   left it turns back on you.
 - Windfist and Stormfist throw their victims away; they land lying and get up.
+- Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR); a
+  rune or scroll casts with the hand holding it; the ring sits a little lower, its zoom brings the slots closer.
 - A light flick throws a spell weakly, only a real swing throws it hard; the backpack vacuum takes a dropped rune.
 - G1: bows and crossbows hit critically (double damage) by their talent's percent. Mroczne Tajemnice: the weapon
   percents its teachers give (the "critical hit" column of its status menu) are the critical hit chance, melee too.

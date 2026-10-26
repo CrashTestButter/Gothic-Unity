@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Gothic.Core.Logging;
+using Gothic.VR.Interaction.Components;
 using Gothic.VR.Interaction.Models;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,7 +9,9 @@ using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.XR;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Inputs.Readers;
 using UnityEngine.XR.Interaction.Toolkit.Inputs.Simulation;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 using CommonUsages = UnityEngine.InputSystem.CommonUsages;
 using InputSystem = UnityEngine.InputSystem.InputSystem;
@@ -32,6 +35,9 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private const float _maxPitch = 85f;
         private const float _maxUiRayDistance = 30f;
         private const float _physicsRaySkipDistance = 0.5f;
+        // A grip that grabbed nothing, or only used something (NPC talk, mobs), lets go after these frames once Q/E is
+        // let go - the next G is a new press again instead of a release. While Q/E is held it stays (both grips).
+        private const int _gripClickFrames = 5;
 
         [Tooltip("Degrees the head turns per pixel of mouse movement (right mouse held).")]
         public float LookSensitivity = 0.15f;
@@ -67,6 +73,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private readonly Quaternion[] _handRotations = new Quaternion[2];
         private readonly bool[] _isGripToggled = new bool[2];
         private readonly bool[] _isHandHeld = new bool[2];
+        private readonly int[] _gripReleaseCheckFrames = { -1, -1 };
+
+        // The hands' interactors read grip (select) and trigger (activate) from here directly (ManualValue): through
+        // the simulated devices' input actions the grip didn't reach XRI's Select (talking, grabbing did nothing).
+        private readonly NearFarInteractor[] _interactors = new NearFarInteractor[2];
+        private readonly List<(XRInputButtonReader Reader, XRInputButtonReader.InputSourceMode Mode)> _savedReaders =
+            new();
         private readonly List<RaycastResult> _uiRaycastResults = new();
 
         private XRSimulatedHMD _hmd;
@@ -105,6 +118,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private void OnDisable()
         {
             SetCursorLocked(false);
+            RestoreInteractorInputs();
         }
 
         private void Update()
@@ -145,7 +159,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
                     continue;
 
                 if (keyboard.gKey.wasPressedThisFrame)
-                    _isGripToggled[side] = !_isGripToggled[side];
+                    ToggleGrip(side);
 
                 if (isRotating)
                     RotateHand(side, mouseDelta * precision, scrollNotches * precision);
@@ -153,8 +167,88 @@ namespace Gothic.VR.Interaction.Backends.Xri
                     MoveHand(side, mouseDelta * precision, scrollNotches * precision);
             }
 
+            for (var side = 0; side < 2; side++)
+                ReleaseUnusedGrip(side);
+
             if (IsCursorAimEnabled && !_isHandHeld[_right] && !_isGripToggled[_right])
                 AimRightHandAtCursor(mouse.position.ReadValue());
+        }
+
+        /// <summary>
+        /// Like the HVR simulator, a grabbed item stays in the hand after letting go of Q/E, G again lets go.
+        /// </summary>
+        private void ToggleGrip(int side)
+        {
+            _isGripToggled[side] = !_isGripToggled[side];
+            _gripReleaseCheckFrames[side] = _isGripToggled[side] ? Time.frameCount + _gripClickFrames : -1;
+        }
+
+        /// <summary>
+        /// A grip press that grabbed nothing, or only used something (NPC talk, mobs: select only), lets go by itself
+        /// once Q/E is let go. Otherwise every second G only released it.
+        /// </summary>
+        private void ReleaseUnusedGrip(int side)
+        {
+            if (!_isGripToggled[side] || _gripReleaseCheckFrames[side] < 0 ||
+                Time.frameCount < _gripReleaseCheckFrames[side] || _isHandHeld[side])
+                return;
+
+            _gripReleaseCheckFrames[side] = -1;
+            var held = GetHeld((VrHandSide)side);
+            if (held == null || held.IsSelectOnly)
+                _isGripToggled[side] = false;
+        }
+
+        private VrInteractable GetHeld(VrHandSide side)
+        {
+            if (Rig == null)
+                return null;
+
+            foreach (var grabber in Rig.HandGrabbers)
+            {
+                if (grabber.HandSide == side && grabber.Held != null)
+                    return grabber.Held;
+            }
+
+            return null;
+        }
+
+        private void TakeOverInteractorInputs()
+        {
+            if (Rig == null || _savedReaders.Count > 0)
+                return;
+
+            foreach (var grabber in Rig.HandGrabbers)
+            {
+                if (grabber is not XriGrabberBridge bridge || bridge.Interactor == null)
+                    continue;
+
+                var interactor = bridge.Interactor;
+                _interactors[(int)grabber.HandSide] = interactor;
+                foreach (var reader in new[] { interactor.selectInput, interactor.activateInput })
+                {
+                    _savedReaders.Add((reader, reader.inputSourceMode));
+                    reader.inputSourceMode = XRInputButtonReader.InputSourceMode.ManualValue;
+                }
+            }
+        }
+
+        private void RestoreInteractorInputs()
+        {
+            foreach (var (reader, mode) in _savedReaders)
+                reader.inputSourceMode = mode;
+            _savedReaders.Clear();
+            _interactors[_left] = _interactors[_right] = null;
+        }
+
+        private void QueueInteractorInput(int side, bool isGripping, bool isTrigger)
+        {
+            var interactor = _interactors[side];
+            if (interactor == null)
+                return;
+
+            interactor.selectInput.QueueManualState(isGripping, isGripping ? 1f : 0f);
+            interactor.activateInput.QueueManualState(isTrigger, isTrigger ? 1f : 0f);
         }
 
         private void Look(Vector2 mouseDelta)
@@ -260,6 +354,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         private void ApplyDeviceStates(Keyboard keyboard, Mouse mouse)
         {
+            TakeOverInteractorInputs();
+
             var headRotation = Quaternion.Euler(_headPitch, _headYaw, 0f);
             var yawRotation = Quaternion.Euler(0f, _headYaw, 0f);
 
@@ -313,7 +409,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
             state.WithButton(ControllerButton.GripButton, isGripping);
 
             if (keyboard == null || mouse == null)
+            {
+                QueueInteractorInput(side, isGripping, false);
                 return state;
+            }
 
             // Buttons go to the held hand(s). With no hand held they go to the right hand (UI click, video skip).
             var isAnyHandHeld = _isHandHeld[_left] || _isHandHeld[_right];
@@ -323,6 +422,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
             var isSecondary = isTarget && keyboard.digit2Key.isPressed;
             var isStickClick = isTarget && keyboard.digit3Key.isPressed;
 
+            QueueInteractorInput(side, isGripping, isTrigger);
             state.trigger = isTrigger ? 1f : 0f;
             state.WithButton(ControllerButton.TriggerButton, isTrigger);
             state.WithButton(ControllerButton.PrimaryButton, isPrimary);

@@ -24,7 +24,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
             "Hold Q (left) / E (right), then:\n" +
             "  Move hand -> mouse, forward/back -> scroll\n" +
             "  Rotate hand -> middle mouse + move, roll -> + scroll\n" +
-            "  Grip (grab/release, stays) -> G\n" +
+            "  Grip -> G (a grabbed item stays, G again lets go; nothing\n" +
+            "    grabbed or an NPC/mob used -> lets go with Q/E)\n" +
             "  Trigger -> left click\n" +
             "  Primary (A/X) -> 1, Secondary (B/Y) -> 2, Stick click -> 3\n" +
             "  Precise -> hold Shift\n" +

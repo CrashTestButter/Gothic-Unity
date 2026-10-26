@@ -63,6 +63,11 @@ namespace Gothic.Core
 
         
         // Fight events
+
+        /// <summary>
+        /// HINT: Left/Right have other values than Gothic.VR.Interaction.Models.VrHandSide (Left=0, Right=1).
+        /// Map them with VrHandSideExtensions, never cast.
+        /// </summary>
         public enum HandSide
         {
             None  = 0,
@@ -99,13 +104,20 @@ namespace Gothic.Core
         // LockPicking events
         // 1. VobContainer -> LockPick
         // 2. VobContainer -> Door/Chest
-        // 3. HandSide (for VR) -> (0 = Left, 1 = Right)
+        // 3. HandSide (for VR) -> int of Gothic.VR.Interaction.Models.VrHandSide (0 = Left, 1 = Right),
+        //    not GlobalEventDispatcher.HandSide.
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboCorrect = new();
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboWrong = new();
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboFinished = new();
 
         // FIXME - If LockPick in hand is Amount=0, then destroy as Mesh.
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboBroken = new();
+
+        // Physical hands (VR): a hand or the item it holds hit something. Once per impact (cooldown and sliding are
+        // filtered by VrPhysicsHand).
+        // 1. HandSide -> int of Gothic.VR.Interaction.Models.VrHandSide (0 = Left, 1 = Right)
+        // 2. Impact speed in m/s along the contact normal
+        public static readonly UnityEvent<int, float> PhysicalHandContact = new();
 
         // Text on screen for some seconds (Daedalus PrintScreen()/AI_PrintScreen()/Print() or engine messages like
         // Marvin's "testmode on").

@@ -1,5 +1,4 @@
-﻿#if GOTHIC_HVR_INSTALLED
-using System.Collections;
+﻿using System.Collections;
 using Gothic.Core;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
@@ -9,8 +8,9 @@ using Gothic.Core.Models.Container;
 using Gothic.Core.Services.Vm;
 using Gothic.VR.Services;
 using Gothic.VR.Adapters.Vob.VobItem;
-using HurricaneVR.Framework.Components;
-using HurricaneVR.Framework.Shared;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Vobs;
@@ -20,10 +20,8 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 {
     public class VRContainerDoorPickingInteraction : MonoBehaviour
     {
-
         [SerializeField] private GameObject _rootGO;
         [SerializeField] private AudioSource _audioSource;
-        [SerializeField] private HVRPhysicsDoor _hvrPhysicsDoor;
 
         [Inject] private readonly VRPlayerService _vrPlayerService;
         [Inject] private readonly AudioService _audioService;
@@ -33,14 +31,15 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         private bool _isLocked;
         private string _combination;
         private string _keyInstance;
-        private HVRHandSide _handSide;
+        private VrHandSide _handSide;
         private VobContainer _lockPick;
         private VobContainer _lockable;
+        private IVrHinge _hinge;
 
         private const string _lockInteractionColliderName = "LockPickInteraction";
 
         private int _combinationPos = 0;
-        
+
         public enum DoorLockStatus
         {
             StepSuccess,
@@ -51,7 +50,10 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
         private void Start()
         {
-            _lockable = GetComponentInParent<VobLoader>().Container;
+            var vobLoader = GetComponentInParent<VobLoader>();
+            _lockable = vobLoader.Container;
+            // Every door and chest has one hinge (the door wing or the chest lid) per backend which supports it.
+            _hinge = VrHinges.FindActive(vobLoader);
             switch (_lockable.Vob)
             {
                 case IDoor door:
@@ -65,7 +67,8 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                     _keyInstance = container.Key;
                     break;
                 default:
-                    Logger.LogError($"VRDoorLockInteraction: No door or container found for >{_lockable.Vob.Name}<.", LogCat.VR);
+                    Logger.LogError($"VRDoorLockInteraction: No door or container found for >{_lockable.Vob.Name}<.",
+                        LogCat.VR);
                     break;
             }
 
@@ -82,9 +85,9 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         private IEnumerator StartDelayed()
         {
             yield return null;
-            
+
             // Deactivate rotation
-            _hvrPhysicsDoor.Lock();
+            _hinge?.Lock();
         }
 
         private void OnTriggerEnter(Collider other)
@@ -101,12 +104,12 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
             if (IsHeldItem(_vrPlayerService.GrabbedItemLeft, other.gameObject))
             {
                 holdingHand = _vrPlayerService.GrabbedItemLeft.transform;
-                _handSide = HVRHandSide.Left;
+                _handSide = VrHandSide.Left;
             }
             else if (IsHeldItem(_vrPlayerService.GrabbedItemRight, other.gameObject))
             {
                 holdingHand = _vrPlayerService.GrabbedItemRight.transform;
-                _handSide = HVRHandSide.Right;
+                _handSide = VrHandSide.Right;
             }
             else
             {
@@ -115,7 +118,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
             _combinationPos = 0;
             PlaySound(_vmService.DoorLockSoundName);
-            _hapticsService.Vibrate(_handSide, VrHapticsService.VibrationType.Info);
+            _hapticsService.Vibrate(_handSide, VrHapticPreset.Info);
 
             // For later event usage.
             _lockPick = other.gameObject.GetComponentInParent<VobLoader>().Container;
@@ -133,7 +136,7 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
             var interaction = heldItem.GetComponentInChildren<VRLockPickInteraction>();
             return interaction != null && interaction.gameObject == lockInteraction;
         }
-        
+
         private void OnTriggerExit(Collider other)
         {
             if (!other.gameObject.name.Equals(_lockInteractionColliderName))
@@ -213,13 +216,13 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
                 return;
 
             // The player must actively hold the key (not just a dropped/flying item).
-            HVRHandSide hand;
+            VrHandSide hand;
             var leftRoot = _vrPlayerService.GrabbedItemLeft;
             var rightRoot = _vrPlayerService.GrabbedItemRight;
             if (leftRoot != null && leftRoot.GetComponentInParent<VobLoader>() == vobLoader)
-                hand = HVRHandSide.Left;
+                hand = VrHandSide.Left;
             else if (rightRoot != null && rightRoot.GetComponentInParent<VobLoader>() == vobLoader)
-                hand = HVRHandSide.Right;
+                hand = VrHandSide.Right;
             else
                 return;
 
@@ -233,19 +236,30 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
         private void UnlockAndPushOpen()
         {
             // Reactivate rotation
-            _hvrPhysicsDoor.Unlock();
+            if (_hinge == null)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
 
-            // Apply force in the door's forward direction (world space)
-            var pushDirection = _hvrPhysicsDoor.transform.forward;
-            var pushForce = 10f;
-            _hvrPhysicsDoor.GetComponent<Rigidbody>().AddForce(pushDirection * pushForce, ForceMode.Impulse);
+            _hinge.Unlock();
+
+            // Physics hinges (HVR) get pushed open here, kinematic ones (VrHinge) push themselves in Unlock().
+            var body = _hinge.Rigidbody;
+            if (body != null && !body.isKinematic)
+            {
+                var pushDirection = _hinge.Transform.forward;
+                var pushForce = 10f;
+                body.AddForce(pushDirection * pushForce, ForceMode.Impulse);
+            }
+
             gameObject.SetActive(false);
         }
 
         private void PlaySound(string soundName, string fallback = null)
         {
             var clip = _audioService.GetRandomSoundClip(soundName);
-            
+
             if (clip == null && fallback != null)
             {
                 PlaySound(fallback);
@@ -254,10 +268,8 @@ namespace Gothic.VR.Adapters.Vob.LockPicking
 
             if (clip == null)
                 return;
-                
+
             _audioSource.PlayOneShot(clip);
         }
     }
 }
-#endif
-

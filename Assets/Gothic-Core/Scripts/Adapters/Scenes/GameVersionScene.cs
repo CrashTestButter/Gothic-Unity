@@ -38,6 +38,11 @@ namespace Gothic.Core.Adapters.Scenes
              * 4. If there are two, show selection between these two games. Once one is selected, call Context.SetGameVersion(version)
              */
 
+            // DeveloperConfig.EnableGameVersionScenePlacement: onto the scene's floor first (like Logo/MainMenu) - the
+            // player falls through the Player scene, which has none, until this scene is loaded.
+            if (_configService.Dev.EnableGameVersionScenePlacement)
+                _contextInteractionService.TeleportPlayerTo(Vector3.zero);
+
             // Whatever comes next, we don't want the player to move around right now.
             _contextInteractionService.LockPlayerInPlace();
 

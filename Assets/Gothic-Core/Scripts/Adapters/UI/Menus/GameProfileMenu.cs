@@ -27,6 +27,11 @@ namespace Gothic.Core.Adapters.UI.Menus
         private const float _minFontSize = 16f;
         private const float _textMargin = 10f;
 
+        // DeveloperConfig.EnableGameVersionScenePlacement: the scene's teleport lands a frame or more later (XRI) - the
+        // menu was placed in front of the falling camera, below the floor. It follows the camera this long.
+        private const float _followCameraSeconds = 0.5f;
+        private float _followCameraUntil;
+
         private Action<JsonGameProfile> _onSelected;
         private Action _onBack;
         private bool _isSelected;
@@ -66,6 +71,15 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
 
             PlaceInFrontOfCamera();
+            var config = ReflexProjectInstaller.DIContainer?.Resolve<Services.Config.ConfigService>();
+            if (config != null && config.Dev.EnableGameVersionScenePlacement)
+                _followCameraUntil = Time.unscaledTime + _followCameraSeconds;
+        }
+
+        private void LateUpdate()
+        {
+            if (Time.unscaledTime < _followCameraUntil)
+                PlaceInFrontOfCamera();
         }
 
         private void Select(JsonGameProfile profile)

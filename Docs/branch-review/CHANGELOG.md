@@ -73,6 +73,7 @@ Link), not on Quest/Pico standalone.
 - Windfist and Stormfist throw their victims away; they land lying and get up.
 - Charged spells (fireball, fire rain, wind fist...) charge only with both hands together - a kamehameha (VR); a
   rune or scroll casts with the hand holding it; the ring sits a little lower, its zoom brings the slots closer.
+- G2: a scroll casts for its own (small) mana cost - a new hero's fireball scroll stopped at once.
 - A light flick throws a spell weakly, only a real swing throws it hard; the backpack vacuum takes a dropped rune.
 - G1: bows and crossbows hit critically (double damage) by their talent's percent. Mroczne Tajemnice: the weapon
   percents its teachers give (the "critical hit" column of its status menu) are the critical hit chance, melee too.

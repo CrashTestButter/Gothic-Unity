@@ -1491,6 +1491,10 @@ namespace Gothic.Core.Models.Config
                  "trigger: a scroll in the left hand took both hands.")]
         public bool EnableCastWithHoldingHand = true;
 
+        [Tooltip("V1 (VR only): Charged spells (fireball, fire storm, fire rain, wind/storm fist, thunderball, G2's " +
+                 "charged ones) grow only while both hands are together (30 cm) - a kamehameha. Apart, the charge waits.")]
+        public bool EnableTwoHandSpellCharge = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

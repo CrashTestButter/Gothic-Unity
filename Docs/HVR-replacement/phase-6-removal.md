@@ -28,6 +28,53 @@ HVR dependency and can land before or after - see phase-5-hands.md)
 - [ ] Remove `HurricaneVR.*` references from asmdefs if any (`Gothic.VR.asmdef`, `Gothic.VR.Editor`, Lab, Tests).
 - [ ] `grep -rni "hvr\|hurricane" Assets --include=*.cs` = 0 (comments too).
 
+### Clean-room cleanup (distance to HVR)
+
+A review on `engine/hvr-replacement-5b` (2026-10-25) compared the Xri path (`Interaction/Components`,
+`Backends/Xri`, `Ports`, `Models`, `ScreenFade`, `WallFade`) with the HVR source. Result: no copied code and no copied
+assets. The algorithms are our own. What still points back to HVR is wording: comments, tooltips and a few names.
+This is an optics problem rather than a license problem, and it's cheap to fix.
+
+| Dimension | Finding | Confidence "ours" |
+|-----------|---------|-------------------|
+| HVR source/assets distributed | `Assets/HurricaneVR/` is ignored, 0 tracked files. The Xri prefabs (`VR - Player XRI`, `BackPack XRI`, `VR Socket Slot`, simulator) and new materials reference none of the HVR asset GUIDs. The screen fade shader and block hands are our own. | 95% |
+| Verbatim / near-verbatim code | None. Different structure and style (HVR: `m_` fields, public fields, `virtual` hooks; ours: ports + bridges). | 95% |
+| Algorithms | Different (see below). Exception: teleport line of sight. | 90% |
+| Class names | All `Vr*`/`Xri*`, but `VrSocketLink`, `VrSocketContainer` and `VrGhostHand` map 1:1 onto `HVRSocketLink`, `HVRSocketContainer` and `HVRGhostHand`. | 80% |
+| API vocabulary | The ports were cut along HVR's API and kept its member names: `BeforeGrabbed`, `ForceRelease`, `HandGrabbers`, `MovementEnabled`, `CanCrouch`, `CanSprint`, `MaxFallSpeed`, `MoveSpeed`, `RunSpeed`, hinge `CloseAngle` / `CloseOverTime`. API names are generally not protectable, but together they show where the design came from. | 75% |
+| Paper trail | About 25 comments/tooltips in the Xri and backend-neutral code cite HVR ("like HVR", "(HVR: MaxJumpDistance)", "Same as HVR's GetBottom()", "HVR CheckVerticalDistance / CheckDestinationLineOfSight", "ParentDisablesGrab"). | weakest point |
+
+Algorithm comparison:
+- **Physical hands:** HVR (`HVRJointHand` + `PDStrength`) drives the hand with a ConfigurableJoint and spring/damper
+  settings. `VrPhysicsHand` uses its own velocity-change controller with a detached body, follow-vs-push force
+  splitting and a visual offset applied in LateUpdate.
+- **Doors/lids:** HVR (`HVRPhysicsDoor`) is a joint-based door with latch and handle trackers. `VrHinge` is a
+  kinematic angle solver with contact-lever pushing from the hands. Only `CloseAngle = 5` and `CloseOverTime = 0.25`
+  match HVR's field names, defaults and meaning.
+- **Sockets:** both scale items to fit as `Size / extent` (generic idea). HVR takes the size from `HVRSocketable`,
+  `VrSocketSlot` measures the renderer bounds itself. The category rotations come from our own pre-branch `VRSocket.cs`.
+- **Ghost hand:** HVR toggles it on a distance check every 0.1 s. `VrGhostHand` builds mesh copies of the hand blocks
+  with show/hide hysteresis.
+- **Socket container, socket link, SFX player, hover ring, snap to ground:** trivial or generic logic, and implemented
+  differently.
+- **Teleport (`XriTeleportAimer`)** is the closest match: `HasLineOfSight` has the same structure as HVR's
+  `CheckDestinationLineOfSight` (N rays from the head to points spaced `i/N * height` above the target, true on the
+  first free one), with the same defaults (MaxJump 1.5, MaxDrop 3, height 1) and tooltips naming the HVR fields.
+
+Work items (no behaviour change):
+- [ ] Remove HVR references from comments and tooltips in the Xri and backend-neutral code and describe the behaviour
+      in our own words: `XriTeleportAimer`, `XriTeleportSettings`, `XriRig`, `XriSfxPlayer`, `XriHaptics`, `XriInput`,
+      `XriSocketBridge`, `XriInteractableBridge`, `GothicGrabInteractable`, `VrSocketSlot`, `VrChestSlots`, `VrHinge`,
+      `VrLadderExit`, `IVrInput`, `IVrInteractableBackend`, `IVrRig`, `VrGrabberKind`. (Covered by the grep = 0 item
+      above once `Backends/Hvr/` is deleted, but rewrite the sentences instead of just dropping the HVR part.)
+- [ ] Teleport: restructure `XriTeleportAimer.HasLineOfSight` (e.g. sample from top to bottom, own sample count and
+      height defaults), drop the "(HVR: …)" tooltip suffixes in `XriTeleportSettings` and the `GetBottom` remark.
+- [ ] Hinge: rename `VrHinge._closeAngle` / `_closeOverTime` (e.g. `_closedThreshold`, `_softCloseDuration`). Keep the
+      serialized values via `[FormerlySerializedAs]` or re-set them on the prefabs (UnityMCP).
+- [ ] Optional: rename `VrSocketLink` (e.g. `VrHomeSlot`) and `VrGhostHand` (e.g. `VrControllerEcho`), and the
+      HVR-flavoured port members (`HandGrabbers`, `BeforeGrabbed` → e.g. `Hands`, `Grabbing`). The least legal value
+      of all items; only for a full clean break. Script renames need the `.meta` GUID kept (prefab references).
+
 ### Packages and assets
 
 - [ ] `Packages/manifest.json`: remove `com.hurricanevrextensions.simulator`.
@@ -71,4 +118,5 @@ HVR dependency and can land before or after - see phase-5-hands.md)
 | Risk | Mitigation |
 |------|-----------|
 | Hidden references (serialized fields typed as HVR classes in scenes) produce missing scripts | Use the GUID scan from 02 (resolve `m_Script` GUIDs against `Assets/HurricaneVR/**/*.meta` before deleting the folder); the result must be empty. |
+| Our code reads like a port of HVR (comments, names, teleport line of sight) | Clean-room cleanup above; reviewers check new comments and names for HVR wording. |
 | Someone still has HVR locally and commits generated files | `.gitignore` entry + a CI check that fails if `Assets/HurricaneVR` exists in the PR. |

@@ -116,6 +116,18 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         public HVRHandSide? RingHand { get; set; }
 
         /// <summary>
+        /// The hand whose trigger casts: the ring's hand, else (DeveloperConfig.EnableCastWithHoldingHand) the hand
+        /// holding the rune/scroll - always the right one before: a scroll in the left hand was cast with the right
+        /// trigger, it took both hands.
+        /// </summary>
+        private HVRHandSide CastHand => RingHand ??
+                                        (_configService.Dev.EnableCastWithHoldingHand &&
+                                         _vrPlayerService.GrabbedItemLeft == gameObject &&
+                                         _vrPlayerService.GrabbedItemRight != gameObject
+                                            ? HVRHandSide.Left
+                                            : HVRHandSide.Right);
+
+        /// <summary>
         /// Aiming, charging or casting - the ring's idle effect in the hand hides meanwhile (VRFavoritesRingSpell).
         /// </summary>
         public bool IsBusy => _isTargeting || _isCasting;
@@ -243,7 +255,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (_vrPlayerService.VRPlayerInputs.UseWASD)
                 triggered = Keyboard.current[Key.R].wasPressedThisFrame;
             else
-                triggered = HVRController.GetButtonState(RingHand ?? HVRHandSide.Right, HVRButtons.Trigger)
+                triggered = HVRController.GetButtonState(CastHand, HVRButtons.Trigger)
                     .JustActivated;
 
             // Transformed: the orb hand's trigger transforms back (VRTransformPuppet) - no second transformation.
@@ -258,7 +270,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                     HVRController.GetButtonState(HVRHandSide.Right, HVRButtons.Trigger).JustActivated)
                 {
                     _fightService.CheckHeroRuneCircle(_item, true);
-                    _hapticsService.Vibrate(RingHand ?? HVRHandSide.Right, VrHapticsService.VibrationType.Error);
+                    _hapticsService.Vibrate(CastHand, VrHapticsService.VibrationType.Error);
                 }
                 return;
             }
@@ -441,7 +453,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         {
             if (_vrPlayerService.VRPlayerInputs.UseWASD)
                 return Keyboard.current[Key.R].wasReleasedThisFrame;
-            return HVRController.GetButtonState(RingHand ?? HVRHandSide.Right, HVRButtons.Trigger).JustDeactivated;
+            return HVRController.GetButtonState(CastHand, HVRButtons.Trigger).JustDeactivated;
         }
 
         /// <summary>

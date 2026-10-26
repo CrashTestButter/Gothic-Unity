@@ -1487,6 +1487,10 @@ namespace Gothic.Core.Models.Config
                  "human ones (a meatbug too fast, a shadowbeast too slow).")]
         public bool EnableTransformLandSpeedKept = true;
 
+        [Tooltip("V1: A rune or scroll is cast with the trigger of the hand holding it - it was always the right " +
+                 "trigger: a scroll in the left hand took both hands.")]
+        public bool EnableCastWithHoldingHand = true;
+
         [Tooltip("V1 (opinion): a human beaten by the hero before fights back when the hero attacks him again - the " +
                  "scripts made him look away (\"I didn't see anything\"), and his hostile attitude restarted it over and " +
                  "over: weapon drawn, put away, looking away in a loop. As a witness he still looks away.")]

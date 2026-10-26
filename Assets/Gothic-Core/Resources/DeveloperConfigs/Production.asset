@@ -358,6 +358,7 @@ MonoBehaviour:
   EnableHeroSwimSounds: 1
   EnableTransformAbsoluteSpeed: 1
   EnableTransformLandSpeedKept: 1
+  EnableCastWithHoldingHand: 1
   EnableDefeatedNpcFightsBack: 1
   EnableTurnAwayIgnoresEnemyBehind: 1
   EnableLevelChangeSpawnFallback: 1

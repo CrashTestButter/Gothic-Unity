@@ -61,6 +61,9 @@ namespace Gothic.VR.Adapters.Player
         [SerializeField] private float _waterBobAmplitude = 0.001f;
         [SerializeField] private float _waterBobFrequency = 2.5f;
 
+        [Tooltip("No water surface this far (m) above the player while swimming or diving: out of the water.")]
+        [SerializeField] private float _outOfWaterCheckHeight = 100f;
+
         // Swim movement
         [SerializeField] private float _swimStartDiveVerticalVelocity = -5f;
         [SerializeField] private float _swimHandMovementMultiplier = 5f;
@@ -211,9 +214,34 @@ namespace Gothic.VR.Adapters.Player
                 if (previousWaterLevel != _playerAi.WaterLevel)
                     ChangeWaterBehavior();
             }
-            // else
-            // FIXME - We need to add a possiblity to reset water IF the hero is teleported away from water or falling through a waterfall, ...
-            //         so that the water level is reset and we can walk again normally.
+            // No water above us, but still swimming/diving: teleported out of the water (Marvin goto, savegame load,
+            // world change) or fell through a waterfall. Walking out of the water passes knee depth instead. Diving
+            // deeper than the ray above still has the surface far above us.
+            else if (_playerAi.WaterLevel != (int)ZenGineConst.WaterLevel.Normal &&
+                     !Physics.Raycast(transform.position, Vector3.up, _outOfWaterCheckHeight, 1 << Constants.WaterLayer))
+            {
+                LeaveWater();
+            }
+        }
+
+        /// <summary>
+        /// Back to walking from any water level, also from swimming or diving.
+        /// </summary>
+        private void LeaveWater()
+        {
+            Logger.Log($"[VRSwimDive] Out of the water while in {_mode} mode (teleported?). Walking again.",
+                LogCat.VR);
+
+            if (_mode == VmGothicEnums.WalkMode.Dive)
+            {
+                _playerService.StopDiving();
+                _rig.Fade(0, float.MaxValue); // Immediately fade the screen back to normal (no fade)
+            }
+
+            _mode = VmGothicEnums.WalkMode.Walk;
+            Shader.SetGlobalInt(Constants.ShaderPropertyWaterEffectToggle, 0);
+            _playerAi.WaterLevel = (int)ZenGineConst.WaterLevel.Normal;
+            ChangeWaterBehavior();
         }
         
         /// <summary>

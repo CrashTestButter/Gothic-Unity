@@ -25,6 +25,11 @@ namespace Gothic.VR.Interaction
             return ReflexProjectInstaller.DIContainer.Resolve<IVrInput>().GetControllerVelocity(side);
         }
 
+        public static Vector2 GetThumbstick(VrHandSide side)
+        {
+            return ReflexProjectInstaller.DIContainer.Resolve<IVrInput>().GetThumbstick(side);
+        }
+
         public static void Vibrate(VrHandSide side, float amplitude, float duration)
         {
             ReflexProjectInstaller.DIContainer.Resolve<IVrHaptics>().Vibrate(side, amplitude, duration);

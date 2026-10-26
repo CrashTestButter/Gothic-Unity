@@ -167,6 +167,16 @@ namespace Gothic.VR.Interaction.Backends.Xri
         /// <summary>
         /// The crouch button, or the camera this low (head held low in reality, the toggle's _crouchHeight).
         /// </summary>
+        /// <summary>
+        /// Height the origin adds below the HMD (Device mode's CameraYOffset, 0 on the floor) and the tracking space's
+        /// scale (Standing) - XriHurricaneStyleSimulator keeps the simulated eyes at a fixed height with them.
+        /// </summary>
+        public float TrackingBaseOffset => _origin.CurrentTrackingOriginMode == TrackingOriginModeFlags.Floor
+            ? 0f
+            : _origin.CameraYOffset;
+
+        public float TrackingScale => CameraOffset.localScale.y;
+
         public bool IsCrouching => _isCrouching || CameraHeight <= _crouchHeight + _crouchDetectionMargin;
 
         /// <summary>
@@ -654,6 +664,23 @@ namespace Gothic.VR.Interaction.Backends.Xri
             return blockHand != null ? blockHand.transform : controller;
         }
 
+        public IReadOnlyList<Collider> GetHandColliders(VrHandSide side)
+        {
+            var controller = side == VrHandSide.Left ? _leftController : _rightController;
+            var physicsHand = controller != null ? controller.GetComponentInChildren<VrPhysicsHand>(true) : null;
+            if (physicsHand == null || physicsHand.Body == null)
+                return Array.Empty<Collider>();
+
+            var result = new List<Collider>();
+            foreach (var handCollider in physicsHand.Body.GetComponentsInChildren<Collider>(true))
+            {
+                if (!handCollider.isTrigger)
+                    result.Add(handCollider);
+            }
+
+            return result;
+        }
+
         public void SetGrabbingEnabled(bool isEnabled)
         {
             SetGrabbingEnabled(VrHandSide.Left, isEnabled);
@@ -674,6 +701,36 @@ namespace Gothic.VR.Interaction.Backends.Xri
         {
             var grabber = side == VrHandSide.Left ? _leftGrabber : _rightGrabber;
             return grabber != null && grabber.Interactor.allowSelect;
+        }
+
+        public float GetDistanceGrabRange(VrHandSide side)
+        {
+            var grabber = side == VrHandSide.Left ? _leftGrabber : _rightGrabber;
+            return grabber != null ? grabber.DistanceGrabRange : VRConstants.DistanceGrabMaxDistance;
+        }
+
+        public void SetDistanceGrabRange(VrHandSide side, float range)
+        {
+            var grabber = side == VrHandSide.Left ? _leftGrabber : _rightGrabber;
+            if (grabber != null)
+                grabber.DistanceGrabRange = range;
+        }
+
+        public void ResetDistanceGrabRange(VrHandSide side)
+        {
+            SetDistanceGrabRange(side, VRConstants.DistanceGrabMaxDistance);
+        }
+
+        public VrInteractable GetDistanceHovered(VrHandSide side)
+        {
+            var grabber = side == VrHandSide.Left ? _leftGrabber : _rightGrabber;
+            return grabber != null ? grabber.GetHovered() : null;
+        }
+
+        public bool TryDistanceGrabHovered(VrHandSide side)
+        {
+            var grabber = side == VrHandSide.Left ? _leftGrabber : _rightGrabber;
+            return grabber != null && grabber.TrySelectHovered();
         }
 
         public void Fade(float alpha, float speed)

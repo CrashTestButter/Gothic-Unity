@@ -25,6 +25,22 @@ namespace Gothic.VR.Interaction.Ports
         bool IsSelectOnly { get; }
 
         IReadOnlyList<Collider> Colliders { get; }
+
+        /// <summary>
+        /// false: no hand or socket can hover or grab it (e.g. a spell's invisible rune riding on the hand).
+        /// </summary>
+        bool IsGrabEnabled { get; set; }
+
+        /// <summary>
+        /// false: only a hand right at it grabs it, no distance grab (the favorites ring's items).
+        /// </summary>
+        bool IsDistanceGrabbable { get; set; }
+
+        /// <summary>
+        /// true: while one hand holds it, the other hand can't grab it (a throwable spell's rune: the other hand
+        /// throws).
+        /// </summary>
+        bool IsOneHandOnly { get; set; }
         void ForceRelease();
         /// <param name="isChildLinked">Colliders on child GameObjects grab this interactable too (HVR maps a collider
         /// only on its own GameObject; XRI maps every collected collider anyway).</param>

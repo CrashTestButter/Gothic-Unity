@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Gothic.VR.Interaction.Components;
 using Gothic.VR.Interaction.Models;
 using UnityEngine;
 
@@ -101,6 +102,33 @@ namespace Gothic.VR.Interaction.Ports
         /// it stops at walls. Gestures, the favorites ring and spells measure from it.
         /// </summary>
         Transform GetHandVisual(VrHandSide side);
+
+        /// <summary>
+        /// The solid (non-trigger) colliders of a hand - not the triggers it finds grabbables with.
+        /// </summary>
+        IReadOnlyList<Collider> GetHandColliders(VrHandSide side);
+
+        /// <summary>
+        /// Range in m of a hand's distance grab (force grab, the far ray). Telekinesis and spell targeting extend it.
+        /// </summary>
+        float GetDistanceGrabRange(VrHandSide side);
+
+        /// <summary>
+        /// Extends (or shortens) a hand's distance grab. ResetDistanceGrabRange goes back to the backend's range.
+        /// </summary>
+        void SetDistanceGrabRange(VrHandSide side, float range);
+
+        void ResetDistanceGrabRange(VrHandSide side);
+
+        /// <summary>
+        /// What the hand's distance grab points at (item, mob, NPC), null if nothing.
+        /// </summary>
+        VrInteractable GetDistanceHovered(VrHandSide side);
+
+        /// <summary>
+        /// Pulls the item the hand's distance grab points at into the hand (telekinesis). false if there is none.
+        /// </summary>
+        bool TryDistanceGrabHovered(VrHandSide side);
 
         /// <summary>
         /// Fades the screen towards alpha (0 = clear, 1 = black) with speed alpha per second.

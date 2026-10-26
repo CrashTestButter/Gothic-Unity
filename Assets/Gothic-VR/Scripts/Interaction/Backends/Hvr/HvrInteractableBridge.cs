@@ -42,6 +42,34 @@ namespace Gothic.VR.Interaction.Backends.Hvr
         public bool IsSelectOnly => false;
         public IReadOnlyList<Collider> Colliders => Grabbable.Colliders;
 
+        public bool IsGrabEnabled
+        {
+            get => Grabbable.enabled;
+            set => Grabbable.enabled = value;
+        }
+
+        public bool IsDistanceGrabbable
+        {
+            get => Grabbable.ForceGrabbable;
+            set => Grabbable.ForceGrabbable = value;
+        }
+
+        public bool IsOneHandOnly
+        {
+            get => TryGetComponent<HvrOneHandGrabFilter>(out _);
+            set
+            {
+                if (value == IsOneHandOnly)
+                    return;
+
+                if (value)
+                    gameObject.AddComponent<HvrOneHandGrabFilter>().Grabbable = Grabbable;
+                else
+                    DestroyImmediate(GetComponent<HvrOneHandGrabFilter>());
+                Grabbable.LoadFilters();
+            }
+        }
+
         private void Awake()
         {
             _interactable = GetComponent<VrInteractable>();

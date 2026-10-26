@@ -47,6 +47,45 @@ namespace Gothic.VR.Interaction.Components
 
         public IReadOnlyList<Collider> Colliders => Backend != null ? Backend.Colliders : Array.Empty<Collider>();
 
+        /// <summary>
+        /// See IVrInteractableBackend.IsGrabEnabled.
+        /// </summary>
+        public bool IsGrabEnabled
+        {
+            get => Backend == null || Backend.IsGrabEnabled;
+            set
+            {
+                if (Backend != null)
+                    Backend.IsGrabEnabled = value;
+            }
+        }
+
+        /// <summary>
+        /// See IVrInteractableBackend.IsOneHandOnly.
+        /// </summary>
+        public bool IsOneHandOnly
+        {
+            get => Backend != null && Backend.IsOneHandOnly;
+            set
+            {
+                if (Backend != null)
+                    Backend.IsOneHandOnly = value;
+            }
+        }
+
+        /// <summary>
+        /// See IVrInteractableBackend.IsDistanceGrabbable.
+        /// </summary>
+        public bool IsDistanceGrabbable
+        {
+            get => Backend == null || Backend.IsDistanceGrabbable;
+            set
+            {
+                if (Backend != null)
+                    Backend.IsDistanceGrabbable = value;
+            }
+        }
+
         private IVrInteractableBackend Backend
         {
             get

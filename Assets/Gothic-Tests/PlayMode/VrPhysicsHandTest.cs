@@ -362,6 +362,34 @@ namespace Gothic.Tests.PlayMode
                 return Hand != null ? Hand.transform : Controller;
             }
 
+            public IReadOnlyList<Collider> GetHandColliders(VrHandSide side)
+            {
+                return Array.Empty<Collider>();
+            }
+
+            public float GetDistanceGrabRange(VrHandSide side)
+            {
+                return 0f;
+            }
+
+            public void SetDistanceGrabRange(VrHandSide side, float range)
+            {
+            }
+
+            public void ResetDistanceGrabRange(VrHandSide side)
+            {
+            }
+
+            public VrInteractable GetDistanceHovered(VrHandSide side)
+            {
+                return null;
+            }
+
+            public bool TryDistanceGrabHovered(VrHandSide side)
+            {
+                return false;
+            }
+
             public void Fade(float alpha, float speed)
             {
             }

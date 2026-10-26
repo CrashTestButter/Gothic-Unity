@@ -1,8 +1,11 @@
 using Gothic.Core;
+using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
+using UnityEngine;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Services
 {
@@ -11,6 +14,11 @@ namespace Gothic.VR.Services
     /// </summary>
     public class VrHapticsService
     {
+        // Contact haptics: impact speed (m/s) for the weakest and the strongest pulse.
+        private const float _contactMinSpeed = 0.3f;
+        private const float _contactMaxSpeed = 3f;
+        private const float _contactMinAmplitude = 0.15f;
+
         [Inject] private readonly IVrHaptics _vrHaptics;
         [Inject] private readonly VRWeaponService _vrWeaponService;
 
@@ -33,6 +41,22 @@ namespace Gothic.VR.Services
                 Vibrate((VrHandSide)handSide, VrHapticPreset.Success));
             GlobalEventDispatcher.LockPickComboFinished.AddListener((_, _, handSide) =>
                 Vibrate((VrHandSide)handSide, VrHapticPreset.Success));
+
+            // Physical hands
+            GlobalEventDispatcher.PhysicalHandContact.AddListener((handSide, speed) =>
+                ContactVibration((VrHandSide)handSide, speed));
+        }
+
+        /// <summary>
+        /// A hand or its held item hit something: the faster, the stronger.
+        /// </summary>
+        private void ContactVibration(VrHandSide handSide, float speed)
+        {
+            var amplitude = Mathf.Lerp(_contactMinAmplitude, 1f,
+                Mathf.InverseLerp(_contactMinSpeed, _contactMaxSpeed, speed));
+            Logger.LogEditor($"[VrHapticsService] Contact {handSide}: {speed:0.00} m/s -> amplitude {amplitude:0.00}",
+                LogCat.VR);
+            _vrHaptics.Vibrate(handSide, VrHapticPreset.Contact, amplitude);
         }
 
         private void AttackVibration(NpcContainer combatant, VrHapticPreset preset)

@@ -113,6 +113,12 @@ namespace Gothic.Core
         // FIXME - If LockPick in hand is Amount=0, then destroy as Mesh.
         public static readonly UnityEvent<VobContainer, VobContainer, int> LockPickComboBroken = new();
 
+        // Physical hands (VR): a hand or the item it holds hit something. Once per impact (cooldown and sliding are
+        // filtered by VrPhysicsHand).
+        // 1. HandSide -> int of Gothic.VR.Interaction.Models.VrHandSide (0 = Left, 1 = Right)
+        // 2. Impact speed in m/s along the contact normal
+        public static readonly UnityEvent<int, float> PhysicalHandContact = new();
+
         // Text on screen for some seconds (Daedalus PrintScreen()/AI_PrintScreen()/Print() or engine messages like
         // Marvin's "testmode on").
         public static readonly UnityEvent<PrintScreenMessage> PrintScreen = new();

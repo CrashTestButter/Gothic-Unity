@@ -23,6 +23,11 @@ namespace Gothic.VR.Interaction.Models
         /// <summary>
         /// e.g., you opened a chest
         /// </summary>
-        Success
+        Success,
+
+        /// <summary>
+        /// e.g., a physical hand or the item it holds hit a wall. Short tick, amplitude scaled by impact speed.
+        /// </summary>
+        Contact
     }
 }

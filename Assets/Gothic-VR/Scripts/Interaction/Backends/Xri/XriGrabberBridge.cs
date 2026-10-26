@@ -1,4 +1,5 @@
 using System;
+using Gothic.Core.Logging;
 using Gothic.VR.Interaction.Components;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
@@ -7,6 +8,7 @@ using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using UnityEngine.XR.Interaction.Toolkit.Interactors.Casters;
+using Logger = Gothic.Core.Logging.Logger;
 
 namespace Gothic.VR.Interaction.Backends.Xri
 {
@@ -15,13 +17,18 @@ namespace Gothic.VR.Interaction.Backends.Xri
     /// One interactor does direct and distance grabs, so Kind is always Hand. The VrGrabArgs of each event say
     /// whether the current object was grabbed directly (Hand) or pulled from a distance (Distance).
     /// BeforeGrabbed is raised by GothicGrabInteractable (XRI has no such interactor event).
+    ///
+    /// Physical hands (VrPhysicsHand next to the interactor): held items are attached to the physical hand, not to
+    /// the controller, so they stop with the hand at a wall, and a held item touching a wall holds the hand back.
+    /// A hand that got stuck while holding an item releases it.
     /// </summary>
     [RequireComponent(typeof(NearFarInteractor))]
     public class XriGrabberBridge : MonoBehaviour, IVrGrabber
     {
         [Tooltip("Added to the near caster's radius: a target this close to the hand at selection is a Hand grab, " +
                  "everything further away a Distance grab.")]
-        [SerializeField] private float _nearGrabMargin = 0.05f;
+        [SerializeField]
+        private float _nearGrabMargin = 0.05f;
 
         public event Action<VrGrabArgs> BeforeGrabbed;
         public event Action<VrGrabArgs> Grabbed;
@@ -30,6 +37,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private NearFarInteractor _interactor;
         private VrGrabberKind _heldKind = VrGrabberKind.Hand;
         private bool _isSubscribed;
+        private VrPhysicsHand _physicsHand;
 
         public NearFarInteractor Interactor
         {
@@ -64,8 +72,42 @@ namespace Gothic.VR.Interaction.Backends.Xri
             }
         }
 
+        private void Start()
+        {
+            // Start: NearFarInteractor creates its attach controller in Awake.
+            AttachToPhysicsHand();
+        }
+
+        /// <summary>
+        /// The attach anchor follows a point on the physical hand instead of the interactor (the controller).
+        /// </summary>
+        private void AttachToPhysicsHand()
+        {
+            var controller = transform.parent;
+            _physicsHand = controller != null ? controller.GetComponentInChildren<VrPhysicsHand>(true) : null;
+            if (_physicsHand == null)
+                return;
+
+            var attachController = Interactor.interactionAttachController;
+            if (attachController == null)
+            {
+                Logger.LogWarning($"[XRI] {name} has no interaction attach controller. Held items follow the " +
+                                  "controller, not the physical hand.", LogCat.VR);
+                return;
+            }
+
+            var follow = attachController.transformToFollow != null
+                ? attachController.transformToFollow
+                : Interactor.transform;
+            attachController.transformToFollow = _physicsHand.CreateAttachPoint(follow);
+            _physicsHand.HeldItemStuck += ForceRelease;
+        }
+
         private void OnDestroy()
         {
+            if (_physicsHand != null)
+                _physicsHand.HeldItemStuck -= ForceRelease;
+
             if (!_isSubscribed || _interactor == null)
                 return;
 
@@ -134,13 +176,38 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
         private void OnSelectEntered(SelectEnterEventArgs args)
         {
+            SetPhysicsHandItem(args.interactableObject);
+
             var interactable = GetInteractable(args.interactableObject);
             if (interactable != null)
                 Grabbed?.Invoke(CreateHeldArgs(interactable));
         }
 
+        /// <summary>
+        /// Items moved by VelocityTracking. Not kinematic ones (door and chest leaves: VrHinge turns them).
+        /// </summary>
+        private void SetPhysicsHandItem(IXRSelectInteractable xrInteractable)
+        {
+            if (_physicsHand == null)
+                return;
+
+            if (xrInteractable is not XRGrabInteractable grabInteractable ||
+                grabInteractable.movementType != XRBaseInteractable.MovementType.VelocityTracking ||
+                !grabInteractable.TryGetComponent<Rigidbody>(out var body) || body.isKinematic)
+            {
+                _physicsHand.ClearHeldItem();
+                return;
+            }
+
+            _physicsHand.SetHeldItem(body, grabInteractable.GetAttachTransform(Interactor),
+                () => grabInteractable.GetTargetPose().rotation);
+        }
+
         private void OnSelectExited(SelectExitEventArgs args)
         {
+            if (_physicsHand != null)
+                _physicsHand.ClearHeldItem();
+
             var interactable = GetInteractable(args.interactableObject);
             if (interactable != null)
                 Released?.Invoke(CreateHeldArgs(interactable));

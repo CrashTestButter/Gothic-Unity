@@ -35,7 +35,8 @@ namespace Gothic.VR.Services.Context
         [Inject] private readonly MarvinService _marvinService;
         [Inject] private readonly IVrInput _vrInput;
         [Inject] private readonly IVrUiPointers _vrUiPointers;
-        [Inject] private readonly IVrHaptics _vrHaptics;
+        // Also creates the service, which listens to the haptic events (fight, lock picking, physical hands).
+        [Inject] private readonly VrHapticsService _vrHapticsService;
         [Inject] private readonly IVrBackend _vrBackend;
 
         private const string _contextName = "VR";
@@ -182,7 +183,7 @@ namespace Gothic.VR.Services.Context
                 return;
             }
 
-            _vrHaptics.Vibrate(handSide, VrHapticPreset.Info);
+            _vrHapticsService.Vibrate(handSide, VrHapticPreset.Info);
         }
 
         private void PlayerPrefsUpdated(string key, object value)

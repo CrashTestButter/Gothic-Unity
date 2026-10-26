@@ -1,6 +1,7 @@
 using Gothic.Core.Logging;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
+using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.XR.Interaction.Toolkit.Inputs.Haptics;
 using Logger = Gothic.Core.Logging.Logger;
@@ -27,7 +28,10 @@ namespace Gothic.VR.Interaction.Backends.Xri
             (0.8f, 0.4f, 175f),
 
             // Success
-            (0.6f, 0.5f, 80f)
+            (0.6f, 0.5f, 80f),
+
+            // Contact (amplitude scaled by impact speed; frequency 0 = device default)
+            (0.8f, 0.04f, 0f)
         };
 
         private readonly XriInput _input;
@@ -40,6 +44,11 @@ namespace Gothic.VR.Interaction.Backends.Xri
         }
 
         public void Vibrate(VrHandSide side, VrHapticPreset preset)
+        {
+            Vibrate(side, preset, 1f);
+        }
+
+        public void Vibrate(VrHandSide side, VrHapticPreset preset, float amplitudeScale)
         {
             var channel = GetProvider(side)?.GetChannelGroup()?.GetChannel();
             if (channel == null)
@@ -54,7 +63,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
             }
 
             var (amplitude, duration, frequency) = _presets[(int)preset];
-            channel.SendHapticImpulse(amplitude, duration, frequency);
+            channel.SendHapticImpulse(amplitude * Mathf.Clamp01(amplitudeScale), duration, frequency);
         }
 
         private XRInputHapticImpulseProvider GetProvider(VrHandSide side)

@@ -61,6 +61,8 @@ namespace Gothic.VR.Adapters.Player
         private int _totalPages;
         private VmGothicEnums.InvCats _selectedCategory =  VmGothicEnums.InvCats.InvWeapon;
         private bool _tempIgnoreSocketing;
+        // Quitting: the slots let go of their items while the DI containers are gone already - nothing to count.
+        private static bool _isQuitting;
         private IInventoryOwner _owner;
         private NpcContainer _trader;
         private Coroutine _refresh;
@@ -429,6 +431,9 @@ namespace Gothic.VR.Adapters.Player
         
         private void Awake()
         {
+            Application.quitting -= OnApplicationQuitting;
+            Application.quitting += OnApplicationQuitting;
+            _isQuitting = false;
             _interactable = GetComponent<VrInteractable>();
             _socketContainer = GetComponent<IVrSocketContainer>();
             CollectSockets(_holsterSockets, _holsters);
@@ -493,6 +498,11 @@ namespace Gothic.VR.Adapters.Player
             }
         }
 
+        private static void OnApplicationQuitting()
+        {
+            _isQuitting = true;
+        }
+
         private static void CollectSockets(GameObject[] socketGos, List<IVrSocket> result)
         {
             if (socketGos == null)
@@ -516,6 +526,8 @@ namespace Gothic.VR.Adapters.Player
 
         private void OnBackpackGrabbedToShoulder(VrGrabArgs args)
         {
+            SetHoldingHandCollisions(args, true);
+
             // We could potentially remove the meshes inside Backpack or simply hide it from rendering later.
             if (IsShoulderSocket(args))
                 SetSlotDetectionEnabled(false);
@@ -523,11 +535,39 @@ namespace Gothic.VR.Adapters.Player
 
         private void OnBackpackReleasedFromShoulder(VrGrabArgs args)
         {
+            SetHoldingHandCollisions(args, false);
+
             if (!IsShoulderSocket(args))
                 return;
 
             SetSlotDetectionEnabled(true);
             UpdateInventoryView();
+        }
+
+        /// <summary>
+        /// DeveloperConfig.EnableBackpackHandPassThrough: while a hand holds the backpack, both physical hands ignore its
+        /// whole hull - the holding hand and the backpack pushed each other (the backpack shook), and the free hand got
+        /// stuck on the hull when reaching for the slots. Back to normal once no hand holds it.
+        /// </summary>
+        private void SetHoldingHandCollisions(VrGrabArgs args, bool isHeld)
+        {
+            if (!args.IsHandOrDistance || _configService == null || !_configService.Dev.EnableBackpackHandPassThrough)
+                return;
+
+            var context = _vrPlayerService.VRContextInteractionService;
+            var hands = context?.PhysicsHands;
+            if (hands == null || hands.Count == 0)
+                return;
+
+            // The other hand may still hold it.
+            var isAnyHandHolding = isHeld || (context.Rig != null && context.Rig.HandGrabbers.Any(i =>
+                i.HandSide != args.HandSide && i.Held == _interactable));
+
+            var hull = GetComponentsInChildren<Collider>(true)
+                .Where(i => !i.isTrigger && i.GetComponentInParent<VobLoader>() == null)
+                .ToList();
+            foreach (var hand in hands)
+                hand.IgnoreCollisions(hull, isAnyHandHolding);
         }
 
         private static bool IsShoulderSocket(VrGrabArgs args)
@@ -585,7 +625,7 @@ namespace Gothic.VR.Adapters.Player
 
         private void OnItemPutIntoBackpack(VrGrabArgs args)
         {
-            if (_tempIgnoreSocketing || _refreshPlacements.Contains(args.Interactable))
+            if (_isQuitting || _tempIgnoreSocketing || _refreshPlacements.Contains(args.Interactable))
                 return;
 
             var vobLoader = args.Interactable.GetComponentInParent<VobLoader>(true);
@@ -629,7 +669,7 @@ namespace Gothic.VR.Adapters.Player
             var vobContainer = vobLoader.Container;
             TrackHolsteredMeleeWeapon(vobContainer, false);
 
-            if (_tempIgnoreSocketing)
+            if (_isQuitting || _tempIgnoreSocketing)
                 return;
 
             _playerService.RemoveItem(vobContainer.Vob.Name, Mathf.Max(1, vobContainer.VobAs<IItem>().Amount));
@@ -637,7 +677,7 @@ namespace Gothic.VR.Adapters.Player
 
         private void OnItemPutOutOfBackpack(VrGrabArgs args)
         {
-            if (_tempIgnoreSocketing || _refreshRemovals.Contains(args.Interactable))
+            if (_isQuitting || _tempIgnoreSocketing || _refreshRemovals.Contains(args.Interactable))
                 return;
 
             var vobLoader = args.Interactable.GetComponentInParent<VobLoader>();
@@ -701,6 +741,10 @@ namespace Gothic.VR.Adapters.Player
 
         private void UpdateInventoryView()
         {
+            // Quitting: the shoulder socket lets go of the backpack too - no refresh without the DI containers.
+            if (_isQuitting)
+                return;
+
             // A refresh is still re-stacking the sockets: run once more after it (two at once doubled the items).
             if (_refresh != null)
             {

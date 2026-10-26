@@ -10,7 +10,7 @@ using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Npc;
 using Gothic.VR.Domain.Player;
 using Gothic.VR.Services;
-using HurricaneVR.Framework.Core;
+using Gothic.VR.Interaction.Components;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
@@ -135,7 +135,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
                 return;
 
             _stabFinish ??= new VrStabFinishDomain().Inject();
-            _stabFinish.TryStab(attacker, target, GetComponent<HVRGrabbable>(), GetPlayerVelocity());
+            _stabFinish.TryStab(attacker, target, GetComponent<VrInteractable>(), GetPlayerVelocity());
         }
 
         private void OnTriggerExit(Collider other)

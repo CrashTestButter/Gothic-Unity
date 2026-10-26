@@ -1297,8 +1297,13 @@ namespace Gothic.Core.Services.Npc
             }
 
             Logger.Log($"[FightService.FinishingMove] {attacker.Instance.GetName(NpcNameSlot.Slot0)} executes {target.Instance.GetName(NpcNameSlot.Slot0)}", LogCat.Npc);
+            var wasLying = target.Props.BodyState == VmGothicEnums.BodyState.BsUnconscious;
             target.Props.BodyState = VmGothicEnums.BodyState.BsDead;
-            OnDyingChangeAnimation(target);
+            // DeveloperConfig.EnableFinishedNpcLyingDeath: he dies where he lies, with his death scream.
+            if (_configService.Dev.EnableFinishedNpcLyingDeath && wasLying && TryPlayLyingDeath(target))
+                PlayDeathScream(target);
+            else
+                OnDyingChangeAnimation(target);
             OnNpcDied(target, attacker);
         }
 
@@ -1334,26 +1339,66 @@ namespace Gothic.Core.Services.Npc
         }
 
         /// <summary>
-        /// Like the engine (OpenGothic Npc's death: emitSoundSVM("SVM_%d_DEAD")) - the hero's death scream (G1: voice 15).
-        /// From the hero's own voice source (Output plays his lines there).
+        /// Like the engine (OpenGothic Npc's death: emitSoundSVM("SVM_%d_DEAD")) - the death scream (G1 hero: voice 15).
+        /// The hero from his own voice source (Output plays his lines there), NPCs from theirs.
         /// </summary>
-        private void PlayDeathScream(NpcContainer hero)
+        private void PlayDeathScream(NpcContainer npc)
         {
-            if (hero.Instance.Voice <= 0)
+            if (npc.Instance.Voice <= 0)
                 return;
-            var clip = _audioService.GetRandomSoundClip($"SVM_{hero.Instance.Voice}_DEAD");
+            var clip = _audioService.GetRandomSoundClip($"SVM_{npc.Instance.Voice}_DEAD");
             if (clip == null)
             {
-                Logger.LogWarning($"[FightService] No SVM_{hero.Instance.Voice}_DEAD for the hero's death", LogCat.Fight);
+                Logger.LogWarning($"[FightService] No SVM_{npc.Instance.Voice}_DEAD for " +
+                                  $"{npc.Instance.GetName(NpcNameSlot.Slot0)}'s death", LogCat.Fight);
                 return;
             }
 
-            var heroGo = _npcService.GetHeroGameObject();
-            var source = heroGo != null ? heroGo.GetComponent<AudioSource>() : null;
-            if (source == null && hero.PrefabProps != null)
-                source = hero.PrefabProps.NpcSound;
+            AudioSource source = null;
+            if (npc.PrefabProps != null && npc.PrefabProps.IsHero())
+            {
+                var heroGo = _npcService.GetHeroGameObject();
+                source = heroGo != null ? heroGo.GetComponent<AudioSource>() : null;
+            }
+            if (source == null && npc.PrefabProps != null)
+                source = npc.PrefabProps.NpcSound;
             if (source != null)
                 source.PlayOneShot(clip);
+        }
+
+        // DeveloperConfig.EnableFinishedNpcLyingDeath: from lying unconscious (S_WOUNDED, on the belly; S_WOUNDEDB on
+        // the back) to lying dead - the transition if the model has one, else straight into the dead loop.
+        private static readonly string[][] _lyingDeathAnimations =
+        {
+            new[] { "T_WOUNDED_2_DEAD", "S_DEAD" },
+            new[] { "T_WOUNDEDB_2_DEADB", "S_DEADB" }
+        };
+
+        private bool TryPlayLyingDeath(NpcContainer target)
+        {
+            var animationSystem = target.PrefabProps?.AnimationSystem;
+            if (animationSystem == null)
+                return false;
+
+            target.Props.AnimationQueue.Clear();
+            _physicsService.DisablePhysicsForNpc(target.PrefabProps);
+            foreach (var animations in _lyingDeathAnimations)
+            {
+                foreach (var animation in animations)
+                {
+                    if (!animationSystem.HasAnimation(animation))
+                        continue;
+                    animationSystem.StopAllAnimations();
+                    animationSystem.PlayAnimation(animation);
+                    Logger.Log($"[FightService.FinishingMove] {target.Instance.GetName(NpcNameSlot.Slot0)} dies lying " +
+                               $"({animation})", LogCat.Npc);
+                    return true;
+                }
+            }
+
+            Logger.LogWarning($"[FightService.FinishingMove] {target.Instance.GetName(NpcNameSlot.Slot0)}: no lying death " +
+                              "animation - falls like a standing death", LogCat.Npc);
+            return false;
         }
 
         private IEnumerator KnockoutRecovery(NpcContainer hero)

@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Linq;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -13,7 +12,6 @@ using Gothic.VR.Adapters.Vob.VobItem;
 using Gothic.VR.Services;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction;
-using HurricaneVR.Framework.Shared;
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit.Daedalus;
@@ -169,4 +167,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

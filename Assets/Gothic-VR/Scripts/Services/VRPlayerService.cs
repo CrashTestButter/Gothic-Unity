@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -20,11 +21,6 @@ using Gothic.Core.Models.Container;
 using Gothic.VR.Interaction.Components;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction.Ports;
-#if GOTHIC_HVR_INSTALLED
-using Gothic.VR.Interaction.Backends.Hvr;
-using HurricaneVR.Framework.Core.Bags;
-using HurricaneVR.Framework.Core.Grabbers;
-#endif
 using Reflex.Attributes;
 using UnityEngine;
 using ZenKit;
@@ -331,145 +327,80 @@ namespace Gothic.VR.Services
         public bool IsTelekinesisActive { get; private set; }
         public event System.Action TelekinesisDeactivated;
 
-#if GOTHIC_HVR_INSTALLED
-        // HVR backend only (force grabber bags) - not ported to XRI yet.
-        public HVRForceGrabber GetForceGrabber(VrHandSide side)
-        {
-            var ctrl = _contextInteractionService.GetCurrentPlayerController()?.GetComponent<HvrRig>();
-            if (ctrl == null) return null;
-            return side == VrHandSide.Left ? ctrl.LeftHand.ForceGrabber : ctrl.RightHand.ForceGrabber;
-        }
-
-        private float _savedForceGrabRange;
-        private float _savedBagMaxDistance;
-        private Vector3 _savedCapsuleCenter;
-        private float _savedCapsuleHeight;
-        private float _savedCapsuleRadius;
-
-        // Spell targeting state (combat spells — extends rune hand bags only).
+        // Spell targeting state (combat spells - extends the rune hand's distance grab only).
         private VrHandSide _spellTargetingSide;
-        private Vector3 _savedSpellCapsuleCenter;
-        private float _savedSpellCapsuleHeight;
-        private float _savedSpellCapsuleRadius;
-        private float _savedSpellBagMaxDistance;
 
+        private IVrRig Rig => VRContextInteractionService?.Rig;
+
+        /// <summary>
+        /// Combat spells aim with the rune hand's distance grab (IVrRig.GetDistanceHovered), extended to the spell's
+        /// range.
+        /// </summary>
         public void ActivateSpellTargeting(VrHandSide runeHandSide, float range)
         {
-            if (IsSpellTargetingActive) return;
+            if (IsSpellTargetingActive || Rig == null)
+                return;
             _spellTargetingSide = runeHandSide;
-            var fg = GetForceGrabber(runeHandSide);
-            if (fg == null) return;
-            var savedOnce = false;
-            foreach (var bag in fg.GrabBags)
-            {
-                if (!(bag is HVRForceGrabberBag fgBag)) continue;
-                var capsule = bag.GetComponent<CapsuleCollider>();
-                if (capsule == null) continue;
-                if (!savedOnce)
-                {
-                    _savedSpellCapsuleCenter = capsule.center;
-                    _savedSpellCapsuleHeight = capsule.height;
-                    _savedSpellCapsuleRadius = capsule.radius;
-                    _savedSpellBagMaxDistance = fgBag.MaxDistanceAllowed;
-                    savedOnce = true;
-                }
-                var newHeight = _savedSpellCapsuleHeight * 2.5f;
-                capsule.height = newHeight;
-                capsule.center = new Vector3(0f, 0f, newHeight * 0.5f);
-                fgBag.MaxDistanceAllowed = range;
-                Logger.Log($"[SpellTarget] {fg.gameObject.name}/{bag.gameObject.name} capsule extended", LogCat.VR);
-            }
+            Rig.SetDistanceGrabRange(runeHandSide, range);
+            Logger.Log($"[SpellTarget] {runeHandSide} hand distance grab extended to {range} m", LogCat.VR);
             IsSpellTargetingActive = true;
         }
 
         public void DeactivateSpellTargeting()
         {
-            if (!IsSpellTargetingActive) return;
-            var fg = GetForceGrabber(_spellTargetingSide);
-            if (fg != null)
-            {
-                foreach (var bag in fg.GrabBags)
-                {
-                    if (!(bag is HVRForceGrabberBag fgBag)) continue;
-                    var capsule = bag.GetComponent<CapsuleCollider>();
-                    if (capsule != null)
-                    {
-                        capsule.center = _savedSpellCapsuleCenter;
-                        capsule.height = _savedSpellCapsuleHeight;
-                        capsule.radius = _savedSpellCapsuleRadius;
-                    }
-                    fgBag.MaxDistanceAllowed = _savedSpellBagMaxDistance;
-                }
-            }
+            if (!IsSpellTargetingActive)
+                return;
+            // Telekinesis may still use the longer range.
+            if (!IsTelekinesisActive)
+                Rig?.ResetDistanceGrabRange(_spellTargetingSide);
             IsSpellTargetingActive = false;
         }
 
+        /// <summary>
+        /// The NPC the hand's distance grab points at (spell targeting), null if none.
+        /// </summary>
+        public NpcContainer GetSpellTarget(VrHandSide side)
+        {
+            var hovered = Rig?.GetDistanceHovered(side);
+            var npcLoader = hovered != null ? hovered.GetComponentInParent<NpcLoader>() : null;
+            return npcLoader != null && npcLoader.Npc != null ? npcLoader.Npc.GetUserData() : null;
+        }
+
+        /// <summary>
+        /// Both hands' distance grab reaches the spell's range - items far away are highlighted (VRFocus) and pulled
+        /// with TryTelekinesisGrab. Ends with the first item pulled into a hand.
+        /// </summary>
         public void ActivateTelekinesis(float range)
         {
-            if (IsTelekinesisActive) return;
+            if (IsTelekinesisActive || Rig == null)
+                return;
 
-            var left  = GetForceGrabber(VrHandSide.Left);
-            var right = GetForceGrabber(VrHandSide.Right);
-            if (right != null) _savedForceGrabRange = right.MaxRayCastDistance;
-            else if (left != null) _savedForceGrabRange = left.MaxRayCastDistance;
-            else _savedForceGrabRange = 10f;
-
-            var savedOnce = false;
-            foreach (var fg in new[] { left, right })
+            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
             {
-                if (fg == null) continue;
-                fg.MaxRayCastDistance = range;
-
-                foreach (var bag in fg.GrabBags)
-                {
-                    if (!(bag is HVRForceGrabberBag fgBag)) continue;
-                    var capsule = bag.GetComponent<CapsuleCollider>();
-                    if (capsule == null) continue;
-                    if (!savedOnce)
-                    {
-                        _savedCapsuleCenter = capsule.center;
-                        _savedCapsuleHeight = capsule.height;
-                        _savedCapsuleRadius = capsule.radius;
-                        _savedBagMaxDistance = fgBag.MaxDistanceAllowed;
-                        savedOnce = true;
-                    }
-                    var newHeight = _savedCapsuleHeight * 2.5f;
-                    capsule.height = newHeight;
-                    capsule.center = new Vector3(0f, 0f, newHeight * 0.5f);
-                    fgBag.MaxDistanceAllowed = range;
-                    Logger.Log($"[Telekinesis] {fg.gameObject.name}/{bag.gameObject.name} capsule extended to {range}", LogCat.VR);
-                }
-
-                fg.Grabbed.AddListener(OnTelekinesisItemGrabbed);
+                Rig.SetDistanceGrabRange(side, range);
+                Logger.Log($"[Telekinesis] {side} hand distance grab extended to {range} m", LogCat.VR);
             }
+            foreach (var grabber in Rig.HandGrabbers)
+                grabber.Grabbed += OnTelekinesisItemGrabbed;
 
             IsTelekinesisActive = true;
         }
 
         public void DeactivateTelekinesis()
         {
-            if (!IsTelekinesisActive) return;
+            if (!IsTelekinesisActive)
+                return;
 
-            foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
+            var rig = Rig;
+            if (rig != null)
             {
-                var fg = GetForceGrabber(side);
-                if (fg == null) continue;
-                fg.MaxRayCastDistance = _savedForceGrabRange;
-
-                foreach (var bag in fg.GrabBags)
+                foreach (var side in new[] { VrHandSide.Left, VrHandSide.Right })
                 {
-                    if (!(bag is HVRForceGrabberBag fgBag)) continue;
-                    var capsule = bag.GetComponent<CapsuleCollider>();
-                    if (capsule != null)
-                    {
-                        capsule.center = _savedCapsuleCenter;
-                        capsule.height = _savedCapsuleHeight;
-                        capsule.radius = _savedCapsuleRadius;
-                    }
-                    fgBag.MaxDistanceAllowed = _savedBagMaxDistance;
+                    if (!IsSpellTargetingActive || side != _spellTargetingSide)
+                        rig.ResetDistanceGrabRange(side);
                 }
-
-                fg.Grabbed.RemoveListener(OnTelekinesisItemGrabbed);
+                foreach (var grabber in rig.HandGrabbers)
+                    grabber.Grabbed -= OnTelekinesisItemGrabbed;
             }
 
             IsTelekinesisActive = false;
@@ -478,20 +409,15 @@ namespace Gothic.VR.Services
 
         public bool TryTelekinesisGrab()
         {
-            foreach (var side in new[] { VrHandSide.Right, VrHandSide.Left })
-            {
-                var fg = GetForceGrabber(side);
-                if (fg == null || fg.HoverTarget == null) continue;
-                if (fg.TryGrab(fg.HoverTarget, force: true))
-                    return true;
-            }
-            return false;
+            var rig = Rig;
+            return rig != null && (rig.TryDistanceGrabHovered(VrHandSide.Right) ||
+                                   rig.TryDistanceGrabHovered(VrHandSide.Left));
         }
 
-        private void OnTelekinesisItemGrabbed(HVRGrabberBase grabber, HurricaneVR.Framework.Core.HVRGrabbable grabbable)
+        private void OnTelekinesisItemGrabbed(VrGrabArgs args)
         {
-            DeactivateTelekinesis();
+            if (args.Kind == VrGrabberKind.Distance)
+                DeactivateTelekinesis();
         }
-#endif
     }
 }

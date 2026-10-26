@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core;
@@ -19,15 +18,13 @@ using Gothic.Core.Services.Npc;
 using Gothic.Core.Services.Player;
 using Gothic.Core.Services.Vobs;
 using Gothic.Core.Services.World;
-using Gothic.VR.Interaction.Backends.Hvr;
 using Gothic.VR.Adapters.UI;
 using Gothic.VR.Adapters.Vob.VobItem;
 using Gothic.VR.Services;
-using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Grabbers;
-using HurricaneVR.Framework.Shared;
+using Gothic.VR.Interaction.Components;
+using Gothic.VR.Interaction.Models;
+using Gothic.VR.Interaction.Ports;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
@@ -117,7 +114,7 @@ namespace Gothic.VR.Adapters.Player
         // DeveloperConfig.EnableRingAroundPlayer: the ring circles the player at eye level, 2.2 times the size (radius
         // ~0.6 m) - the slot looked at is the selected one.
         private const float _aroundPlayerScale = 2.2f;
-        // An item grabbed out of the ring that HVR didn't end up holding after this goes back.
+        // An item grabbed out of the ring that no hand ended up holding after this goes back.
         private const float _takeTimeoutSeconds = 1f;
         // Stacks: grip held at the slot this long takes more - first _transferStartRate per second, doubling every
         // second. The hand this far from the slot ends it.
@@ -130,7 +127,10 @@ namespace Gothic.VR.Adapters.Player
         private static readonly Color _emptySlotColor = new(0.6f, 0.6f, 0.6f, 1f);
 
         private readonly List<Slot> _slots = new();
-        private readonly List<HVRHandGrabber> _hands = new();
+        // The direct grabbers of both hands (IVrRig.HandGrabbers).
+        private readonly List<IVrGrabber> _hands = new();
+        private IVrRig _rig;
+        private bool _isTeleportLocked;
         private bool _isOpen;
         private float _gestureTime;
         private bool _isGestureLatched;
@@ -191,7 +191,7 @@ namespace Gothic.VR.Adapters.Player
 
             // Weapons and items: the real item, shrunk into the slot until a hand grabs it.
             public VobContainer Container;
-            public HVRGrabbable Grabbable;
+            public VrInteractable Grabbable;
             public Transform LoaderParent;
             public Vector3 LoaderScale;
             public int IgnoredColliderCount;
@@ -218,7 +218,7 @@ namespace Gothic.VR.Adapters.Player
         /// </summary>
         private class TakenWeapon
         {
-            public HVRGrabbable Grabbable;
+            public VrInteractable Grabbable;
             public ItemInstance Item;
             public string InstanceName;
             public SlotKind Kind;
@@ -244,16 +244,19 @@ namespace Gothic.VR.Adapters.Player
 
         private void Start()
         {
-            var controller = GetComponentInParent<HvrRig>();
-            if (controller == null)
-                return;
-            foreach (var hand in new[] { controller.LeftHand, controller.RightHand })
+            _rig = _vrPlayerService.VRContextInteractionService?.Rig;
+            if (_rig == null)
             {
-                if (hand == null)
+                Logger.LogWarning("[FavoritesRing] No VR rig - ring items can't be grabbed.", LogCat.VR);
+                return;
+            }
+            foreach (var hand in _rig.HandGrabbers)
+            {
+                if (hand.Kind != VrGrabberKind.Hand)
                     continue;
-                hand.BeforeGrabbed.AddListener(OnBeforeGrabbed);
-                hand.Grabbed.AddListener(OnGrabbed);
-                hand.Released.AddListener(OnReleased);
+                hand.BeforeGrabbed += OnBeforeGrabbed;
+                hand.Grabbed += OnGrabbed;
+                hand.Released += OnReleased;
                 _hands.Add(hand);
             }
         }
@@ -380,15 +383,39 @@ namespace Gothic.VR.Adapters.Player
 
             _isOpen = true;
             _ringAngle = _targetAngle = 0f;
+            LockTeleport(true);
             Rebuild();
             Logger.Log($"[FavoritesRing] Opened with {_slots.Count(s => s.Kind == SlotKind.Spell)} spell(s), " +
                        $"{_slots.Count(s => s.Kind is SlotKind.Melee or SlotKind.Ranged)} weapon(s), " +
                        $"{_slots.Count(s => s.Kind is SlotKind.Item or SlotKind.Currency)} item(s)", LogCat.VR);
         }
 
+        /// <summary>
+        /// DeveloperConfig.EnableRingZoom: the right stick zooms the ring - pushed forward it aimed the thumbstick
+        /// teleport as well (XRI). A teleport enabled by others meanwhile stays enabled.
+        /// </summary>
+        private void LockTeleport(bool isLocked)
+        {
+            if (_rig == null)
+                return;
+            if (isLocked)
+            {
+                if (!_configService.Dev.EnableRingZoom || !_rig.TeleportEnabled)
+                    return;
+                _rig.TeleportEnabled = false;
+                _isTeleportLocked = true;
+            }
+            else if (_isTeleportLocked)
+            {
+                _rig.TeleportEnabled = true;
+                _isTeleportLocked = false;
+            }
+        }
+
         private void Close(string reason)
         {
             _isOpen = false;
+            LockTeleport(false);
             _isDragging = false;
             _isTriggerDown = false;
             _hovered = null;
@@ -609,13 +636,14 @@ namespace Gothic.VR.Adapters.Player
 
         /// <summary>
         /// The weapon/item itself, kinematic and shrunk into the slot: a hand grabs it like out of a backpack socket
-        /// (HVR's own grab, at the grip for weapons) - not from afar, without VRFocus's name (the ring shows its own).
+        /// (the backend's own grab, at the grip for weapons) - not from afar, without VRFocus's name (the ring shows its
+        /// own).
         /// It doesn't touch the hands or the hero's body until grabbed.
         /// </summary>
         private bool TryCreateRealItem(Slot slot)
         {
             var container = CreateItem(slot.InstanceName);
-            var grabbable = container?.Go != null ? container.Go.GetComponentInChildren<HVRGrabbable>() : null;
+            var grabbable = container?.Go != null ? container.Go.GetComponentInChildren<VrInteractable>() : null;
             if (grabbable == null)
             {
                 if (container != null)
@@ -627,7 +655,7 @@ namespace Gothic.VR.Adapters.Player
             var rigidbody = grabbable.GetComponent<Rigidbody>();
             if (rigidbody != null)
                 rigidbody.isKinematic = true;
-            grabbable.ForceGrabbable = false;
+            grabbable.IsDistanceGrabbable = false;
             slot.FocusName = container.Go.FindChildRecursively(_focusNameCanvas);
 
             var loader = container.Go.transform;
@@ -655,7 +683,7 @@ namespace Gothic.VR.Adapters.Player
 
         /// <summary>
         /// The ring shows its own name (with the amount in the backpack) - VRFocus's hover name above a ring item
-        /// hides. It shows it on hover (HVR, in Update); this runs after.
+        /// hides. It shows it on hover (in Update); this runs after.
         /// </summary>
         private void LateUpdate()
         {
@@ -670,8 +698,8 @@ namespace Gothic.VR.Adapters.Player
 
         /// <summary>
         /// The hands' and the hero's solid colliders ignore a ring item - also the colliders a weapon builds after
-        /// being created (its fitted hitboxes). Once grabbed HVR handles the hands (and restores them on release),
-        /// VRVobItem the body.
+        /// being created (its fitted hitboxes). Once grabbed the backend handles the hands (and restores them on
+        /// release), VRVobItem the body.
         /// </summary>
         private void UpdateBodyCollisions(Slot slot)
         {
@@ -680,13 +708,12 @@ namespace Gothic.VR.Adapters.Player
                 return;
             slot.IgnoredColliderCount = itemColliders.Length;
 
-            var controller = GetComponentInParent<HvrRig>();
-            if (controller == null)
+            if (_rig == null)
                 return;
-            var bodyColliders = new List<Collider> { controller.CharacterController };
-            // Not the hands' triggers - HVR finds what a hand can grab with them.
-            foreach (var hand in _hands)
-                bodyColliders.AddRange(hand.GetComponentsInChildren<Collider>(true).Where(c => !c.isTrigger));
+            var bodyColliders = new List<Collider> { _rig.CharacterController };
+            // Not the hands' triggers - the backend finds what a hand can grab with them.
+            bodyColliders.AddRange(_rig.GetHandColliders(VrHandSide.Left));
+            bodyColliders.AddRange(_rig.GetHandColliders(VrHandSide.Right));
             foreach (var bodyCollider in bodyColliders)
             {
                 if (bodyCollider == null)
@@ -828,9 +855,9 @@ namespace Gothic.VR.Adapters.Player
             }
             else
             {
-                var controller = HurricaneVR.Framework.ControllerInput.HVRInputManager.Instance?.RightController;
-                if (controller != null && Mathf.Abs(controller.JoystickAxis.y) >= _zoomStickDeadZone)
-                    change = controller.JoystickAxis.y * _ringZoomSpeed * Time.deltaTime;
+                var stick = VrControls.GetThumbstick(VrHandSide.Right);
+                if (Mathf.Abs(stick.y) >= _zoomStickDeadZone)
+                    change = stick.y * _ringZoomSpeed * Time.deltaTime;
             }
             if (Mathf.Approximately(change, 0f))
                 return;
@@ -951,7 +978,7 @@ namespace Gothic.VR.Adapters.Player
                 UpdateLabels();
             }
 
-            // Weapons and items are grabbed by HVR itself (OnBeforeGrabbed).
+            // Weapons and items are grabbed by the backend itself (OnBeforeGrabbed).
             if (_hovered != null && _hovered.Kind == SlotKind.Spell && !_isDragging &&
                 VrControls.GetButton(hoveredSide, VrButton.Grip).IsJustActivated)
                 TakeSpell(_hovered, hoveredSide);
@@ -1190,7 +1217,7 @@ namespace Gothic.VR.Adapters.Player
 
         /// <summary>
         /// Like Gothic's readied spell: the hand shows the spell's effect, no rune. It's an invisible rune attached to
-        /// the hand - not grabbed (HVR force-grabbing it without colliders flung the physics hand away), so the grip
+        /// the hand - not grabbed (force-grabbing it without colliders flung the physics hand away), so the grip
         /// does nothing - with a VRRuneCaster casting with that hand only. The spell stays in the inventory (equipped),
         /// like Gothic's readied spell. A trigger click of the other hand puts it away (VRFavoritesRingSpell).
         /// </summary>
@@ -1209,7 +1236,7 @@ namespace Gothic.VR.Adapters.Player
             }
 
             var container = CreateItem(slot.InstanceName);
-            var grabbable = container?.Go != null ? container.Go.GetComponentInChildren<HVRGrabbable>() : null;
+            var grabbable = container?.Go != null ? container.Go.GetComponentInChildren<VrInteractable>() : null;
             if (grabbable == null)
             {
                 Logger.LogWarning($"[FavoritesRing] {slot.InstanceName}: no grabbable item created", LogCat.VR);
@@ -1217,7 +1244,7 @@ namespace Gothic.VR.Adapters.Player
             }
 
             // Invisible, not grabbable, no physics - it rides on the hand.
-            grabbable.enabled = false;
+            grabbable.IsGrabEnabled = false;
             foreach (var renderer in grabbable.GetComponentsInChildren<Renderer>(true))
                 renderer.enabled = false;
             foreach (var collider in grabbable.GetComponentsInChildren<Collider>(true))
@@ -1239,11 +1266,12 @@ namespace Gothic.VR.Adapters.Player
         }
 
         /// <summary>
-        /// A hand grabs a ring weapon/item: full size again, out of the ring, physical - before HVR poses the hand
-        /// (VRWeaponGripGrab picks the grip after this).
+        /// A hand grabs a ring weapon/item: full size again, out of the ring, physical - before the backend poses the
+        /// hand (VRWeaponGripGrab picks the grip after this).
         /// </summary>
-        private void OnBeforeGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnBeforeGrabbed(VrGrabArgs args)
         {
+            var grabbable = args.Interactable;
             var slot = _slots.FirstOrDefault(s => s.Grabbable == grabbable && s.Container != null);
             if (slot == null)
                 return;
@@ -1255,17 +1283,18 @@ namespace Gothic.VR.Adapters.Player
             var rigidbody = grabbable.GetComponent<Rigidbody>();
             if (rigidbody != null)
                 rigidbody.isKinematic = false;
-            grabbable.ForceGrabbable = true;
+            grabbable.IsDistanceGrabbable = true;
         }
 
         /// <summary>
-        /// One of them out of the backpack into the hand: a loose world item like one taken out of the backpack. HVR's
+        /// One of them out of the backpack into the hand: a loose world item like one taken out of the backpack. The
         /// grab counted the held one into the inventory (VRPlayerService.SetGrab) - one less in the backpack, so the
         /// count stays and an equipped weapon stays equipped (Gothic: drawn, still in the inventory). A stack keeps the
         /// ring open for more (UpdateTransfer).
         /// </summary>
-        private void OnGrabbed(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnGrabbed(VrGrabArgs args)
         {
+            var grabbable = args.Interactable;
             var slot = _slots.FirstOrDefault(s => s.Grabbable == grabbable && s.Container != null);
             if (slot == null)
                 return;
@@ -1289,13 +1318,13 @@ namespace Gothic.VR.Adapters.Player
                     Kind = slot.Kind
                 };
             }
-            if (slot.Kind is SlotKind.Item or SlotKind.Currency && slot.Amount > 0 && grabber is HVRHandGrabber hand)
+            if (slot.Kind is SlotKind.Item or SlotKind.Currency && slot.Amount > 0 && args.IsHandOrDistance)
             {
                 _transfer = new Transfer
                 {
                     Slot = slot,
                     Held = container,
-                    Side = hand.HandSide.ToVr(),
+                    Side = args.HandSide,
                     StartTime = Time.time
                 };
                 _hovered = slot;
@@ -1358,7 +1387,7 @@ namespace Gothic.VR.Adapters.Player
             foreach (var slot in _slots)
             {
                 if (slot.Container == null || slot.TakenTime < 0f ||
-                    Time.time - slot.TakenTime < _takeTimeoutSeconds || slot.Grabbable.IsBeingHeld)
+                    Time.time - slot.TakenTime < _takeTimeoutSeconds || slot.Grabbable.IsHeld)
                     continue;
                 Logger.LogWarning($"[FavoritesRing] {slot.InstanceName}: grab didn't finish - back into the ring",
                     LogCat.VR);
@@ -1458,7 +1487,7 @@ namespace Gothic.VR.Adapters.Player
             var taken = _takenWeapon;
             if (taken == null || taken.ReleasedTime < 0f || Time.time - taken.ReleasedTime < _takenWeaponCheckSeconds)
                 return;
-            if (taken.Grabbable != null && taken.Grabbable.IsBeingHeld)
+            if (taken.Grabbable != null && taken.Grabbable.IsHeld)
             {
                 // In a hand again.
                 taken.ReleasedTime = -1f;
@@ -1489,17 +1518,18 @@ namespace Gothic.VR.Adapters.Player
         }
 
         /// <summary>
-        /// Let go of an item at a slot (within _putInGraceSeconds): it goes in next frame - after HVR and VRVobItem
-        /// handled the release (the held item left the inventory count).
+        /// Let go of an item at a slot (within _putInGraceSeconds): it goes in next frame - after the backend and
+        /// VRVobItem handled the release (the held item left the inventory count).
         /// </summary>
-        private void OnReleased(HVRGrabberBase grabber, HVRGrabbable grabbable)
+        private void OnReleased(VrGrabArgs args)
         {
+            var grabbable = args.Interactable;
             if (_takenWeapon != null && _takenWeapon.Grabbable == grabbable)
                 _takenWeapon.ReleasedTime = Time.time;
 
-            if (!_isOpen || grabber is not HVRHandGrabber hand)
+            if (!_isOpen || !args.IsHandOrDistance || grabbable == null)
                 return;
-            var index = hand.IsLeftHand ? 0 : 1;
+            var index = args.HandSide == VrHandSide.Left ? 0 : 1;
             var candidate = _putInCandidates[index];
             _putInCandidates[index] = null;
             if (candidate == null || Time.time - candidate.Time > _putInGraceSeconds ||
@@ -1649,13 +1679,12 @@ namespace Gothic.VR.Adapters.Player
         private void OnDestroy()
         {
             GlobalEventDispatcher.LoadGameStart.RemoveListener(OnLoadGameStart);
+            LockTeleport(false);
             foreach (var hand in _hands)
             {
-                if (hand == null)
-                    continue;
-                hand.BeforeGrabbed.RemoveListener(OnBeforeGrabbed);
-                hand.Grabbed.RemoveListener(OnGrabbed);
-                hand.Released.RemoveListener(OnReleased);
+                hand.BeforeGrabbed -= OnBeforeGrabbed;
+                hand.Grabbed -= OnGrabbed;
+                hand.Released -= OnReleased;
             }
             ClearSlots();
             if (_label != null)
@@ -1665,4 +1694,3 @@ namespace Gothic.VR.Adapters.Player
         }
     }
 }
-#endif

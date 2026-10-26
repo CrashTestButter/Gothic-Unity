@@ -1,4 +1,3 @@
-#if GOTHIC_HVR_INSTALLED
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,10 +20,7 @@ using Gothic.Core.Services.World;
 using Gothic.VR.Services;
 using Gothic.VR.Interaction.Models;
 using Gothic.VR.Interaction;
-using HurricaneVR.Framework.ControllerInput;
-using HurricaneVR.Framework.Core;
-using HurricaneVR.Framework.Core.Bags;
-using HurricaneVR.Framework.Shared;
+using Gothic.VR.Interaction.Components;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -200,23 +196,22 @@ namespace Gothic.VR.Adapters.Vob.VobItem
 
             // DeveloperConfig.EnableThrowRuneOneHand: the throwing hand (grip + trigger) can't grab the rune.
             if (IsThrowable && !RingHand.HasValue && _configService.Dev.EnableThrowRuneOneHand &&
-                TryGetComponent<HVRGrabbable>(out var grabbable) && GetComponent<VRThrowRuneGrabFilter>() == null)
+                TryGetComponent<VrInteractable>(out var interactable) && !interactable.IsOneHandOnly)
             {
-                gameObject.AddComponent<VRThrowRuneGrabFilter>().Grabbable = grabbable;
-                grabbable.LoadFilters();
+                interactable.IsOneHandOnly = true;
+                _isOneHandOnlySet = true;
             }
 
             ShowManaBar();
         }
 
+        // DeveloperConfig.EnableThrowRuneOneHand: this caster made the rune one-hand-only (undone on destroy).
+        private bool _isOneHandOnlySet;
+
         private void OnDestroy()
         {
-            if (TryGetComponent<VRThrowRuneGrabFilter>(out var grabFilter))
-            {
-                DestroyImmediate(grabFilter);
-                if (TryGetComponent<HVRGrabbable>(out var grabbable))
-                    grabbable.LoadFilters();
-            }
+            if (_isOneHandOnlySet && TryGetComponent<VrInteractable>(out var interactable))
+                interactable.IsOneHandOnly = false;
 
             var hero = _npcService.GetHeroContainer();
             if (hero != null)
@@ -522,8 +517,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (nearest < _maxHeldDistance)
                 return;
 
-            var grabbable = GetComponent<HurricaneVR.Framework.Core.HVRGrabbable>();
-            if (grabbable == null || !grabbable.IsBeingHeld)
+            var grabbable = GetComponent<VrInteractable>();
+            if (grabbable == null || !grabbable.IsHeld)
                 return;
             Logger.LogWarning($"[VRRuneCaster] Rune {nearest:F1} m away from the hands - released.", LogCat.VR);
             grabbable.ForceRelease();
@@ -883,8 +878,8 @@ namespace Gothic.VR.Adapters.Vob.VobItem
             if (vobItem.Amount > 0)
                 return;
 
-            var grabbable = GetComponent<HVRGrabbable>();
-            if (grabbable != null && grabbable.IsBeingHeld)
+            var grabbable = GetComponent<VrInteractable>();
+            if (grabbable != null && grabbable.IsHeld)
                 grabbable.ForceRelease();
             _vobService.RemoveWorldItem(container);
         }
@@ -1737,16 +1732,7 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         {
             if (!_isTargeting) return;
 
-            var fg = _vrPlayerService.GetForceGrabber(_runeHandSide);
-            if (fg == null) return;
-
-            NpcContainer found = null;
-            foreach (var bag in fg.GrabBags)
-            {
-                if (bag.ClosestGrabbable == null) continue;
-                var npcLoader = bag.ClosestGrabbable.GetComponentInParent<NpcLoader>();
-                if (npcLoader != null) { found = npcLoader.Npc.GetUserData(); break; }
-            }
+            var found = _vrPlayerService.GetSpellTarget(_runeHandSide);
 
             var prev = _spellTarget;
             _spellTarget = found;
@@ -1853,4 +1839,3 @@ namespace Gothic.VR.Adapters.Vob.VobItem
         }
     }
 }
-#endif

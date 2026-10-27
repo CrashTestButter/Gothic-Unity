@@ -3,12 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Gothic.Core.Const;
 using Gothic.Core.Domain.SaveGames;
 using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Proxy;
 using Gothic.Core.Models.SaveGames;
+using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
@@ -16,6 +18,7 @@ using Gothic.Core.Extensions;
 using JetBrains.Annotations;
 using Reflex.Attributes;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using ZenKit;
 using ZenKit.Daedalus;
 using ZenKit.Vobs;
@@ -294,6 +297,12 @@ namespace Gothic.Core.Services.World
                 return false;
             }
 
+            if (!CanSave(out var blockReason))
+            {
+                Logger.LogWarning($"[SaveGame] Saving isn't possible right now ({blockReason}).", LogCat.Loading);
+                return false;
+            }
+
             var slotPath = GetSaveGamePath(saveGameId);
             var tmpPath = slotPath + ".tmp";
             var isSaved = false;
@@ -374,6 +383,27 @@ namespace Gothic.Core.Services.World
             yield return new WaitForEndOfFrame();
 
             onDone?.Invoke(SaveCurrentGame(saveGameId, title));
+        }
+
+        /// <summary>
+        /// Like Gothic (OpenGothic: isInGameAndAlive, the dialog keeps the menu closed): a world is running, the hero
+        /// is alive and no dialog runs. Otherwise, blockReason is the localization key of the reason.
+        /// </summary>
+        public bool CanSave(out string blockReason)
+        {
+            var hero = (_gameStateService.GothicVm?.GlobalHero as NpcInstance)?.GetUserData();
+            if (hero == null || Save == null || CurrentWorldName == null ||
+                SceneManager.GetSceneByName(Constants.SceneLoading).isLoaded)
+                blockReason = "menuitem.save.blocked.noWorld";
+            else if (hero.Props.BodyState == VmGothicEnums.BodyState.BsDead ||
+                     hero.Instance.GetAttribute(NpcAttribute.HitPoints) <= 0)
+                blockReason = "menuitem.save.blocked.dead";
+            else if (_gameStateService.Dialogs.IsInDialog)
+                blockReason = "menuitem.save.blocked.dialog";
+            else
+                blockReason = null;
+
+            return blockReason == null;
         }
 
         /// <summary>

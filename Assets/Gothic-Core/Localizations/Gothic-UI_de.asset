@@ -207,6 +207,18 @@ MonoBehaviour:
     m_Localized: aus|an
     m_Metadata:
       m_Items: []
+  - m_Id: 187128268206768128
+    m_Localized: "Speichern nicht m\xF6glich: Es l\xE4uft kein Spiel."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 187128268236128256
+    m_Localized: "Speichern nicht m\xF6glich, solange du tot bist."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 187128268236128257
+    m_Localized: "Speichern ist w\xE4hrend eines Dialogs nicht m\xF6glich."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

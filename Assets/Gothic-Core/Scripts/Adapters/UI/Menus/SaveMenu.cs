@@ -8,6 +8,7 @@ using Gothic.Core.Services;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Context;
 using Gothic.Core.Services.World;
+using Gothic.Services.UI;
 using Reflex.Attributes;
 using TMPro;
 using UnityEngine;
@@ -47,6 +48,7 @@ namespace Gothic.Core.Adapters.UI.Menus
         [Inject] private readonly BootstrapService _bootstrapService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextTextInputService _contextTextInputService;
+        [Inject] private readonly LocalizationService _localizationService;
 
         
         /// <summary>
@@ -265,6 +267,14 @@ namespace Gothic.Core.Adapters.UI.Menus
             }
             else
             {
+                // Like Gothic: no saving while dead or in a dialog. The reason shows in the comment line.
+                if (!_saveGameService.CanSave(out var blockReason))
+                {
+                    if (Comment != null)
+                        Comment.text = _localizationService.GetText(blockReason);
+                    return;
+                }
+
                 // Name the save (Gothic asks too). Empty names save too, as in the original.
                 // The slot shows the typed name, like the original's inline edit.
                 var slotText = SaveSlots[id].GetComponentInChildren<TMP_Text>();

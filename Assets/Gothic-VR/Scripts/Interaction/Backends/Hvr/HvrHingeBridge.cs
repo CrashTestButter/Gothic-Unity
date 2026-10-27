@@ -74,6 +74,11 @@ namespace Gothic.VR.Interaction.Backends.Hvr
             Door.Unlock();
         }
 
+        public void OpenInstantly()
+        {
+            // HVRPhysicsDoor has no API for it: the door stays closed.
+        }
+
         public void SetSounds(AudioClip opened, AudioClip closed)
         {
             Door.SFXOpened = opened;

@@ -17,6 +17,7 @@ namespace Gothic.VR
         {
             containerBuilder.OnContainerBuilt += (container) => ReflexProjectInstaller.DIContainer = container;
             containerBuilder.OnContainerBuilt += (container) => container.Resolve<VRCarriedItemsSaveService>().Init();
+            containerBuilder.OnContainerBuilt += (container) => container.Resolve<VRHingeStateSaveService>().Init();
 
             // VR ports (IVrInput, IVrHaptics, ...) come from the active backend (DeveloperConfig.VrInteractionBackend).
             // At this point, DIContainer is still the parent (project) container.
@@ -31,6 +32,7 @@ namespace Gothic.VR
             containerBuilder.AddSingleton(typeof(VRCinemaService));
             containerBuilder.AddSingleton(typeof(VRUiOnTopService));
             containerBuilder.AddSingleton(typeof(VRCarriedItemsSaveService));
+            containerBuilder.AddSingleton(typeof(VRHingeStateSaveService));
         }
     }
 }

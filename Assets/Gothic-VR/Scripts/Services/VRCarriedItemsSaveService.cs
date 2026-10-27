@@ -124,8 +124,8 @@ namespace Gothic.VR.Services
         /// hands misses cases (e.g. an item taken out of a chest and dropped):
         /// - inside a socket (holster, backpack, chest, loot slot) -> not part of the world. Holster/backpack items
         ///   are inventory, chest/loot slots belong to their container.
-        /// - inside a hand -> inventory (VRPlayerService.SetGrab). Not part of a save game's world. When we leave the
-        ///   world, it stays inside it: its GameObject is destroyed with the world scene and leaves the inventory.
+        /// - inside a hand -> inventory (VRPlayerService.SetGrab), not part of the world. When we leave the world, the
+        ///   hand lets go of it silently: it moves along inside the backpack (see DiscardHandItems()).
         /// - lying around -> part of the world.
         /// Items which aren't loaded right now (culled) keep their state. Child VOBs which were never taken (e.g. an
         /// item lying on a mover) are part of the world through their parent.
@@ -140,13 +140,15 @@ namespace Gothic.VR.Services
                 if (item == null || item.ParentVob != null)
                     continue;
 
-                var isInHand = handItems.Contains(interactable.gameObject);
-                var isWorldItem = isInHand ? !isSaving : !interactable.IsHeld;
+                var isWorldItem = !handItems.Contains(interactable.gameObject) && !interactable.IsHeld;
                 if (isWorldItem)
                     _saveGameService.AddVobToWorld(item.Vob);
                 else
                     _saveGameService.RemoveVobFromWorld(item.Vob);
             }
+
+            if (!isSaving)
+                DiscardHandItems();
         }
 
         private void ClearHolstersAndHands()
@@ -164,6 +166,15 @@ namespace Gothic.VR.Services
                 Discard(holster.Held);
             }
 
+            DiscardHandItems();
+        }
+
+        /// <summary>
+        /// Hand items are inventory already. Their GameObjects are destroyed without touching the inventory (a world
+        /// scene would destroy them otherwise, and the release would remove them from the inventory).
+        /// </summary>
+        private void DiscardHandItems()
+        {
             // UnsetGrab() only changes the inventory of a hand which still references the item.
             var leftHandItem = GetInteractable(_vrPlayerService.GrabbedItemLeft);
             var rightHandItem = GetInteractable(_vrPlayerService.GrabbedItemRight);

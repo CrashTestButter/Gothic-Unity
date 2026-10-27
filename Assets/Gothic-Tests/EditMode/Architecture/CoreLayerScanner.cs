@@ -128,6 +128,23 @@ namespace Gothic.Tests.EditMode.Architecture
             return Sorted(violations);
         }
 
+        /// <summary>
+        /// Violations of one rule which aren't in the baseline yet (Added), and baseline lines of that rule which are no
+        /// violation anymore (Resolved). Both have to be empty, as the baseline may only shrink.
+        /// </summary>
+        public static (List<string> Added, List<string> Resolved) CompareWithBaseline(string rule,
+            List<string> violations, IEnumerable<string> baselineLines)
+        {
+            var baseline = new HashSet<string>(baselineLines
+                .Select(line => line.Trim())
+                .Where(line => line.StartsWith(rule + " |")));
+
+            var added = violations.Where(violation => !baseline.Contains(violation)).ToList();
+            var resolved = Sorted(baseline.Where(entry => !violations.Contains(entry)));
+
+            return (added, resolved);
+        }
+
         public static string Format(string rule, string subject, string detail)
         {
             return $"{rule} | {subject} | {detail}";

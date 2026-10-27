@@ -19,7 +19,7 @@ objects (VOBs, NPC instances, script symbols), which is also what Gothic's save 
                              ZenKit   (file formats, Daedalus VM, save format)
                                 |
     +---------------------- Gothic.Core -----------------------+
-    |  Models  <-  Domain  <-  Services  <-  Adapters (Unity)  |
+    |  Models  <-  Domain <-> Services  <-  Adapters (Unity)  |
     |  areas: Npc, Vobs, Vm, SaveGames/World, Player, UI, ...  |
     +-----^-------------^----------------^-------------^-------+
           |             |                |             |
@@ -134,15 +134,20 @@ working.
 | Services | `Services/` | use cases and state lifetime, registered in Reflex | thin orchestration |
 | Adapters | `Adapters/` | MonoBehaviours bridging Unity and services | no rules, the only layer with Unity lifecycle |
 
-Dependency rules (reviews check them):
+Dependency rules. Domain and Services share a rank and may use each other: a Domain class is a worker owned by a
+Service (`new XDomain().Inject()`).
 
 1. Nothing outside `Adapters/` uses the `Adapters` namespace. Plain data classes there (`NpcProperties`,
    `InteractiveProperties`) belong in `Models/`.
-2. Models don't use services.
-3. Modules use Core only, never each other.
+2. Models don't use Domain or Services.
+3. A file's namespace starts with `Gothic.Core.<Layer>` of the folder it lives in.
+4. MonoBehaviours live in `Adapters/` only.
+5. Modules use Core only, never each other.
 
-Today's code breaks rules 1 and 2 in places (about 30 files import `Adapters`, `NpcProxy` injects services). New code
-follows the rules, old code gets fixed when it's touched (principle 9).
+Rules 1-4 are checked by `CoreArchitectureTest` (EditMode); rules 1-3 also by the `Architecture` check on every PR.
+Today's violations are listed in `Assets/Gothic-Tests/EditMode/Architecture/ArchitectureBaseline.txt`. The list may
+only shrink: new code follows the rules, old code gets fixed when it's touched (principle 9), and the fixed line is
+removed from the baseline. Rule 5 is enforced by the asmdef references.
 
 ## Where does my code go?
 
@@ -189,7 +194,11 @@ than rich models.
 
 ## Tools
 
-- `architecture-reviewer` agent (`.claude/agents/`): reviews a diff or a folder against this doc, e.g. "use
+- `CoreArchitectureTest` (`Assets/Gothic-Tests/EditMode/Architecture/`) and the `Architecture` CI check: the
+  mechanical dependency rules above, against the baseline. They fail, the reviewer only advises.
+- `architecture-reviewer` agent (`.claude/agents/`): reviews against this doc what a test can't decide - a branch
+  before the PR, `--wip` changes, a plan before implementing, or a folder before splitting it. E.g. "use
   architecture-reviewer on my branch".
+- `.claude/scripts/architecture-facts.sh`: the structural facts of a change the reviewer starts from.
 - `gothic-reviewer` agent: Gothic pitfalls and coding style.
 - `feature-checklist` skill: config flags, logging, DI wiring, save/load impact.

@@ -8,11 +8,14 @@ using UnityEngine;
 namespace Gothic.Tests.EditMode.Architecture
 {
     /// <summary>
-    /// Guards the layer model of Gothic.Core: Models <- Domain/Services <- Adapters (see CLAUDE.md > Architecture).
+    /// Guards the layer model of Gothic.Core: Models <- Domain/Services <- Adapters (see Docs/architecture.md).
     ///
-    /// Existing violations are listed in ArchitectureBaseline.txt and tolerated. The tests fail on
-    /// 1. new violations - fix the code, or, if it's a reviewed exception, add the line to the baseline.
+    /// Existing violations are listed in ArchitectureBaseline.txt and tolerated. The baseline may only shrink.
+    /// The tests fail on
+    /// 1. new violations - fix the code by moving it to the right layer.
     /// 2. fixed violations still in the baseline - remove the line, so the violation can't come back.
+    ///
+    /// Layer and namespace rules also run in CI without Unity (.github/architecture-check).
     /// </summary>
     public class CoreArchitectureTest
     {
@@ -62,18 +65,14 @@ namespace Gothic.Tests.EditMode.Architecture
 
         private static void AssertMatchesBaseline(string rule, List<string> violations, string ruleDescription)
         {
-            var baseline = new HashSet<string>(File.ReadAllLines(_baselinePath)
-                .Select(line => line.Trim())
-                .Where(line => line.StartsWith(rule + " |")));
-
-            var added = violations.Where(violation => !baseline.Contains(violation)).ToList();
-            var resolved = baseline.Where(entry => !violations.Contains(entry)).OrderBy(entry => entry).ToList();
+            var (added, resolved) =
+                CoreLayerScanner.CompareWithBaseline(rule, violations, File.ReadAllLines(_baselinePath));
 
             if (added.Any())
             {
                 Assert.Fail($"{ruleDescription}\n" +
-                            "New violations found. Move the code to the right layer. Only if this is a reviewed, " +
-                            $"intended exception, add these lines to {_baselinePath}:\n" +
+                            "New violations found. Move the code to the right layer (see Docs/architecture.md). " +
+                            "The baseline may only shrink, don't add these lines to it:\n" +
                             string.Join("\n", added));
             }
 

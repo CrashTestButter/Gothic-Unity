@@ -38,13 +38,13 @@ Everything Gothic's format can hold is stored in it (loading original saves stay
 | Chest content | `oCMobContainer.Contents` (VR: `VrChestSlots` follows its slots) |
 | Movers | `zCMover.ActKeyframe` (`MoverAdapter`) |
 | Remaining trigger activations (zCTrigger, oCTriggerScript, zCTriggerList) | `CountCanBeActivated` (`ZenKitExtension.TryConsumeActivation()`) |
+| Trigger list in progress (next target, seconds until it's sent) | `zCTriggerList.ActTarget`, `zCVob.NextOnTimer` (`TriggerListHandler`) |
 | Script globals, infos, log topics, time, guild attitudes | `SAVEDAT.SAV` (`SaveGameDaedalusDomain`) |
 | G1 script int arrays (index > 0) | `UNITYSAVE.json` section `core.scriptArrays` |
 | Float, string and NPC script variables (Gothic saves ints only) | `UNITYSAVE.json` section `core.scriptVars` |
-| Rain window of the day | `UNITYSAVE.json` section `core.sky` (`SkyService`) |
-| Delayed trigger messages not sent yet | `UNITYSAVE.json` section `core.pendingTriggers` (`VobService.DispatchTriggerDelayed()`) |
+| Rain window of the day | `UNITYSAVE.json` section `core.sky` (`SkyService`; Gothic's sky controller can't be used, see pitfalls) |
+| Current mob states (wheels, levers, open doors and chests) | `UNITYSAVE.json` section `core.mobStates` (`InteractiveProperties.State`, per world, by type and position) |
 | VR holster items | `UNITYSAVE.json` section `vr.carriedItems` |
-| VR doors and chest lids left open | `UNITYSAVE.json` section `vr.openHinges` (per world, by type and position) |
 
 Items in the VR hands are inventory (`VRPlayerService.SetGrab()`). They're inside the backpack after loading.
 
@@ -112,7 +112,9 @@ saveGameService.RegisterSection(new MyFeatureSaveSection());
 | G1 `SAVEDAT.SAV` stores one value per variable | Section `core.scriptArrays` |
 | `IVirtualObject.Children` creates new wrappers on every call | The world list keeps the wrappers it creates the world with; children are found by values |
 | A VOB reference (e.g. `Npc.Enemy`) is another object than the same VOB in the world lists | Found by name and position (`SaveGameNpcDomain.RestoreTargets()`) |
-| oCMobInter `State` is Gothic's `stateNum` (number of states, 1 for every door/chest), not the current state | VR open state in section `vr.openHinges` |
+| oCMobInter `State` is Gothic's `stateNum` (number of states, 1 for every door/chest), not the current state | Never written. The current state is `InteractiveProperties.State`, section `core.mobStates` |
+| The shipped ZenKitCAPI has no `ZkSkyController_new`, worlds from a .zen have no sky controller | Rain window in section `core.sky` (`new SkyController()` throws and fails the save) |
+| `zCTriggerList.SendOnTrigger` is the message direction (always true), not "a target is pending" | `NextOnTimer > 0` marks a pending target |
 
 Tests: `Assets/Gothic-Tests/PlayMode/SaveGameZenKitTest.cs` (world round trips need a configured Gothic installation).
 

@@ -43,6 +43,7 @@ namespace Gothic.Core.Adapters.Npc
         private DaedalusVm Vm => _gameStateService.GothicVm;
         private const int _daedalusLoopContinue = 0; // Id taken from a Daedalus constant.
         private const int _daedalusLoopEnd = 1;
+        private const string _deadStateAnimation = "S_DeadB";
 
         private void Start()
         {
@@ -54,11 +55,15 @@ namespace Gothic.Core.Adapters.Npc
         }
 
         /// <summary>
-        /// Update() only plays out queued animations of dead NPCs.
+        /// Update() only plays out queued animations of dead NPCs. They lie on the ground already (state ani): the
+        /// dying ani (T_DeadB) would let them fall down again on every load. It's the fallback for models without one.
         /// </summary>
         private void StartDead()
         {
-            var deadAnimation = _animationService.GetAnimationName(VmGothicEnums.AnimationType.DeadB, NpcData);
+            var deadAnimation = _animationService.GetTrack(_deadStateAnimation, Properties.MdsNameBase,
+                Properties.MdsNameOverlay) != null
+                ? _deadStateAnimation
+                : _animationService.GetAnimationName(VmGothicEnums.AnimationType.DeadB, NpcData);
             Properties.AnimationQueue.Enqueue(new PlayAni(new AnimationAction(deadAnimation), NpcData));
             _physicsService.DisablePhysicsForNpc(NpcData.PrefabProps);
         }

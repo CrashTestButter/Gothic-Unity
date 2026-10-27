@@ -21,6 +21,7 @@ architecture; these files cover workflow and hard-won gotchas.
 | `gothic-reviewer` | reviews your diff against project-specific pitfalls before commit/PR |
 | `architecture-reviewer` | one-page structural review of a branch, `--wip` changes or a plan: layers, dependencies, coupling, where to look |
 | `playtest-planner` | turns branch changes into an in-game test checklist for G1/G2 |
+| `architecture-reviewer` | DDD review of a diff/folder against `Docs/architecture.md`: boundaries, extension points, token-cheap code |
 
 ## Scripts (`scripts/`)
 

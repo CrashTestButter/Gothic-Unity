@@ -57,6 +57,8 @@ Within Core, responsibility is further split into layers: **Model** (data) ← *
 - Domain and Services are one rank and may use each other. Domain classes are workers owned by a Service, created via `new XDomain().Inject()` (not registered in Reflex), and may `[Inject]` Services.
 - Nothing below Adapters uses Adapters.
 
+Principles, dependency rules and "where does my code go": `Docs/architecture.md`.
+
 ### Dependency Injection (Reflex)
 
 All major systems are **singletons registered via Reflex DI**. The full list is in `ReflexProjectInstaller.cs`. There are two scopes:

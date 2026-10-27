@@ -45,6 +45,7 @@ namespace Gothic.Core.Domain.Vobs
         [Inject] private readonly ResourceCacheService _resourceCacheService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
         [Inject] private readonly StationaryLightsService _stationaryLightsService;
+        [Inject] private readonly SaveGameService _saveGameService;
 
 
         /// <summary>
@@ -487,9 +488,10 @@ namespace Gothic.Core.Domain.Vobs
 
         private GameObject CreateMover(IMover vob, GameObject parent)
         {
-            // Each mover starts "Closed", when game boots. (At least for a new game.)
-            // TODO - We need to check if it's the case for a loaded game
-            vob.MoverState = (int)VmGothicEnums.MoverState.Closed;
+            // Each mover starts "Closed" in a world entered for the first time. A save game (or a world we left)
+            // keeps its state, e.g. a move in progress (MoverAdapter).
+            if (_saveGameService.IsWorldEnteredFirstTime)
+                vob.MoverState = (int)VmGothicEnums.MoverState.Closed;
 
             var go = CreateDefaultMesh(vob, parent);
 

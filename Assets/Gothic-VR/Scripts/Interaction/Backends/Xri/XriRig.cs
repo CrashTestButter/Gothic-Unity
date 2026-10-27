@@ -129,6 +129,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private int _lastTeleportFrame = -1;
         private Vector3 _teleportPosition;
         private XRBodyTransformer _bodyTransformer;
+        private XriBodyManipulator _bodyManipulator;
+        private readonly List<XRInputSubsystem> _inputSubsystems = new();
         private int _collidingLayers;
         private bool _isAirborneOnPurpose;
 
@@ -312,9 +314,15 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 _bodyTransformer = GetComponentInChildren<XRBodyTransformer>();
 
             if (_bodyTransformer != null)
+            {
+                _bodyManipulator = ScriptableObject.CreateInstance<XriBodyManipulator>();
+                _bodyTransformer.beforeApplyTransformations += OnBeforeApplyTransformations;
                 _bodyTransformer.afterApplyTransformations += OnAfterApplyTransformations;
+            }
             else
+            {
                 Logger.LogError("[XRI] No XRBodyTransformer found. Walking downhill will bounce.", LogCat.VR);
+            }
         }
 
         private void OnDestroy()
@@ -323,7 +331,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 _teleportationProvider.locomotionEnded -= OnTeleportLocomotionEnded;
 
             if (_bodyTransformer != null)
+            {
+                _bodyTransformer.beforeApplyTransformations -= OnBeforeApplyTransformations;
                 _bodyTransformer.afterApplyTransformations -= OnAfterApplyTransformations;
+            }
+
+            if (_bodyManipulator != null)
+                Destroy(_bodyManipulator);
         }
 
         private void Update()
@@ -342,6 +356,16 @@ namespace Gothic.VR.Interaction.Backends.Xri
             var isClimbing = IsClimbing;
             _moveProvider.enabled = _isMovementEnabled && !isClimbing;
             _jumpProvider.enabled = _isJumpEnabled && !isClimbing;
+        }
+
+        /// <summary>
+        /// The XRBodyTransformer takes XRI's own CharacterControllerBodyManipulator again whenever it gets enabled.
+        /// Ours keeps the capsule above the feet (XriBodyManipulator), so it's set again before every body move.
+        /// </summary>
+        private void OnBeforeApplyTransformations(XRBodyTransformer bodyTransformer)
+        {
+            if (!ReferenceEquals(bodyTransformer.constrainedBodyManipulator, _bodyManipulator))
+                bodyTransformer.constrainedBodyManipulator = _bodyManipulator;
         }
 
         private void OnAfterApplyTransformations(ApplyBodyTransformationsEventArgs args)
@@ -467,8 +491,8 @@ namespace Gothic.VR.Interaction.Backends.Xri
 
             // The camera offset's height is owned by XROrigin (CameraYOffset in Device mode, 0 in Floor mode).
             // Crouching moves it down on top, so that the camera ends at _crouchHeight. The CharacterController
-            // follows the camera height on its next move (CharacterControllerBodyManipulator).
-            var baseOffset = _origin.CurrentTrackingOriginMode == TrackingOriginModeFlags.Floor
+            // follows the camera height on its next move (XriBodyManipulator).
+            var baseOffset = GetTrackingOriginMode() == TrackingOriginModeFlags.Floor
                 ? 0f
                 : _origin.CameraYOffset;
             var standingCameraHeight = CameraHeight + _crouchOffset;
@@ -478,6 +502,23 @@ namespace Gothic.VR.Interaction.Backends.Xri
             var position = CameraOffset.localPosition;
             position.y = baseOffset - _crouchOffset;
             CameraOffset.localPosition = position;
+        }
+
+        /// <summary>
+        /// XROrigin only takes over a new tracking origin when the XR provider raises trackingOriginUpdated. LinuxXR
+        /// doesn't: Sitting (Device) stayed Floor for XROrigin, the eye height was missing and the camera ended at
+        /// the floor. The running input subsystem knows the mode in use.
+        /// </summary>
+        private TrackingOriginModeFlags GetTrackingOriginMode()
+        {
+            SubsystemManager.GetSubsystems(_inputSubsystems);
+            foreach (var inputSubsystem in _inputSubsystems)
+            {
+                if (inputSubsystem.running)
+                    return inputSubsystem.GetTrackingOriginMode();
+            }
+
+            return _origin.CurrentTrackingOriginMode;
         }
 
         public void ApplyComfortSettings(VrSitStand sitStand, VrMoveDirection direction, VrTurnType turn,

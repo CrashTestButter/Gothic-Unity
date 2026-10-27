@@ -71,6 +71,7 @@ namespace Gothic.VR.Adapters.Vob
             if (_interactable == null)
                 return;
 
+            _vrPlayerService?.ForgetPlayerCollision(_interactable);
             _interactable.Grabbed -= OnGrabbed;
             _interactable.Released -= OnReleased;
         }
@@ -89,8 +90,8 @@ namespace Gothic.VR.Adapters.Vob
                 return;
             }
 
-            // Held and socketed items must not push our own CharacterController.
-            _vrPlayerService.IgnorePlayerCollision(args.Interactable, true);
+            // Held and socketed items must not push our own CharacterController or the hand holding them.
+            _vrPlayerService.UpdatePlayerCollision(args, true);
 
             // OnGrabbed is normally called multiple times. Even after an object is already socketed. If so, then let's stop Grab behaviour.
             // If we sock an object on our hips or backpack etc.
@@ -118,16 +119,15 @@ namespace Gothic.VR.Adapters.Vob
         /// </summary>
         private void OnReleased(VrGrabArgs args)
         {
+            // Collisions come back for whatever doesn't hold the item any longer (e.g. the releasing hand).
+            _vrPlayerService.UpdatePlayerCollision(args, false);
+
             // If we release an object from our hips or backpack etc.
             // We then assume, that the item is already with correct values as it was grabbed before (shader, layer, ...)
             if (args.Kind == VrGrabberKind.Socket)
                 return;
 
             gameObject.layer = Constants.VobItemLayer; // Back to default
-
-            // Dropped into the world (and not still in the other hand): we get stuck at it again.
-            if (!args.Interactable.IsHeld)
-                _vrPlayerService.IgnorePlayerCollision(args.Interactable, false);
 
             // Disable "ghostification" of object.
             _dynamicMaterialService.ResetDynamicValue(gameObject, Constants.ShaderPropertyTransparency,

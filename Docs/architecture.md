@@ -161,6 +161,122 @@ removed from the baseline. Rule 5 is enforced by the asmdef references.
 | behave differently in G1/G2/VR/Flat | an interface in `Services/Context/`, the implementation in the module, registered in its `*ContextBootstrap` |
 | save state Gothic doesn't store | an `ISaveStateSection` (`Docs/save-game.md`) |
 | work around a ZenKit bug | `Extensions/ZenKit*.cs`, plus a line in the pitfalls of the area's doc |
+| add a new kind of VOB or UI element | a prefab in `Gothic-Core/Resources/Prefabs/`, a `PrefabType` entry, loaded via `ResourceCacheService` |
+| make a VOB behave differently in VR/Flat | a Prefab Variant of the Core prefab at the same path under `Resources/VR/` or `Resources/Flat/` |
+
+## Unity assets
+
+The C# rules above have a twin in the Editor: prefabs, scenes, materials and settings are code too. They are
+reviewed like code, but changed through the Editor or UnityMCP only (`CLAUDE.md`), never as hand-written YAML.
+
+The project's split: **Gothic data comes from the Gothic installation at runtime** (meshes, textures, sounds,
+worlds). **Our structure comes from assets in the repo**: which components, colliders, layers and child objects
+a VOB, NPC, menu or the player has. Code fills the structure with Gothic data, it doesn't build the structure.
+
+### A. Structure in prefabs, Gothic data in code
+
+**Rule:** Components, colliders, layers, child objects and default values of a Unity object live in its prefab.
+Code instantiates the prefab (`ResourceCacheService.TryGetPrefabObject(PrefabType.X)`) and adds only what depends
+on Gothic data: the mesh (`MeshFilter`/`MeshRenderer`/`SkinnedMeshRenderer`), its collider, the name, the ZenKit
+object.
+
+**Why:** A prefab shows its whole setup in the Inspector, can be tested in the Lab scene, and a platform can vary it
+(rule B). `AddComponent` chains are invisible until runtime and can't be overridden per platform.
+
+**Example:** one prefab per Gothic VOB class (`Prefabs/Vobs/oCMobDoor`, `zCTrigger`, ...), named after the class
+(principle 6). The 82 `AddComponent` calls are mostly runtime meshes, which is fine; `FistFightAdapter`,
+`ColliderHitTracker` or `AudioSource` added in code are candidates for the prefab.
+
+### B. Platforms vary prefabs as Prefab Variants
+
+**Rule:** `ResourceCacheService` loads `Resources/<Context>/<path>` before `Resources/<path>`, so VR and Flat can
+replace any Core prefab. The replacement is a **Prefab Variant** of the Core prefab: it adds the platform components
+(HVR grabbables, `VRVobDoor`) and overrides values, nothing else. The same applies to a family inside one module
+(`StatusBarHealth` is a variant of `StatusBar`).
+
+**Why:** A copy forgets every later change to the Core prefab. Core components then exist in VR only, and Flat
+silently runs without them.
+
+**Today:** all 11 VR VOB prefabs that replace a Core prefab are copies, not variants. The VR `oCNpc` has
+`AnimationSystem`, `NpcHeadAnimationHandler`, `NpcHitboxColliderAdapter` and `NpcPrefabProperties` (all Core
+adapters), the Core `oCNpc` that Flat uses has none of them. The `MENU_*` prefabs don't use `_MenuSkeleton`, and
+`VR - Player XRI`/`BackPack XRI` copy their HVR counterparts. Fix them when touched (principle 9): rebase the copy
+onto a variant and move Core components into the Core prefab.
+
+### C. Reference, don't search
+
+**Rule:** Inside a prefab, reach other objects by a serialized reference (`[SerializeField]`), not by name
+(`FindChildRecursively("Label")`, `transform.Find`, `GameObject.Find("Rain")`) or a scene search
+(`FindObjectsByType`).
+
+**Why:** Renaming a child in the prefab breaks a string lookup at runtime, without an error in the Editor. Scene
+searches are slow and find objects of other scenes.
+
+**Exception:** names Gothic defines - bones and slots of runtime meshes (`BIP01 HEAD`, `ZS_RIGHTHAND`) or menu items
+named like their Daedalus instance (`MENUITEM_*`). They don't exist before runtime, so the name is the reference.
+
+### D. One way to load assets
+
+**Rule:** Prefabs load through `PrefabType` + `ResourceCacheService`, not through `Resources.Load` with a string.
+Put an asset in `Resources/` only when it's loaded by path at runtime; everything else is a serialized reference.
+Addressables are used for Localization only; adding them elsewhere is a project decision, not a PR detail.
+
+**Why:** One loader means one cache, one place for the VR/Flat override (rule B) and one error message when a path
+is wrong. Everything in `Resources/` is in every build, used or not.
+
+**Today:** ~10 direct `Resources.Load` calls (logos, fonts, `NpcColliderDebug` material, input actions).
+
+### E. Shaders survive the build
+
+**Rule:** A shader that code finds by name (`Shader.Find`) is listed in Graphics Settings > Always Included Shaders
+or referenced by a material that ships. Shader names live in `Constants`. Only URP shaders - Built-in shaders like
+`Standard` render pink.
+
+**Why:** The Editor finds every shader, a build only the ones it includes. `Shader.Find` then returns `null` on Quest
+or Pico only.
+
+**Today:** `Unlit/ThunderShader` (`Constants.ShaderThunder`) is neither always-included nor referenced by a material,
+and `Constants.ShaderStandard` (waynet debug lines) is a Built-in shader. Both need a check in a device build.
+
+### F. Layers, tags and physics are project-wide contracts
+
+**Rule:** Layer and tag names are used through `Constants` only. Adding a layer or changing the collision matrix
+(`ProjectSettings/DynamicsManager.asset`) is called out in the PR: it changes every collider in the game. A prefab
+sets its layer; code sets it only for objects created at runtime.
+
+**Why:** A string layer name that doesn't exist returns -1 and the object silently lands on `Default`.
+`feature-checklist` lists the physics layers.
+
+### G. Assets respect the module borders
+
+**Rule:** The asmdef rules (rule 5 of the layers) hold for assets too: a Core scene, prefab or material references
+Core assets and scripts only. VR and Flat assets may reference Core. The exception is the composition root: the
+`Bootstrap` scene holds the `*ContextBootstrap` of every module.
+
+**Why:** A GUID reference is a dependency the compiler doesn't see. A Core asset pointing to a VR prefab drags it into
+Flat, or breaks when VR changes it.
+
+**Today:** `Gothic-Core/Scenes/MainMenu.unity` references `Gothic-VR/.../UI/Tutorials.prefab`.
+
+### H. Scenes are thin
+
+**Rule:** A scene holds its `SceneScope`, its bootstrap adapter and prefab instances, not hand-built object trees.
+New scenes go into the Build Settings and get a `SceneScope` (`CLAUDE.md`). World scenes are generated from `.zen`
+files at runtime; nothing is placed into them by hand.
+
+**Why:** Scenes merge badly in Git and two branches touching one scene conflict. A prefab instance moves the
+change into the prefab, which only the branch that needs it touches.
+
+**Example:** the VR `Player` scene is five prefab instances on two GameObjects.
+
+### I. Configuration is data, reviewed like code
+
+**Rule:** `DeveloperConfig` is the one ScriptableObject for developer settings. A new field also gets its value in
+`Production.asset`; personal configs stay in `DeveloperConfigs/Local/` (git-ignored). Player settings belong in
+Gothic.ini/GameSettings.json, cheats in the Marvin menu (`marvin-cheats` skill), not in a new asset.
+
+**Why:** The C# default isn't what ships: `Production.asset` is. A field without an asset value is a different
+game in the Editor and in the build.
 
 ## Smells
 
@@ -171,6 +287,11 @@ removed from the baseline. Rule 5 is enforced by the asmdef references.
 - names like `*Manager`, `*Helper`, `*Util`
 - an event listener that only works if it runs before or after another one
 - a ZenKit workaround at a call site
+- a prefab copied into `Resources/VR/` or `Resources/Flat/` instead of a Prefab Variant
+- `AddComponent` for a component that doesn't depend on Gothic data
+- `FindChildRecursively("...")`, `GameObject.Find` or `FindObjectsByType` for an object we created ourselves
+- `Resources.Load("...")` outside `ResourceCacheService`, `Shader.Find("...")` outside `Constants`
+- a Core asset referencing a VR, Flat or Lab asset
 
 ## Domain-Driven Design, mapped
 

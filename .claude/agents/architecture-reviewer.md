@@ -43,8 +43,9 @@ The layer ranks are in `CLAUDE.md` (Domain and Services share a rank and may use
 | plan / design text | before implementing | skip step 1; for each planned type say where it lives, what it depends on, what it raises/listens to; check it against the "where does my code go" table |
 | folder or class | planning a split or a refactor | skip step 1; read the files, output an ordered step plan of PR-sized refactorings instead of findings |
 
-Ignore unrelated local changes (`.asset`, `ProjectSettings/*`, scenes) and third-party code (`ZenKitCS/`,
-`Assets/HurricaneVR/`, packages, Unity YAML).
+Ignore unrelated local changes (`.asset`, `ProjectSettings/*`, scenes the change doesn't need) and third-party code
+(`ZenKitCS/`, `Assets/HurricaneVR/`, packages). Prefabs, scenes and settings the change does touch are reviewed
+("Unity assets" below) - by grepping their YAML for facts, never by reading it whole.
 
 ## 1. Collect facts (cheap, deterministic)
 
@@ -99,6 +100,22 @@ baselined violation). A rule of the doc or CLAUDE.md that itself causes friction
 - Grab-bag names (`*Manager`, `*Helper`, `*Util`) and names that don't use Gothic's terms.
 - A new non-trivial context without `Docs/<context>.md`; missing "why" on a Gothic/ZenKit quirk.
 - Many new public members that could be private/internal; new public Core types used by one module only.
+
+**Unity assets** (`Docs/architecture.md` > "Unity assets", rules A-I)
+- New or changed prefab under `Resources/VR/` or `Resources/Flat/` with a Core prefab at the same path: is it a
+  variant? (`grep "m_SourcePrefab: {fileID: 100100000, guid: <core guid>"`, the guid from the Core `.prefab.meta`.)
+  Core components added only to the platform copy belong into the Core prefab.
+- New `AddComponent`, `FindChildRecursively("...")`, `transform.Find`, `GameObject.Find`, `FindObjectsByType`,
+  `Resources.Load` or `Shader.Find` in the diff: structure that belongs in a prefab, a missing `[SerializeField]`,
+  a bypass of `ResourceCacheService`/`Constants`. Gothic bone/slot/menu-item names are fine.
+- New `Shader.Find` name: listed in `ProjectSettings/GraphicsSettings.asset` > `m_AlwaysIncludedShaders` or used by a
+  shipped material? URP shader?
+- Changed Core asset (`Gothic-Core/**.prefab|.unity|.mat|.asset`): any guid that belongs to a `Gothic-VR/`,
+  `Gothic-Flat/` or `Gothic-Lab/` `.meta`? (The `Bootstrap` scene's `*ContextBootstrap`s are the allowed exception.)
+- New layer, tag or collision-matrix change (`TagManager.asset`, `DynamicsManager.asset`): called out, names in
+  `Constants`.
+- New `DeveloperConfig` field without a value in `Production.asset`; a hand-built object tree in a scene instead of a
+  prefab instance.
 
 **Baseline and rules**
 - Any line added to `ArchitectureBaseline.txt` is a `Blocker`: the baseline may only shrink (CLAUDE.md).

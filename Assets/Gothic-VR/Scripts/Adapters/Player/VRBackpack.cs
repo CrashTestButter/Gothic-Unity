@@ -26,6 +26,7 @@ namespace Gothic.VR.Adapters.Player
     /// The player's backpack (inventory pages) and holsters. The backpack itself is a VrInteractable with an
     /// IVrSocketContainer for its slots. Items put into holsters or slots are added to the hero's inventory.
     /// While the backpack is on the shoulder, its slots detect nothing (VrSocketSlot; HVR does it itself).
+    /// Like held items (VRVobItem), the backpack ignores the hand holding it and, on the shoulder, both hands.
     /// </summary>
     public class VRBackpack : MonoBehaviour
     {
@@ -72,8 +73,8 @@ namespace Gothic.VR.Adapters.Player
             CollectSockets(_holsterSockets, _holsters);
             CollectSockets(_inventorySockets, _slots);
 
-            _interactable.Grabbed += OnBackpackGrabbedToShoulder;
-            _interactable.Released += OnBackpackReleasedFromShoulder;
+            _interactable.Grabbed += OnBackpackGrabbed;
+            _interactable.Released += OnBackpackReleased;
 
             foreach (var holster in _holsters)
             {
@@ -98,8 +99,9 @@ namespace Gothic.VR.Adapters.Player
         {
             if (_interactable != null)
             {
-                _interactable.Grabbed -= OnBackpackGrabbedToShoulder;
-                _interactable.Released -= OnBackpackReleasedFromShoulder;
+                _vrPlayerService?.ForgetPlayerCollision(_interactable);
+                _interactable.Grabbed -= OnBackpackGrabbed;
+                _interactable.Released -= OnBackpackReleased;
             }
 
             foreach (var holster in _holsters)
@@ -136,15 +138,20 @@ namespace Gothic.VR.Adapters.Player
             _isZenKitBootstrapped = true;
         }
 
-        private void OnBackpackGrabbedToShoulder(VrGrabArgs args)
+        private void OnBackpackGrabbed(VrGrabArgs args)
         {
+            // The held backpack follows the physical hand. Colliding with it, it would push the hand away and spin.
+            _vrPlayerService.UpdatePlayerCollision(args, true);
+
             // We could potentially remove the meshes inside Backpack or simply hide it from rendering later.
             if (IsShoulderSocket(args))
                 SetSlotDetectionEnabled(false);
         }
 
-        private void OnBackpackReleasedFromShoulder(VrGrabArgs args)
+        private void OnBackpackReleased(VrGrabArgs args)
         {
+            _vrPlayerService.UpdatePlayerCollision(args, false);
+
             if (!IsShoulderSocket(args))
                 return;
 

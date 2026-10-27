@@ -116,6 +116,7 @@ namespace Gothic.Core.Services.World
         public void Init()
         {
             RegisterSection(new ScriptArraysSaveSection().Inject());
+            RegisterSection(new ScriptVarsSaveSection().Inject());
 
             // All NPCs of the world exist now.
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>

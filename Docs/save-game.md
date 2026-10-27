@@ -36,7 +36,7 @@ Everything Gothic's format can hold is stored in it (loading original saves stay
 | Dead NPCs | HP <= 0 (`BsDead` is set when loading, they lie on the ground: `S_DeadB`) |
 | Items in the world (taken, dropped, moved) | world VOB tree (`WorldContainer.Vobs`), position from the item's body |
 | Chest content | `oCMobContainer.Contents` (VR: `VrChestSlots` follows its slots) |
-| Movers | `zCMover.ActKeyframe` (`MoverAdapter`) |
+| Movers (reached key, a move in progress) | `zCMover.ActKeyframe`, `NextKeyframe`, `ActKeyframeF`, `AdvanceDir`, `MoverState` (`MoverAdapter`) |
 | Remaining trigger activations (zCTrigger, oCTriggerScript, zCTriggerList) | `CountCanBeActivated` (`ZenKitExtension.TryConsumeActivation()`) |
 | Trigger list in progress (next target, seconds until it's sent) | `zCTriggerList.ActTarget`, `zCVob.NextOnTimer` (`TriggerListHandler`) |
 | Script globals, infos, log topics, time, guild attitudes | `SAVEDAT.SAV` (`SaveGameDaedalusDomain`) |
@@ -47,6 +47,10 @@ Everything Gothic's format can hold is stored in it (loading original saves stay
 | VR holster items | `UNITYSAVE.json` section `vr.carriedItems` |
 
 Items in the VR hands are inventory (`VRPlayerService.SetGrab()`). They're inside the backpack after loading.
+
+## Saving
+
+Like Gothic, saving is refused while the hero is dead, during a dialog or without a running world (`SaveGameService.CanSave()`; the save menu shows the reason).
 
 ## Loading
 

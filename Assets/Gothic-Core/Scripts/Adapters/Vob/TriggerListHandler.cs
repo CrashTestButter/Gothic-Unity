@@ -1,4 +1,3 @@
-using System.Collections;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
 using Gothic.Core.Services.Vobs;
@@ -65,13 +64,7 @@ namespace Gothic.Core.Adapters.Vob
             if (delay <= 0f)
                 _vobService.DispatchTrigger(name, _triggerList.Name);
             else
-                StartCoroutine(DelayedDispatch(name, delay));
-        }
-
-        private IEnumerator DelayedDispatch(string name, float delay)
-        {
-            yield return new WaitForSeconds(delay);
-            _vobService.DispatchTrigger(name, _triggerList.Name);
+                _vobService.DispatchTriggerDelayed(name, _triggerList.Name, delay);
         }
     }
 }

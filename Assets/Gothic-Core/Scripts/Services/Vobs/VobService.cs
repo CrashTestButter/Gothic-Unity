@@ -61,6 +61,9 @@ namespace Gothic.Core.Services.Vobs
         private int _dispatchTriggerDepth;
         private const int _maxDispatchTriggerDepth = 8;
 
+        // Delayed trigger messages of the current world (see DispatchTriggerDelayed()).
+        private readonly List<(string Target, string Sender, float FireTime)> _pendingTriggers = new();
+
         // Important: All of them are not culled!
         private static readonly VirtualObjectType[] _vobTypesNonLazyLoading =
         {
@@ -110,6 +113,9 @@ namespace Gothic.Core.Services.Vobs
         {
             _gameStateService.VobsInteractable.Clear();
             _gameStateService.ClearTriggerVobs();
+
+            // Their world is left. A loaded save game brings its own (PendingTriggersSaveSection).
+            _pendingTriggers.Clear();
         }
 
         /// <summary>
@@ -600,6 +606,37 @@ namespace Gothic.Core.Services.Vobs
             {
                 _dispatchTriggerDepth--;
             }
+        }
+
+        /// <summary>
+        /// The target gets the trigger after delay seconds (e.g. zCTriggerList target delays), unless its world is
+        /// left meanwhile. Unlike a coroutine on the sender, it survives the sender being culled and save games store
+        /// it (PendingTriggersSaveSection).
+        /// </summary>
+        public void DispatchTriggerDelayed(string name, string senderName, float delay)
+        {
+            var pendingTrigger = (name, senderName, Time.time + delay);
+            _pendingTriggers.Add(pendingTrigger);
+            _unityMonoService.StartCoroutine(DispatchPendingTrigger(pendingTrigger));
+        }
+
+        /// <summary>
+        /// Delayed trigger messages of the current world with their remaining seconds.
+        /// </summary>
+        public IEnumerable<(string Target, string Sender, float RemainingSeconds)> GetPendingTriggers()
+        {
+            return _pendingTriggers.Select(i => (i.Target, i.Sender, Mathf.Max(0f, i.FireTime - Time.time)));
+        }
+
+        private IEnumerator DispatchPendingTrigger((string Target, string Sender, float FireTime) pendingTrigger)
+        {
+            yield return new WaitForSeconds(pendingTrigger.FireTime - Time.time);
+
+            // The world was left meanwhile (PreWorldCreate()).
+            if (!_pendingTriggers.Remove(pendingTrigger))
+                yield break;
+
+            DispatchTrigger(pendingTrigger.Target, pendingTrigger.Sender);
         }
 
         private void DispatchTriggerInternal(string name, string senderName)

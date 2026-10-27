@@ -48,7 +48,7 @@ Gothic.Core               with engine, services, domain logic
 
 **Assembly topology**: Every module depends on `Gothic.Core` and has **no interaction with other Gothic modules** (star topology — no lateral dependencies).
 
-Within Core, responsibility is further split into four layers: **Model** (data) → **Domain** (business logic) → **Service** (orchestration) → **Adapter** (Unity integration). Dependencies flow upward only.
+Within Core, responsibility is further split into four layers: **Model** (data) → **Domain** (business logic) → **Service** (orchestration) → **Adapter** (Unity integration). Dependency rules and architecture principles: `Docs/architecture.md`.
 
 ### Dependency Injection (Reflex)
 

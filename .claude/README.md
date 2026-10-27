@@ -20,6 +20,7 @@ architecture; these files cover workflow and hard-won gotchas.
 | `daedalus-scout` | read-only lookup in Gothic scripts / OpenGothic / ZenKit, returns a short brief |
 | `gothic-reviewer` | reviews your diff against project-specific pitfalls before commit/PR |
 | `playtest-planner` | turns branch changes into an in-game test checklist for G1/G2 |
+| `architecture-reviewer` | DDD review of a diff/folder against `Docs/architecture.md`: boundaries, extension points, token-cheap code |
 
 ## Settings
 

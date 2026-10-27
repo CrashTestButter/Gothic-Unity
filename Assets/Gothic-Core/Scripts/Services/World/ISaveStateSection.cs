@@ -22,6 +22,12 @@ namespace Gothic.Core.Services.World
         JToken Capture();
 
         /// <summary>
+        /// Called when a new game starts and right before Restore() when a save game is loaded (also if the save game
+        /// has no data for this section): forget the state of the previous game.
+        /// </summary>
+        void Reset();
+
+        /// <summary>
         /// Called when a save game is loaded, before its first world is created. Sections which need the world
         /// keep the data and apply it later (e.g. on GlobalEventDispatcher.WorldSceneLoaded).
         /// </summary>

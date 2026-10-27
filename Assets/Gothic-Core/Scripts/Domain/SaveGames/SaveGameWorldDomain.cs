@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -73,7 +72,7 @@ namespace Gothic.Core.Domain.SaveGames
                 world.RootObjects = rootVobs;
                 world.Npcs = npcs;
 
-                var saveWorldName = Path.GetFileNameWithoutExtension(worldName).ToUpperInvariant();
+                var saveWorldName = worldName.ToGothicWorldName();
                 if (!saveGame.Save(path, world, saveWorldName))
                 {
                     Logger.LogError($"[SaveGame] ZenKit couldn't save world {saveWorldName} into {path}.",

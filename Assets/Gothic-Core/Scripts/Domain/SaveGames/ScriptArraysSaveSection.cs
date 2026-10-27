@@ -42,6 +42,11 @@ namespace Gothic.Core.Domain.SaveGames
             return arrays;
         }
 
+        public void Reset()
+        {
+            // Nothing to forget: the arrays live in the VM, which is new for every game.
+        }
+
         /// <summary>
         /// Called after SAVEDAT.SAV is restored (SaveGameDaedalusDomain), i.e. our values win.
         /// </summary>

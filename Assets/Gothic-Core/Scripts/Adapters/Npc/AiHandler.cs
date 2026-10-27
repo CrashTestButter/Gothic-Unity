@@ -50,7 +50,7 @@ namespace Gothic.Core.Adapters.Npc
             Properties.CurrentAction = new None(new AnimationAction(), NpcData);
 
             // NPCs which died before a save game was written (or before we left the world) are dead from the start.
-            if (Properties.BodyState == VmGothicEnums.BodyState.BsDead)
+            if (Properties.IsDead)
                 StartDead();
         }
 
@@ -79,7 +79,7 @@ namespace Gothic.Core.Adapters.Npc
         {
             // If NPC/Monster is dead, only play out the already queued animations (e.g. the dying animation
             // enqueued by FightService), then stop any further process logic.
-            if (Properties.BodyState == VmGothicEnums.BodyState.BsDead)
+            if (Properties.IsDead)
             {
                 Properties.CurrentAction.Tick();
 

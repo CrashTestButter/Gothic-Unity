@@ -78,12 +78,6 @@ namespace Gothic.Core.Services.World
         private static readonly int _domeColor2ShaderId = Shader.PropertyToID("_DomeColor2");
 
 
-        public SkyService()
-        {
-            // A new game starts with Gothic's default, a loaded one gets its own (SkySaveSection).
-            GlobalEventDispatcher.LoadGameStart.AddListener(() => _rainWindow = null);
-        }
-
         public void OnValidate()
         {
             SetShaderProperties();
@@ -95,6 +89,14 @@ namespace Gothic.Core.Services.World
         public (float Start, float End) GetRainWindow()
         {
             return (_rainState.Time, _rainState.EndTime);
+        }
+
+        /// <summary>
+        /// The next world start uses Gothic's default rain window.
+        /// </summary>
+        public void ResetRainWindow()
+        {
+            _rainWindow = null;
         }
 
         public void SetRainWindow(float start, float end)

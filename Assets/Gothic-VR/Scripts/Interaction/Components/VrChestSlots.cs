@@ -50,7 +50,7 @@ namespace Gothic.VR.Interaction.Components
         private bool _isSpawning;
         private IVrHinge _hinge;
         private bool _isOpen;
-        private readonly List<string> _contentNotInSlots = new();
+        private readonly List<ContentItem> _contentNotInSlots = new();
 
         public bool IsOpen => _isOpen;
 
@@ -139,10 +139,10 @@ namespace Gothic.VR.Interaction.Components
                 .Select(i => i.Held == null ? null : i.Held.GetComponentInParent<VobLoader>()?.Container)
                 .Where(i => i?.Vob?.Type == VirtualObjectType.oCItem)
                 .Select(i => i.VobAs<IItem>())
-                .Select(i => $"{i.Name}:{Math.Max(1, i.Amount)}")
+                .Select(i => new ContentItem(i.Name, Math.Max(1, i.Amount)))
                 .Concat(_contentNotInSlots);
 
-            vobContainer.Contents = string.Join(',', items);
+            vobContainer.Contents = items.PackItems(',');
         }
 
         public void Close()
@@ -281,7 +281,7 @@ namespace Gothic.VR.Interaction.Components
             }
 
             // Content without a free slot stays inside the chest.
-            _contentNotInSlots.AddRange(contentItems.Skip(sockets.Count).Select(i => $"{i.Name}:{i.Amount}"));
+            _contentNotInSlots.AddRange(contentItems.Skip(sockets.Count));
 
             for (var i = 0; i < Math.Min(contentItems.Count, sockets.Count); i++)
             {

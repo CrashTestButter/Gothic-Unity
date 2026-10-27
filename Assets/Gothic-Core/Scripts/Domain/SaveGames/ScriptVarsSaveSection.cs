@@ -74,6 +74,11 @@ namespace Gothic.Core.Domain.SaveGames
             return new JObject { ["Floats"] = floats, ["Strings"] = strings, ["Npcs"] = npcs };
         }
 
+        public void Reset()
+        {
+            _pendingNpcReferences = null;
+        }
+
         /// <summary>
         /// Called after SAVEDAT.SAV is restored (SaveGameDaedalusDomain), before the world's INIT scripts run.
         /// </summary>

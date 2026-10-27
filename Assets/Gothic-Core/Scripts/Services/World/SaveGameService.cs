@@ -10,7 +10,6 @@ using Gothic.Core.Manager;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Proxy;
 using Gothic.Core.Models.SaveGames;
-using Gothic.Core.Models.Vm;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.Config;
 using Gothic.Core.Services.Context;
@@ -165,6 +164,7 @@ namespace Gothic.Core.Services.World
             SaveGameId = 0;
             Save = new SaveGame(_contextGameVersionService.Version);
             _loadedUnitySave = null;
+            ResetSections();
             StartPlayTime(0);
 
             // A previously loaded save changed the time.
@@ -200,8 +200,15 @@ namespace Gothic.Core.Services.World
             _daedalusDomain.Restore(save);
 
             _loadedUnitySave = _unitySaveDomain.Read(GetSaveGamePath(saveGameId));
+            ResetSections();
             _unitySaveDomain.Restore(_loadedUnitySave, _sections);
             return true;
+        }
+
+        private void ResetSections()
+        {
+            foreach (var section in _sections.Values)
+                section.Reset();
         }
 
         /// <summary>
@@ -232,7 +239,7 @@ namespace Gothic.Core.Services.World
             if (IsLoadedGame)
             {
                 // Worlds are saved upper case without extension (e.g. NEWWORLD.SAV). ZenKit's lookup is case-sensitive.
-                saveGameWorld = Save.LoadWorld(Path.GetFileNameWithoutExtension(CurrentWorldName).ToUpperInvariant());
+                saveGameWorld = Save.LoadWorld(CurrentWorldName.ToGothicWorldName());
                 worldFoundInSaveGame = saveGameWorld != null;
             }
 
@@ -338,7 +345,7 @@ namespace Gothic.Core.Services.World
                 var saveGame = Save;
                 saveGame.Metadata.Title = title;
                 saveGame.Metadata.SaveDate = DateTime.Now.ToString("dd.MM.yyyy - HH:mm");
-                saveGame.Metadata.World = Path.GetFileNameWithoutExtension(CurrentWorldName).ToUpperInvariant();
+                saveGame.Metadata.World = CurrentWorldName.ToGothicWorldName();
                 saveGame.Metadata.PlayTime = PlayTime;
                 saveGame.Thumbnail = _thumbnailDomain.Create();
                 _daedalusDomain.Flush(saveGame);
@@ -418,8 +425,8 @@ namespace Gothic.Core.Services.World
             if (hero == null || Save == null || CurrentWorldName == null ||
                 SceneManager.GetSceneByName(Constants.SceneLoading).isLoaded)
                 blockReason = "menuitem.save.blocked.noWorld";
-            else if (hero.Props.BodyState == VmGothicEnums.BodyState.BsDead ||
-                     hero.Instance.GetAttribute(NpcAttribute.HitPoints) <= 0)
+            // HP <= 0 too: a script can take the hero's HP without the death transition (see ExtNpcIsDead()).
+            else if (hero.Props.IsDead || hero.Instance.GetAttribute(NpcAttribute.HitPoints) <= 0)
                 blockReason = "menuitem.save.blocked.dead";
             else if (_gameStateService.Dialogs.IsInDialog)
                 blockReason = "menuitem.save.blocked.dialog";

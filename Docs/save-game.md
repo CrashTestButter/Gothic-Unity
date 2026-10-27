@@ -90,6 +90,9 @@ public class MyFeatureSaveSection : ISaveStateSection
 
     public JToken Capture() => new JObject { ["Value"] = _value };
 
+    // New game, and right before Restore(): forget the previous game.
+    public void Reset() => _value = 0;
+
     // Called while loading, before the first world exists. Apply world related data later
     // (e.g. GlobalEventDispatcher.WorldSceneLoaded).
     public void Restore(JToken data, int savedVersion) => _value = data.Value<int>("Value");
@@ -99,7 +102,7 @@ saveGameService.RegisterSection(new MyFeatureSaveSection());
 ```
 
 - Register once, before a save game can be loaded (Core: `SaveGameService.Init()`, VR: `ReflexVRSceneInstaller`).
-- Reset your state on `GlobalEventDispatcher.UnloadGameStart`: a new game doesn't call `Restore()`.
+- `Reset()` runs for every section on a new game and before loading, also if the save has no data for it.
 - Sections without a registered owner (newer build, other platform, removed mod) are kept when saving again.
 - The header (`UnitySaveHeader`) stores build, game, mod ini and a script signature. Other scripts only log a warning.
 

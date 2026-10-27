@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using Gothic.Core.Adapters.Properties.Vobs;
+using Gothic.Core.Extensions;
 using Gothic.Core.Services.Caches;
 using Gothic.Core.Services.World;
 using Newtonsoft.Json.Linq;
@@ -24,14 +24,12 @@ namespace Gothic.Core.Domain.SaveGames
         [Inject] private readonly SaveGameService _saveGameService;
         [Inject] private readonly MultiTypeCacheService _multiTypeCacheService;
 
-        // World name (upper case, without extension) -> mob key -> state.
+        // Gothic's world name (ToGothicWorldName()) -> mob key -> state.
         private readonly Dictionary<string, Dictionary<string, int>> _states = new();
 
 
         public MobStatesSaveSection()
         {
-            // A new game starts with all mobs in state 0, a loaded one brings its states (Restore()).
-            GlobalEventDispatcher.LoadGameStart.AddListener(_states.Clear);
             GlobalEventDispatcher.StoreWorldStateStart.AddListener(_ => StoreCurrentWorld());
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(RestoreCurrentWorld);
         }
@@ -55,9 +53,16 @@ namespace Gothic.Core.Domain.SaveGames
             return worlds;
         }
 
-        public void Restore(JToken data, int savedVersion)
+        /// <summary>
+        /// A new game starts with all mobs in state 0, a loaded one brings its states (Restore()).
+        /// </summary>
+        public void Reset()
         {
             _states.Clear();
+        }
+
+        public void Restore(JToken data, int savedVersion)
+        {
             if (data is not JObject worlds)
                 return;
 
@@ -85,7 +90,7 @@ namespace Gothic.Core.Domain.SaveGames
                     states[GetKey(vobContainer.Vob)] = props.State;
             }
 
-            _states[GetWorldKey(_saveGameService.CurrentWorldName)] = states;
+            _states[_saveGameService.CurrentWorldName.ToGothicWorldName()] = states;
         }
 
         /// <summary>
@@ -94,7 +99,7 @@ namespace Gothic.Core.Domain.SaveGames
         private void RestoreCurrentWorld()
         {
             if (string.IsNullOrEmpty(_saveGameService.CurrentWorldName) ||
-                !_states.TryGetValue(GetWorldKey(_saveGameService.CurrentWorldName), out var states))
+                !_states.TryGetValue(_saveGameService.CurrentWorldName.ToGothicWorldName(), out var states))
                 return;
 
             foreach (var vobContainer in _multiTypeCacheService.VobCache)
@@ -103,12 +108,6 @@ namespace Gothic.Core.Domain.SaveGames
                     states.TryGetValue(GetKey(vobContainer.Vob), out var state))
                     props.State = state;
             }
-        }
-
-        private static string GetWorldKey(string worldName)
-        {
-            // World names differ in casing and extension (World.zen from the ini, WORLD from a save).
-            return Path.GetFileNameWithoutExtension(worldName).ToUpperInvariant();
         }
 
         private static string GetKey(IVirtualObject mob)

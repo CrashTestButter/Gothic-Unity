@@ -204,13 +204,9 @@ namespace Gothic.Core.Domain.Npc
             
             // Inside Startup.d, it's always STARTUP_{MAPNAME} and INIT_{MAPNAME}
             // FIXME - Inside Startup.d some Startup_*() functions also call Init_*() some not. How to handle properly? (Force calling it here? Even if done twice?)
-            _gameStateService.GothicVm.Call($"STARTUP_{_saveGameService.CurrentWorldName.ToUpper().RemoveEnd(".ZEN")}");
-            
-            
-            if(Vm.GetSymbolByName("INIT_GLOBAL") != null)
-                Vm.Call("INIT_GLOBAL");
+            _gameStateService.GothicVm.Call($"STARTUP_{_saveGameService.CurrentWorldName.ToGothicWorldName()}");
 
-            _gameStateService.GothicVm.Call($"INIT_{_saveGameService.CurrentWorldName.ToUpper().RemoveEnd(".ZEN")}"); // call init as well, as per opengothic
+            CallInitScripts(); // call init as well, as per opengothic
         }
 
         /// <summary>
@@ -220,21 +216,26 @@ namespace Gothic.Core.Domain.Npc
         /// </summary>
         private void RunInitScriptsOfRestoredWorld()
         {
-            var worldInitName = $"INIT_{_saveGameService.CurrentWorldName.ToUpper().RemoveEnd(".ZEN")}";
-
             Vm.GlobalSelf = Vm.GlobalHero;
             _saveGameService.IsRunningInitScriptsOfRestoredWorld = true;
             try
             {
-                if (Vm.GetSymbolByName("INIT_GLOBAL") != null)
-                    Vm.Call("INIT_GLOBAL");
-                if (Vm.GetSymbolByName(worldInitName) != null)
-                    Vm.Call(worldInitName);
+                CallInitScripts();
             }
             finally
             {
                 _saveGameService.IsRunningInitScriptsOfRestoredWorld = false;
             }
+        }
+
+        private void CallInitScripts()
+        {
+            if (Vm.GetSymbolByName("INIT_GLOBAL") != null)
+                Vm.Call("INIT_GLOBAL");
+
+            var worldInitName = $"INIT_{_saveGameService.CurrentWorldName.ToGothicWorldName()}";
+            if (Vm.GetSymbolByName(worldInitName) != null)
+                Vm.Call(worldInitName);
         }
 
         /// <summary>

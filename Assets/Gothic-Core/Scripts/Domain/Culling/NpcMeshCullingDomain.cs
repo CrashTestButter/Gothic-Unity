@@ -4,7 +4,6 @@ using Gothic.Core.Adapters.Npc;
 using Gothic.Core.Creator;
 using Gothic.Core.Logging;
 using Gothic.Core.Models.Container;
-using Gothic.Core.Models.Vm;
 using Gothic.Core.Extensions;
 using Reflex.Attributes;
 using UnityEngine;
@@ -190,7 +189,7 @@ namespace Gothic.Core.Domain.Culling
             var props = npcData.Props;
 
             // Corpses stay where they are.
-            if (props == null || props.BodyState == VmGothicEnums.BodyState.BsDead)
+            if (props == null || props.IsDead)
                 return;
 
             if (props.RoutineCurrent == null)

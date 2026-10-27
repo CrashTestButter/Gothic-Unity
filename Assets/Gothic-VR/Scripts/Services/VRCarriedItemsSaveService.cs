@@ -113,6 +113,11 @@ namespace Gothic.VR.Services
             return new JObject { ["Holsters"] = holsterItems };
         }
 
+        public void Reset()
+        {
+            _pendingHolsterItems = null;
+        }
+
         public void Restore(JToken data, int savedVersion)
         {
             // The world (and hero) doesn't exist yet.
@@ -153,7 +158,6 @@ namespace Gothic.VR.Services
 
         private void ClearHolstersAndHands()
         {
-            _pendingHolsterItems = null;
             _silentPlacements.Clear();
             _silentReleases.Clear();
 

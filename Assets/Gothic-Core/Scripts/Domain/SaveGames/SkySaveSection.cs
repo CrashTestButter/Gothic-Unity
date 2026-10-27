@@ -23,6 +23,14 @@ namespace Gothic.Core.Domain.SaveGames
         }
 
         /// <summary>
+        /// A new game starts with Gothic's default, a loaded one gets its own (Restore()).
+        /// </summary>
+        public void Reset()
+        {
+            _skyService.ResetRainWindow();
+        }
+
+        /// <summary>
         /// Before the world (and its sky) is created, which applies it.
         /// </summary>
         public void Restore(JToken data, int savedVersion)

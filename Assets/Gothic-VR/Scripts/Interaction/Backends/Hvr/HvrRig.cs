@@ -140,6 +140,12 @@ namespace Gothic.VR.Interaction.Backends.Hvr
             SmoothTurnSpeed = smoothSpeed;
         }
 
+        public void SetHeightOffset(float meters)
+        {
+            if (!Mathf.Approximately(meters, 0f))
+                Logger.LogWarning("[HVR] The height offset setting isn't supported by the HVR backend.", LogCat.VR);
+        }
+
         public void Teleport(Vector3 position, Quaternion rotation)
         {
             Teleporter.Teleport(position);

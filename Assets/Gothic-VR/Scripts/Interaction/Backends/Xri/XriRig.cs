@@ -122,6 +122,7 @@ namespace Gothic.VR.Interaction.Backends.Xri
         private bool _isSprintLatched;
         private bool _isCrouching;
         private float _crouchOffset;
+        private float _heightOffset;
         private bool _isMovementEnabled;
         private bool _isJumpEnabled;
         private float _lastGroundedTime = float.NegativeInfinity;
@@ -490,8 +491,9 @@ namespace Gothic.VR.Interaction.Backends.Xri
                 _isCrouching = !_isCrouching;
 
             // The camera offset's height is owned by XROrigin (CameraYOffset in Device mode, 0 in Floor mode).
-            // Crouching moves it down on top, so that the camera ends at _crouchHeight. The CharacterController
-            // follows the camera height on its next move (XriBodyManipulator).
+            // The player's height offset moves it up/down, crouching moves it down on top, so that the camera ends
+            // at _crouchHeight. The CharacterController follows the camera height on its next move
+            // (XriBodyManipulator).
             var baseOffset = GetTrackingOriginMode() == TrackingOriginModeFlags.Floor
                 ? 0f
                 : _origin.CameraYOffset;
@@ -500,8 +502,13 @@ namespace Gothic.VR.Interaction.Backends.Xri
             _crouchOffset = Mathf.MoveTowards(_crouchOffset, targetOffset, _crouchSpeed * Time.deltaTime);
 
             var position = CameraOffset.localPosition;
-            position.y = baseOffset - _crouchOffset;
+            position.y = baseOffset + _heightOffset - _crouchOffset;
             CameraOffset.localPosition = position;
+        }
+
+        public void SetHeightOffset(float meters)
+        {
+            _heightOffset = meters;
         }
 
         /// <summary>

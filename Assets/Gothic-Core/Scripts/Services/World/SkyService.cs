@@ -49,6 +49,10 @@ namespace Gothic.Core.Services.World
         private static readonly int _underwaterColorShaderId = Shader.PropertyToID("_UnderwaterColor");
 
         private SkyStateRain _rainState = new();
+
+        // Rolled every day at noon (UpdateRainTime()). Game state: it survives world changes and is saved
+        // (SkySaveSection). Null until the first roll: InitRainState() uses Gothic's default then.
+        private (float Start, float End)? _rainWindow;
         private ParticleSystem _rainParticleSystem;
         private AudioSource _rainParticleSound;
         private float _rainWeightAndVolume;
@@ -74,9 +78,30 @@ namespace Gothic.Core.Services.World
         private static readonly int _domeColor2ShaderId = Shader.PropertyToID("_DomeColor2");
 
 
+        public SkyService()
+        {
+            // A new game starts with Gothic's default, a loaded one gets its own (SkySaveSection).
+            GlobalEventDispatcher.LoadGameStart.AddListener(() => _rainWindow = null);
+        }
+
         public void OnValidate()
         {
             SetShaderProperties();
+        }
+
+        /// <summary>
+        /// Start and end of today's rain (0...1 of the sky's day, which starts at noon).
+        /// </summary>
+        public (float Start, float End) GetRainWindow()
+        {
+            return (_rainState.Time, _rainState.EndTime);
+        }
+
+        public void SetRainWindow(float start, float end)
+        {
+            _rainWindow = (start, end);
+            _rainState.Time = start;
+            _rainState.EndTime = end;
         }
 
         public void InitWorld()
@@ -299,6 +324,12 @@ namespace Gothic.Core.Services.World
             _rainState.DomeColor0 = new Vector3(72.0f, 72.0f, 72.0f);
             _rainState.Layer[0].TEXName = "SKYRAINCLOUDS.TGA";
             _rainState.Layer[0].TEXAlpha = 255.0f;
+
+            if (_rainWindow is { } rainWindow)
+            {
+                _rainState.Time = rainWindow.Start;
+                _rainState.EndTime = rainWindow.End;
+            }
         }
 
         /// <summary>
@@ -365,6 +396,8 @@ namespace Gothic.Core.Services.World
             {
                 _rainState.EndTime = 1.0f;
             }
+
+            _rainWindow = (_rainState.Time, _rainState.EndTime);
         }
 
         private void UpdateRain(float stateTime, float lerpDuration = 0.01f)

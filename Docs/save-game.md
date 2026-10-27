@@ -31,13 +31,20 @@ Everything Gothic's format can hold is stored in it (loading original saves stay
 | Inventory | oCNpc `packed` strings (runtime layout) |
 | Equipped items | oCNpc item list with flag `ITEM_ACTIVE` (like original Gothic) |
 | Routine, waypoint | oCNpc `CurrentRoutine` (`NpcRoutineService`), `ScriptWaypoint` (`AiHandler`) |
-| Dead NPCs | HP <= 0 (`BsDead` is set when loading) |
+| AI state started by `AI_StartState` (attack, flee, unconscious, ...) | oCNpc `curState` with `isRtnState` = false. Loading makes it the next state, it restarts from its start function like in Gothic (`SaveGameNpcDomain.ContinueSavedState()`). Not `ZS_Talk` |
+| NPC target (`Npc_SetTarget`) | oCNpc `enemy` reference (`SaveGameWorldDomain.StoreTargets()`): NPCs of the same save and the hero (while saving) |
+| Dead NPCs | HP <= 0 (`BsDead` is set when loading, they lie on the ground: `S_DeadB`) |
 | Items in the world (taken, dropped, moved) | world VOB tree (`WorldContainer.Vobs`), position from the item's body |
 | Chest content | `oCMobContainer.Contents` (VR: `VrChestSlots` follows its slots) |
 | Movers | `zCMover.ActKeyframe` (`MoverAdapter`) |
+| Remaining trigger activations (zCTrigger, oCTriggerScript, zCTriggerList) | `CountCanBeActivated` (`ZenKitExtension.TryConsumeActivation()`) |
 | Script globals, infos, log topics, time, guild attitudes | `SAVEDAT.SAV` (`SaveGameDaedalusDomain`) |
 | G1 script int arrays (index > 0) | `UNITYSAVE.json` section `core.scriptArrays` |
+| Float, string and NPC script variables (Gothic saves ints only) | `UNITYSAVE.json` section `core.scriptVars` |
+| Rain window of the day | `UNITYSAVE.json` section `core.sky` (`SkyService`) |
+| Delayed trigger messages not sent yet | `UNITYSAVE.json` section `core.pendingTriggers` (`VobService.DispatchTriggerDelayed()`) |
 | VR holster items | `UNITYSAVE.json` section `vr.carriedItems` |
+| VR doors and chest lids left open | `UNITYSAVE.json` section `vr.openHinges` (per world, by type and position) |
 
 Items in the VR hands are inventory (`VRPlayerService.SetGrab()`). They're inside the backpack after loading.
 
@@ -61,7 +68,8 @@ the same session restores it like a save game.
 the scene. VR (`VRCarriedItemsSaveService.SyncWorldItems()`):
 
 - inside a socket (holster, backpack, chest, loot slot): not part of the world
-- inside a hand: inventory; not part of a save game's world. When leaving a world, it stays inside it.
+- inside a hand: inventory; not part of the world. When leaving a world, the hand lets go of it silently: it's
+  inside the backpack in the next world.
 - lying around: part of the world
 - child VOBs which were never taken (e.g. an item lying on a mover) are part of the world through their parent.
   The first grab detaches them (`SaveGameService.DetachChildVob()`).
@@ -103,6 +111,8 @@ saveGameService.RegisterSection(new MyFeatureSaveSection());
 | World lookup inside a save is case-sensitive | Worlds are saved and looked up upper case without extension |
 | G1 `SAVEDAT.SAV` stores one value per variable | Section `core.scriptArrays` |
 | `IVirtualObject.Children` creates new wrappers on every call | The world list keeps the wrappers it creates the world with; children are found by values |
+| A VOB reference (e.g. `Npc.Enemy`) is another object than the same VOB in the world lists | Found by name and position (`SaveGameNpcDomain.RestoreTargets()`) |
+| oCMobInter `State` is Gothic's `stateNum` (number of states, 1 for every door/chest), not the current state | VR open state in section `vr.openHinges` |
 
 Tests: `Assets/Gothic-Tests/PlayMode/SaveGameZenKitTest.cs` (world round trips need a configured Gothic installation).
 
@@ -110,6 +120,7 @@ Tests: `Assets/Gothic-Tests/PlayMode/SaveGameZenKitTest.cs` (world round trips n
 
 - Gothic-Unity reads only its own saves (original saves: inventories in the oCNpc item list aren't converted).
 - Hand items are inside the backpack after loading (a VR hand needs the grip pressed).
-- An item held while changing the world stays inside the old world.
-- AI states aren't restored: NPCs start their routine again.
-- Dead NPCs play their death animation once when they're loaded the first time.
+- Like in Gothic, an AI state restarts from its start function: queued AI actions and state timers aren't saved
+  (OpenGothic saves them). Saves of older builds marked almost every state as a routine state: their NPCs start the
+  routine.
+- NPC references inside script variables: monsters share their instance, any NPC of it is taken.

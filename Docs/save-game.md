@@ -10,7 +10,7 @@ Entry point: `SaveGameService` (`Assets/Gothic-Core/Scripts/Services/World/SaveG
 
 | File | Content | Written by |
 |------|---------|------------|
-| `SAVEINFO.SAV` | Title, world, date, game time (load menu) | ZenKit |
+| `SAVEINFO.SAV` | Title, world, date, game time, play time (load menu) | ZenKit |
 | `THUMB.SAV` | Thumbnail. Never empty: an empty file makes `SaveGame.Load()` fail | ZenKit |
 | `SAVEHDR.SAV` | Name of the current world | ZenKit |
 | `SAVEDAT.SAV` | Daedalus globals (int), told infos, log topics, game time, guild attitudes | ZenKit |

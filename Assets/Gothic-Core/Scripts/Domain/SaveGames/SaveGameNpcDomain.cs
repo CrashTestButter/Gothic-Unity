@@ -103,15 +103,11 @@ namespace Gothic.Core.Domain.SaveGames
         private void ContinueSavedState(NpcContainer npc)
         {
             var vob = npc.Vob;
-            if (vob.Player || vob.NextStateValid || !vob.CurrentStateValid || vob.CurrentStateIsRoutine)
-                return;
-
-            // Dialogs end with loading.
-            var stateName = vob.CurrentStateName;
-            if (string.IsNullOrEmpty(stateName) || _notContinuedStates.Contains(stateName.ToUpperInvariant()))
+            if (vob.Player || vob.NextStateValid || !IsContinuedState(vob))
                 return;
 
             // Symbol indices differ between installations (and script updates), names don't.
+            var stateName = vob.CurrentStateName;
             var state = _gameStateService.GothicVm.GetSymbolByName(stateName);
             if (state == null)
             {
@@ -127,9 +123,20 @@ namespace Gothic.Core.Domain.SaveGames
         }
 
         /// <summary>
-        /// Once all NPCs of a restored world exist: the saved target (oCNpc enemy, see SaveGameWorldDomain) is a
+        /// The current state was started by AI_StartState and continues after loading. Dialogs end with loading.
+        /// </summary>
+        private static bool IsContinuedState(INpc vob)
+        {
+            var stateName = vob.CurrentStateName;
+            return vob.CurrentStateValid && !vob.CurrentStateIsRoutine && !string.IsNullOrEmpty(stateName) &&
+                   !_notContinuedStates.Contains(stateName.ToUpperInvariant());
+        }
+
+        /// <summary>
+        /// Once all NPCs of a restored world exist: the saved enemy (oCNpc enemy, see SaveGameWorldDomain) is a
         /// reference to the VOB of another NPC or the hero. ZenKit hands out another object for it than for the NPC
-        /// lists, we therefore find the NPC by name and position.
+        /// lists, we therefore find the NPC by name and position. It's the target (Npc_GetTarget), and the enemy of
+        /// a continued state (AI_Attack of e.g. ZS_MM_Attack needs it). A routine NPC finds its enemies itself.
         /// </summary>
         public void RestoreTargets(IReadOnlyCollection<NpcContainer> npcs)
         {
@@ -143,8 +150,12 @@ namespace Gothic.Core.Domain.SaveGames
             foreach (var npc in npcs)
             {
                 var enemy = npc.Vob is { IsRestored: true } ? npc.Vob.Enemy : null;
-                if (enemy != null && npcByVob.TryGetValue((enemy.Name, enemy.Position), out var target))
-                    npc.Props.TargetNpc = target.Instance;
+                if (enemy == null || !npcByVob.TryGetValue((enemy.Name, enemy.Position), out var target))
+                    continue;
+
+                npc.Props.TargetNpc = target.Instance;
+                if (IsContinuedState(npc.Vob))
+                    npc.Props.EnemyNpc = target.Instance;
             }
         }
 

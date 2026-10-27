@@ -155,15 +155,16 @@ namespace Gothic.Core.Domain.SaveGames
         }
 
         /// <summary>
-        /// Like Gothic, an NPC's target (Npc_SetTarget) is stored as a reference to its VOB (oCNpc enemy). Only NPCs
-        /// of this world's save are referenced, and the hero while saving (it's part of the VOB tree then):
-        /// ZenKit would write any other VOB once more, without our fixes (ClearPhysicsFlag).
+        /// Gothic has one enemy per NPC (oCNpc enemy, set by Npc_SetTarget and Npc_GetNextEnemy), we keep the enemy
+        /// (AI_Attack) and the target apart: the enemy wins. It's stored as a reference to its VOB. Only NPCs of this
+        /// world's save are referenced, and the hero while saving (it's part of the VOB tree then): ZenKit would write
+        /// any other VOB once more, without our fixes (ClearPhysicsFlag).
         /// </summary>
         private static void StoreTargets(HashSet<NpcContainer> storedNpcs, bool isSaving, int? heroIndex)
         {
             foreach (var npc in storedNpcs)
             {
-                var target = npc.Props.TargetNpc?.GetUserData();
+                var target = (npc.Props.EnemyNpc ?? npc.Props.TargetNpc)?.GetUserData();
                 var isReferencable = target?.Vob != null &&
                                      (storedNpcs.Contains(target) || (isSaving && target.Instance.Index == heroIndex));
                 npc.Vob.Enemy = isReferencable ? target.Vob.GetVob() : null;

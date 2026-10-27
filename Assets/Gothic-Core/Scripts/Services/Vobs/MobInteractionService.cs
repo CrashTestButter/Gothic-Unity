@@ -1,4 +1,5 @@
 using System;
+using Gothic.Core.Adapters.Properties.Vobs;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Extensions;
 using Gothic.Core.Logging;
@@ -91,15 +92,21 @@ namespace Gothic.Core.Services.Vobs
             // Movers react per their behavior (MoverAdapter.OnTrigger/OnUntrigger), other targets (CodeMaster,
             // TriggerList, TriggerScript, ...) run their chain. The mob's VOB name is the sender, so a CodeMaster
             // can match it against its Slaves list.
+            // The current state is runtime state (saved by MobStatesSaveSection). The VOB's State is Gothic's
+            // stateNum (the number of its states), which a save game must keep.
+            var props = loader.Container.PropsAs<InteractiveProperties>();
+            if (props == null)
+                return;
+
             var senderName = loader.Container.Vob.Name;
-            if (mob.State > 0)
+            if (props.State > 0)
             {
-                mob.State = 0;
+                props.State = 0;
                 _vobService.DispatchUntrigger(target, senderName);
             }
             else
             {
-                mob.State = 1;
+                props.State = 1;
                 _vobService.DispatchTrigger(target, senderName);
             }
         }

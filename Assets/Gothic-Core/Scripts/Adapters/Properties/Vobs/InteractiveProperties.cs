@@ -5,8 +5,9 @@ namespace Gothic.Core.Adapters.Properties.Vobs
     public class InteractiveProperties : MovableProperties
     {
         /// <summary>
-        /// Runtime state of an Interactable. e.g., Wheel is opened.
-        /// This property isn't stored in G1 Save Games and will always start with 0 when VOB is initialized.
+        /// Current state of the mob (Gothic's oCMobInter state), e.g. a wheel is turned, a door is open. Starts with
+        /// 0. Gothic's save format has no field for it (the VOB's State is stateNum, the number of states):
+        /// MobStatesSaveSection saves it.
         /// </summary>
         public int State = 0;
 

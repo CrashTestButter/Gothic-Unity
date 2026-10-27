@@ -1,4 +1,5 @@
 using System.Linq;
+using Gothic.Core.Adapters.Properties.Vobs;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Models.Container;
 using Gothic.Core.Models.Vm;
@@ -265,6 +266,11 @@ namespace Gothic.Core.Domain.Npc.Actions.AnimationActions
         {
             var step = Props.CurrentInteractableStateId > TargetState ? -1 : +1;
             Props.CurrentInteractableStateId += step;
+
+            // Like Gothic, the mob keeps the state its user left it in (e.g. a wheel turned by a guard), for
+            // Wld_GetMobState() and save games. -1 means the NPC isn't using it anymore.
+            if (Props.CurrentInteractableStateId >= 0 && _mobContainer?.Props is InteractiveProperties mobProps)
+                mobProps.State = Props.CurrentInteractableStateId;
         }
 
         private void PlayTransitionAnimation()

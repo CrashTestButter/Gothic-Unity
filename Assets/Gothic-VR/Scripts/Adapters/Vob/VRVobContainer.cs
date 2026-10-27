@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Gothic.Core.Adapters.Properties.Vobs;
 using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Const;
 using Gothic.Core;
@@ -8,7 +9,6 @@ using Gothic.Core.Logging;
 using Gothic.Core.Manager;
 using Gothic.Core.Services.Caches;
 using Gothic.VR.Interaction.Components;
-using Gothic.VR.Services;
 using Reflex.Attributes;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -21,7 +21,6 @@ namespace Gothic.VR.Adapters.Vob
     {
         [Inject] private readonly AudioService _audioService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
-        [Inject] private readonly VRHingeStateSaveService _hingeStateSaveService;
 
         
         private static Dictionary<string, AudioClip> _containerOpenedClips = new();
@@ -42,7 +41,8 @@ namespace Gothic.VR.Adapters.Vob
             }
 
             PrepareSounds(container);
-            _hingeStateSaveService?.Track(VrHinges.FindActive(this), container);
+            VRMobHinge.Follow(VrHinges.FindActive(this),
+                GetComponentInParent<VobLoader>().Container.PropsAs<InteractiveProperties>());
         }
 
         /// <summary>

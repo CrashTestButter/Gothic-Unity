@@ -230,7 +230,8 @@ namespace Gothic.Core.Adapters.UI.Menus
             World.text = save.Metadata.World;
             SavedAt.text = save.Metadata.SaveDate;
             GameTime.text = $"{save.Metadata.TimeDay} - {save.Metadata.TimeHour}:{save.Metadata.TimeMinute}";
-            PlayTime.text = save.Metadata.PlayTime.ToString();
+            var playTime = save.Metadata.PlayTime;
+            PlayTime.text = $"{(int)playTime.TotalHours}:{playTime.Minutes:00}";
             // Version.text = save.Metadata.VersionAppName;
         }
 

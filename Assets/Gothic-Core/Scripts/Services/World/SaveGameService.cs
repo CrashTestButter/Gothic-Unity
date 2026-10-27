@@ -78,6 +78,13 @@ namespace Gothic.Core.Services.World
         public string CurrentWorldName;
         public WorldContainer CurrentWorldData => _worlds[CurrentWorldName];
 
+        // Gothic's play time (SAVEINFO PlayTimeSeconds): counted while a world runs, not on loading screens.
+        private double _playTimeSeconds;
+        private float _playTimeCountingSince = -1f;
+
+        public TimeSpan PlayTime => TimeSpan.FromSeconds(_playTimeSeconds +
+            (_playTimeCountingSince >= 0f ? Time.realtimeSinceStartup - _playTimeCountingSince : 0f));
+
 
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ResourceCacheService _resourceCacheService;
@@ -126,6 +133,19 @@ namespace Gothic.Core.Services.World
             // All NPCs of the world exist now.
             GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>
                 _npcDomain.RestoreTargets(_multiTypeCacheService.NpcCache));
+
+            GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>
+                _playTimeCountingSince = Time.realtimeSinceStartup);
+            GlobalEventDispatcher.LoadingSceneLoaded.AddListener(() => StartPlayTime(PlayTime.TotalSeconds));
+        }
+
+        /// <summary>
+        /// Continues from seconds once the next world runs (WorldSceneLoaded).
+        /// </summary>
+        private void StartPlayTime(double seconds)
+        {
+            _playTimeSeconds = seconds;
+            _playTimeCountingSince = -1f;
         }
 
         /// <summary>
@@ -145,6 +165,7 @@ namespace Gothic.Core.Services.World
             SaveGameId = 0;
             Save = new SaveGame(_contextGameVersionService.Version);
             _loadedUnitySave = null;
+            StartPlayTime(0);
 
             // A previously loaded save changed the time.
             _gameTimeService.ResetToStartTime();
@@ -173,6 +194,7 @@ namespace Gothic.Core.Services.World
             Save = save;
             IsFirstWorldLoadingFromSaveGame = true;
             _worlds.ClearAndReleaseMemory();
+            StartPlayTime(save.Metadata.PlayTime.TotalSeconds);
 
             // LoadGameStart created a fresh VM. Script globals, time and guild attitudes come from SAVEDAT.SAV.
             _daedalusDomain.Restore(save);
@@ -317,6 +339,7 @@ namespace Gothic.Core.Services.World
                 saveGame.Metadata.Title = title;
                 saveGame.Metadata.SaveDate = DateTime.Now.ToString("dd.MM.yyyy - HH:mm");
                 saveGame.Metadata.World = Path.GetFileNameWithoutExtension(CurrentWorldName).ToUpperInvariant();
+                saveGame.Metadata.PlayTime = PlayTime;
                 saveGame.Thumbnail = _thumbnailDomain.Create();
                 _daedalusDomain.Flush(saveGame);
 

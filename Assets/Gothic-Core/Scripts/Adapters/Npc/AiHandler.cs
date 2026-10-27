@@ -261,7 +261,7 @@ namespace Gothic.Core.Adapters.Npc
             // We have set some "next" state. Use it instead of going back to daily routine first.
             if (Vob.NextStateValid)
             {
-                StartRoutine(Vob.NextStateIndex);
+                StartRoutine(Vob.NextStateIndex, Vob.NextStateIsRoutine);
 
                 // As we use NextStateIndex as new "current" one, we clear it now safely.
                 Vob.NextStateIndex = -1;
@@ -294,14 +294,17 @@ namespace Gothic.Core.Adapters.Npc
             StartRoutine(action);
         }
 
-        public void StartRoutine(int action)
+        /// <param name="isRoutineState">Like Gothic's isRtnState (saved): true if the daily routine (or a monster's
+        /// StartAiState) runs the state, false for states started by AI_StartState. A loaded NPC continues the latter
+        /// (SaveGameNpcDomain).</param>
+        public void StartRoutine(int action, bool isRoutineState = true)
         {
             var didRoutineChange = Vob.CurrentStateIndex != action;
 
             Vob.LastAiState = Vob.CurrentStateIndex;
             Vob.CurrentStateIndex = action;
             Vob.CurrentStateValid = true;
-            Vob.CurrentStateIsRoutine = false;
+            Vob.CurrentStateIsRoutine = isRoutineState;
 
             var routineSymbol = Vm.GetSymbolByIndex(action)!;
             Vob.CurrentStateName = routineSymbol.Name;
@@ -312,11 +315,7 @@ namespace Gothic.Core.Adapters.Npc
 
             var symbolLoop = Vm.GetSymbolByName($"{routineSymbol.Name}_Loop");
             if (symbolLoop != null)
-            {
-                // If we have a _Loop entry, we can safely assume, we are in a routine and not just a monster AiState.
-                Vob.CurrentStateIsRoutine = true;
                 Properties.StateLoop = symbolLoop.Index;
-            }
 
             var symbolEnd = Vm.GetSymbolByName($"{routineSymbol.Name}_End");
             if (symbolEnd != null)
@@ -469,7 +468,7 @@ namespace Gothic.Core.Adapters.Npc
             else
             {
                 //if we don't have a routine means it's about a monster
-                StartRoutine(Vob.CurrentStateIndex);
+                StartRoutine(Vob.CurrentStateIndex, Vob.CurrentStateIsRoutine);
             }
         }
 

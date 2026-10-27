@@ -116,6 +116,10 @@ namespace Gothic.Core.Services.World
         public void Init()
         {
             RegisterSection(new ScriptArraysSaveSection().Inject());
+
+            // All NPCs of the world exist now.
+            GlobalEventDispatcher.WorldSceneLoaded.AddListener(() =>
+                _npcDomain.RestoreTargets(_multiTypeCacheService.NpcCache));
         }
 
         /// <summary>
@@ -381,7 +385,7 @@ namespace Gothic.Core.Services.World
             // E.g. VR: Items inside hands and holsters are inventory, items lying around are world items.
             GlobalEventDispatcher.StoreWorldStateStart.Invoke(isSaving);
 
-            _worldDomain.StoreWorldState(container);
+            _worldDomain.StoreWorldState(container, isSaving);
         }
 
         /// <summary>

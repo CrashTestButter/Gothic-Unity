@@ -26,6 +26,9 @@ namespace Gothic.Core.Domain.SaveGames
         private const int _aiVarCountG1 = 50;
         private const int _aiVarCountG2 = 100;
 
+        // States which don't continue after loading (upper case).
+        private static readonly HashSet<string> _notContinuedStates = new() { "ZS_TALK" };
+
         [Inject] private readonly GameStateService _gameStateService;
         [Inject] private readonly ContextGameVersionService _contextGameVersionService;
         [Inject] private readonly VmCacheService _vmCacheService;
@@ -88,6 +91,61 @@ namespace Gothic.Core.Domain.SaveGames
             // Npc_IsDead() checks the body state, which isn't part of a save game.
             if (npc.Instance.GetAttribute(NpcAttribute.HitPoints) <= 0)
                 npc.Props.BodyState = VmGothicEnums.BodyState.BsDead;
+            else
+                ContinueSavedState(npc);
+        }
+
+        /// <summary>
+        /// Like Gothic, an NPC continues a state started by AI_StartState (attacking, fleeing, unconscious, ...): it
+        /// becomes the next state, which AiHandler starts first (from its start function). Afterward, the routine
+        /// continues. Routine states aren't touched, the routine starts them anyway. A saved next state wins.
+        /// </summary>
+        private void ContinueSavedState(NpcContainer npc)
+        {
+            var vob = npc.Vob;
+            if (vob.Player || vob.NextStateValid || !vob.CurrentStateValid || vob.CurrentStateIsRoutine)
+                return;
+
+            // Dialogs end with loading.
+            var stateName = vob.CurrentStateName;
+            if (string.IsNullOrEmpty(stateName) || _notContinuedStates.Contains(stateName.ToUpperInvariant()))
+                return;
+
+            // Symbol indices differ between installations (and script updates), names don't.
+            var state = _gameStateService.GothicVm.GetSymbolByName(stateName);
+            if (state == null)
+            {
+                Logger.LogWarning($"[SaveGame] State {stateName} of {vob.Name} doesn't exist in scripts. Starting " +
+                                  "the routine instead.", LogCat.Loading);
+                return;
+            }
+
+            vob.NextStateIndex = state.Index;
+            vob.NextStateName = state.Name;
+            vob.NextStateValid = true;
+            vob.NextStateIsRoutine = false;
+        }
+
+        /// <summary>
+        /// Once all NPCs of a restored world exist: the saved target (oCNpc enemy, see SaveGameWorldDomain) is a
+        /// reference to the VOB of another NPC or the hero. ZenKit hands out another object for it than for the NPC
+        /// lists, we therefore find the NPC by name and position.
+        /// </summary>
+        public void RestoreTargets(IReadOnlyCollection<NpcContainer> npcs)
+        {
+            var npcByVob = new Dictionary<(string, System.Numerics.Vector3), NpcContainer>();
+            foreach (var npc in npcs)
+            {
+                if (npc.Vob != null)
+                    npcByVob[(npc.Vob.Name, npc.Vob.Position)] = npc;
+            }
+
+            foreach (var npc in npcs)
+            {
+                var enemy = npc.Vob is { IsRestored: true } ? npc.Vob.Enemy : null;
+                if (enemy != null && npcByVob.TryGetValue((enemy.Name, enemy.Position), out var target))
+                    npc.Props.TargetNpc = target.Instance;
+            }
         }
 
         private void FlushAiVars(NpcContainer npc)

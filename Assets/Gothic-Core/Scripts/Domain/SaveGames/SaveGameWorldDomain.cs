@@ -33,10 +33,11 @@ namespace Gothic.Core.Domain.SaveGames
         /// <summary>
         /// Needs to be called before we leave a world (the caches are cleared afterward) and before saving.
         /// </summary>
-        public void StoreWorldState(WorldContainer container)
+        /// <param name="isSaving">The world is saved (not left): the hero is part of its VOB tree then.</param>
+        public void StoreWorldState(WorldContainer container, bool isSaving)
         {
             SyncItemPositions();
-            StoreNpcs(container);
+            StoreNpcs(container, isSaving);
         }
 
         /// <summary>
@@ -118,20 +119,24 @@ namespace Gothic.Core.Domain.SaveGames
         ///
         /// The hero isn't stored, as it moves with us into the next world.
         /// </summary>
-        private void StoreNpcs(WorldContainer container)
+        private void StoreNpcs(WorldContainer container, bool isSaving)
         {
             _npcMeshCullingService.UpdateVobPositionOfAllNpcs();
             var visibleNpcs = _npcMeshCullingService.GetVisibleNpcs().ToHashSet();
 
+            // GlobalHero returns a new wrapper on every call: we compare the instance.
+            var heroIndex = _gameStateService.GothicVm.GlobalHero?.Index;
+            var storedNpcs = new HashSet<NpcContainer>();
             var nearNpcs = new List<IVirtualObject>();
             var farNpcs = new List<NpcProxy>();
             foreach (var npc in _multiTypeCacheService.NpcCache)
             {
-                if (npc.Vob == null || npc.Vob.Player || npc.Instance == _gameStateService.GothicVm.GlobalHero)
+                if (npc.Vob == null || npc.Vob.Player || npc.Instance?.Index == heroIndex)
                     continue;
 
                 _npcDomain.FlushInstanceToVob(npc);
                 npc.Vob.MarkAsRestored();
+                storedNpcs.Add(npc);
 
                 if (visibleNpcs.Contains(npc))
                     nearNpcs.Add(npc.Vob);
@@ -139,12 +144,30 @@ namespace Gothic.Core.Domain.SaveGames
                     farNpcs.Add(npc.Vob);
             }
 
+            StoreTargets(storedNpcs, isSaving, heroIndex);
+
             // NPCs inside the tree are from the last save/visit and are replaced with the current ones.
             var vobs = container.Vobs.Where(i => i.Type != VirtualObjectType.oCNpc).ToList();
             vobs.AddRange(nearNpcs);
 
             container.Vobs = vobs;
             container.Npcs = farNpcs;
+        }
+
+        /// <summary>
+        /// Like Gothic, an NPC's target (Npc_SetTarget) is stored as a reference to its VOB (oCNpc enemy). Only NPCs
+        /// of this world's save are referenced, and the hero while saving (it's part of the VOB tree then):
+        /// ZenKit would write any other VOB once more, without our fixes (ClearPhysicsFlag).
+        /// </summary>
+        private static void StoreTargets(HashSet<NpcContainer> storedNpcs, bool isSaving, int? heroIndex)
+        {
+            foreach (var npc in storedNpcs)
+            {
+                var target = npc.Props.TargetNpc?.GetUserData();
+                var isReferencable = target?.Vob != null &&
+                                     (storedNpcs.Contains(target) || (isSaving && target.Instance.Index == heroIndex));
+                npc.Vob.Enemy = isReferencable ? target.Vob.GetVob() : null;
+            }
         }
 
         /// <summary>

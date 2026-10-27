@@ -35,9 +35,9 @@ namespace Gothic.VR
         public const int SnapRotationDefaultValue = 2; // Element index==3
         public const int SnapRotationAmountSettingTickAmount = 5;
 
-        // Height offset slider: 0...1 Ini value, 0.5 == no offset. 20 steps from -0.5m to +0.5m, i.e. 5cm each.
-        public const int HeightOffsetSettingAmount = 20;
-        public const float HeightOffsetMaxMeters = 0.5f;
+        // Height offset slider: 0...1 Ini value, 0.5 == no offset. 40 steps from -1m to +1m, i.e. 5cm each.
+        public const int HeightOffsetSettingAmount = 40;
+        public const float HeightOffsetMaxMeters = 1f;
         public const float HeightOffsetDefaultValue = 0.5f;
 
         public const int PhysicalHandsDefaultValue = 1;

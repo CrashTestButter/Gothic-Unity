@@ -215,7 +215,7 @@ namespace Gothic.VR.Services.Context
         }
 
         /// <summary>
-        /// Accessibility setting "height offset" from Gothic.ini. Slider value 0...1 maps to -0.5m...+0.5m.
+        /// Accessibility setting "height offset" from Gothic.ini. Slider value 0...1 maps to -1m...+1m.
         /// </summary>
         private void ApplyHeightOffset()
         {

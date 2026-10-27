@@ -144,7 +144,7 @@ Service (`new XDomain().Inject()`).
 4. MonoBehaviours live in `Adapters/` only.
 5. Modules use Core only, never each other.
 
-Rules 1-4 are checked by `CoreArchitectureTest` (EditMode); rules 1-3 also by the `Architecture` check on every PR.
+Rules 1-4 are checked by `CoreArchitectureTest` (EditMode); rules 1-3 also by the `Architecture` check (run manually).
 Today's violations are listed in `Assets/Gothic-Tests/EditMode/Architecture/ArchitectureBaseline.txt`. The list may
 only shrink: new code follows the rules, old code gets fixed when it's touched (principle 9), and the fixed line is
 removed from the baseline. Rule 5 is enforced by the asmdef references.
@@ -194,8 +194,10 @@ than rich models.
 
 ## Tools
 
-- `CoreArchitectureTest` (`Assets/Gothic-Tests/EditMode/Architecture/`) and the `Architecture` CI check: the
-  mechanical dependency rules above, against the baseline. They fail, the reviewer only advises.
+- `CoreArchitectureTest` (`Assets/Gothic-Tests/EditMode/Architecture/`) and the `Architecture` check: the
+  mechanical dependency rules above, against the baseline. They fail, the reviewer only advises. The check runs
+  without Unity, locally via `dotnet run --project .github/architecture-check` or on GitHub via Actions >
+  Architecture > Run workflow.
 - `architecture-reviewer` agent (`.claude/agents/`): reviews against this doc what a test can't decide - a branch
   before the PR, `--wip` changes, a plan before implementing, or a folder before splitting it. E.g. "use
   architecture-reviewer on my branch".

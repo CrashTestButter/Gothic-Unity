@@ -20,11 +20,11 @@ Every finding serves three goals:
 
 ## Division of labour
 
-- **Mechanical rules are not your job.** `CoreArchitectureTest` (EditMode; layer usings and namespaces also in the
-  `Architecture` CI check on every PR) enforces Core's layer usings, namespace-matches-folder and
-  MonoBehaviours-only-in-Adapters against
-  `Assets/Gothic-Tests/EditMode/Architecture/ArchitectureBaseline.txt`. Don't re-derive them by reading code; take
-  them from the facts script.
+- **Mechanical rules are not your job.** `CoreArchitectureTest` (EditMode) enforces Core's layer usings,
+  namespace-matches-folder and MonoBehaviours-only-in-Adapters against
+  `Assets/Gothic-Tests/EditMode/Architecture/ArchitectureBaseline.txt`. Don't re-derive them by reading code: if
+  `dotnet` is available, run `dotnet run --project .github/architecture-check -- .` (layers and namespaces, a few
+  seconds) and report its errors as they are; otherwise take them from the facts script.
 - **Your job is what a test can't decide:** whether code sits in the right place, follows the principles in
   `Docs/architecture.md`, and what the change makes harder later.
 

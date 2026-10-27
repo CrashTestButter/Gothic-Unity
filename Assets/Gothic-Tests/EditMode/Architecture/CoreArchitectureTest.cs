@@ -15,7 +15,7 @@ namespace Gothic.Tests.EditMode.Architecture
     /// 1. new violations - fix the code by moving it to the right layer.
     /// 2. fixed violations still in the baseline - remove the line, so the violation can't come back.
     ///
-    /// Layer and namespace rules also run in CI without Unity (.github/architecture-check).
+    /// Layer and namespace rules also run without Unity (.github/architecture-check), locally or as a manual workflow.
     /// </summary>
     public class CoreArchitectureTest
     {

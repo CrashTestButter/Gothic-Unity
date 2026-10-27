@@ -18,7 +18,6 @@ namespace Gothic.Core.Adapters.Vob
         [Inject] private readonly VobService _vobService;
 
         private ITriggerList _triggerList;
-        private int _activationCount;
 
         private void Awake() => this.Inject();
 
@@ -29,17 +28,8 @@ namespace Gothic.Core.Adapters.Vob
 
         public void Trigger()
         {
-            if (!_triggerList.IsEnabled)
+            if (!_triggerList.IsEnabled || !_triggerList.TryConsumeActivation())
                 return;
-
-            // MaxActivationCount: -1 = unlimited, 0 = never, N = fire N times.
-            var max = _triggerList.MaxActivationCount;
-            if (max == 0)
-                return;
-            if (max > 0 && _activationCount >= max)
-                return;
-
-            _activationCount++;
 
             var targets = _triggerList.Targets;
             if (targets.Count == 0)
@@ -49,7 +39,8 @@ namespace Gothic.Core.Adapters.Vob
             }
 
             Logger.Log($"[TriggerList] '{_triggerList.Name}' triggered (mode={_triggerList.Mode}, " +
-                       $"activation={_activationCount})", LogCat.Vob);
+                       $"{_triggerList.CountCanBeActivated} of {_triggerList.MaxActivationCount} activations left)",
+                LogCat.Vob);
 
             switch (_triggerList.Mode)
             {

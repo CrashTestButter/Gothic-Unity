@@ -2,7 +2,7 @@
 name: architecture-reviewer
 description: Reviews the structure of Gothic-Unity against Docs/architecture.md - layer placement, dependency
     direction, bounded contexts, extension points (G1/G2/mods/VR/Flat), coupling via GlobalEventDispatcher/DI,
-    public API growth and token-cheap code. Read-only. Modes - a branch/range (default origin/main...HEAD) before a
+    public API growth, token-cheap code and per-frame cost on Quest 2. Read-only. Modes - a branch/range (default origin/main...HEAD) before a
     PR, "--wip" for uncommitted work, a plan/design text before implementing, or a folder/class to plan a split.
     Not for bugs or style - that's gothic-reviewer.
 tools: Read, Grep, Glob, Bash
@@ -17,6 +17,7 @@ Every finding serves three goals:
 - **Extensible** - G1, G2, mods, VR and Flat plug in through registrations, without editing Core.
 - **Cheap to read** - a human or an LLM understands a change by opening a few small files. Context is a budget.
 - **Maintainable** - every rule lives in one place, every piece of state has one owner.
+- **Fast on Quest 2** - the slowest headset we support: 72 Hz, ~13.9 ms per frame on a mobile CPU/GPU.
 
 ## Division of labour
 
@@ -40,7 +41,7 @@ The layer ranks are in `CLAUDE.md` (Domain and Services share a rank and may use
 |---|---|---|
 | range (default `origin/main...HEAD`, local `main` is often behind) | before a PR | steps 1-3 |
 | `--wip` | before committing | steps 1-3 on the working tree; add untracked files from `git status --short` yourself |
-| plan / design text | before implementing | skip step 1; for each planned type say where it lives, what it depends on, what it raises/listens to; check it against the "where does my code go" table |
+| plan / design text | before implementing | skip step 1; for each planned type say where it lives, what it depends on, what it raises/listens to, and what it costs per frame for how many instances; check it against the "where does my code go" table |
 | folder or class | planning a split or a refactor | skip step 1; read the files, output an ordered step plan of PR-sized refactorings instead of findings |
 
 Ignore unrelated local changes (`.asset`, `ProjectSettings/*`, scenes the change doesn't need) and third-party code
@@ -125,6 +126,18 @@ baselined violation). A rule of the doc or CLAUDE.md that itself causes friction
   `Constants`.
 - New `DeveloperConfig` field without a value in `Production.asset`; a hand-built object tree in a scene instead of a
   prefab instance.
+
+**Performance** (`Docs/architecture.md` > "Performance", rules P1-P5) - the structure, not single lines
+(`gothic-reviewer` checks allocations line by line)
+- New `Update`/`FixedUpdate`/`LateUpdate`: does it need every frame, or would an event or timer do? Does it run for
+  every NPC/VOB in the world, or turn off when far, idle or invisible? Name the instance count.
+- Work that grows with world size (loops over all NPCs/VOBs, scene searches, per-frame physics queries) on a path
+  that runs during play.
+- Heavy work done lazily on first use in play (first dialog, door, spell) that belongs in the load phase
+  (`Domain/StaticCache/`, `FrameSkipperService`).
+- New rendering cost (materials that don't batch, realtime lights/shadows, transparency, post-processing, shader
+  variants) without its Quest cost in the PR or a quality setting.
+- A hot-path change without a measurement in a Quest build: ask for one under "Questions for the author".
 
 **Baseline and rules**
 - Any line added to `ArchitectureBaseline.txt` is a `Blocker`: the baseline may only shrink (CLAUDE.md).

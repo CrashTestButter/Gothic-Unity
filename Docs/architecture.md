@@ -317,6 +317,67 @@ Gothic.ini/GameSettings.json, cheats in the Marvin menu (`marvin-cheats` skill),
 **Why:** The C# default isn't what ships: `Production.asset` is. A field without an asset value is a different
 game in the Editor and in the build.
 
+## Performance: Quest 2 is the floor
+
+The game runs on standalone headsets. Quest 2 is the slowest one we support: a mobile CPU and GPU, 72 Hz, so about
+13.9 ms per frame for everything (scripts, physics, animation, rendering both eyes). A missed frame is felt as
+judder, not just seen as a lower number. What runs on a desktop PC in the Editor says nothing about the headset.
+
+### P1. Per-frame work is a decision
+
+**Rule:** New code reacts to an event (principle 7) or a timer instead of checking something in `Update`,
+`FixedUpdate` or `LateUpdate`. A component that isn't needed right now (far from the player, not in combat, not
+visible) turns itself off. Work per NPC or VOB scales with what is near the player, not with the world.
+
+**Why:** A world has hundreds of NPCs and thousands of VOBs. 0.01 ms per object per frame is invisible on one NPC in
+the Lab scene and a lost frame in the Old Camp.
+
+**Example:** the combat box colliders are off outside combat (`CLAUDE.md` > Combat).
+
+**Today:** 54 scripts in Core, VR and Flat have an `Update`, `FixedUpdate` or `LateUpdate`. When you touch one, ask
+whether it needs to run every frame for every instance.
+
+### P2. Hot paths don't allocate
+
+**Rule:** Code that runs every frame (or every physics step) doesn't allocate: no LINQ, no lambdas capturing
+variables, no `string` concatenation or interpolation, no `foreach` over interfaces that box, no `new List` per call.
+Cache `GetComponent` results, use the `NonAlloc` physics queries with a buffer and a layer mask (rule F), and log
+there with `LogEditor` or a one-shot guard.
+
+**Why:** Every allocation feeds the garbage collector, and a GC pause on Quest is several milliseconds - a dropped
+frame at a random moment, which is hard to trace back to its cause.
+
+**Today:** `StationaryLight`, `VRVobItem`, `VrWeaponAttackDomain` and `VrLadderExit` use allocating physics queries
+(`OverlapSphere`, `OverlapCapsule`, `OverlapBox`, `RaycastAll`); `AnimationSystem` and `AbstractMorphAnimation` use
+LINQ in files with an `Update`. Check whether they run per frame when you touch them.
+
+### P3. Heavy work happens while loading
+
+**Rule:** Anything that can be computed before the player moves is computed at world load: in the pre-caching
+(`Domain/StaticCache/`) or spread over frames with `FrameSkipperService`. Nothing big happens lazily the first time
+the player meets it (first dialog, first door, first spell) unless it is spread over frames too.
+
+**Why:** A 200 ms hitch during loading is a slightly longer loading screen. The same 200 ms in play freezes the
+player's view, which in VR causes nausea.
+
+**Example:** VOB bounds, light chunks and texture array metadata are pre-cached (`CLAUDE.md` > Scene Loading).
+
+### P4. Rendering has a budget
+
+**Rule:** A feature that adds draw calls, materials, realtime lights, shadows, transparency, post-processing or
+shader variants says what it costs on Quest in its PR, and has a quality setting if it's optional. Meshes share
+materials and texture arrays so they batch.
+
+**Why:** On a mobile GPU the frame is usually lost in rendering, not in C#. Each eye renders the scene, so every
+draw call and every overdrawn pixel counts.
+
+### P5. Measure on the device
+
+**Rule:** A change on a hot path (per-frame code, NPC count, rendering, physics) is profiled in a Quest build, not
+only in the Editor. The PR says what was measured (frame time, GC allocations, draw calls) and where in the world.
+
+**Why:** The Editor's CPU is several times faster and hides both the cost and the GC pauses.
+
 ## Smells
 
 - the same check written a second time
@@ -333,6 +394,9 @@ game in the Editor and in the build.
 - a Core asset referencing a VR, Flat or Lab asset
 - an XRI or HVR type outside `Gothic-VR/Scripts/Interaction/Backends/`
 - a VR component calling `IVrHaptics` or a service instead of announcing a fact
+- a new `Update` that polls something an event could announce, or runs for every NPC/VOB in the world
+- LINQ, lambdas, string building, `GetComponent` or an allocating physics query on a per-frame path
+- heavy work the first time the player meets something, instead of at load time
 
 ## Domain-Driven Design, mapped
 
@@ -365,5 +429,5 @@ than rich models.
   architecture-reviewer on my branch". Cheapest on the plan: a structure fixed before coding costs nothing, the
   same finding on a finished branch costs a refactoring.
 - `.claude/scripts/architecture-facts.sh`: the structural facts of a change the reviewer starts from.
-- `gothic-reviewer` agent: Gothic pitfalls and coding style.
+- `gothic-reviewer` agent: Gothic pitfalls, per-frame allocations and coding style.
 - `feature-checklist` skill: config flags, logging, DI wiring, save/load impact.

@@ -115,7 +115,7 @@ Work items (no behaviour change):
 - [x] `README.md`, `CONTRIBUTING.md`: VR works out of the box; the simulator explains how to play without a headset.
       (README links to the wiki; CONTRIBUTING got the note.)
 - [ ] Wiki (`../Gothic-Unity.wiki`, edit there, not the in-repo copy): VR setup page, architecture page.
-- [ ] `Docs/HVR-replacement/`: add a short "Done in <PR>" note to `README.md`; keep the docs as history.
+- [x] `Docs/HVR-replacement/`: add a short "Done in <PR>" note to `README.md`; keep the docs as history. (#459)
 - [x] Project memory/skills that mention HVR (e.g. `feature-checklist`, `unity-mcp-debug`): update the wording.
 
 ## Test plan

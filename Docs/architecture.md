@@ -164,6 +164,40 @@ removed from the baseline. Rule 5 is enforced by the asmdef references.
 | add a new kind of VOB or UI element | a prefab in `Gothic-Core/Resources/Prefabs/`, a `PrefabType` entry, loaded via `ResourceCacheService` |
 | make a VOB behave differently in VR/Flat | a Prefab Variant of the Core prefab at the same path under `Resources/VR/` or `Resources/Flat/` |
 
+## Inside Gothic-VR
+
+VR interaction runs on a backend: XR Interaction Toolkit (free, `VrInteractionBackend.Xri`) or HurricaneVR
+(commercial, behind `GOTHIC_HVR_INSTALLED`, being replaced: `Docs/HVR-replacement/`). Game code doesn't know which.
+
+| Folder (`Gothic-VR/Scripts/`) | Holds | Uses |
+|---|---|---|
+| `Interaction/Models/` | VR value types (`VrHandSide`, `VrGrabArgs`, `VrHapticPreset`) | nothing else |
+| `Interaction/Ports/` | the VR framework as interfaces (`IVrRig`, `IVrInput`, `IVrHaptics`, `IVrSocket`) | Models |
+| `Interaction/Backends/Xri/`, `Hvr/` | the only code with XRI or HVR types: port implementations, bridges | Ports, Models, Components |
+| `Interaction/Components/` | backend-neutral MonoBehaviours with the Gothic behaviour (`VrSocketSlot`, `VrPhysicsHand`) | Ports, Models, Core |
+| `Adapters/`, `Services/` | the game in VR (`VRBackpack`, `VrHapticsService`) | all of the above |
+
+1. **The backend executes, Gothic decides.** A Gothic rule lives in a component, the backend part next to it only
+   translates: `VrSocketSlot` decides what goes in, `XriSocketBridge` holds it in XRI terms. When a backend needs a
+   Gothic answer, it asks a port that a component implements.
+2. **Components don't use `Adapters/` or `Services/`.** They announce facts (principle 7) and a service reacts:
+   `VrPhysicsHand` raises `PhysicalHandContact`, `VrHapticsService` vibrates.
+3. **New port members are default interface members** while HVR exists, so the HVR backend stays untouched.
+4. **Haptics:** only `VrHapticsService` picks preset and strength. A new kind of vibration is a `VrHapticPreset`
+   with its values in both backends' tables (`XriHaptics`, `HvrHaptics`, same index).
+5. **Don't act inside a backend event.** Destroying, re-parenting or placing objects within an XRI select or hover
+   event breaks the interaction in progress: do it in the next `Update` (`VrContainerDropZone`).
+6. **Reuse the building blocks** before writing a new one:
+
+| Need | Use |
+|---|---|
+| "is it a Gothic item?" | `VrSocketSlot.IsItem` |
+| a slot for one item (holster, chest, loot) | `VrSocketSlot` and its backend part |
+| "item let go in a zone, put it somewhere" | `VrContainerDropZone` |
+| something worn on the body | `VrBodyAnchor` |
+| the layers the player collides with | `VrCollisionPassThrough.GetCollidingLayers` |
+| a vibration | an event `VrHapticsService` listens to |
+
 ## Unity assets
 
 The C# rules above have a twin in the Editor: prefabs, scenes, materials and settings are code too. They are
@@ -247,6 +281,10 @@ sets its layer; code sets it only for objects created at runtime.
 **Why:** A string layer name that doesn't exist returns -1 and the object silently lands on `Default`.
 `feature-checklist` lists the physics layers.
 
+**Also:** `Physics.autoSyncTransforms` is off. Code that moves a collider and queries physics in the same frame calls
+`Physics.SyncTransforms()` in between, otherwise the query sees the old place. Queries without a layer mask
+(`Physics.CheckSphere`, `OverlapSphere`) see every layer: a layer only some casts may find is masked out there.
+
 ### G. Assets respect the module borders
 
 **Rule:** The asmdef rules (rule 5 of the layers) hold for assets too: a Core scene, prefab or material references
@@ -292,6 +330,8 @@ game in the Editor and in the build.
 - `FindChildRecursively("...")`, `GameObject.Find` or `FindObjectsByType` for an object we created ourselves
 - `Resources.Load("...")` outside `ResourceCacheService`, `Shader.Find("...")` outside `Constants`
 - a Core asset referencing a VR, Flat or Lab asset
+- an XRI or HVR type outside `Gothic-VR/Scripts/Interaction/Backends/`
+- a VR component calling `IVrHaptics` or a service instead of announcing a fact
 
 ## Domain-Driven Design, mapped
 
@@ -321,7 +361,8 @@ than rich models.
   Architecture > Run workflow.
 - `architecture-reviewer` agent (`.claude/agents/`): reviews against this doc what a test can't decide - a branch
   before the PR, `--wip` changes, a plan before implementing, or a folder before splitting it. E.g. "use
-  architecture-reviewer on my branch".
+  architecture-reviewer on my branch". Cheapest on the plan: a structure fixed before coding costs nothing, the
+  same finding on a finished branch costs a refactoring.
 - `.claude/scripts/architecture-facts.sh`: the structural facts of a change the reviewer starts from.
 - `gothic-reviewer` agent: Gothic pitfalls and coding style.
 - `feature-checklist` skill: config flags, logging, DI wiring, save/load impact.

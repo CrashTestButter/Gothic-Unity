@@ -15,7 +15,7 @@ Data flow: Unity → ZenKit.dll (.NET Standard 2.1) → libzenkitcapi (native) �
 3. Create a `GameConfiguration` ScriptableObject via `Right-click > Create > ScriptableObjects > GameConfiguration` in `Gothic-Core/Resources/GameConfigurations/` and assign it to `GameManager`'s Config slot if you need a custom config. A Production config exists by default.
 4. Configuration is accessed at runtime via `GameGlobals.Config`, which exposes Gothic.ini, GothicGame.ini, GameSettings.json, and DeveloperConfig settings.
 
-**Without HurricaneVR** (paid asset): Remove `GOTHIC_HVR_INSTALLED` from Project Settings scripting defines, then set `GameManager.DeveloperConfig → Controls.GameControls` to `Flat`.
+**Without HurricaneVR** (paid asset): Remove `GOTHIC_HVR_INSTALLED` from Project Settings scripting defines, then set `GameManager.DeveloperConfig → VrInteractionBackend` to `Xri` (free XR Interaction Toolkit backend), or `Controls.GameControls` to `Flat`.
 
 **Purple HVR hands**: Run `Gothic > VR > HVR - Convert Materials to URP` to fix URP material conversion.
 
@@ -89,7 +89,7 @@ Gothic 1 vs Gothic 2 differences are isolated to `Gothic-Gothic1/` and `Gothic-G
 
 ### VR Framework
 
-HurricaneVR (HVR) is the VR interaction framework. Its presence is gated by the `GOTHIC_HVR_INSTALLED` scripting define symbol. VR-specific services live in `Gothic-VR/Scripts/Services/` and adapters in `Gothic-VR/Scripts/Adapters/`.
+VR interaction goes through Gothic-owned ports (`Gothic-VR/Scripts/Interaction/Ports/`) with two backends: XR Interaction Toolkit (`Interaction/Backends/Xri/`, free, always compiled) and HurricaneVR (`Interaction/Backends/Hvr/`, commercial, gated by the `GOTHIC_HVR_INSTALLED` scripting define, being replaced: `Docs/HVR-replacement/`). `DeveloperConfig.VrInteractionBackend` picks one. Game code never uses XRI or HVR types; Gothic behaviour lives in backend-neutral components (`Interaction/Components/`). Folder rules and the building blocks to reuse: `Docs/architecture.md` > "Inside Gothic-VR". VR-specific services live in `Gothic-VR/Scripts/Services/` and adapters in `Gothic-VR/Scripts/Adapters/`.
 
 ### Asset Loading Pipeline
 
@@ -162,7 +162,8 @@ UI: Default `TMP_Text` font size is **12** to preserve layout integrity for Goth
 - **ZenKit** — Gothic asset parser (runtime loading of meshes, worlds, scripts, audio). It is symlinked at **./ZenKitCS/** (Use it, whenever information are needed)
 - **dmusic** — DirectMusic reimplementation for Gothic's original music system
 - **Reflex** — IoC/DI container (`com.gustavopsantos.reflex`)
-- **HurricaneVR** — Commercial VR interaction framework (private repo, not in this repo)
+- **XR Interaction Toolkit** — Unity's free VR interaction framework (the `Xri` backend)
+- **HurricaneVR** — Commercial VR interaction framework (private repo, not in this repo; the `Hvr` backend)
 - **Unity URP** — Universal Render Pipeline for graphics
 - **Unity OpenXR + Pico OpenXR** — XR platform support
 - **Newtonsoft JSON** — serialization
@@ -175,6 +176,7 @@ UI: Default `TMP_Text` font size is **12** to preserve layout integrity for Goth
 ## Workflow Notes
 
 - Branch from `main`, submit PRs with detailed descriptions of what changed and how to test manually.
+- Before coding a feature, read `Docs/architecture.md` and run the `architecture-reviewer` agent on the plan.
 - Commits end with `Co-Authored-By: Claude <MODEL VERSION> <noreply@anthropic.com>` (e.g. Opus 5.5, Sonnet 5.5);
   PR descriptions end with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 - Staging, commit style and PR template: see the `commit-pr` skill.

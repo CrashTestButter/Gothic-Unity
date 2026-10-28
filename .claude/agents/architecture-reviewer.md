@@ -101,6 +101,14 @@ baselined violation). A rule of the doc or CLAUDE.md that itself causes friction
 - A new non-trivial context without `Docs/<context>.md`; missing "why" on a Gothic/ZenKit quirk.
 - Many new public members that could be private/internal; new public Core types used by one module only.
 
+**VR module** (`Docs/architecture.md` > "Inside Gothic-VR", rules 1-6)
+- An XRI or HVR type outside `Interaction/Backends/`, or a Gothic rule decided inside a backend.
+- A component in `Interaction/Components/` using `Adapters/`, `Services/` or `IVrHaptics` directly instead of
+  announcing a fact; preset or strength chosen outside `VrHapticsService`.
+- Destroying, re-parenting or placing objects inside a backend's select/hover event instead of the next `Update`.
+- A new helper where the building-block table already has one (item check, slot, drop zone, body anchor, colliding
+  layers).
+
 **Unity assets** (`Docs/architecture.md` > "Unity assets", rules A-I)
 - New or changed prefab under `Resources/VR/` or `Resources/Flat/` with a Core prefab at the same path: is it a
   variant? (`grep "m_SourcePrefab: {fileID: 100100000, guid: <core guid>"`, the guid from the Core `.prefab.meta`.)

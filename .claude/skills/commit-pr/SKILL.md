@@ -29,9 +29,9 @@ A TL;DR with one line per changed file:
 
 ## Review results
 
-The review is a separate step: the `local-review` skill writes its files to the git-ignored
+The review is a separate step: the `review` skill writes its files to the git-ignored
 `.claude/review/<branch>/`. Before creating or updating a PR, read the newest review there. If there is none, or
-it isn't current (rule in `local-review` > "Files"), tell the author and run `local-review` first. Never write or
+it isn't current (rule in `review` > "Files"), tell the author and run `review` first. Never write or
 edit review reports here.
 
 The texts sent to GitHub go into the same folder: `pr-body.md` and `<sha>-comment.md` (`<sha>` = the pushed commit).

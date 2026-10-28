@@ -20,6 +20,5 @@ Keeping both had a cost even for people without HurricaneVR: our prefabs still c
 ## Consequences
 
 - Everyone can open, build and play the VR version, also without a headset through the simulator.
-- Loading a world no longer floods the console with missing-script warnings.
+- Loading a world no longer floods the console with missing-script warnings. Measured in the editor with a save in the Old Camp: everything around the player has appeared after about 8 seconds instead of about 25, the worst frame while things appear takes 0.15 seconds instead of 2.5, and there are no missing-script warnings anymore instead of about 27,000. Builds from CI had HurricaneVR installed and never had these warnings, so players don't get this speed-up.
 - Open pull requests that still edit HurricaneVR backend files get a conflict and have to drop those edits.
-- The playtest of all VR interactions (grab, backpack, chests, doors, ladders, dialogs, fights) happens on this branch.

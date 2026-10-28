@@ -9,7 +9,7 @@ Every PR that makes a decision someone could question later: a new feature, a ne
 ## How
 
 - One file per decision: `Docs/adr/<date>-<topic>.md`, e.g. `2026-10-28-vr-ledge-climbing.md`. The date instead of a running number keeps parallel PRs from colliding, and the folder sorted by name is the list of all records.
-- Added in the PR it belongs to. Update its status when the PR is merged, tested in the headset, or replaced by a later decision.
+- Added in the PR it belongs to. Update its status when the PR is merged or replaced by a later decision. Testing in the headset is a given, no need to note it.
 - Plain words for players and developers alike: no class names, no code, no technical mechanics. Those go into the area's technical doc, which the record links.
 - One line per paragraph or list item (no hard line wraps), so it reads well everywhere.
 - Short: a page at most.
@@ -19,7 +19,7 @@ Every PR that makes a decision someone could question later: a new feature, a ne
 ```markdown
 # ADR: <topic>
 
-- Status: proposed / accepted (PR #...) / tested in the headset / replaced by <record>
+- Status: proposed / accepted (PR #...) / replaced by <record>
 - Date: <yyyy-mm-dd>
 - Technical details: Docs/<area>.md
 

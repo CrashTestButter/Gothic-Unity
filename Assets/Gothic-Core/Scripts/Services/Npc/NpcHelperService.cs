@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gothic.Core.Adapters.Properties;
 using Gothic.Core.Adapters.Properties.Vobs;
+using Gothic.Core.Adapters.Vob;
 using Gothic.Core.Creator;
 using Gothic.Core.Const;
 using Gothic.Core.Logging;
@@ -60,8 +61,13 @@ namespace Gothic.Core.Services.Npc
         {
             var npc = GetNpc(npcInstance);
             var container = _vobService.GetFreeInteractableWithin10M(npc.transform.position, vobName);
+            if (container == null)
+                return false;
 
-            return container != null;
+            // Like Gothic, a mob needs a spot to be used from. Without one, AI_UseMob gave up at once and routine
+            // loops (e.g. ZS_Repair_Hut_Loop) asked again every frame. A mob not built yet is checked on use.
+            return !container.Go.GetComponent<VobLoader>().IsLoaded ||
+                   _vobService.GetNearestSlot(container.Go, npc.transform.position) != null;
         }
 
         public int ExtWldGetMobState(NpcInstance npcInstance, string scheme)

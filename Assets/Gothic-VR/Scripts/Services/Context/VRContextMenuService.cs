@@ -153,6 +153,8 @@ namespace Gothic.VR.Services.Context
             heightOffsetSetting.SetUserFloat(0, VRConstants.HeightOffsetSettingAmount);
             heightOffsetSetting.OnChgSetOption = VRConstants.IniNames.HeightOffset;
             heightOffsetSetting.OnChgSetOptionSection = VRConstants.IniSectionAccessibility;
+            // Moving the view on every step moved the player away from the slider they were holding.
+            heightOffsetSetting.IsAppliedOnRelease = true;
 
             return heightOffsetSetting;
         }

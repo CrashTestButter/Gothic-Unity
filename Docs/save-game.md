@@ -2,6 +2,7 @@
 
 How Gothic-Unity saves and loads a game, which ZenKit pitfalls it works around and how to store additional state.
 Entry point: `SaveGameService` (`Assets/Gothic-Core/Scripts/Services/World/SaveGameService.cs`).
+Why it's built this way: Docs/adr/2026-10-26-save-games.md.
 
 ## Folder layout
 

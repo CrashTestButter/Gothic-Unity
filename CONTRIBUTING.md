@@ -77,7 +77,7 @@ flowchart LR
     D["1.\nDesign<br/>/design<br/>\nOutcome: ADR"] -->
     B["2.\nBuild<br/>(skills load automatically)\n\nOutcome: Feature"]
     B --> T["3.\n Test"]
-    T --> R["4.\nReview<br/>/local-review<br/>\nOutcome: Findings"]
+    T --> R["4.\nReview<br/>/review<br/>\nOutcome: Findings"]
     R --> P["5.\nPush<br/>/commit-pr<br/>\nOutcome: PR to review"]
 ```
 
@@ -88,9 +88,9 @@ flowchart LR
    > Implement the plan.
 3. **Test:** the `playtest-planner` agent writes the in-game test steps, you play them.
    > What should I test?
-4. **Review:** `/local-review` runs the `gothic-reviewer` (bugs, style) and `architecture-reviewer` (structure)
+4. **Review:** `/review` runs the `gothic-reviewer` (bugs, style) and `architecture-reviewer` (structure)
    agents and stores their reports locally. For each open finding you decide: fix it, follow-up, or disagree.
-   > /local-review
+   > Do a review
 5. **Push:** `/commit-pr` commits and opens or updates the PR with a summary of the latest review and posts the full
    reports as a comment. If the review is missing or outdated, it runs it first. Without the `gh` CLI it prepares
    the texts for you to paste. A human reviews the PR.

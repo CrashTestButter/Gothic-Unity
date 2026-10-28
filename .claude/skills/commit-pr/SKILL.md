@@ -38,7 +38,7 @@ Branch from `main`. Description sections:
 - **Known gaps / follow-ups**
 
 A PR that decides something (new feature, setting, trade-off, a rule different from the original game) adds a
-decision record `Docs/adr/<date>-<topic>.md` in plain words and lists it in `Docs/adr/README.md` (template there).
+decision record `Docs/adr/<date>-<topic>.md` in plain words (rules and template in `Docs/adr/README.md`).
 
 End every PR description with this line:
 

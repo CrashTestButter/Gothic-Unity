@@ -8,7 +8,7 @@ Every PR that makes a decision someone could question later: a new feature, a ne
 
 ## How
 
-- One file per decision: `Docs/adr/<date>-<topic>.md`, e.g. `2026-10-28-vr-ledge-climbing.md`. The date instead of a running number keeps parallel PRs from colliding.
+- One file per decision: `Docs/adr/<date>-<topic>.md`, e.g. `2026-10-28-vr-ledge-climbing.md`. The date instead of a running number keeps parallel PRs from colliding, and the folder sorted by name is the list of all records.
 - Added in the PR it belongs to. Update its status when the PR is merged, tested in the headset, or replaced by a later decision.
 - Plain words for players and developers alike: no class names, no code, no technical mechanics. Those go into the area's technical doc, which the record links.
 - One line per paragraph or list item (no hard line wraps), so it reads well everywhere.
@@ -35,7 +35,3 @@ What the problem was, and how the original game handles it.
 
 - What changes because of it, what it costs, what is still open.
 ```
-
-## Records
-
-- [2026-10-28 VR ledge climbing](2026-10-28-vr-ledge-climbing.md)

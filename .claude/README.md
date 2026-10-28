@@ -7,11 +7,13 @@ architecture; these files cover workflow and hard-won gotchas.
 
 | Skill | Use for |
 |---|---|
+| `design` | before coding: decisions with the human, plan, ADR draft, checked by `architecture-reviewer` |
 | `daedalus-bridge` | externals, AI states, perceptions, XP/attributes, inventory - anything crossing C# ↔ Daedalus |
 | `unity-mcp-debug` | debugging a play session via Unity MCP: logs first, filtering, no compile in play mode |
 | `mod-triage` | getting a G1/G2 mod to boot and play, recognising native/engine blockers |
 | `feature-checklist` | implementing features: DeveloperConfig flags + asset values, logging, DI, layers, save/load |
-| `commit-pr` | staging/committing in reviewable steps, PR description with manual test steps |
+| `local-review` | before the PR: both reviewer agents, reports stored in `review/<branch>/`, author's response |
+| `commit-pr` | staging/committing in reviewable steps, PR description and review comments from `local-review` |
 
 ## Agents (`agents/`) - ask e.g. "use daedalus-scout to look up Npc_GetNextTarget"
 

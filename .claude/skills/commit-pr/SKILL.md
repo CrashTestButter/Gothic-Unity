@@ -37,6 +37,9 @@ Branch from `main`. Description sections:
 - **Save/load** - what happens to the new state on save + load
 - **Known gaps / follow-ups**
 
+A PR that decides something (new feature, setting, trade-off, a rule different from the original game) adds a
+decision record `Docs/adr/<date>-<topic>.md` in plain words and lists it in `Docs/adr/README.md` (template there).
+
 End every PR description with this line:
 
 ```

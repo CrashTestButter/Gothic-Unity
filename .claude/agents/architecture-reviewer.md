@@ -99,6 +99,7 @@ baselined violation). A rule of the doc or CLAUDE.md that itself causes friction
 - A change that needs more than ~4 files open to follow: scattered rule, missing facade, pass-through layers.
 - Grab-bag names (`*Manager`, `*Helper`, `*Util`) and names that don't use Gothic's terms.
 - A new non-trivial context without `Docs/<context>.md`; missing "why" on a Gothic/ZenKit quirk.
+- A change that decides something (feature, setting, trade-off) without a decision record in `Docs/adr/`.
 - Many new public members that could be private/internal; new public Core types used by one module only.
 
 **VR module** (`Docs/architecture.md` > "Inside Gothic-VR", rules 1-6)

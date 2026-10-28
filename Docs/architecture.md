@@ -110,7 +110,8 @@ itself on a different event, and one forgot to.
 ### 8. Small files, written down
 
 **Rule:** A class has one reason to change. Aim for less than ~400 lines per class and ~50 per method. A non-trivial
-area gets a short doc in `Docs/`.
+area gets a short doc in `Docs/`, and every PR that decides something a decision record in `Docs/adr/` (why, and
+what wasn't chosen).
 
 **Why:** People and AI agents understand a change by reading a few small files. A 1,000-line class costs everybody
 time on every change.

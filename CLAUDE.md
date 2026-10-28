@@ -177,6 +177,7 @@ UI: Default `TMP_Text` font size is **12** to preserve layout integrity for Goth
 
 - Branch from `main`, submit PRs with detailed descriptions of what changed and how to test manually.
 - Before coding a feature, read `Docs/architecture.md` and run the `architecture-reviewer` agent on the plan.
+- A PR that decides something gets a short decision record in `Docs/adr/<date>-<topic>.md` (plain words, template in `Docs/adr/README.md`).
 - Commits end with `Co-Authored-By: Claude <MODEL VERSION> <noreply@anthropic.com>` (e.g. Opus 5.5, Sonnet 5.5);
   PR descriptions end with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 - Staging, commit style and PR template: see the `commit-pr` skill.

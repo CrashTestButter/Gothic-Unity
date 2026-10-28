@@ -1,12 +1,12 @@
 ---
-name: local-review
+name: review
 description: Reviews the current branch locally before a PR - runs the architecture-reviewer and gothic-reviewer
     agents, stores their reports unedited in .claude/review/<branch>/, compares them with the previous review and
     collects the author's response per open finding. Use when asked to review the branch, the changes or the code
     before committing or pushing; /commit-pr reads its results.
 ---
 
-# Local review
+# Review
 
 The reports are what the human PR reviewer reads later, so they stay exactly as the agents wrote them.
 
